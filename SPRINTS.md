@@ -74,7 +74,17 @@ Open:
 - CI has not run, because the repository has no GitHub remote yet.
 - Playwright is deferred to sprint 14, the first sprint with browser journeys.
 
-Notes for sprint 1:
+### Sprint 1: Random numbers and grid — closed
 
-- `data-model.md` gives the instance `seed` as `int` without a range; a 64-bit seed does not survive JSON in JavaScript. Record it in `SPEC_ISSUES.md` and accept a `bigint` or a non-negative safe integer.
-- engine.md does not say how the corner rule applies to movers with a footprint larger than `[1, 1]`. Record it; the proposed reading is that every footprint cell obeys the corner rule.
+Done:
+
+- `lib/rng`: `draw` (`splitmix64_v1`), `Rng` with `next`, `die` (rejection sampling), `roll` (`NdM±K`), and `pick`; `parseDice`; `fnv1a64` for generator location seeds. The three draw vectors and the five d20 rolls reproduce; rejection on a 3-sided die consumes counters.
+- `lib/grid`: `parseMap` and `TerrainGrid` (built-in and declared terrain, cells outside the map are `void`); `distance`, `footprintDistance`, `adjacent` with the corner rule, footprint adjacency and overlap; `line`, `sightLine`, `sees`, `footprintSees`; `direction` labels; `findPath` (Dijkstra, `(cost, y, x)` frontier, documented neighbour order, footprints), `reachable`, and `walk` (allowance, last free cell, early stops).
+- Every geometry vector in engine.md passes. fast-check properties: sight is symmetric, paths never cut a blocked corner, and `findPath` cost equals the cheapest reachable cost.
+- `SPEC_ISSUES.md`: `seed-range`, `footprint-movement`, `stopping-on-occupied-cells`, each with markers.
+
+Notes for sprint 2 and later:
+
+- Geometry takes predicates (`open`, `blocksMovement`, `blocksSight`, `cost`), so the engine overlays entities, doors, and creatures on `TerrainGrid` without changing `lib/grid`.
+- The corner rule takes `blocksMovement`; whether opposing creatures count for it is the engine's decision in sprint 6.
+- `walk` reports `arrived`, `allowance`, `early`, or `short`; the engine maps `early` to `new_room` or `hostile_seen` for the `moved` event.

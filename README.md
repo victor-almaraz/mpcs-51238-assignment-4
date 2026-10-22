@@ -40,6 +40,8 @@ CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs `gen:check`, `t
 |---|---|
 | `cadmium-spec/` | The specification: documents, JSON Schemas, example packs, rules data, design tokens |
 | `app/` | Next.js routes and pages |
+| `lib/rng/` | `splitmix64_v1` draws, dice, selection by RNG, `fnv1a64` |
+| `lib/grid/` | Map parsing, distance, adjacency, line of sight, pathfinding, movement allowance |
 | `lib/bundle/` | Schema registry and generated types; generated files are never edited by hand |
 | `lib/materials/` | Content Compiler |
 | `scripts/` | Build-time scripts, such as type generation |
