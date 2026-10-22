@@ -1,0 +1,27 @@
+# CI gates (AGENTS.md, Setup step 4): generated types up to date, type checking, linting,
+# unit tests and example validation, and the production build. A failing job blocks merging.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - run: pnpm install --frozen-lockfile
+      - name: Generated types match the specification
+        run: pnpm gen:check
+      - run: pnpm typecheck
+      - run: pnpm lint --max-warnings 0
+      - name: Unit tests, vectors, and specification validation
+        run: pnpm test
+      - run: pnpm build

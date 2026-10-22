@@ -1,0 +1,266 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/location.schema.json",
+  "title": "Adventure location",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/authored"
+    },
+    {
+      "$ref": "#/$defs/generated"
+    }
+  ],
+  "$defs": {
+    "authored": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "defs.schema.json#/$defs/id"
+        },
+        "kind": {
+          "const": "authored"
+        },
+        "map": {
+          "$ref": "map.schema.json#/$defs/location"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "map"
+      ],
+      "additionalProperties": false
+    },
+    "generated": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "defs.schema.json#/$defs/id"
+        },
+        "kind": {
+          "const": "generated"
+        },
+        "generator": {
+          "type": "object",
+          "properties": {
+            "algorithm": {
+              "enum": [
+                "bsp"
+              ]
+            },
+            "size": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "integer",
+                  "minimum": 16,
+                  "maximum": 64
+                },
+                {
+                  "type": "integer",
+                  "minimum": 16,
+                  "maximum": 64
+                }
+              ],
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "rooms": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 64
+                },
+                {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 64
+                }
+              ],
+              "minItems": 2,
+              "maxItems": 2
+            },
+            "min_room": {
+              "type": "integer",
+              "minimum": 3,
+              "maximum": 12
+            },
+            "loop_ratio": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 0.5
+            }
+          },
+          "required": [],
+          "additionalProperties": false
+        },
+        "population": {
+          "type": "object",
+          "properties": {
+            "encounter_table": {
+              "$ref": "defs.schema.json#/$defs/ref"
+            },
+            "loot_table": {
+              "$ref": "defs.schema.json#/$defs/ref"
+            },
+            "room_templates": {
+              "type": "array",
+              "items": {
+                "$ref": "defs.schema.json#/$defs/ref"
+              },
+              "uniqueItems": true
+            },
+            "density": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "ambient": {
+              "$ref": "defs.schema.json#/$defs/light_level",
+              "description": "Ambient light of generated rooms. Default bright."
+            },
+            "lit_rooms": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1,
+              "description": "With a dim or dark ambient, the fraction of rooms made bright, chosen by RNG. Default 0."
+            }
+          },
+          "required": [
+            "encounter_table"
+          ],
+          "additionalProperties": false
+        },
+        "anchors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "place": {
+                "type": "object",
+                "properties": {
+                  "ref": {
+                    "$ref": "defs.schema.json#/$defs/ref"
+                  },
+                  "npc": {
+                    "$ref": "defs.schema.json#/$defs/id"
+                  },
+                  "id": {
+                    "$ref": "defs.schema.json#/$defs/id"
+                  }
+                },
+                "oneOf": [
+                  {
+                    "required": [
+                      "ref"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "npc"
+                    ]
+                  }
+                ],
+                "additionalProperties": false
+              },
+              "constraints": {
+                "type": "object",
+                "properties": {
+                  "min_depth": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "max_depth": {
+                    "type": "integer",
+                    "minimum": 0
+                  },
+                  "prefer_role": {
+                    "enum": [
+                      "entry",
+                      "boss",
+                      "treasure",
+                      "dead_end"
+                    ]
+                  },
+                  "room_tags": {
+                    "$ref": "defs.schema.json#/$defs/tags"
+                  }
+                },
+                "required": [],
+                "additionalProperties": false
+              },
+              "shared": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "place"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "links": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "$ref": "defs.schema.json#/$defs/label"
+              },
+              "role": {
+                "enum": [
+                  "entry",
+                  "boss",
+                  "treasure",
+                  "dead_end"
+                ]
+              },
+              "to": {
+                "type": "object",
+                "properties": {
+                  "location": {
+                    "$ref": "defs.schema.json#/$defs/id"
+                  },
+                  "link": {
+                    "$ref": "defs.schema.json#/$defs/id"
+                  }
+                },
+                "required": [
+                  "location",
+                  "link"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "label",
+              "role",
+              "to"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "gates_per_location": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 3
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "population"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/abilities.schema.json",
+  "title": "Setting pack abilities",
+  "type": "object",
+  "propertyNames": {
+    "$ref": "defs.schema.json#/$defs/id"
+  },
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "label": {
+        "$ref": "defs.schema.json#/$defs/label"
+      },
+      "target": {
+        "enum": [
+          "self",
+          "entity",
+          "door",
+          "none"
+        ]
+      },
+      "art": {
+        "$ref": "defs.schema.json#/$defs/art"
+      },
+      "range": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "minimum": 1,
+        "maximum": 64,
+        "description": "Maximum distance in cells to the target. Null or omitted: any visible target."
+      },
+      "effects": {
+        "$ref": "defs.schema.json#/$defs/pack_effects"
+      },
+      "system_stats": {
+        "$ref": "defs.schema.json#/$defs/system_stats"
+      }
+    },
+    "required": [
+      "label",
+      "target",
+      "effects",
+      "system_stats"
+    ],
+    "additionalProperties": false
+  }
+}

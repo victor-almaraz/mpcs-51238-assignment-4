@@ -1,0 +1,230 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/map.schema.json",
+  "title": "Maps",
+  "description": "Square-grid maps. Room templates use `grid` and `placement`; authored adventure locations use `location`.",
+  "$ref": "#/$defs/location",
+  "$defs": {
+    "legend": {
+      "type": "object",
+      "description": "Map characters besides the built-in ' ' (void), '.' (floor), and '#' (wall).",
+      "propertyNames": {
+        "pattern": "^[!-~]$",
+        "not": {
+          "enum": [
+            ".",
+            "#"
+          ]
+        }
+      },
+      "additionalProperties": {
+        "oneOf": [
+          {
+            "$ref": "defs.schema.json#/$defs/id",
+            "description": "Terrain id."
+          },
+          {
+            "type": "object",
+            "description": "Terrain with an entity placed on the cell.",
+            "properties": {
+              "terrain": {
+                "$ref": "defs.schema.json#/$defs/id"
+              },
+              "place": {
+                "$ref": "defs.schema.json#/$defs/ref"
+              }
+            },
+            "required": [
+              "terrain",
+              "place"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      }
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 64,
+      "description": "One string per row, north first. Every row has the same length, 1-64 characters.",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 64
+      }
+    },
+    "grid": {
+      "type": "object",
+      "properties": {
+        "legend": {
+          "$ref": "#/$defs/legend"
+        },
+        "rows": {
+          "$ref": "#/$defs/rows"
+        }
+      },
+      "required": [
+        "rows"
+      ],
+      "additionalProperties": false
+    },
+    "placement": {
+      "type": "object",
+      "description": "One placement: a template by `ref`, or an adventure NPC by `npc`. `at` fixes the cell; without it, cells are chosen by RNG within `room`, or within the room template.",
+      "properties": {
+        "ref": {
+          "$ref": "defs.schema.json#/$defs/ref"
+        },
+        "npc": {
+          "$ref": "defs.schema.json#/$defs/id"
+        },
+        "id": {
+          "$ref": "defs.schema.json#/$defs/id",
+          "description": "Entity id for triggers and effects. Requires count 1."
+        },
+        "at": {
+          "$ref": "defs.schema.json#/$defs/cell",
+          "description": "Top-left cell of the entity's footprint."
+        },
+        "room": {
+          "type": "string",
+          "description": "Room to place in when `at` is omitted."
+        },
+        "count": {
+          "$ref": "defs.schema.json#/$defs/count"
+        },
+        "lock": {
+          "$ref": "defs.schema.json#/$defs/requirement",
+          "description": "Door placements only: replaces the door template's lock."
+        },
+        "hidden": {
+          "type": "boolean",
+          "description": "Place with the hidden condition. Default false."
+        }
+      },
+      "oneOf": [
+        {
+          "required": [
+            "ref"
+          ]
+        },
+        {
+          "required": [
+            "npc"
+          ]
+        }
+      ],
+      "not": {
+        "required": [
+          "at",
+          "count"
+        ]
+      },
+      "additionalProperties": false
+    },
+    "room": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "$ref": "defs.schema.json#/$defs/label"
+        },
+        "tags": {
+          "$ref": "defs.schema.json#/$defs/tags"
+        },
+        "light": {
+          "$ref": "defs.schema.json#/$defs/light_level",
+          "description": "Ambient light. Default bright."
+        },
+        "area": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "defs.schema.json#/$defs/rect"
+          },
+          "description": "Rectangles whose cells belong to the room."
+        }
+      },
+      "required": [
+        "label",
+        "area"
+      ],
+      "additionalProperties": false
+    },
+    "link": {
+      "type": "object",
+      "description": "A cell that leads to a link in another location. A move to the link's id travels it.",
+      "properties": {
+        "label": {
+          "$ref": "defs.schema.json#/$defs/label"
+        },
+        "at": {
+          "$ref": "defs.schema.json#/$defs/cell"
+        },
+        "to": {
+          "type": "object",
+          "properties": {
+            "location": {
+              "$ref": "defs.schema.json#/$defs/id"
+            },
+            "link": {
+              "$ref": "defs.schema.json#/$defs/id"
+            }
+          },
+          "required": [
+            "location",
+            "link"
+          ],
+          "additionalProperties": false
+        }
+      },
+      "required": [
+        "label",
+        "at",
+        "to"
+      ],
+      "additionalProperties": false
+    },
+    "location": {
+      "type": "object",
+      "properties": {
+        "legend": {
+          "$ref": "#/$defs/legend"
+        },
+        "rows": {
+          "$ref": "#/$defs/rows"
+        },
+        "rooms": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/room"
+          }
+        },
+        "contents": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/placement"
+          }
+        },
+        "links": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/link"
+          }
+        }
+      },
+      "required": [
+        "rows",
+        "rooms"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

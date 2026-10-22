@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/conditions.schema.json",
+  "title": "Theme pack conditions",
+  "type": "object",
+  "propertyNames": {
+    "$ref": "defs.schema.json#/$defs/id",
+    "not": {
+      "enum": [
+        "incapacitated",
+        "hidden"
+      ]
+    }
+  },
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "label": {
+        "$ref": "defs.schema.json#/$defs/label"
+      },
+      "duration": {
+        "type": [
+          "integer",
+          "null"
+        ],
+        "minimum": 1
+      },
+      "on_turn_start": {
+        "$ref": "defs.schema.json#/$defs/pack_effects"
+      },
+      "blocks": {
+        "type": "array",
+        "uniqueItems": true,
+        "items": {
+          "$ref": "defs.schema.json#/$defs/ordered_tool"
+        }
+      },
+      "situation": {
+        "type": "object",
+        "description": "Adjustment to the bearer's rolls, passed to the rules system.",
+        "properties": {
+          "advantage": {
+            "type": "integer",
+            "minimum": -1,
+            "maximum": 1
+          },
+          "modifier": {
+            "type": "integer",
+            "minimum": -10,
+            "maximum": 10
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "required": [
+      "label",
+      "duration"
+    ],
+    "additionalProperties": false
+  }
+}

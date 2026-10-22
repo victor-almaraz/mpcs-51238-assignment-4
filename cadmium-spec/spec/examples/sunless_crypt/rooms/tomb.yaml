@@ -1,0 +1,15 @@
+founders_tomb:
+  label: founder's tomb
+  tags: [undead]
+  role: boss
+  min_depth: 3
+  map:
+    rows:
+      - "#.....#"
+      - "......."
+      - "......."
+      - "#.....#"
+  contents:
+    - { ref: sarcophagus, at: [2, 1] }
+    - { ref: crypt_warden, at: [3, 2] }
+    - { ref: skeleton, count: 2 }

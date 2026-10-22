@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/systems/cadmium/item.schema.json",
+  "title": "Cadmium item stats",
+  "type": "object",
+  "properties": {
+    "weapon": {
+      "type": "boolean"
+    },
+    "damage": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "ranged": {
+      "type": "boolean",
+      "description": "Attacks any visible target instead of adjacent ones."
+    },
+    "armor": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 40,
+      "description": "Module armor: points added to the user's pool when used; the item is consumed."
+    },
+    "slots": {
+      "type": "integer",
+      "minimum": 2,
+      "maximum": 24,
+      "description": "Module stash: inventory slots this item adds while carried. It occupies one."
+    }
+  },
+  "additionalProperties": false,
+  "description": "Fields marked with a module are accepted only when that module is enabled."
+}

@@ -1,0 +1,19 @@
+maintenance_drone:
+  kind: creature
+  label: maintenance drone
+  tags: [machine, hostile]
+  behavior: aggressive
+  loot: { table: drone_parts, picks: 1 }
+  system_stats: { template: minion }
+security_frame:
+  kind: creature
+  label: security frame
+  tags: [machine, hostile]
+  behavior: defensive
+  flee_when_harmed: true
+  system_stats: { template: boss, damage: 3 }
+civilian:
+  kind: creature
+  label: civilian
+  behavior: passive
+  system_stats: { template: commoner, damage: 1 }

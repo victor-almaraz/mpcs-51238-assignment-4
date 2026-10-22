@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/parser.schema.json",
+  "title": "Parser hints",
+  "type": "object",
+  "properties": {
+    "synonyms": {
+      "type": "object",
+      "propertyNames": { "$ref": "defs.schema.json#/$defs/tool" },
+      "additionalProperties": { "type": "array", "items": { "type": "string", "minLength": 1, "maxLength": 40 }, "uniqueItems": true }
+    },
+    "examples": {
+      "type": "array", "maxItems": 20,
+      "items": {
+        "type": "object",
+        "properties": {
+          "input": { "type": "string", "minLength": 1, "maxLength": 200 },
+          "call": {
+            "type": "object",
+            "properties": { "tool": { "$ref": "defs.schema.json#/$defs/tool" }, "args": { "type": "object" } },
+            "required": ["tool", "args"], "additionalProperties": false
+          }
+        },
+        "required": ["input", "call"], "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,7 @@
+turn_undead:
+  label: Turn Undead
+  target: entity
+  system_stats: { roles: [invoker], cost: { ap: 2 }, roll: true }
+  effects:
+    - damage: { target: target, amount: 2, type: holy }
+    - apply_condition: { target: target, condition: frightened }

@@ -1,0 +1,12 @@
+skeleton:
+  kind: creature
+  label: skeleton
+  tags: [undead, hostile]
+  behavior: aggressive
+  system_stats: { template: minion }
+crypt_warden:
+  kind: creature
+  label: crypt warden
+  tags: [undead, hostile]
+  behavior: defensive
+  system_stats: { template: boss, damage: 3 }

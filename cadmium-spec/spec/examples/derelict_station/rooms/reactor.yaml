@@ -1,0 +1,17 @@
+reactor_room:
+  label: reactor room
+  tags: [machine, hazard]
+  role: boss
+  min_depth: 3
+  map:
+    legend:
+      "~": coolant
+      "o": { terrain: floor, place: support_pillar }
+    rows:
+      - "..o..o.."
+      - ".~~..~~."
+      - ".~~..~~."
+      - "..o..o.."
+  contents:
+    - { ref: control_panel, at: [3, 0] }
+    - { ref: maintenance_drone, count: 2 }

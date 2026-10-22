@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/systems/quest/check.schema.json",
+  "title": "Quest check specification",
+  "description": "Quest rolls an unmodified d20 for every check. The specification carries tags only.",
+  "type": "object",
+  "properties": { "tags": { "type": "array", "items": { "type": "string" } } },
+  "additionalProperties": false
+}

@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/systems/quest/character.schema.json",
+  "title": "Quest character sheet",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 40
+    },
+    "role": {
+      "enum": [
+        "fighter",
+        "invoker",
+        "ranger",
+        "naturalist",
+        "doctor",
+        "spy",
+        "magician",
+        "wizard"
+      ]
+    },
+    "hp": {
+      "$ref": "#/$defs/meter"
+    },
+    "ap": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Adventure Points. No maximum; spent AP does not recharge."
+    },
+    "abilities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "inventory": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "properties": {
+          "ref": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "ref"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "status": {
+      "enum": [
+        "active",
+        "deaths_door",
+        "dead"
+      ]
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "maxLength": 200
+      }
+    }
+  },
+  "required": [
+    "name",
+    "role",
+    "hp",
+    "ap",
+    "abilities",
+    "inventory",
+    "status"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "meter": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "value",
+        "max"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

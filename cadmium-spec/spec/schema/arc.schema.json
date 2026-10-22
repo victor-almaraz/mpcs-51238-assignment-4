@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/arc.schema.json",
+  "title": "Adventure plot arc",
+  "type": "object",
+  "properties": {
+    "id": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "title": {
+      "$ref": "defs.schema.json#/$defs/label"
+    },
+    "stages": {
+      "type": "array",
+      "minItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "defs.schema.json#/$defs/id"
+      }
+    },
+    "initial": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "triggers": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/trigger"
+      }
+    }
+  },
+  "required": [
+    "id",
+    "title",
+    "stages",
+    "initial",
+    "triggers"
+  ],
+  "$defs": {
+    "trigger": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "defs.schema.json#/$defs/id"
+        },
+        "on": {
+          "type": "object",
+          "description": "`type` is an event type; every other key matches the payload field of the same name by equality.",
+          "properties": {
+            "type": {
+              "$ref": "defs.schema.json#/$defs/event_type"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "additionalProperties": {
+            "type": [
+              "string",
+              "integer",
+              "boolean"
+            ]
+          }
+        },
+        "when": {
+          "$ref": "defs.schema.json#/$defs/requirement"
+        },
+        "effects": {
+          "$ref": "defs.schema.json#/$defs/adventure_effects"
+        },
+        "narrate": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "once": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "on",
+        "effects"
+      ],
+      "additionalProperties": false
+    },
+    "event_match": {
+      "type": "object",
+      "description": "`type` is an event type; every other key matches the payload field of the same name by equality.",
+      "properties": {
+        "type": {
+          "$ref": "defs.schema.json#/$defs/event_type"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "additionalProperties": {
+        "type": [
+          "string",
+          "integer",
+          "boolean"
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

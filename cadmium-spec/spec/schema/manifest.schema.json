@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/manifest.schema.json",
+  "title": "Setting pack manifest",
+  "type": "object",
+  "properties": {
+    "format_version": {
+      "const": 2
+    },
+    "id": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "defs.schema.json#/$defs/semver"
+    },
+    "namespace": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "title": {
+      "$ref": "defs.schema.json#/$defs/label"
+    },
+    "damage_types": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "defs.schema.json#/$defs/id"
+      },
+      "uniqueItems": true
+    },
+    "terrain": {
+      "type": "object",
+      "description": "Terrain types besides the built-in void, floor, and wall.",
+      "propertyNames": {
+        "$ref": "defs.schema.json#/$defs/id",
+        "not": {
+          "enum": [
+            "void",
+            "floor",
+            "wall"
+          ]
+        }
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "$ref": "defs.schema.json#/$defs/label"
+          },
+          "obstructs": {
+            "$ref": "defs.schema.json#/$defs/obstructs",
+            "description": "Default []."
+          },
+          "cost": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 4,
+            "description": "Movement cost to enter a cell. Default 1."
+          },
+          "tags": {
+            "$ref": "defs.schema.json#/$defs/tags"
+          },
+          "art": {
+            "$ref": "defs.schema.json#/$defs/art"
+          }
+        },
+        "required": [
+          "label"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "generation": {
+      "type": "object",
+      "description": "Templates the dungeon generator places.",
+      "properties": {
+        "door": {
+          "$ref": "defs.schema.json#/$defs/ref",
+          "description": "Door template placed in every generated doorway."
+        },
+        "locks": {
+          "type": "object",
+          "minProperties": 1,
+          "description": "Locked door templates, each with the key item the generator places for it.",
+          "propertyNames": {
+            "$ref": "defs.schema.json#/$defs/ref"
+          },
+          "additionalProperties": {
+            "$ref": "defs.schema.json#/$defs/ref"
+          }
+        }
+      },
+      "required": [
+        "door",
+        "locks"
+      ],
+      "additionalProperties": false
+    },
+    "currency": {
+      "type": "object",
+      "description": "The setting's money. Amounts are integers in the smallest unit.",
+      "properties": {
+        "id": {
+          "$ref": "defs.schema.json#/$defs/id"
+        },
+        "label": {
+          "$ref": "defs.schema.json#/$defs/label"
+        },
+        "unit": {
+          "$ref": "defs.schema.json#/$defs/label",
+          "description": "Name of the smallest unit."
+        },
+        "denominations": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "label": {
+                "$ref": "defs.schema.json#/$defs/label"
+              },
+              "value": {
+                "type": "integer",
+                "minimum": 1,
+                "description": "Worth in the smallest unit."
+              }
+            },
+            "required": [
+              "label",
+              "value"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "id",
+        "label",
+        "unit",
+        "denominations"
+      ],
+      "additionalProperties": false
+    },
+    "narration": {
+      "type": "object",
+      "properties": {
+        "style": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "person": {
+          "enum": [
+            "second",
+            "third"
+          ]
+        },
+        "max_sentences": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        }
+      },
+      "required": [
+        "style",
+        "person",
+        "max_sentences"
+      ],
+      "additionalProperties": false
+    },
+    "system": {
+      "$ref": "defs.schema.json#/$defs/system_ref"
+    },
+    "kind": {
+      "const": "setting"
+    },
+    "starting_items": {
+      "$ref": "defs.schema.json#/$defs/pick",
+      "description": "Table drawn from when a character joins a campaign that uses this setting."
+    }
+  },
+  "required": [
+    "format_version",
+    "kind",
+    "id",
+    "version",
+    "namespace",
+    "title",
+    "system",
+    "damage_types",
+    "generation",
+    "narration"
+  ],
+  "additionalProperties": false
+}

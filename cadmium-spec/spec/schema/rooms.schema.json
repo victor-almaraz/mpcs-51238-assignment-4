@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/rooms.schema.json",
+  "title": "Room templates",
+  "type": "object",
+  "propertyNames": {
+    "$ref": "defs.schema.json#/$defs/id"
+  },
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "label": {
+        "$ref": "defs.schema.json#/$defs/label"
+      },
+      "tags": {
+        "$ref": "defs.schema.json#/$defs/tags"
+      },
+      "role": {
+        "enum": [
+          "any",
+          "entry",
+          "boss",
+          "treasure",
+          "dead_end"
+        ]
+      },
+      "min_depth": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "max_depth": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "light": {
+        "$ref": "defs.schema.json#/$defs/light_level",
+        "description": "Ambient light of the room. Omitted: the location's ambient light."
+      },
+      "map": {
+        "$ref": "map.schema.json#/$defs/grid",
+        "description": "The room's interior. Void cells keep the generated floor."
+      },
+      "contents": {
+        "type": "array",
+        "items": {
+          "$ref": "map.schema.json#/$defs/placement"
+        },
+        "description": "`at` is relative to the template's top-left cell. Without `at`, cells are chosen by RNG inside the template."
+      }
+    },
+    "required": [
+      "label",
+      "role",
+      "map"
+    ],
+    "additionalProperties": false
+  }
+}

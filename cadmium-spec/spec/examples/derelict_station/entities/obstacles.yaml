@@ -1,0 +1,10 @@
+crate_stack:
+  kind: obstacle
+  label: stack of crates
+  cover: true
+  system_stats: { hp: 4 }
+  remains: scrap
+support_pillar:
+  kind: obstacle
+  label: support pillar
+  cover: true

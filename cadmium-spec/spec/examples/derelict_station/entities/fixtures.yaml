@@ -1,0 +1,17 @@
+locker:
+  kind: container
+  label: storage locker
+  contents: { table: locker_loot, picks: 2 }
+  verbs:
+    open:
+      requirement: { check: { tags: [athletics] } }
+      effects: []
+control_panel:
+  kind: fixture
+  label: control panel
+  verbs:
+    operate:
+      requirement: { has_item: keycard }
+      effects: []
+    read:
+      effects: []

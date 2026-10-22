@@ -1,0 +1,4 @@
+frightened:
+  label: frightened
+  duration: 1
+  blocks: [attack]

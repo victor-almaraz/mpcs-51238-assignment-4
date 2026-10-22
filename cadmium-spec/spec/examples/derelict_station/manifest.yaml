@@ -1,0 +1,33 @@
+format_version: 2
+kind: setting
+id: derelict_station
+version: 3.0.0
+namespace: base
+title: Derelict Station
+
+system: { id: quest, versions: "^1.0" }
+
+damage_types: [kinetic, thermal, toxic]
+
+terrain:
+  coolant: { label: coolant pool, cost: 2, tags: [hazard] }
+  console_bank: { label: console bank, obstructs: [movement] }
+
+currency:
+  id: credit
+  label: credits
+  unit: credit
+  denominations:
+    credit: { label: credit, value: 1 }
+    scrip:  { label: scrip, value: 10 }
+
+generation:
+  door: hatch
+  locks: { bulkhead: keycard, airlock_door: override_code }
+
+starting_items: { table: starting_kit, picks: 2 }
+
+narration:
+  style: terse, clinical, dread
+  person: second
+  max_sentences: 4

@@ -1,0 +1,11 @@
+hatch:
+  kind: door
+  label: hatch
+  system_stats: { hp: 6 }
+bulkhead:
+  kind: door
+  label: bulkhead
+airlock_door:
+  kind: door
+  label: airlock door
+  obstructs: [movement]

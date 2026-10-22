@@ -1,0 +1,31 @@
+wrench:
+  kind: item
+  label: heavy wrench
+  tags: [weapon, tool]
+  system_stats: { weapon: true, damage: 2 }
+blast_shield:
+  kind: item
+  label: blast shield
+  tags: [armor]
+medkit:
+  kind: item
+  label: medkit
+  uses: 3
+  use:
+    target: self_or_ally
+    effects:
+      - heal: { target: target, amount: 2 }
+battery:
+  kind: item
+  label: battery cell
+keycard:
+  kind: item
+  label: keycard
+  tags: [key]
+override_code:
+  kind: item
+  label: override code chip
+  tags: [key]
+scrap:
+  kind: item
+  label: scrap metal

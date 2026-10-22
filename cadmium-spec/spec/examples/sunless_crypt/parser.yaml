@@ -1,0 +1,6 @@
+synonyms:
+  attack: [hit, bash, smite, swing]
+  ability: [pray, turn, invoke]
+examples:
+  - input: I raise my holy symbol at the skeleton
+    call: { tool: ability, args: { ability_id: "<turn_undead>", target_id: "<skeleton>" } }

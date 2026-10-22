@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/systems/quest/item.schema.json",
+  "title": "Quest item stats",
+  "type": "object",
+  "properties": {
+    "weapon": { "type": "boolean" },
+    "damage": { "type": "integer", "minimum": 0 },
+    "ranged": { "type": "boolean", "description": "Attacks any visible target instead of adjacent ones." }
+  },
+  "additionalProperties": false
+}

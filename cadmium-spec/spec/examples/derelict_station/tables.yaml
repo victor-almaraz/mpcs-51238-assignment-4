@@ -1,0 +1,16 @@
+room_labels:
+  - { weight: 2, label: maintenance corridor }
+  - { weight: 2, label: crew quarters }
+  - { weight: 1, label: flooded stacks, tags: [flooded] }
+starting_kit:
+  - { weight: 3, ref: wrench }
+  - { weight: 2, ref: medkit }
+  - { weight: 1, ref: blast_shield }
+drone_parts:
+  - { weight: 1, ref: battery }
+locker_loot:
+  - { weight: 2, ref: medkit }
+  - { weight: 1, ref: battery }
+encounters_machine:
+  - { weight: 4, ref: maintenance_drone, count: 1d2, depth: [0, 3] }
+  - { weight: 1, ref: security_frame, count: 1, depth: [3, 99] }

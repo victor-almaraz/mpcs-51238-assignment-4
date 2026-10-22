@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/flags.schema.json",
+  "title": "Adventure flags",
+  "type": "object",
+  "propertyNames": {
+    "$ref": "defs.schema.json#/$defs/id"
+  },
+  "additionalProperties": {
+    "oneOf": [
+      {
+        "type": "object",
+        "properties": {
+          "type": {
+            "const": "bool"
+          },
+          "initial": {
+            "type": "boolean"
+          },
+          "scope": {
+            "enum": [
+              "party",
+              "character"
+            ],
+            "description": "party (default): one value for the instance. character: one value per character."
+          }
+        },
+        "required": [
+          "type",
+          "initial"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "type": {
+            "const": "int"
+          },
+          "min": {
+            "type": "integer"
+          },
+          "max": {
+            "type": "integer"
+          },
+          "initial": {
+            "type": "integer"
+          },
+          "scope": {
+            "enum": [
+              "party",
+              "character"
+            ],
+            "description": "party (default): one value for the instance. character: one value per character."
+          },
+          "currency": {
+            "$ref": "defs.schema.json#/$defs/ref",
+            "description": "A setting's currency. The flag holds an amount in its smallest unit."
+          }
+        },
+        "required": [
+          "type",
+          "min",
+          "max",
+          "initial"
+        ],
+        "additionalProperties": false
+      },
+      {
+        "type": "object",
+        "properties": {
+          "type": {
+            "const": "enum"
+          },
+          "values": {
+            "type": "array",
+            "minItems": 2,
+            "uniqueItems": true,
+            "items": {
+              "$ref": "defs.schema.json#/$defs/id"
+            }
+          },
+          "initial": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "scope": {
+            "enum": [
+              "party",
+              "character"
+            ],
+            "description": "party (default): one value for the instance. character: one value per character."
+          }
+        },
+        "required": [
+          "type",
+          "values",
+          "initial"
+        ],
+        "additionalProperties": false
+      }
+    ]
+  }
+}

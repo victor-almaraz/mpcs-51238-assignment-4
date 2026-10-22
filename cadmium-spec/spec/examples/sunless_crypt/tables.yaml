@@ -1,0 +1,8 @@
+room_labels:
+  - { weight: 3, label: burial niche }
+  - { weight: 1, label: ossuary }
+starting_gear:
+  - { weight: 1, ref: mace }
+  - { weight: 1, ref: torch }
+encounters_undead:
+  - { weight: 1, ref: skeleton, count: 1d3 }

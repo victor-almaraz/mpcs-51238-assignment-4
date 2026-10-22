@@ -1,0 +1,15 @@
+{
+  "tune": [
+    "armor.max",
+    "armor.bypass_types"
+  ],
+  "armor": {
+    "max": 6,
+    "bypass_types": [],
+    "absorbs_at_deaths_door": true
+  },
+  "stash": {
+    "base_slots": 12,
+    "max_containers": 2
+  }
+}

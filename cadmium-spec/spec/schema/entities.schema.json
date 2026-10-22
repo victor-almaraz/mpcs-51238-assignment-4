@@ -1,0 +1,403 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/entities.schema.json",
+  "title": "Entity templates",
+  "type": "object",
+  "propertyNames": {
+    "$ref": "defs.schema.json#/$defs/id"
+  },
+  "additionalProperties": {
+    "type": "object",
+    "required": [
+      "kind"
+    ],
+    "properties": {
+      "kind": {
+        "enum": [
+          "creature",
+          "item",
+          "container",
+          "fixture",
+          "obstacle",
+          "door"
+        ]
+      }
+    },
+    "allOf": [
+      {
+        "if": {
+          "properties": {
+            "kind": {
+              "const": "creature"
+            }
+          }
+        },
+        "then": {
+          "$ref": "#/$defs/creature"
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "kind": {
+              "const": "item"
+            }
+          }
+        },
+        "then": {
+          "$ref": "#/$defs/item"
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "kind": {
+              "const": "container"
+            }
+          }
+        },
+        "then": {
+          "$ref": "#/$defs/container"
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "kind": {
+              "const": "fixture"
+            }
+          }
+        },
+        "then": {
+          "$ref": "#/$defs/fixture"
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "kind": {
+              "const": "obstacle"
+            }
+          }
+        },
+        "then": {
+          "$ref": "#/$defs/obstacle"
+        }
+      },
+      {
+        "if": {
+          "properties": {
+            "kind": {
+              "const": "door"
+            }
+          }
+        },
+        "then": {
+          "$ref": "#/$defs/door"
+        }
+      }
+    ]
+  },
+  "$defs": {
+    "creature": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "creature"
+        },
+        "label": {
+          "$ref": "defs.schema.json#/$defs/label"
+        },
+        "tags": {
+          "$ref": "defs.schema.json#/$defs/tags"
+        },
+        "art": {
+          "$ref": "defs.schema.json#/$defs/art"
+        },
+        "light": {
+          "$ref": "defs.schema.json#/$defs/light_source"
+        },
+        "footprint": {
+          "$ref": "defs.schema.json#/$defs/footprint"
+        },
+        "behavior": {
+          "enum": [
+            "aggressive",
+            "defensive",
+            "passive",
+            "fleeing"
+          ]
+        },
+        "loot": {
+          "$ref": "defs.schema.json#/$defs/pick"
+        },
+        "flee_when_harmed": {
+          "type": "boolean",
+          "description": "Switch to fleeing behavior after first taking harm."
+        },
+        "system_stats": {
+          "$ref": "defs.schema.json#/$defs/system_stats"
+        }
+      },
+      "required": [
+        "kind",
+        "label",
+        "behavior",
+        "system_stats"
+      ],
+      "additionalProperties": false
+    },
+    "item": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "item"
+        },
+        "label": {
+          "$ref": "defs.schema.json#/$defs/label"
+        },
+        "tags": {
+          "$ref": "defs.schema.json#/$defs/tags"
+        },
+        "art": {
+          "$ref": "defs.schema.json#/$defs/art"
+        },
+        "light": {
+          "$ref": "defs.schema.json#/$defs/light_source"
+        },
+        "uses": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "use": {
+          "type": "object",
+          "properties": {
+            "target": {
+              "enum": [
+                "self",
+                "self_or_ally",
+                "entity",
+                "door",
+                "none"
+              ]
+            },
+            "effects": {
+              "$ref": "defs.schema.json#/$defs/pack_effects"
+            }
+          },
+          "required": [
+            "target",
+            "effects"
+          ],
+          "additionalProperties": false
+        },
+        "system_stats": {
+          "$ref": "defs.schema.json#/$defs/system_stats"
+        }
+      },
+      "required": [
+        "kind",
+        "label"
+      ],
+      "additionalProperties": false
+    },
+    "container": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "container"
+        },
+        "label": {
+          "$ref": "defs.schema.json#/$defs/label"
+        },
+        "tags": {
+          "$ref": "defs.schema.json#/$defs/tags"
+        },
+        "art": {
+          "$ref": "defs.schema.json#/$defs/art"
+        },
+        "light": {
+          "$ref": "defs.schema.json#/$defs/light_source"
+        },
+        "footprint": {
+          "$ref": "defs.schema.json#/$defs/footprint"
+        },
+        "obstructs": {
+          "$ref": "defs.schema.json#/$defs/obstructs",
+          "description": "Default []."
+        },
+        "cover": {
+          "type": "boolean",
+          "description": "Grants cover to creatures it lies between. Default false."
+        },
+        "contents": {
+          "oneOf": [
+            {
+              "$ref": "defs.schema.json#/$defs/pick"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "defs.schema.json#/$defs/ref"
+              }
+            }
+          ]
+        },
+        "verbs": {
+          "$ref": "defs.schema.json#/$defs/verbs"
+        },
+        "capacity": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64,
+          "description": "Present: characters can store items in the container with give, up to this many. Contents persist and are shown to characters in reach."
+        },
+        "lock": {
+          "$ref": "defs.schema.json#/$defs/requirement",
+          "description": "Requirement for take and give while the container is locked. It starts locked; the first take or give for which the requirement holds unlocks it."
+        }
+      },
+      "required": [
+        "kind",
+        "label",
+        "contents"
+      ],
+      "additionalProperties": false
+    },
+    "fixture": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "fixture"
+        },
+        "label": {
+          "$ref": "defs.schema.json#/$defs/label"
+        },
+        "tags": {
+          "$ref": "defs.schema.json#/$defs/tags"
+        },
+        "art": {
+          "$ref": "defs.schema.json#/$defs/art"
+        },
+        "light": {
+          "$ref": "defs.schema.json#/$defs/light_source"
+        },
+        "footprint": {
+          "$ref": "defs.schema.json#/$defs/footprint"
+        },
+        "obstructs": {
+          "$ref": "defs.schema.json#/$defs/obstructs",
+          "description": "Default []."
+        },
+        "cover": {
+          "type": "boolean",
+          "description": "Grants cover to creatures it lies between. Default false."
+        },
+        "verbs": {
+          "$ref": "defs.schema.json#/$defs/verbs"
+        }
+      },
+      "required": [
+        "kind",
+        "label",
+        "verbs"
+      ],
+      "additionalProperties": false
+    },
+    "obstacle": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "obstacle"
+        },
+        "label": {
+          "$ref": "defs.schema.json#/$defs/label"
+        },
+        "tags": {
+          "$ref": "defs.schema.json#/$defs/tags"
+        },
+        "art": {
+          "$ref": "defs.schema.json#/$defs/art"
+        },
+        "light": {
+          "$ref": "defs.schema.json#/$defs/light_source"
+        },
+        "footprint": {
+          "$ref": "defs.schema.json#/$defs/footprint"
+        },
+        "obstructs": {
+          "$ref": "defs.schema.json#/$defs/obstructs",
+          "description": "Default [movement, sight]."
+        },
+        "cover": {
+          "type": "boolean",
+          "description": "Grants cover to creatures it lies between. Default false."
+        },
+        "system_stats": {
+          "$ref": "defs.schema.json#/$defs/system_stats",
+          "description": "Durability in the rules system's structure schema. Present: the entity can be destroyed."
+        },
+        "remains": {
+          "$ref": "defs.schema.json#/$defs/ref",
+          "description": "Template placed in the obstacle's cells when it is destroyed."
+        },
+        "verbs": {
+          "$ref": "defs.schema.json#/$defs/verbs"
+        }
+      },
+      "required": [
+        "kind",
+        "label"
+      ],
+      "additionalProperties": false
+    },
+    "door": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "door"
+        },
+        "label": {
+          "$ref": "defs.schema.json#/$defs/label"
+        },
+        "tags": {
+          "$ref": "defs.schema.json#/$defs/tags"
+        },
+        "art": {
+          "$ref": "defs.schema.json#/$defs/art"
+        },
+        "open": {
+          "type": "boolean",
+          "description": "Initial state. Default false."
+        },
+        "obstructs": {
+          "$ref": "defs.schema.json#/$defs/obstructs",
+          "description": "What the door stops while closed. Default [movement, sight]."
+        },
+        "lock": {
+          "$ref": "defs.schema.json#/$defs/requirement",
+          "description": "Requirement to open the door. Omitted: unlocked."
+        },
+        "system_stats": {
+          "$ref": "defs.schema.json#/$defs/system_stats",
+          "description": "Durability in the rules system's structure schema. Present: the entity can be destroyed."
+        },
+        "remains": {
+          "$ref": "defs.schema.json#/$defs/ref"
+        },
+        "verbs": {
+          "$ref": "defs.schema.json#/$defs/verbs",
+          "description": "Verbs besides the built-in open and close."
+        }
+      },
+      "required": [
+        "kind",
+        "label"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

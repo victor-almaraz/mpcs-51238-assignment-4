@@ -1,0 +1,10 @@
+irradiated:
+  label: irradiated
+  duration: 3
+  on_turn_start:
+    - damage: { target: actor, dice: 1d2, type: toxic }
+panicked:
+  label: panicked
+  duration: 1
+  blocks: [attack, ability]
+  situation: { advantage: -1 }

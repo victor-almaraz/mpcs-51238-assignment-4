@@ -1,0 +1,11 @@
+overload:
+  label: Overload
+  target: entity
+  system_stats: { roles: [wizard, magician], cost: { ap: 1 }, roll: true }
+  effects:
+    - damage: { target: target, amount: 2, type: thermal }
+    - if:
+        when: { check: { tags: [willpower] } }
+        then: []
+        else:
+          - apply_condition: { target: actor, condition: panicked }

@@ -1,0 +1,7 @@
+synonyms:
+  attack: [hit, strike, shoot, smash, stab]
+  ability: [overload, hack, discharge]
+  interact: [press, operate, pull, activate]
+examples:
+  - input: jam the wrench into the drone
+    call: { tool: attack, args: { target_id: "<drone>", item_id: "<wrench>" } }

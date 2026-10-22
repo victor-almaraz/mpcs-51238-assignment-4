@@ -1,0 +1,106 @@
+/* Margin design tokens: the source of truth for colour, type, space, and sizes. See docs/design/foundations.md. */
+
+@font-face { font-family: "Libertinus Serif"; src: url("/fonts/LibertinusSerif-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Libertinus Serif"; src: url("/fonts/LibertinusSerif-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Libertinus Serif"; src: url("/fonts/LibertinusSerif-Semibold.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+@font-face { font-family: "Libertinus Serif"; src: url("/fonts/LibertinusSerif-SemiboldItalic.woff2") format("woff2"); font-weight: 600; font-style: italic; font-display: swap; }
+@font-face { font-family: "Libertinus Serif Display"; src: url("/fonts/LibertinusSerifDisplay-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+@font-face { font-family: "Libertinus Sans"; src: url("/fonts/LibertinusSans-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Libertinus Sans"; src: url("/fonts/LibertinusSans-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Libertinus Sans"; src: url("/fonts/LibertinusSans-Bold.woff2") format("woff2"); font-weight: 700; font-style: normal; font-display: swap; }
+@font-face { font-family: "Libertinus Mono"; src: url("/fonts/LibertinusMono-Regular.woff2") format("woff2"); font-weight: 400; font-display: swap; }
+
+@theme {
+  --color-page: #FFFFFF;
+  --color-desk: #EEECEA;
+  --color-raised: #FFFFFF;
+  --color-rule: #DBD9D7;
+  --color-ink: #282624;
+  --color-accent: #604792;
+  --color-accent-strong: #4A3079;
+  --color-accent-soft: #F1EEFC;
+  --color-accent-line: #BCAFDF;
+  --color-danger: #A13124;
+  --color-danger-soft: #FDF0EE;
+  --color-warning: #845A0F;
+  --color-warning-soft: #FCF2E5;
+  --color-success: #376F44;
+  --color-success-soft: #EDF6EE;
+  --color-selection: #E1D8FC;
+  --color-border: #878481;
+  --color-muted: #6A6761;
+  --font-prose: "Libertinus Serif", Georgia, serif;
+  --font-display: "Libertinus Serif Display", "Libertinus Serif", Georgia, serif;
+  --font-ui: "Libertinus Sans", "Gill Sans", system-ui, sans-serif;
+  --font-mono: "Libertinus Mono", ui-monospace, monospace;
+  --text-display: 40px;   --text-display--line-height: 46px;
+  --text-title: 28px;     --text-title--line-height: 34px;
+  --text-heading: 21px;   --text-heading--line-height: 28px;
+  --text-prose: 17px;     --text-prose--line-height: 27px;
+  --text-prose-sm: 15px;  --text-prose-sm--line-height: 23px;
+  --text-control: 15px;   --text-control--line-height: 20px;
+  --text-label: 14px;     --text-label--line-height: 20px;
+  --text-caption: 13px;   --text-caption--line-height: 18px;
+  --text-code: 14px;      --text-code--line-height: 20px;
+  --spacing: 4px;
+  --radius-control: 3px;
+  --width-nav: 12rem;
+  --width-page: 34rem;
+  --width-canvas: 48rem;
+  --width-gutter: 2rem;
+  --width-margin: 14rem;
+  --size-icon: 20px;
+  --size-icon-dense: 16px;
+  --size-icon-content: 24px;
+  --size-target: 36px;
+  --size-target-toolbar: 28px;
+  --stroke-icon: 1.75px;
+  --delay-tooltip: 500ms;
+  --duration-open: 120ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-page: #3B3937;
+    --color-desk: #2A2827;
+    --color-raised: #494746;
+    --color-rule: #5A5756;
+    --color-muted: #C3BDAE;
+    --color-ink: #F0EEEA;
+    --color-accent: #C3B2F1;
+    --color-accent-strong: #D6C7FF;
+    --color-accent-soft: #4A435B;
+    --color-accent-line: #7E729F;
+    --color-danger: #F2998A;
+    --color-danger-soft: #563E3A;
+    --color-warning: #E7BC81;
+    --color-warning-soft: #4F4333;
+    --color-success: #96CAA0;
+    --color-success-soft: #3A4A3D;
+    --color-selection: #504765;
+    --color-border: #888682;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-page: #3B3937;
+  --color-desk: #2A2827;
+  --color-raised: #494746;
+  --color-rule: #5A5756;
+  --color-muted: #C3BDAE;
+  --color-ink: #F0EEEA;
+  --color-accent: #C3B2F1;
+  --color-accent-strong: #D6C7FF;
+  --color-accent-soft: #4A435B;
+  --color-accent-line: #7E729F;
+  --color-danger: #F2998A;
+  --color-danger-soft: #563E3A;
+  --color-warning: #E7BC81;
+  --color-warning-soft: #4F4333;
+  --color-success: #96CAA0;
+  --color-success-soft: #3A4A3D;
+  --color-selection: #504765;
+  --color-border: #888682;
+  color-scheme: dark;
+}

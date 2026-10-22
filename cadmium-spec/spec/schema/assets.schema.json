@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/assets.schema.json",
+  "title": "Pack art assets",
+  "type": "object",
+  "propertyNames": {
+    "$ref": "defs.schema.json#/$defs/id"
+  },
+  "additionalProperties": {
+    "type": "object",
+    "properties": {
+      "kind": {
+        "enum": [
+          "icon",
+          "portrait",
+          "tile"
+        ]
+      },
+      "source": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "game_icons": {
+                "type": "string",
+                "pattern": "^[a-z0-9-]+/[a-z0-9-]+$",
+                "description": "game-icons.net author/name."
+              }
+            },
+            "required": [
+              "game_icons"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "pattern": "^assets/[a-z0-9][a-z0-9_.-]{0,99}\\.(svg|png|webp)$"
+              }
+            },
+            "required": [
+              "file"
+            ],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "alt": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 200
+      },
+      "license": {
+        "type": "string",
+        "maxLength": 40,
+        "description": "SPDX identifier. Default CC0-1.0."
+      },
+      "credit": {
+        "type": "string",
+        "maxLength": 200,
+        "description": "Attribution text; required when the license requires attribution."
+      },
+      "provenance": {
+        "type": "string",
+        "maxLength": 500,
+        "description": "For art made with a generative tool: tool, model, date, and prompt id."
+      }
+    },
+    "required": [
+      "kind",
+      "source",
+      "alt"
+    ],
+    "additionalProperties": false
+  }
+}

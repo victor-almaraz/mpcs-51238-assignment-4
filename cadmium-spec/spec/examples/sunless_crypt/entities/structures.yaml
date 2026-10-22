@@ -1,0 +1,22 @@
+wooden_door:
+  kind: door
+  label: wooden door
+  system_stats: { hp: 5 }
+  remains: splinters
+iron_door:
+  kind: door
+  label: iron door
+sarcophagus:
+  kind: obstacle
+  label: stone sarcophagus
+  footprint: [2, 1]
+  obstructs: [movement]
+  cover: true
+  verbs:
+    open:
+      requirement: { check: { tags: [athletics] } }
+      effects: []
+splinters:
+  kind: obstacle
+  label: splintered timber
+  obstructs: []

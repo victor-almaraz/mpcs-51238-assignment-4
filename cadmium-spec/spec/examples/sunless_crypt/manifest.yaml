@@ -1,0 +1,21 @@
+format_version: 2
+kind: setting
+id: sunless_crypt
+version: 0.1.0
+namespace: crypt
+title: Sunless Crypt
+
+system: { id: quest, versions: "^1.0" }
+
+damage_types: [blunt, edged, holy]
+
+generation:
+  door: wooden_door
+  locks: { iron_door: iron_key }
+
+starting_items: { table: starting_gear, picks: 2 }
+
+narration:
+  style: grim, sparse, old-fashioned
+  person: second
+  max_sentences: 3

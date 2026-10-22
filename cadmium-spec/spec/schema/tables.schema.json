@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/tables.schema.json",
+  "title": "Weighted tables",
+  "type": "object",
+  "propertyNames": { "$ref": "defs.schema.json#/$defs/id" },
+  "properties": {
+    "room_labels": {
+      "type": "array", "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": { "weight": { "type": "integer", "minimum": 1 },
+                        "label": { "$ref": "defs.schema.json#/$defs/label" },
+                        "tags": { "$ref": "defs.schema.json#/$defs/tags" } },
+        "required": ["weight", "label"], "additionalProperties": false
+      }
+    }
+  },
+  "required": ["room_labels"],
+  "additionalProperties": {
+    "type": "array", "minItems": 1,
+    "items": {
+      "type": "object",
+      "properties": { "weight": { "type": "integer", "minimum": 1 },
+                      "ref": { "$ref": "defs.schema.json#/$defs/ref" },
+                      "count": { "$ref": "defs.schema.json#/$defs/count" },
+                      "depth": { "$ref": "defs.schema.json#/$defs/depth_range" } },
+      "required": ["weight", "ref"], "additionalProperties": false
+    }
+  }
+}

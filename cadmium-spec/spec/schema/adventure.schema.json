@@ -1,0 +1,120 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/adventure.schema.json",
+  "title": "Adventure pack manifest",
+  "type": "object",
+  "properties": {
+    "format_version": {
+      "const": 2
+    },
+    "kind": {
+      "const": "adventure"
+    },
+    "id": {
+      "$ref": "defs.schema.json#/$defs/id"
+    },
+    "version": {
+      "$ref": "defs.schema.json#/$defs/semver"
+    },
+    "title": {
+      "$ref": "defs.schema.json#/$defs/label"
+    },
+    "description": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "system": {
+      "$ref": "defs.schema.json#/$defs/system_ref"
+    },
+    "requires_settings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "$ref": "defs.schema.json#/$defs/id"
+          },
+          "versions": {
+            "type": "string",
+            "pattern": "^[\\^~]?(0|[1-9][0-9]*)(\\.(0|[1-9][0-9]*)){0,2}$"
+          }
+        },
+        "required": [
+          "id",
+          "versions"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "players": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        }
+      ],
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "Minimum and maximum characters per instance."
+    },
+    "start": {
+      "type": "object",
+      "properties": {
+        "location": {
+          "$ref": "defs.schema.json#/$defs/id"
+        },
+        "room": {
+          "$ref": "defs.schema.json#/$defs/id"
+        },
+        "effects": {
+          "$ref": "defs.schema.json#/$defs/adventure_effects"
+        }
+      },
+      "required": [
+        "location",
+        "room"
+      ],
+      "additionalProperties": false
+    },
+    "endings": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "defs.schema.json#/$defs/id"
+      },
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "label": {
+            "$ref": "defs.schema.json#/$defs/label"
+          }
+        },
+        "required": [
+          "label"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "format_version",
+    "kind",
+    "id",
+    "version",
+    "title",
+    "system",
+    "requires_settings",
+    "players",
+    "start",
+    "endings"
+  ],
+  "additionalProperties": false
+}

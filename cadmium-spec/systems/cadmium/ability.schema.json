@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/systems/cadmium/ability.schema.json",
+  "title": "Cadmium ability stats",
+  "type": "object",
+  "properties": {
+    "roles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "path": {
+      "type": "string"
+    },
+    "cost": {
+      "type": "object",
+      "properties": {
+        "ap": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "required": [
+        "ap"
+      ],
+      "additionalProperties": false
+    },
+    "roll": {
+      "type": "boolean",
+      "description": "true if the ability requires a d20 roll"
+    },
+    "legendary": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "cost"
+  ],
+  "additionalProperties": false,
+  "description": "Fields marked with a module are accepted only when that module is enabled."
+}

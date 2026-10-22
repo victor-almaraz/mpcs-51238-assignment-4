@@ -1,0 +1,14 @@
+mace:
+  kind: item
+  label: mace
+  tags: [weapon]
+  system_stats: { weapon: true, damage: 2 }
+torch:
+  kind: item
+  label: torch
+  uses: 6
+  light: { bright: 2, dim: 4 }
+iron_key:
+  kind: item
+  label: iron key
+  tags: [key]

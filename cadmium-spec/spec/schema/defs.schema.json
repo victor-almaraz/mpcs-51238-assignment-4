@@ -1,0 +1,1417 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/defs.schema.json",
+  "title": "Shared definitions",
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]{0,63}$"
+    },
+    "ref": {
+      "type": "string",
+      "pattern": "^([a-z][a-z0-9_]{0,63}:)?[a-z][a-z0-9_]{0,63}$"
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "semver": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+    },
+    "dice": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*d[1-9][0-9]*([+-][0-9]+)?$"
+    },
+    "count": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "$ref": "#/$defs/dice"
+        }
+      ]
+    },
+    "cell": {
+      "description": "Grid cell [x, y]. x increases east, y increases south; [0, 0] is the top-left cell.",
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        }
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "rect": {
+      "description": "Rectangle of cells [x, y, width, height].",
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 63
+        },
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        },
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 64
+        }
+      ],
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "footprint": {
+      "description": "Cells occupied [width, height], anchored at the top-left cell. Default [1, 1].",
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        },
+        {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8
+        }
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "obstructs": {
+      "description": "What a terrain type or entity stops: movement through its cells, sight through its cells, or both.",
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "movement",
+          "sight"
+        ]
+      }
+    },
+    "light_level": {
+      "description": "Illumination of a cell: bright, dim, or dark.",
+      "enum": [
+        "bright",
+        "dim",
+        "dark"
+      ]
+    },
+    "light_source": {
+      "type": "object",
+      "description": "Light an entity emits from every cell of its footprint, or from its carrier's cell when carried.",
+      "properties": {
+        "bright": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 12,
+          "description": "Radius in cells of bright light."
+        },
+        "dim": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 24,
+          "description": "Radius in cells of dim light; at least `bright`."
+        },
+        "lit": {
+          "type": "boolean",
+          "description": "Initial state. Default true."
+        }
+      },
+      "required": [
+        "bright",
+        "dim"
+      ],
+      "additionalProperties": false
+    },
+    "art": {
+      "type": "array",
+      "maxItems": 3,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/ref"
+      },
+      "description": "Art refs into assets.yaml, at most one per asset kind."
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/id"
+      },
+      "uniqueItems": true
+    },
+    "tool": {
+      "enum": [
+        "move",
+        "attack",
+        "ability",
+        "use",
+        "interact",
+        "examine",
+        "search",
+        "take",
+        "drop",
+        "give",
+        "talk",
+        "rest",
+        "wait",
+        "choose",
+        "improvise"
+      ]
+    },
+    "ordered_tool": {
+      "enum": [
+        "move",
+        "attack",
+        "ability",
+        "use",
+        "interact",
+        "search",
+        "take",
+        "drop",
+        "give",
+        "talk",
+        "rest",
+        "wait"
+      ]
+    },
+    "target": {
+      "description": "Keyword or entity id.",
+      "type": "string",
+      "pattern": "^(actor|target|room|[a-z][a-z0-9_]{0,63})$"
+    },
+    "depth_range": {
+      "type": "array",
+      "prefixItems": [
+        {
+          "type": "integer",
+          "minimum": 0
+        },
+        {
+          "type": "integer",
+          "minimum": 0
+        }
+      ],
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "pick": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "$ref": "#/$defs/ref"
+        },
+        "picks": {
+          "$ref": "#/$defs/count"
+        }
+      },
+      "required": [
+        "table",
+        "picks"
+      ],
+      "additionalProperties": false
+    },
+    "requirement": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "all": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/requirement"
+              }
+            }
+          },
+          "required": [
+            "all"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "any": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/requirement"
+              }
+            }
+          },
+          "required": [
+            "any"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "not": {
+              "$ref": "#/$defs/requirement"
+            }
+          },
+          "required": [
+            "not"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "flag": {
+              "$ref": "#/$defs/id"
+            },
+            "eq": {
+              "type": [
+                "integer",
+                "boolean",
+                "string"
+              ]
+            },
+            "gte": {
+              "type": "integer"
+            },
+            "lte": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "flag"
+          ],
+          "maxProperties": 2,
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "stage": {
+              "type": "array",
+              "prefixItems": [
+                {
+                  "$ref": "#/$defs/id"
+                },
+                {
+                  "$ref": "#/$defs/id"
+                }
+              ],
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "stage"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "has_item": {
+              "$ref": "#/$defs/ref"
+            }
+          },
+          "required": [
+            "has_item"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "location": {
+              "$ref": "#/$defs/id"
+            }
+          },
+          "required": [
+            "location"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "room": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "room"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "near": {
+              "$ref": "#/$defs/id",
+              "description": "Entity id."
+            },
+            "within": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 64,
+              "description": "Distance in cells under the rules system's metric."
+            }
+          },
+          "required": [
+            "near",
+            "within"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "illumination": {
+              "$ref": "#/$defs/light_level",
+              "description": "True when the actor's cell has exactly this level."
+            }
+          },
+          "required": [
+            "illumination"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "defeated": {
+              "$ref": "#/$defs/id"
+            }
+          },
+          "required": [
+            "defeated"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "check": {
+              "type": "object",
+              "description": "System check specification, validated against the bound system's check schema."
+            }
+          },
+          "required": [
+            "check"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "e_damage": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "dice": {
+          "$ref": "#/$defs/dice"
+        },
+        "amount": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "type": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "required": [
+        "target"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "dice"
+          ]
+        },
+        {
+          "required": [
+            "amount"
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "e_heal": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "dice": {
+          "$ref": "#/$defs/dice"
+        },
+        "amount": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "target"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "dice"
+          ]
+        },
+        {
+          "required": [
+            "amount"
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "e_cond_add": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "condition": {
+          "$ref": "#/$defs/id"
+        },
+        "duration": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        }
+      },
+      "required": [
+        "target",
+        "condition"
+      ],
+      "additionalProperties": false
+    },
+    "e_cond_rm": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "condition": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "required": [
+        "target",
+        "condition"
+      ],
+      "additionalProperties": false
+    },
+    "e_item": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "ref": {
+          "$ref": "#/$defs/ref"
+        }
+      },
+      "required": [
+        "target",
+        "ref"
+      ],
+      "additionalProperties": false
+    },
+    "e_spawn": {
+      "type": "object",
+      "properties": {
+        "ref": {
+          "$ref": "#/$defs/ref"
+        },
+        "room": {
+          "type": "string"
+        },
+        "at": {
+          "$ref": "#/$defs/cell",
+          "description": "Cell in the room's location. Omitted: a free cell in the room chosen by RNG."
+        },
+        "id": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "required": [
+        "ref",
+        "room"
+      ],
+      "additionalProperties": false
+    },
+    "e_target": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/target"
+        }
+      },
+      "required": [
+        "target"
+      ],
+      "additionalProperties": false
+    },
+    "e_move": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "room": {
+          "type": "string"
+        },
+        "at": {
+          "$ref": "#/$defs/cell",
+          "description": "Cell in the room's location. Omitted: a free cell in the room chosen by RNG."
+        }
+      },
+      "required": [
+        "target",
+        "room"
+      ],
+      "additionalProperties": false
+    },
+    "e_door": {
+      "type": "object",
+      "properties": {
+        "door": {
+          "$ref": "#/$defs/id"
+        }
+      },
+      "required": [
+        "door"
+      ],
+      "additionalProperties": false
+    },
+    "e_light": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "lit": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "target",
+        "lit"
+      ],
+      "additionalProperties": false
+    },
+    "e_room_light": {
+      "type": "object",
+      "properties": {
+        "room": {
+          "type": "string"
+        },
+        "level": {
+          "$ref": "#/$defs/light_level"
+        }
+      },
+      "required": [
+        "room",
+        "level"
+      ],
+      "additionalProperties": false
+    },
+    "e_hostile": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "hostile": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "target",
+        "hostile"
+      ],
+      "additionalProperties": false
+    },
+    "e_empty": {
+      "type": "object",
+      "additionalProperties": false
+    },
+    "pack_effect": {
+      "description": "Effects available to setting packs. Plot effects are excluded.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "damage": {
+              "$ref": "#/$defs/e_damage"
+            }
+          },
+          "required": [
+            "damage"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "heal": {
+              "$ref": "#/$defs/e_heal"
+            }
+          },
+          "required": [
+            "heal"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "apply_condition": {
+              "$ref": "#/$defs/e_cond_add"
+            }
+          },
+          "required": [
+            "apply_condition"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "remove_condition": {
+              "$ref": "#/$defs/e_cond_rm"
+            }
+          },
+          "required": [
+            "remove_condition"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "give_item": {
+              "$ref": "#/$defs/e_item"
+            }
+          },
+          "required": [
+            "give_item"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "remove_item": {
+              "$ref": "#/$defs/e_item"
+            }
+          },
+          "required": [
+            "remove_item"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "drop_item": {
+              "$ref": "#/$defs/e_drop"
+            }
+          },
+          "required": [
+            "drop_item"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "spawn": {
+              "$ref": "#/$defs/e_spawn"
+            }
+          },
+          "required": [
+            "spawn"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "despawn": {
+              "$ref": "#/$defs/e_target"
+            }
+          },
+          "required": [
+            "despawn"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "move_entity": {
+              "$ref": "#/$defs/e_move"
+            }
+          },
+          "required": [
+            "move_entity"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "open_door": {
+              "$ref": "#/$defs/e_door"
+            }
+          },
+          "required": [
+            "open_door"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "close_door": {
+              "$ref": "#/$defs/e_door"
+            }
+          },
+          "required": [
+            "close_door"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "set_light": {
+              "$ref": "#/$defs/e_light"
+            }
+          },
+          "required": [
+            "set_light"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "set_room_light": {
+              "$ref": "#/$defs/e_room_light"
+            }
+          },
+          "required": [
+            "set_room_light"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "set_hostile": {
+              "$ref": "#/$defs/e_hostile"
+            }
+          },
+          "required": [
+            "set_hostile"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "reveal": {
+              "$ref": "#/$defs/e_target"
+            }
+          },
+          "required": [
+            "reveal"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "start_combat": {
+              "$ref": "#/$defs/e_empty"
+            }
+          },
+          "required": [
+            "start_combat"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "if": {
+              "type": "object",
+              "properties": {
+                "when": {
+                  "$ref": "#/$defs/requirement"
+                },
+                "then": {
+                  "$ref": "#/$defs/pack_effects"
+                },
+                "else": {
+                  "$ref": "#/$defs/pack_effects"
+                }
+              },
+              "required": [
+                "when",
+                "then"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "if"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "pack_effects": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/pack_effect"
+      }
+    },
+    "adventure_effect": {
+      "description": "Effects available to adventure packs: the setting effects and the plot effects.",
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "damage": {
+              "$ref": "#/$defs/e_damage"
+            }
+          },
+          "required": [
+            "damage"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "heal": {
+              "$ref": "#/$defs/e_heal"
+            }
+          },
+          "required": [
+            "heal"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "apply_condition": {
+              "$ref": "#/$defs/e_cond_add"
+            }
+          },
+          "required": [
+            "apply_condition"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "remove_condition": {
+              "$ref": "#/$defs/e_cond_rm"
+            }
+          },
+          "required": [
+            "remove_condition"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "give_item": {
+              "$ref": "#/$defs/e_item"
+            }
+          },
+          "required": [
+            "give_item"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "remove_item": {
+              "$ref": "#/$defs/e_item"
+            }
+          },
+          "required": [
+            "remove_item"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "drop_item": {
+              "$ref": "#/$defs/e_drop"
+            }
+          },
+          "required": [
+            "drop_item"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "spawn": {
+              "$ref": "#/$defs/e_spawn"
+            }
+          },
+          "required": [
+            "spawn"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "despawn": {
+              "$ref": "#/$defs/e_target"
+            }
+          },
+          "required": [
+            "despawn"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "move_entity": {
+              "$ref": "#/$defs/e_move"
+            }
+          },
+          "required": [
+            "move_entity"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "open_door": {
+              "$ref": "#/$defs/e_door"
+            }
+          },
+          "required": [
+            "open_door"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "close_door": {
+              "$ref": "#/$defs/e_door"
+            }
+          },
+          "required": [
+            "close_door"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "set_light": {
+              "$ref": "#/$defs/e_light"
+            }
+          },
+          "required": [
+            "set_light"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "set_room_light": {
+              "$ref": "#/$defs/e_room_light"
+            }
+          },
+          "required": [
+            "set_room_light"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "start_combat": {
+              "$ref": "#/$defs/e_empty"
+            }
+          },
+          "required": [
+            "start_combat"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "set_hostile": {
+              "$ref": "#/$defs/e_hostile"
+            }
+          },
+          "required": [
+            "set_hostile"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "if": {
+              "type": "object",
+              "properties": {
+                "when": {
+                  "$ref": "#/$defs/requirement"
+                },
+                "then": {
+                  "$ref": "#/$defs/adventure_effects"
+                },
+                "else": {
+                  "$ref": "#/$defs/adventure_effects"
+                }
+              },
+              "required": [
+                "when",
+                "then"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "if"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "reveal": {
+              "type": "object",
+              "properties": {
+                "target": {
+                  "$ref": "#/$defs/target"
+                },
+                "secret": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_]{0,63}\\.[a-z][a-z0-9_]{0,63}$",
+                  "description": "`npc_id.secret_id`."
+                }
+              },
+              "required": [],
+              "additionalProperties": false,
+              "oneOf": [
+                {
+                  "required": [
+                    "target"
+                  ]
+                },
+                {
+                  "required": [
+                    "secret"
+                  ]
+                }
+              ]
+            }
+          },
+          "required": [
+            "reveal"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "set_flag": {
+              "type": "object",
+              "properties": {
+                "flag": {
+                  "$ref": "#/$defs/id"
+                },
+                "value": {
+                  "type": [
+                    "boolean",
+                    "integer",
+                    "string"
+                  ]
+                },
+                "target": {
+                  "enum": [
+                    "actor",
+                    "room"
+                  ],
+                  "description": "For character-scoped flags only: the acting character (default) or every character in the actor's room."
+                }
+              },
+              "required": [
+                "flag",
+                "value"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "set_flag"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "add_flag": {
+              "type": "object",
+              "properties": {
+                "flag": {
+                  "$ref": "#/$defs/id"
+                },
+                "value": {
+                  "type": "integer"
+                },
+                "target": {
+                  "enum": [
+                    "actor",
+                    "room"
+                  ],
+                  "description": "For character-scoped flags only: the acting character (default) or every character in the actor's room."
+                }
+              },
+              "required": [
+                "flag",
+                "value"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "add_flag"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "set_stage": {
+              "type": "object",
+              "properties": {
+                "arc": {
+                  "$ref": "#/$defs/id"
+                },
+                "stage": {
+                  "$ref": "#/$defs/id"
+                }
+              },
+              "required": [
+                "arc",
+                "stage"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "set_stage"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "end_campaign": {
+              "type": "object",
+              "properties": {
+                "ending": {
+                  "$ref": "#/$defs/id"
+                }
+              },
+              "required": [
+                "ending"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "end_campaign"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "adventure_effects": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/adventure_effect"
+      }
+    },
+    "event_type": {
+      "description": "Engine and common rules-system event types. Systems MAY add documented types, matched as strings by pattern.",
+      "anyOf": [
+        {
+          "enum": [
+            "moved",
+            "item_taken",
+            "item_dropped",
+            "item_given",
+            "item_used",
+            "ability_used",
+            "interacted",
+            "examined",
+            "searched",
+            "talked",
+            "waited",
+            "improvised",
+            "choice_offered",
+            "choice_made",
+            "door_opened",
+            "door_closed",
+            "destroyed",
+            "light_changed",
+            "room_light_changed",
+            "entity_spawned",
+            "entity_despawned",
+            "flag_set",
+            "stage_set",
+            "revealed",
+            "trigger_fired",
+            "round_started",
+            "action_declared",
+            "action_voided",
+            "turn_started",
+            "round_ended",
+            "combat_started",
+            "combat_ended",
+            "clock_tick",
+            "instance_ended",
+            "attacked",
+            "check_rolled",
+            "healed",
+            "condition_applied",
+            "condition_removed",
+            "died",
+            "damaged",
+            "resource_changed"
+          ]
+        },
+        {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]{0,63}$"
+        }
+      ]
+    },
+    "verb": {
+      "type": "object",
+      "properties": {
+        "requirement": {
+          "$ref": "#/$defs/requirement"
+        },
+        "effects": {
+          "$ref": "#/$defs/pack_effects"
+        }
+      },
+      "required": [
+        "effects"
+      ],
+      "additionalProperties": false
+    },
+    "verbs": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/id"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/verb"
+      }
+    },
+    "system_stats": {
+      "type": "object",
+      "description": "Rules-system data, validated against the bound system's schema for this kind."
+    },
+    "system_ref": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "enum": [
+            "quest",
+            "cadmium"
+          ],
+          "description": "Registered rules system ids. Extend with each added system."
+        },
+        "versions": {
+          "type": "string",
+          "pattern": "^[\\^~]?(0|[1-9][0-9]*)(\\.(0|[1-9][0-9]*)){0,2}$"
+        },
+        "modules": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          },
+          "description": "Modules of the system that the pack requires. The campaign MUST enable at least these. Default []."
+        }
+      },
+      "required": [
+        "id",
+        "versions"
+      ],
+      "additionalProperties": false
+    },
+    "e_drop": {
+      "type": "object",
+      "properties": {
+        "target": {
+          "$ref": "#/$defs/target"
+        },
+        "ref": {
+          "$ref": "#/$defs/ref"
+        }
+      },
+      "required": [
+        "target",
+        "ref"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

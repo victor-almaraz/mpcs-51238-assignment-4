@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/draft.schema.json",
+  "title": "Adventure editor draft document",
+  "type": "object",
+  "properties": {
+    "adventure": {
+      "$ref": "adventure.schema.json"
+    },
+    "flags": {
+      "$ref": "flags.schema.json"
+    },
+    "arcs": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "defs.schema.json#/$defs/id"
+      },
+      "additionalProperties": {
+        "$ref": "arc.schema.json"
+      }
+    },
+    "locations": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "defs.schema.json#/$defs/id"
+      },
+      "additionalProperties": {
+        "$ref": "location.schema.json"
+      }
+    },
+    "npcs": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "defs.schema.json#/$defs/id"
+      },
+      "additionalProperties": {
+        "$ref": "npc.schema.json"
+      }
+    },
+    "entities": {
+      "$ref": "entities.schema.json"
+    },
+    "editor": {
+      "type": "object",
+      "properties": {
+        "layout": {
+          "type": "object",
+          "description": "Arc graph node positions, keyed by arc id."
+        },
+        "snapshots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "$ref": "defs.schema.json#/$defs/label"
+              },
+              "saved_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "document": {
+                "type": "object"
+              }
+            },
+            "required": [
+              "name",
+              "saved_at",
+              "document"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "adventure",
+    "flags",
+    "arcs",
+    "locations",
+    "npcs",
+    "entities"
+  ],
+  "description": "One JSON document that maps one-to-one onto an adventure directory. Each map key equals the record's `id`.",
+  "additionalProperties": false
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/systems/quest/creature.schema.json",
+  "title": "Quest creature stats",
+  "type": "object",
+  "properties": {
+    "template": { "enum": ["commoner", "minion", "boss"] },
+    "hp": { "type": "integer", "minimum": 1 },
+    "damage": { "type": "integer", "minimum": 0 },
+    "speed": { "type": "integer", "minimum": 1, "maximum": 24, "description": "Cells per combat turn. Default from data.json spatial.speed." },
+    "ranged": { "type": "boolean", "description": "Attacks any visible target instead of adjacent ones." }
+  },
+  "required": ["template"],
+  "additionalProperties": false
+}
