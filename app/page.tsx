@@ -1,7 +1,8 @@
-export default function Home() {
-  return (
-    <main className="mx-auto max-w-page px-6 py-12">
-      <h1 className="font-display text-display">Cadmium</h1>
-    </main>
-  );
+// Entry (app-flow.md, "Route map"): /dashboard when signed in, otherwise /sign-in.
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
+
+export default async function Entry() {
+  const { userId } = await auth();
+  redirect(userId ? "/dashboard" : "/sign-in");
 }
