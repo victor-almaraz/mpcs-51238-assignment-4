@@ -4,6 +4,8 @@ import { validRange } from "../materials/semver";
 import type { CampaignRecord, Store, UserRecord } from "../store";
 import { cryptoEntropy, type Entropy } from "./entropy";
 import { ApiError, onlyFields } from "./errors";
+import { setStatus } from "../coordinator/instance";
+import { coordinated, takeOut, type Deps } from "./instances";
 import { checkMaterials } from "./materials";
 import { systemOrThrow } from "./systems";
 import { caller } from "./users";
@@ -108,34 +110,59 @@ export async function archiveCampaign(store: Store, userId: string | null, campa
   return campaignView(await store.archiveCampaign(campaign.id), user.id);
 }
 
-/** Refuses while any of the user's characters is in one of the campaign's instances that has started. */
-// Taking characters out of a started instance needs the coordinator (sprint 13).
-async function onlyLobbyCharacters(store: Store, campaign: CampaignRecord, memberId: string): Promise<void> {
+/** Takes the member's characters out of the campaign's instances, writing their sheets back. */
+async function releaseMember(deps: Deps, campaign: CampaignRecord, memberId: string): Promise<void> {
   for (const id of campaign.instance_ids) {
-    const i = await store.instanceView(id);
-    if (i && i.status !== "lobby" && i.status !== "ended" && i.characters.some((c) => c.user_id === memberId)) {
-      throw new ApiError("conflict", `a character of the member is in the ${i.status} instance ${i.name}`);
-    }
+    const instance = await deps.store.instanceView(id);
+    if (!instance) continue;
+    for (const c of instance.characters.filter((c) => c.user_id === memberId)) await takeOut(deps, (await deps.store.instanceView(id))!, c.id);
   }
 }
 
-export async function leaveCampaign(store: Store, userId: string | null, campaignId: unknown) {
-  const user = await caller(store, userId, "leave_campaign");
-  const { campaign, role } = await membership(store, user, campaignId);
+export async function leaveCampaign(deps: Deps, userId: string | null, campaignId: unknown) {
+  const user = await caller(deps.store, userId, "leave_campaign");
+  const { campaign, role } = await membership(deps.store, user, campaignId);
   if (role === "author") throw new ApiError("conflict", "the author cannot leave the campaign");
-  await onlyLobbyCharacters(store, campaign, user.id);
-  await store.removeMember(campaign.id, user.id);
+  await releaseMember(deps, campaign, user.id);
+  await deps.store.removeMember(campaign.id, user.id);
 }
 
-export async function removeMember(store: Store, userId: string | null, input: unknown) {
-  const user = await caller(store, userId, "remove_member");
+export async function removeMember(deps: Deps, userId: string | null, input: unknown) {
+  const user = await caller(deps.store, userId, "remove_member");
   const req = onlyFields(input, ["campaign_id", "user_id"]);
-  const { campaign } = await membership(store, user, req.campaign_id, "author");
+  const { campaign } = await membership(deps.store, user, req.campaign_id, "author");
   const target = campaign.members.find((m) => m.user_id === req.user_id);
   if (!target) throw new ApiError("not_found", "no such member");
   if (target.role === "author") throw new ApiError("conflict", "the author cannot be removed");
-  await onlyLobbyCharacters(store, campaign, target.user_id);
-  await store.removeMember(campaign.id, target.user_id);
+  await releaseMember(deps, campaign, target.user_id);
+  await deps.store.removeMember(campaign.id, target.user_id);
+}
+
+/** Deletes a campaign after the author confirms its title; its instances end. Recoverable for 30 days. */
+export async function deleteCampaign(deps: Deps, userId: string | null, input: unknown) {
+  const user = await caller(deps.store, userId, "delete_campaign");
+  const req = onlyFields(input, ["campaign_id", "confirm"]);
+  const { campaign } = await membership(deps.store, user, req.campaign_id, "author");
+  if (req.confirm !== campaign.title) throw new ApiError("invalid_request", "confirm must be the campaign's title");
+  for (const id of campaign.instance_ids) {
+    const instance = await deps.store.instanceView(id);
+    if (!instance) continue;
+    if (instance.status === "active" || instance.status === "paused") await coordinated(setStatus(deps, id, "ended"));
+    else if (instance.status === "lobby") {
+      for (const c of instance.characters) await deps.store.leaveInstance(id, c.id);
+      await deps.store.setInstanceStatus(id, instance.version, "ended", null);
+    }
+  }
+  await deps.store.deleteCampaign(campaign.id);
+}
+
+export async function restoreCampaign(store: Store, userId: string | null, campaignId: unknown) {
+  const user = await caller(store, userId, "restore_campaign");
+  if (typeof campaignId !== "string") throw new ApiError("invalid_request", "campaign_id must be a string");
+  const deleted = await store.deletedCampaign(campaignId);
+  if (!deleted || deleted.author_id !== user.id) throw new ApiError("not_found", "no such deleted campaign");
+  if (!(await store.restoreCampaign(campaignId))) throw new ApiError("conflict", "the campaign was deleted more than 30 days ago");
+  return campaignView((await store.getCampaign(campaignId))!, user.id);
 }
 
 /** An invite link code: three groups of four base32 characters (60 bits). */

@@ -1,0 +1,224 @@
+// The HTTP binding (api.md, HTTP and WebSocket binding): routes under /v1, JSON bodies, error codes as
+// HTTP statuses, the Idempotency-Key header, and the per-user rate limit (api.md, Rate limits).
+// The bearer token is the Clerk session token; Clerk authenticates it before `handle` runs.
+// SPEC_ISSUES.md#binding-gaps: account routes belong to Clerk; deletion routes are not listed.
+
+import { createCharacter, getCharacter, listCharacters, retireCharacter, updateCharacter } from "./characters";
+import {
+  archiveCampaign,
+  createCampaign,
+  deleteCampaign,
+  disableInviteLink,
+  getCampaign,
+  joinByLink,
+  leaveCampaign,
+  listCampaigns,
+  removeMember,
+  restoreCampaign,
+  rotateInviteLink,
+  setMaterials,
+  updateCampaign,
+} from "./campaigns";
+import { ApiError, type ApiErrorCode } from "./errors";
+import {
+  addCharacter,
+  advanceRound,
+  createInstance,
+  endInstance,
+  getHistory,
+  getInstance,
+  listInstances,
+  pauseInstance,
+  removeCharacter,
+  resumeInstance,
+  startInstance,
+  submitAction,
+  type Deps,
+} from "./instances";
+import { acceptInvitation, declineInvitation, invite, listInvitations, previewInvitation, revokeInvitation } from "./invitations";
+import { listMaterials } from "./materials";
+import { getSystemSchema, listSystems } from "./systems";
+import { acceptTerms, caller, getMe } from "./users";
+
+const STATUS: Record<ApiErrorCode, number> = {
+  unauthenticated: 401,
+  forbidden: 403,
+  not_found: 404,
+  conflict: 409,
+  system_mismatch: 409,
+  invalid_request: 422,
+  rules_rejected: 422,
+  rate_limited: 429,
+  unavailable: 503,
+};
+
+/** Requests per user per minute for every operation (api.md, Rate limits); deployment-configurable. */
+export const RATE_LIMIT = { window_seconds: 60, limit: 120 };
+
+interface Call {
+  deps: Deps;
+  user: string | null;
+  params: Record<string, string>;
+  query: URLSearchParams;
+  body: Record<string, unknown>;
+  headers: Headers;
+  origin: string;
+}
+
+type Reply = { status: number; body?: unknown };
+
+const ok = (body: unknown): Reply => ({ status: 200, body });
+const created = (body: unknown): Reply => ({ status: 201, body });
+const none = (): Reply => ({ status: 204 });
+
+/** Query parameters as operation input: integers and booleans where the operation expects them. */
+function queryInput(query: URLSearchParams, numbers: string[] = [], booleans: string[] = []): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of query) {
+    if (v === "") continue;
+    if (numbers.includes(k)) out[k] = /^-?\d+$/.test(v) ? Number(v) : v;
+    else if (booleans.includes(k)) out[k] = v === "true" ? true : v === "false" ? false : v;
+    else out[k] = v;
+  }
+  return out;
+}
+
+const gated = async (c: Call, operation: string) => caller(c.deps.store, c.user, operation);
+
+type Route = [method: string, pattern: string, run: (c: Call) => Promise<Reply>];
+
+const ROUTES: Route[] = [
+  // Users
+  ["GET", "/me", async (c) => ok(await getMe(c.deps.store, c.user))],
+  ["POST", "/me/terms", async (c) => ok({ user: await acceptTerms(c.deps.store, c.user, c.body.version) })],
+  // Systems and materials
+  ["GET", "/systems", async (c) => (await gated(c, "list_systems"), ok({ items: listSystems() }))],
+  ["GET", "/systems/:system/schemas/:kind", async (c) => (await gated(c, "get_system_schema"), ok(getSystemSchema(c.params.system, c.params.kind, c.query.getAll("modules"))))],
+  ["GET", "/materials", async (c) => ok({ items: await listMaterials(c.deps.store, c.user, queryInput(c.query)) })],
+  // Characters
+  ["POST", "/characters", async (c) => created({ character: await createCharacter(c.deps.store, c.user, c.body) })],
+  ["GET", "/characters", async (c) => ok(await listCharacters(c.deps.store, c.user, queryInput(c.query, ["limit"])))],
+  ["GET", "/characters/:character_id", async (c) => ok({ character: await getCharacter(c.deps.store, c.user, c.params.character_id) })],
+  ["PATCH", "/characters/:character_id", async (c) => ok({ character: await updateCharacter(c.deps.store, c.user, { ...c.body, character_id: c.params.character_id }) })],
+  ["POST", "/characters/:character_id/retire", async (c) => ok({ character: await retireCharacter(c.deps.store, c.user, c.params.character_id) })],
+  // Campaigns
+  ["POST", "/campaigns", async (c) => created({ campaign: await createCampaign(c.deps.store, c.user, c.body) })],
+  ["GET", "/campaigns", async (c) => ok(await listCampaigns(c.deps.store, c.user, queryInput(c.query, ["limit"], ["archived"])))],
+  ["POST", "/campaigns/join", async (c) => ok({ campaign: await joinByLink(c.deps.store, c.user, c.body.invite_link_code) })],
+  ["GET", "/campaigns/:campaign_id", async (c) => ok({ campaign: await getCampaign(c.deps.store, c.user, c.params.campaign_id) })],
+  ["PATCH", "/campaigns/:campaign_id", async (c) => ok({ campaign: await updateCampaign(c.deps.store, c.user, { ...c.body, campaign_id: c.params.campaign_id }) })],
+  ["DELETE", "/campaigns/:campaign_id", async (c) => (await deleteCampaign(c.deps, c.user, { ...c.body, campaign_id: c.params.campaign_id }), none())],
+  ["POST", "/campaigns/:campaign_id/restore", async (c) => ok({ campaign: await restoreCampaign(c.deps.store, c.user, c.params.campaign_id) })],
+  ["PUT", "/campaigns/:campaign_id/materials", async (c) => ok({ campaign: await setMaterials(c.deps.store, c.user, { ...c.body, campaign_id: c.params.campaign_id }) })],
+  ["POST", "/campaigns/:campaign_id/archive", async (c) => ok({ campaign: await archiveCampaign(c.deps.store, c.user, c.params.campaign_id) })],
+  ["DELETE", "/campaigns/:campaign_id/members/me", async (c) => (await leaveCampaign(c.deps, c.user, c.params.campaign_id), none())],
+  ["DELETE", "/campaigns/:campaign_id/members/:user_id", async (c) => (await removeMember(c.deps, c.user, { campaign_id: c.params.campaign_id, user_id: c.params.user_id }), none())],
+  ["POST", "/campaigns/:campaign_id/invite-link", async (c) => ok(await rotateInviteLink(c.deps.store, c.user, c.params.campaign_id))],
+  ["DELETE", "/campaigns/:campaign_id/invite-link", async (c) => (await disableInviteLink(c.deps.store, c.user, c.params.campaign_id), none())],
+  // Invitations
+  [
+    "POST",
+    "/campaigns/:campaign_id/invitations",
+    async (c) => {
+      const r = await invite(c.deps.store, c.user, { ...c.body, campaign_id: c.params.campaign_id });
+      return created({ ...r, url: `${c.origin}${r.url}` });
+    },
+  ],
+  ["GET", "/campaigns/:campaign_id/invitations", async (c) => ok({ items: await listInvitations(c.deps.store, c.user, { ...queryInput(c.query), campaign_id: c.params.campaign_id }) })],
+  ["GET", "/invitations/code/:code", async (c) => ok(await previewInvitation(c.deps.store, c.params.code))],
+  ["POST", "/invitations/accept", async (c) => ok({ campaign: await acceptInvitation(c.deps.store, c.user, c.body.code) })],
+  ["POST", "/invitations/decline", async (c) => (await declineInvitation(c.deps.store, c.user, c.body.code), none())],
+  ["DELETE", "/invitations/:invitation_id", async (c) => (await revokeInvitation(c.deps.store, c.user, c.params.invitation_id), none())],
+  // Instances
+  ["POST", "/campaigns/:campaign_id/instances", async (c) => created({ instance: await createInstance(c.deps.store, c.user, { ...c.body, campaign_id: c.params.campaign_id }) })],
+  ["GET", "/campaigns/:campaign_id/instances", async (c) => ok({ items: await listInstances(c.deps.store, c.user, c.params.campaign_id) })],
+  ["GET", "/instances/:instance_id", async (c) => ok(await getInstance(c.deps, c.user, { ...queryInput(c.query), instance_id: c.params.instance_id }))],
+  ["POST", "/instances/:instance_id/characters", async (c) => ok({ instance: await addCharacter(c.deps, c.user, { ...c.body, instance_id: c.params.instance_id }) })],
+  ["DELETE", "/instances/:instance_id/characters/:character_id", async (c) => ok({ instance: await removeCharacter(c.deps, c.user, { instance_id: c.params.instance_id, character_id: c.params.character_id }) })],
+  ["POST", "/instances/:instance_id/start", async (c) => ok({ instance: await startInstance(c.deps, c.user, c.params.instance_id) })],
+  ["POST", "/instances/:instance_id/pause", async (c) => ok({ instance: await pauseInstance(c.deps, c.user, c.params.instance_id) })],
+  ["POST", "/instances/:instance_id/resume", async (c) => ok({ instance: await resumeInstance(c.deps, c.user, c.params.instance_id) })],
+  ["POST", "/instances/:instance_id/end", async (c) => ok({ instance: await endInstance(c.deps, c.user, c.params.instance_id) })],
+  ["POST", "/instances/:instance_id/advance", async (c) => (await advanceRound(c.deps, c.user, c.params.instance_id), none())],
+  ["GET", "/instances/:instance_id/history", async (c) => ok(await getHistory(c.deps.store, c.user, { ...queryInput(c.query, ["after_version", "limit"]), instance_id: c.params.instance_id }))],
+  [
+    "POST",
+    "/instances/:instance_id/actions",
+    async (c) => ({ status: 202, body: await submitAction(c.deps, c.user, { ...c.body, instance_id: c.params.instance_id, idempotency_key: c.headers.get("idempotency-key") ?? undefined }) }),
+  ],
+  [
+    "POST",
+    "/instances/:instance_id/inputs",
+    async (c) => {
+      await gated(c, "submit_input");
+      // The parser adapter arrives with sprint 15; direct actions work meanwhile.
+      throw new ApiError("unavailable", "text input is not available yet; use actions");
+    },
+  ],
+];
+
+function match(pattern: string, path: string): Record<string, string> | null {
+  const p = pattern.split("/").filter(Boolean);
+  const s = path.split("/").filter(Boolean);
+  if (p.length !== s.length) return null;
+  const params: Record<string, string> = {};
+  for (let i = 0; i < p.length; i++) {
+    if (p[i]!.startsWith(":")) params[p[i]!.slice(1)] = decodeURIComponent(s[i]!);
+    else if (p[i] !== s[i]) return null;
+  }
+  return params;
+}
+
+function json(status: number, body: unknown, headers: Record<string, string> = {}): Response {
+  if (body === undefined) return new Response(null, { status, headers });
+  return new Response(JSON.stringify(body), { status, headers: { "Content-Type": "application/json; charset=utf-8", ...headers } });
+}
+
+function failure(e: ApiError): Response {
+  const headers: Record<string, string> = e.code === "rate_limited" ? { "Retry-After": String(Math.ceil(Number(e.extra.retry_after_ms ?? 1000) / 1000)) } : {};
+  return json(STATUS[e.code], e.toJSON(), headers);
+}
+
+/** Serves one request under the binding's base path, as the signed-in user `user` (or nobody). */
+export async function handle(request: Request, user: string | null, deps: Deps): Promise<Response> {
+  const url = new URL(request.url);
+  const path = url.pathname.replace(/^\/(api\/)?v1(?=\/|$)/, "");
+  let route: Route | undefined;
+  let params: Record<string, string> | null = null;
+  let allowed = false;
+  for (const r of ROUTES) {
+    const m = match(r[1], path);
+    if (!m) continue;
+    allowed = true;
+    if (r[0] === request.method) {
+      route = r;
+      params = m;
+      break;
+    }
+  }
+  if (!route || !params) return json(allowed ? 405 : 404, { error: { code: allowed ? "invalid_request" : "not_found", detail: `no route ${request.method} ${url.pathname}` } });
+
+  try {
+    if (user) {
+      const wait = await deps.store.rateHit(user, "api", RATE_LIMIT.window_seconds, RATE_LIMIT.limit);
+      if (wait > 0) throw new ApiError("rate_limited", "too many requests", { retry_after_ms: wait });
+    }
+    let body: Record<string, unknown> = {};
+    const text = request.method === "GET" ? "" : await request.text();
+    if (text.trim() !== "") {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        throw new ApiError("invalid_request", "the body is not JSON");
+      }
+      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) throw new ApiError("invalid_request", "the body must be a JSON object");
+      body = parsed as Record<string, unknown>;
+    }
+    const reply = await route[2]({ deps, user, params, query: url.searchParams, body, headers: request.headers, origin: url.origin });
+    return json(reply.status, reply.body);
+  } catch (e) {
+    if (e instanceof ApiError) return failure(e);
+    throw e;
+  }
+}

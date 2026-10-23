@@ -21,7 +21,7 @@ import {
   updateCampaign,
 } from "./campaigns";
 import type { Entropy } from "./entropy";
-import { addCharacter, createInstance, getInstance, listInstances, removeCharacter } from "./instances";
+import { addCharacter, createInstance, getInstance, listInstances, removeCharacter, type Deps } from "./instances";
 import { acceptInvitation, declineInvitation, invite, listInvitations, previewInvitation, revokeInvitation } from "./invitations";
 import { listMaterials } from "./materials";
 import { code, entropy, richSetting, SIX, SUNKEN, variant, world } from "./testing/fixtures";
@@ -29,9 +29,10 @@ import { code, entropy, richSetting, SIX, SUNKEN, variant, world } from "./testi
 let db: Awaited<ReturnType<typeof testDb>>;
 let store: Store;
 let e: Entropy;
+let deps: Deps;
 
 beforeEach(async () => {
-  ({ db, store } = await world(["user_a", "user_b", "user_c"]));
+  ({ db, store, deps } = await world(["user_a", "user_b", "user_c"]));
   e = entropy();
 });
 afterEach(async () => {
@@ -169,7 +170,7 @@ describe("instances", () => {
     await setMaterials(store, "user_a", { campaign_id: c.id, materials: [{ ...SUNKEN[0], version: "3.1.0" }, SUNKEN[1]] });
     const later = await createInstance(store, "user_a", { campaign_id: c.id, name: "Thursday group" }, e);
     expect(later.materials[0]!.version).toBe("3.1.0");
-    expect((await getInstance(store, "user_b", { instance_id: instance.id })).instance.materials[0]!.version).toBe("3.0.0");
+    expect((await getInstance(deps, "user_b", { instance_id: instance.id })).instance.materials[0]!.version).toBe("3.0.0");
     expect((await listInstances(store, "user_b", c.id)).map((i) => i.name)).toEqual(["Tuesday group", "Thursday group"]);
     expect(await code(createInstance(store, "user_a", { campaign_id: c.id, name: "Tuesday group" }, e))).toBe("conflict");
     expect(await code(createInstance(store, "user_b", { campaign_id: c.id, name: "Mine" }, e))).toBe("forbidden");
@@ -179,48 +180,39 @@ describe("instances", () => {
     const { c, instance } = await party();
     const rook = await character("user_b");
     const vale = await character("user_a", "quest", "Vale");
-    await addCharacter(store, "user_b", { instance_id: instance.id, character_id: rook.id });
-    const full = await addCharacter(store, "user_a", { instance_id: instance.id, character_id: vale.id });
+    await addCharacter(deps, "user_b", { instance_id: instance.id, character_id: rook.id });
+    const full = await addCharacter(deps, "user_a", { instance_id: instance.id, character_id: vale.id });
     expect(full.characters).toEqual([
       { id: rook.id, user_id: "user_b", name: "Rook" },
       { id: vale.id, user_id: "user_a", name: "Vale" },
     ]);
     expect((await store.getCharacter(rook.id))).toMatchObject({ status: "in_instance", instance_id: instance.id });
     const other = await createInstance(store, "user_a", { campaign_id: c.id, name: "Other" }, e);
-    expect(await code(addCharacter(store, "user_b", { instance_id: other.id, character_id: rook.id }))).toBe("conflict");
-    expect(await code(addCharacter(store, "user_a", { instance_id: other.id, character_id: rook.id }))).toBe("not_found");
-    expect(await code(addCharacter(store, "user_c", { instance_id: instance.id, character_id: rook.id }))).toBe("not_found");
+    expect(await code(addCharacter(deps, "user_b", { instance_id: other.id, character_id: rook.id }))).toBe("conflict");
+    expect(await code(addCharacter(deps, "user_a", { instance_id: other.id, character_id: rook.id }))).toBe("not_found");
+    expect(await code(addCharacter(deps, "user_c", { instance_id: instance.id, character_id: rook.id }))).toBe("not_found");
   });
 
   it("rejects a character of another system with system_mismatch, and lets Cadmium take Quest characters", async () => {
     const { instance } = await party();
     const cad = await character("user_b", "cadmium");
-    expect(await code(addCharacter(store, "user_b", { instance_id: instance.id, character_id: cad.id }))).toBe("system_mismatch");
+    expect(await code(addCharacter(deps, "user_b", { instance_id: instance.id, character_id: cad.id }))).toBe("system_mismatch");
     const k = await campaign({ system: "cadmium" });
     const cadInstance = await createInstance(store, "user_a", { campaign_id: k.id, name: "Cadmium group" }, e);
     const quest = await character("user_a", "quest", "Vale");
-    expect((await addCharacter(store, "user_a", { instance_id: cadInstance.id, character_id: quest.id })).characters).toHaveLength(1);
+    expect((await addCharacter(deps, "user_a", { instance_id: cadInstance.id, character_id: quest.id })).characters).toHaveLength(1);
   });
 
   it("removes characters by owner or author, and when a member leaves", async () => {
     const { c, instance } = await party();
     const rook = await character("user_b");
-    await addCharacter(store, "user_b", { instance_id: instance.id, character_id: rook.id });
-    expect((await removeCharacter(store, "user_a", { instance_id: instance.id, character_id: rook.id })).characters).toEqual([]);
+    await addCharacter(deps, "user_b", { instance_id: instance.id, character_id: rook.id });
+    expect((await removeCharacter(deps, "user_a", { instance_id: instance.id, character_id: rook.id })).characters).toEqual([]);
     expect((await store.getCharacter(rook.id))!.status).toBe("available");
-    await addCharacter(store, "user_b", { instance_id: instance.id, character_id: rook.id });
-    await leaveCampaign(store, "user_b", c.id);
+    await addCharacter(deps, "user_b", { instance_id: instance.id, character_id: rook.id });
+    await leaveCampaign(deps, "user_b", c.id);
     expect((await store.getCharacter(rook.id))).toMatchObject({ status: "available", instance_id: null });
     expect(await code(getCampaign(store, "user_b", c.id))).toBe("not_found");
-    expect(await code(leaveCampaign(store, "user_a", c.id))).toBe("conflict");
-  });
-
-  it("refuses to remove a member whose character is in a started instance", async () => {
-    const { c, instance } = await party();
-    const rook = await character("user_b");
-    await addCharacter(store, "user_b", { instance_id: instance.id, character_id: rook.id });
-    await store.setStatus(instance.id, "active");
-    expect(await code(removeMember(store, "user_a", { campaign_id: c.id, user_id: "user_b" }))).toBe("conflict");
-    expect(await code(removeCharacter(store, "user_b", { instance_id: instance.id, character_id: rook.id }))).toBe("conflict");
+    expect(await code(leaveCampaign(deps, "user_a", c.id))).toBe("conflict");
   });
 });

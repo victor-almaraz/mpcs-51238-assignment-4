@@ -178,6 +178,13 @@ export interface InstanceView {
   ending: string | null;
 }
 
+export interface HistoryItem {
+  version: number;
+  actor_id: string | null;
+  events: GameEvent[];
+  narration: { text: string; source: "model" | "template" } | null;
+}
+
 type BundleMeta = { publisher_id?: string | null; draft_id?: string | null; origin: "operator" | "author"; listed?: boolean };
 
 export class Store {
@@ -475,5 +482,59 @@ export class Store {
   /** Takes a character out of an instance, writing back `sheet` when given. */
   async leaveInstance(instanceId: string, characterId: string, sheet: CharacterRecord["sheet"] | null = null): Promise<boolean> {
     return this.rpc.call<boolean>("cadmium_leave_instance", { p_instance: instanceId, p_character: characterId, p_sheet: sheet });
+  }
+
+  // Coordinator ----------------------------------------------------------------------------------
+
+  /** Changes status outside a commit; throws VersionConflict unless the stored version is `expectedVersion`. */
+  async setInstanceStatus(id: string, expectedVersion: number, status: InstanceStatus, deadline: Date | null): Promise<void> {
+    try {
+      await this.rpc.call("cadmium_set_instance_status", { p_id: id, p_expected: expectedVersion, p_status: status, p_deadline: deadline?.toISOString() ?? null });
+    } catch (e) {
+      if ((e as { code?: string }).code === "CD409") throw new VersionConflict(id, expectedVersion);
+      throw e;
+    }
+  }
+
+  /** Sets the deadline of the wait that began at `version`; no effect once a later commit exists. */
+  async setDeadline(id: string, version: number, deadline: Date | null): Promise<void> {
+    await this.rpc.call("cadmium_set_deadline", { p_id: id, p_version: version, p_deadline: deadline?.toISOString() ?? null });
+  }
+
+  async deadline(id: string): Promise<Date | null> {
+    const d = await this.rpc.call<string | null>("cadmium_deadline", { p_id: id });
+    return d === null ? null : new Date(d);
+  }
+
+  /** Takes characters out of an instance, writing back their sheets and statuses. Repeatable. */
+  async releaseCharacters(instanceId: string, sheets: { id: string; sheet: CharacterRecord["sheet"]; status: CharacterRecord["status"] }[]): Promise<void> {
+    await this.rpc.call("cadmium_release_characters", { p_instance: instanceId, p_sheets: sheets });
+  }
+
+  /** Marks the events of a commit every member may see, by 1-based position. */
+  async shareEvents(instanceId: string, version: number, positions: number[]): Promise<void> {
+    await this.rpc.call("cadmium_share_events", { p_instance: instanceId, p_version: version, p_positions: positions });
+  }
+
+  /** Commits after a version with their shared events and narration. */
+  async history(instanceId: string, afterVersion: number, limit: number): Promise<HistoryItem[]> {
+    return this.rpc.call<HistoryItem[]>("cadmium_history", { p_instance: instanceId, p_after: afterVersion, p_limit: limit });
+  }
+
+  /** Counts a request; 0 when allowed, else the milliseconds until the window ends. */
+  async rateHit(userId: string, scope: string, windowSeconds: number, limit: number): Promise<number> {
+    return this.rpc.call<number>("cadmium_rate_hit", { p_user: userId, p_scope: scope, p_window_seconds: windowSeconds, p_limit: limit });
+  }
+
+  async deleteCampaign(id: string): Promise<void> {
+    await this.rpc.call("cadmium_delete_campaign", { p_id: id });
+  }
+
+  async restoreCampaign(id: string): Promise<boolean> {
+    return this.rpc.call<boolean>("cadmium_restore_campaign", { p_id: id });
+  }
+
+  async deletedCampaign(id: string): Promise<{ id: string; author_id: string; deleted_at: string } | undefined> {
+    return (await this.rpc.call<{ id: string; author_id: string; deleted_at: string } | null>("cadmium_deleted_campaign", { p_id: id })) ?? undefined;
   }
 }

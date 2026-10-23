@@ -32,12 +32,18 @@ The server reads these variables, from `.env.local` locally and from the Vercel 
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | no | Browser access to Supabase; it cannot reach the store |
 | `SUPABASE_SERVICE_ROLE_KEY` | yes | The store, on the server only: the Supabase secret key (`sb_secret_…`) or legacy service-role key |
 | `CLERK_WEBHOOK_SIGNING_SECRET` | yes | Verifies Clerk's webhook at `/api/webhooks/clerk` |
+| `EXPLORATION_ROUND_TIMEOUT` | no | Seconds an exploration round waits before advancing; default 120, 0 disables |
+| `COMBAT_TURN_TIMEOUT` | no | Seconds a combat round or turn waits; default 60, 0 disables |
 
 `GET /api/health` reports which are set, and whether the database schema is applied, without revealing values.
 
 ### Database schema
 
 The migrations in `supabase/migrations/` create the store's tables and functions, and restrict both to the service role. Apply them in file-name order by pasting each file into the Supabase SQL Editor. Each file applies once; `/api/health` then reports `"schema": "applied"`.
+
+### Realtime
+
+Instance and user messages travel on Supabase Realtime private channels, `instance:{id}` and `user:{id}`, admitted by the policy in the fifth migration. Browsers authenticate with their Clerk session token, which Supabase accepts once Clerk is added under Authentication, Third-party auth in the Supabase dashboard (and Supabase is enabled under Integrations in the Clerk dashboard).
 
 ### Clerk webhook
 
@@ -79,10 +85,11 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `lib/engine/` | The engine: `submit`, `advance`, `startInstance`, and views |
 | `lib/harness/` | Command-line harness, scripted scenarios, and golden logs |
 | `lib/store/` | The store: bundles, instances, atomic commits, events, inputs, narration, as SQL functions called through an `Rpc` (supabase-js in production, PGlite in tests) |
-| `lib/api/` | Operations of api.md over the store: users and the terms gate, systems, materials, characters, campaigns, invitations, instances in the lobby |
+| `lib/api/` | Operations of api.md: users and the terms gate, systems, materials, characters, campaigns, invitations, instances and play; `http.ts` is the `/v1` binding |
 | `lib/server/` | Server-only configuration, the service-role Supabase client, the session user, and server actions |
 | `components/` | Shared form components; `systems/` holds creation forms and sheet views registered by rules-system id |
-| `lib/coordinator/` | Instance operations; so far the operator operations `replay_instance` and `restore_instance` |
+| `lib/coordinator/` | The Instance Coordinator: serialized commits, round deadlines, messages; the operator operations `replay_instance` and `restore_instance` |
+| `lib/broadcast/` | Realtime broadcast from the server, and browser subscriptions delivered in version order |
 | `supabase/migrations/` | SQL migrations, applied by Supabase in production and by PGlite in tests |
 | `lib/systems/` | Rules-system contract, registry, implementations, and the reusable conformance suite in `testing/` |
 | `lib/bundle/` | Schema registry and generated types; generated files are never edited by hand |

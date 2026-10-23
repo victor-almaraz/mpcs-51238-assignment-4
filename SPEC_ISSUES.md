@@ -765,3 +765,45 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** A declaration for the campaign's own system must be satisfied by the installed version of that system, which must also satisfy the campaign's range. A Quest declaration in a Cadmium campaign is checked against the installed Quest version instead: a material's range must be satisfied by it, and a character's major version must equal its major version.
 
 **Proposed resolution.** State that version checks use the declared system's installed version, and that a Cadmium campaign checks only its own range against Cadmium.
+
+## party-changes
+
+| Field | Value |
+|---|---|
+| Document | `docs/api.md`; `docs/engine.md` |
+| Section | Instances (`add_character` and `remove_character` in `paused`; leaving a campaign removes characters); Events |
+| Marker | `lib/engine/party.ts` |
+
+**Problem.** Characters may join and leave a paused instance, and leaving a campaign removes characters from running instances, but the engine defines no operation, placement, or event for either. Nothing says where a joining character appears or what happens to the items a leaving character carries.
+
+**Implemented.** Joining and leaving are commits whose inputs (`join` with the character, `leave` with its id) replay like any other. A joining character appears in the room of the party's first character in id order, or the adventure's start room, on the first free cell; in exploration it takes part in the current round. A leaving character is removed from state with the items it carries, which remain in its written-back sheet, and from the round, the order, combatants, and pending choices. Neither commit emits an event.
+
+**Proposed resolution.** Define join and leave as engine operations, the joining character's placement, and events such as `character_joined` and `character_left`.
+
+## commit-event-visibility
+
+| Field | Value |
+|---|---|
+| Document | `docs/app-flow.md`; `docs/api.md` |
+| Section | Real-time channels (the `commit` message carries "the events visible to every member"); Messages (`commit`: "filtered to those visible to the recipient"); `get_history` |
+| Marker | `lib/engine/visibility.ts` |
+
+**Problem.** No document defines which events a member may see. Event payloads name hidden entities, secrets, flags, and stages that views and model contexts must never show.
+
+**Implemented.** An event is shared when every entity, character, or item it names was visible to some character before or after the commit: characters always, carried items with their carrier, other entities when a character perceives them and they are not hidden. `flag_set`, `stage_set`, `trigger_fired`, and `revealed` with a `secret` are never shared; `room_light_changed` is shared once the room has been visited. Shared events are marked when committed, and `get_history` returns only those, so history and live messages carry the same events.
+
+**Proposed resolution.** Define event visibility in engine.md next to the event table.
+
+## binding-gaps
+
+| Field | Value |
+|---|---|
+| Document | `docs/api.md`; `docs/app-flow.md` |
+| Section | Authentication (`register`, `login`, `logout`, opaque tokens); Routes (no route for `delete_campaign` or `restore_campaign`); Rate limits (open subscriptions per user) |
+| Marker | `lib/api/http.ts` |
+
+**Problem.** The binding describes its own accounts and opaque tokens, while the stack gives identities to Clerk (app-flow.md, Stack constraints). `delete_campaign` and `restore_campaign` have no routes. The limit of 4 open subscriptions cannot be enforced by the server when subscriptions are Supabase Realtime channels.
+
+**Implemented.** The bearer token is the Clerk session token; Clerk registers, signs in, and signs out, so the binding has no `register`, `login`, or `logout` routes. `delete_campaign` is `DELETE /v1/campaigns/{campaign_id}` with `{ confirm }`, and `restore_campaign` is `POST /v1/campaigns/{campaign_id}/restore`. The subscription limit is not enforced.
+
+**Proposed resolution.** State that a deployment with an identity provider omits the account operations and uses the provider's tokens; add the two campaign routes; scope the subscription limit to bindings that hold connections.

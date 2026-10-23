@@ -303,4 +303,25 @@ Done:
 Open:
 
 - The third and fourth migrations are not yet applied to the remote database.
-- For sprint 13: `start_instance`, `pause_instance`, `resume_instance`, `end_instance`, `get_instance` with a view, and adding or removing characters while `paused` (today only in `lobby`). `leave_campaign` and `remove_member` refuse while the member has a character in a started instance; they need the coordinator to write sheets back. `delete_campaign` and `restore_campaign` end instances and come with the lifecycle.
+- The instance lifecycle, party changes while paused, and campaign deletion moved to sprint 13.
+
+### Sprint 13: Coordinator, API, broadcast — open
+
+Done:
+
+- `lib/coordinator/instance.ts`: the Instance Coordinator. Writes are serialized by optimistic versioning with retries; each commit sends `commit` (shared events), `round`, and `instance_status` on `instance:{id}`, and `declaration` and `choice` on the owner's `user:{id}`. Round deadlines (`EXPLORATION_ROUND_TIMEOUT`, `COMBAT_TURN_TIMEOUT`; defaults 120 s and 60 s; 0 disables) are stored with the instance, and any request to an expired instance invokes `advance` through the same write path. Ending, by an ending or by `end_instance`, writes every sheet back.
+- `lib/engine`: `join` and `leave` for party changes, replayed as commit inputs; `sharedEvents` for what every member may see.
+- `supabase/migrations/20261023000400_coordinator.sql`: round deadlines, status changes serialized with commits, `shared` events, `get_history`, character release, campaign deletion and restore, a fixed-window rate counter, and the Realtime policy admitting members to `instance:{id}` and each user to `user:{id}`.
+- `lib/api`: `start_instance`, `pause_instance`, `resume_instance`, `end_instance`, `advance_round`, `submit_action` (idempotency keys, rejections as `input_rejected`), `get_instance` with the caller's view, `get_history`, `add_character` and `remove_character` while paused, `leave_campaign` and `remove_member` across started instances, `delete_campaign`, `restore_campaign`.
+- `lib/api/http.ts` and `app/api/v1/[...path]/route.ts`, rewritten from `/v1`: every implemented operation, error statuses, `Retry-After`, `Idempotency-Key`, 120 requests per user per minute. `submit_input` answers `unavailable` until the parser (sprint 15).
+- `lib/broadcast`: Supabase Realtime broadcast from the server; browser subscriptions on private channels with a sequencer that delivers in version order and backfills gaps from `get_history`.
+- Lobby: Start, Pause, Resume, End for the author; Enter game when active.
+- Tests: `lib/api/play.test.ts` (12), `lib/api/http.test.ts` (3), `lib/broadcast/sequencer.test.ts` (3).
+- `SPEC_ISSUES.md`: `party-changes`, `commit-event-visibility`, `binding-gaps`.
+
+Open:
+
+- Migrations 3 to 5 are not yet applied to the remote database.
+- Realtime private channels need Supabase's Clerk third-party auth integration (Supabase dashboard, Authentication, Third-party auth, Clerk) so Supabase accepts Clerk session tokens; until then subscriptions fail and clients see commits only through `get_history`.
+- Two browsers over the deployed binding are verified only in tests with an in-memory broadcaster.
+- `narration` (template and model), `action_menu`, and `submit_input` come with sprints 14 and 15.

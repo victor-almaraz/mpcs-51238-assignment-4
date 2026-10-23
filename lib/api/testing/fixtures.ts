@@ -5,6 +5,8 @@ import type { SettingBundle } from "../../bundle/setting";
 import { compileSetting } from "../../materials";
 import { example } from "../../materials/testing/fixtures";
 import { sunkenBundles } from "../../harness/scenarios";
+import { MemoryBroadcaster } from "../../broadcast";
+import { DEFAULT_TIMEOUTS, type Deps } from "../../coordinator/instance";
 import { Store } from "../../store";
 import { sqlRpc } from "../../store/sql-rpc";
 import { testDb } from "../../store/testing/pglite";
@@ -58,7 +60,10 @@ export async function world(users: string[]) {
     await store.upsertUser({ id, email: `${id}@example.org`, display_name: id.replace(/^user_/, "").toUpperCase(), terms_accepted_at: null });
     await store.acceptTerms(id, TERMS_VERSION);
   }
-  return { db, store };
+  const broadcast = new MemoryBroadcaster();
+  const clock = { now: new Date("2026-10-22T18:00:00Z") };
+  const deps: Deps = { store, broadcast, now: () => clock.now, timeouts: DEFAULT_TIMEOUTS };
+  return { db, store, deps, broadcast, clock };
 }
 
 export const SUNKEN = [

@@ -8,6 +8,10 @@ const config: NextConfig = {
   async headers() {
     return [{ source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }];
   },
+  // The HTTP binding's base path (api.md, Transport: /v1) is served by app/api/v1.
+  async rewrites() {
+    return [{ source: "/v1/:path*", destination: "/api/v1/:path*" }];
+  },
   // Pages that read specification documents at request time ship those files with their functions.
   outputFileTracingIncludes: {
     "/terms": ["./cadmium-spec/docs/legal/terms.md"],

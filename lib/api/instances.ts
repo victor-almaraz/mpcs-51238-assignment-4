@@ -1,7 +1,9 @@
-// Instances in the lobby (api.md, Instances: create_instance, list_instances, get_instance,
-// add_character, remove_character; data-model.md, Instance, Instance character). Starting, pausing,
-// resuming, and ending run through the coordinator (sprint 13).
+// Instances (api.md, Instances; Play: submit_action; data-model.md, Instance, Instance character).
+// Writes to a started instance go through the Instance Coordinator.
 
+import { AdminError } from "../coordinator/admin";
+import * as coordinator from "../coordinator/instance";
+import type { AdventureBundle } from "../bundle/adventure";
 import { satisfies } from "../materials/semver";
 import type { InstanceView, Store, UserRecord } from "../store";
 import { SYSTEMS } from "../systems";
@@ -11,9 +13,23 @@ import { ApiError, onlyFields } from "./errors";
 import { accepted } from "./systems";
 import { caller } from "./users";
 
+export type Deps = coordinator.Deps;
+
 const major = (version: string) => version.split(".")[0];
 
-async function instanceOf(store: Store, user: UserRecord, instanceId: unknown): Promise<{ instance: InstanceView; role: "author" | "player" }> {
+/** Runs a coordinator call, turning its errors into operation errors. */
+export async function coordinated<T>(p: Promise<T>): Promise<T> {
+  try {
+    return await p;
+  } catch (e) {
+    if (e instanceof coordinator.CoordinatorError) throw new ApiError(e.code, e.message, e.engineCode ? { engine_code: e.engineCode } : {});
+    // A pinned bundle or system version that is no longer installed.
+    if (e instanceof AdminError) throw new ApiError("unavailable", e.message);
+    throw e;
+  }
+}
+
+export async function instanceOf(store: Store, user: UserRecord, instanceId: unknown): Promise<{ instance: InstanceView; role: "author" | "player" }> {
   if (typeof instanceId !== "string") throw new ApiError("invalid_request", "instance_id must be a string");
   const instance = await store.instanceView(instanceId);
   if (!instance) throw new ApiError("not_found", "no such instance");
@@ -55,15 +71,33 @@ export async function listInstances(store: Store, userId: string | null, campaig
   return store.listInstances(campaign.id);
 }
 
-export async function getInstance(store: Store, userId: string | null, input: unknown) {
-  const user = await caller(store, userId, "get_instance");
+/** The caller's character in the instance: `characterId` when given, else their only one. */
+function actorOf(instance: InstanceView, user: UserRecord, characterId: unknown): string {
+  const mine = instance.characters.filter((c) => c.user_id === user.id).map((c) => c.id);
+  if (characterId !== undefined) {
+    if (typeof characterId !== "string" || !mine.includes(characterId)) throw new ApiError("invalid_request", "character_id is not one of your characters in the instance");
+    return characterId;
+  }
+  if (mine.length === 0) throw new ApiError("forbidden", "you have no character in the instance");
+  if (mine.length > 1) throw new ApiError("invalid_request", "you have several characters in the instance; pass character_id");
+  return mine[0]!;
+}
+
+export async function getInstance(deps: Deps, userId: string | null, input: unknown) {
+  const user = await caller(deps.store, userId, "get_instance");
   const req = onlyFields(input, ["instance_id", "character_id"]);
-  // The player's view of a running instance arrives with the coordinator (sprint 13).
-  return { instance: (await instanceOf(store, user, req.instance_id)).instance };
+  let { instance } = await instanceOf(deps.store, user, req.instance_id);
+  if (instance.status === "active" && (await coordinated(coordinator.catchUp(deps, instance.id)))) instance = (await deps.store.instanceView(instance.id))!;
+  const started = instance.status === "active" || instance.status === "paused";
+  const playing = instance.characters.some((c) => c.user_id === user.id);
+  if (!started || (!playing && req.character_id === undefined)) return { instance };
+  const v = await coordinated(coordinator.characterView(deps, instance.id, actorOf(instance, user, req.character_id)));
+  return v ? { instance, view: v } : { instance };
 }
 
 // SPEC_ISSUES.md#cross-system-versions: a Quest character in a Cadmium instance keeps Quest's major version.
-export async function addCharacter(store: Store, userId: string | null, input: unknown) {
+export async function addCharacter(deps: Deps, userId: string | null, input: unknown) {
+  const { store } = deps;
   const user = await caller(store, userId, "add_character");
   const req = onlyFields(input, ["instance_id", "character_id"]);
   const { instance } = await instanceOf(store, user, req.instance_id);
@@ -73,20 +107,120 @@ export async function addCharacter(store: Store, userId: string | null, input: u
   if (!accepted(instance.system).includes(character.system)) throw new ApiError("system_mismatch", `a ${instance.system} instance does not accept ${character.system} characters`);
   const against = character.system === instance.system ? instance.system_version : SYSTEMS[character.system]!.VERSION;
   if (major(character.system_version) !== major(against)) throw new ApiError("system_mismatch", `the character is for ${character.system} ${character.system_version}, not ${against}`);
-  if (instance.status !== "lobby") throw new ApiError("conflict", `characters join an instance in the lobby; this one is ${instance.status}`);
+  if (instance.status !== "lobby" && instance.status !== "paused") throw new ApiError("conflict", `characters join an instance in the lobby or paused; this one is ${instance.status}`);
   if (character.status !== "available") throw new ApiError("conflict", `the character is ${character.status.replace("_", " ")}`);
   if (!(await store.joinInstance(instance.id, character.id, user.id))) throw new ApiError("conflict", "the character is no longer available");
+  if (instance.status === "paused") {
+    try {
+      await coordinated(coordinator.joinPaused(deps, instance.id, { id: character.id, user_id: user.id, sheet: character.sheet }));
+    } catch (e) {
+      await store.leaveInstance(instance.id, character.id);
+      throw e;
+    }
+  }
   return (await store.instanceView(instance.id))!;
 }
 
-export async function removeCharacter(store: Store, userId: string | null, input: unknown) {
-  const user = await caller(store, userId, "remove_character");
+/** Takes a character out: directly in the lobby, through the coordinator once started. */
+export async function takeOut(deps: Deps, instance: InstanceView, characterId: string): Promise<void> {
+  if (instance.status === "lobby") await deps.store.leaveInstance(instance.id, characterId);
+  else if (instance.status === "active" || instance.status === "paused") await coordinated(coordinator.leaveParty(deps, instance.id, characterId));
+}
+
+export async function removeCharacter(deps: Deps, userId: string | null, input: unknown) {
+  const user = await caller(deps.store, userId, "remove_character");
   const req = onlyFields(input, ["instance_id", "character_id"]);
-  const { instance, role } = await instanceOf(store, user, req.instance_id);
+  const { instance, role } = await instanceOf(deps.store, user, req.instance_id);
   const entry = instance.characters.find((c) => c.id === req.character_id);
   if (!entry) throw new ApiError("not_found", "the character is not in the instance");
   if (entry.user_id !== user.id && role !== "author") throw new ApiError("forbidden", "only the character's owner or the author may remove it");
-  if (instance.status !== "lobby") throw new ApiError("conflict", `characters leave an instance in the lobby; this one is ${instance.status}`);
-  await store.leaveInstance(instance.id, entry.id);
-  return (await store.instanceView(instance.id))!;
+  if (instance.status !== "lobby" && instance.status !== "paused") throw new ApiError("conflict", `characters leave an instance in the lobby or paused; this one is ${instance.status}`);
+  await takeOut(deps, instance, entry.id);
+  return (await deps.store.instanceView(instance.id))!;
+}
+
+async function authorInstance(deps: Deps, userId: string | null, operation: string, instanceId: unknown) {
+  const user = await caller(deps.store, userId, operation);
+  const { instance, role } = await instanceOf(deps.store, user, instanceId);
+  if (role !== "author") throw new ApiError("forbidden", "only the campaign's author may do this");
+  return instance;
+}
+
+export async function startInstance(deps: Deps, userId: string | null, instanceId: unknown) {
+  const instance = await authorInstance(deps, userId, "start_instance", instanceId);
+  if (instance.status !== "lobby") throw new ApiError("conflict", `the instance is ${instance.status}, not in the lobby`);
+  const adventure = instance.materials.find((m) => m.kind === "adventure")!;
+  const bundle = (await deps.store.getBundle("adventure", adventure.id, adventure.version)) as AdventureBundle | undefined;
+  if (!bundle) throw new ApiError("unavailable", `adventure ${adventure.id} ${adventure.version} is not installed`);
+  const [min, max] = bundle.manifest.players;
+  const n = instance.characters.length;
+  if (n < min || n > max) throw new ApiError("conflict", `the adventure takes ${min} to ${max} characters; the instance has ${n}`);
+  const joining = await Promise.all(
+    instance.characters.map(async (c) => {
+      const record = (await deps.store.getCharacter(c.id))!;
+      return { id: c.id, user_id: c.user_id, sheet: record.sheet };
+    }),
+  );
+  await coordinated(coordinator.start(deps, instance.id, joining));
+  return (await deps.store.instanceView(instance.id))!;
+}
+
+async function changeStatus(deps: Deps, userId: string | null, operation: string, instanceId: unknown, status: "active" | "paused" | "ended") {
+  const instance = await authorInstance(deps, userId, operation, instanceId);
+  await coordinated(coordinator.setStatus(deps, instance.id, status));
+  return (await deps.store.instanceView(instance.id))!;
+}
+
+export const pauseInstance = (deps: Deps, userId: string | null, instanceId: unknown) => changeStatus(deps, userId, "pause_instance", instanceId, "paused");
+export const resumeInstance = (deps: Deps, userId: string | null, instanceId: unknown) => changeStatus(deps, userId, "resume_instance", instanceId, "active");
+export const endInstance = (deps: Deps, userId: string | null, instanceId: unknown) => changeStatus(deps, userId, "end_instance", instanceId, "ended");
+
+export async function advanceRound(deps: Deps, userId: string | null, instanceId: unknown): Promise<void> {
+  const instance = await authorInstance(deps, userId, "advance_round", instanceId);
+  await coordinated(coordinator.advanceRound(deps, instance.id));
+}
+
+const KEY = /^.{8,64}$/s;
+
+/** submit_action: a tool call without the parser, through the same validation and commit path. */
+export async function submitAction(deps: Deps, userId: string | null, input: unknown, entropy: Entropy = cryptoEntropy) {
+  const { store } = deps;
+  const user = await caller(store, userId, "submit_action");
+  const req = onlyFields(input, ["instance_id", "character_id", "tool", "args", "idempotency_key"]);
+  const { instance } = await instanceOf(store, user, req.instance_id);
+  const actor = actorOf(instance, user, req.character_id);
+  if (typeof req.idempotency_key !== "string" || !KEY.test(req.idempotency_key)) throw new ApiError("invalid_request", "idempotency_key must have 8 to 64 characters");
+  if (typeof req.tool !== "string") throw new ApiError("invalid_request", "tool must be a string");
+  if (req.args === null || typeof req.args !== "object" || Array.isArray(req.args)) throw new ApiError("invalid_request", "args must be an object");
+  const id = entropy.id("in");
+  const fresh = await store.logInput({ id, instance_id: instance.id, user_id: user.id, idempotency_key: req.idempotency_key, text: null, tool_calls: [{ tool: req.tool, args: req.args }] });
+  if (!fresh) {
+    // A repeated key returns the original result without reprocessing.
+    const original = (await store.inputByKey(instance.id, user.id, req.idempotency_key))!;
+    return { accepted: true, input_id: original.id };
+  }
+  if (instance.status !== "active") {
+    await store.rejectInput(id);
+    throw new ApiError("conflict", `the instance is ${instance.status}`);
+  }
+  const outcome = await coordinated(coordinator.act(deps, instance.id, actor, { tool: req.tool, args: req.args as Record<string, unknown> }, id));
+  if ("rejected" in outcome) {
+    await store.rejectInput(id);
+    const current = (await store.instanceView(instance.id))!;
+    await deps.broadcast.send(`user:${user.id}`, [{ type: "input_rejected", instance_id: instance.id, version: current.version, input_id: id, reason: outcome.rejected.code, detail: outcome.rejected.detail }]).catch(() => undefined);
+  }
+  return { accepted: true, input_id: id };
+}
+
+export async function getHistory(store: Store, userId: string | null, input: unknown) {
+  const user = await caller(store, userId, "get_history");
+  const req = onlyFields(input, ["instance_id", "after_version", "limit"]);
+  const { instance } = await instanceOf(store, user, req.instance_id);
+  const after = req.after_version ?? 0;
+  const limit = req.limit ?? 50;
+  if (typeof after !== "number" || !Number.isInteger(after) || after < 0) throw new ApiError("invalid_request", "after_version must be a non-negative integer");
+  if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > 200) throw new ApiError("invalid_request", "limit must be 1 to 200");
+  const page = await store.history(instance.id, after, limit + 1);
+  const items = page.slice(0, limit);
+  return { items, next_after_version: page.length > limit ? items.at(-1)!.version : null };
 }

@@ -4,9 +4,10 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { archiveCampaign, createCampaign, disableInviteLink, joinByLink, removeMember, rotateInviteLink, setMaterials, updateCampaign } from "../api/campaigns";
-import { addCharacter, createInstance, removeCharacter } from "../api/instances";
+import { addCharacter, createInstance, endInstance, pauseInstance, removeCharacter, resumeInstance, startInstance } from "../api/instances";
 import { acceptInvitation, declineInvitation, invite, previewInvitation, revokeInvitation } from "../api/invitations";
 import { attempt, type FormState } from "./forms";
+import { serverDeps } from "./coordinator";
 import { serverStore } from "./supabase";
 
 export type InviteState = FormState & { code?: string; url?: string };
@@ -70,7 +71,7 @@ export async function archiveCampaignAction(_: FormState, form: FormData): Promi
 
 export async function removeMemberAction(_: FormState, form: FormData): Promise<FormState> {
   const id = str(form, "campaign_id");
-  const r = await attempt((uid) => removeMember(serverStore(), uid, { campaign_id: id, user_id: str(form, "user_id") }));
+  const r = await attempt((uid) => removeMember(serverDeps(), uid, { campaign_id: id, user_id: str(form, "user_id") }));
   return "error" in r ? r : refresh(id);
 }
 
@@ -138,7 +139,7 @@ export async function createInstanceAction(_: FormState, form: FormData): Promis
 
 export async function addCharacterAction(_: FormState, form: FormData): Promise<FormState> {
   const id = str(form, "instance_id");
-  const r = await attempt((uid) => addCharacter(serverStore(), uid, { instance_id: id, character_id: str(form, "character_id") }));
+  const r = await attempt((uid) => addCharacter(serverDeps(), uid, { instance_id: id, character_id: str(form, "character_id") }));
   if ("error" in r) return r;
   revalidatePath(`/instances/${id}`);
   return { error: null };
@@ -146,7 +147,18 @@ export async function addCharacterAction(_: FormState, form: FormData): Promise<
 
 export async function removeCharacterAction(_: FormState, form: FormData): Promise<FormState> {
   const id = str(form, "instance_id");
-  const r = await attempt((uid) => removeCharacter(serverStore(), uid, { instance_id: id, character_id: str(form, "character_id") }));
+  const r = await attempt((uid) => removeCharacter(serverDeps(), uid, { instance_id: id, character_id: str(form, "character_id") }));
+  if ("error" in r) return r;
+  revalidatePath(`/instances/${id}`);
+  return { error: null };
+}
+
+/** Start, Pause, Resume, and End in the lobby (app-flow.md, Instance lobby: Controls). */
+export async function instanceControlAction(_: FormState, form: FormData): Promise<FormState> {
+  const id = str(form, "instance_id");
+  const run = { start: startInstance, pause: pauseInstance, resume: resumeInstance, end: endInstance }[str(form, "control") as "start" | "pause" | "resume" | "end"];
+  if (!run) return { error: "Unknown control." };
+  const r = await attempt((uid) => run(serverDeps(), uid, id));
   if ("error" in r) return r;
   revalidatePath(`/instances/${id}`);
   return { error: null };

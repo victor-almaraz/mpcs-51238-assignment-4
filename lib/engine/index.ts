@@ -7,11 +7,13 @@ import { content } from "./content";
 import { Ctx, Reject, reject } from "./ctx";
 import { applyEffects } from "./effects";
 import { afterAction, beginTurns, closeRound, currentParticipant, dryRun, finishRoundIfReady, takeTurn, turnStart } from "./rounds";
-import type { Bundles, Result, State, ToolCall } from "./types";
+import { joinParty, leaveParty } from "./party";
+import type { Bundles, JoiningCharacter, Result, State, ToolCall } from "./types";
 
 export * from "./types";
 export { startInstance, type StartInput } from "./start";
 export { view, type View } from "./view";
+export { sharedEvents } from "./visibility";
 
 function run(state: State, bundles: Bundles, rng: Rng, body: (ctx: Ctx) => void): Result {
   const ctx = new Ctx(structuredClone(state), content(bundles), rng, applyEffects);
@@ -75,6 +77,16 @@ export function advance(state: State, bundles: Bundles, rng: Rng): Result {
     if (s.round.order === null) closeRound(ctx);
     else finishRoundIfReady(ctx);
   });
+}
+
+/** Adds a character to a paused instance's party. */
+export function join(state: State, bundles: Bundles, joining: JoiningCharacter, rng: Rng): Result {
+  return run(state, bundles, rng, (ctx) => joinParty(ctx, joining));
+}
+
+/** Removes a character from a paused instance's party; its sheet is in `state.characters` before the call. */
+export function leave(state: State, bundles: Bundles, characterId: string, rng: Rng): Result {
+  return run(state, bundles, rng, (ctx) => leaveParty(ctx, characterId));
 }
 
 /** A simultaneous round closes when every character has declared and no choice is pending. */
