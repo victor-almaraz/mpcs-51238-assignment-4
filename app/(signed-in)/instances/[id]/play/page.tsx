@@ -40,6 +40,7 @@ export default async function Play({ params, searchParams }: { params: Promise<{
       names={Object.fromEntries(instance.characters.map((c) => [c.id, c.name]))}
       endings={endings}
       realtime={url && key ? { url, key } : null}
+      textInput={deps.parser !== undefined}
     />
   );
 }

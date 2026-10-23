@@ -3,6 +3,7 @@
 
 import { AdminError } from "../coordinator/admin";
 import * as coordinator from "../coordinator/instance";
+import { processInput } from "../coordinator/inputs";
 import type { AdventureBundle } from "../bundle/adventure";
 import { satisfies } from "../materials/semver";
 import type { InstanceView, Store, UserRecord } from "../store";
@@ -223,4 +224,37 @@ export async function getHistory(store: Store, userId: string | null, input: unk
   const page = await store.history(instance.id, after, limit + 1);
   const items = page.slice(0, limit);
   return { items, next_after_version: page.length > limit ? items.at(-1)!.version : null };
+}
+
+/** Seconds after which an unfinished input no longer blocks the character's next one. */
+const PROCESSING_SECONDS = 60;
+
+/** submit_input: free text through the Parser Adapter (api.md, Play). Outcomes arrive as messages. */
+export async function submitInput(deps: Deps, userId: string | null, input: unknown, entropy: Entropy = cryptoEntropy) {
+  const { store } = deps;
+  const user = await caller(store, userId, "submit_input");
+  const req = onlyFields(input, ["instance_id", "character_id", "text", "idempotency_key"]);
+  const { instance } = await instanceOf(store, user, req.instance_id);
+  const actor = actorOf(instance, user, req.character_id);
+  if (typeof req.text !== "string" || req.text.trim().length < 1 || req.text.length > 500) throw new ApiError("invalid_request", "text must have 1 to 500 characters");
+  if (typeof req.idempotency_key !== "string" || !KEY.test(req.idempotency_key)) throw new ApiError("invalid_request", "idempotency_key must have 8 to 64 characters");
+  if (!deps.parser) throw new ApiError("unavailable", "text input is not available; use actions");
+  const repeated = await store.inputByKey(instance.id, user.id, req.idempotency_key);
+  if (repeated) return { accepted: true, input_id: repeated.id };
+  if (instance.status !== "active") throw new ApiError("conflict", `the instance is ${instance.status}`);
+  if (await store.inputProcessing(instance.id, actor, PROCESSING_SECONDS)) throw new ApiError("rate_limited", "an input is already in processing", { retry_after_ms: 1500 });
+  const id = entropy.id("in");
+  const fresh = await store.logInput({ id, instance_id: instance.id, user_id: user.id, idempotency_key: req.idempotency_key, text: req.text });
+  if (!fresh) return { accepted: true, input_id: (await store.inputByKey(instance.id, user.id, req.idempotency_key))!.id };
+  await store.setInputCharacter(id, actor);
+  try {
+    await coordinated(processInput(deps, instance.id, actor, req.text, id));
+  } catch (e) {
+    await store.rejectInput(id);
+    const current = (await store.instanceView(instance.id))!;
+    const reason = e instanceof ApiError ? (e.extra.engine_code as string | undefined) ?? e.code : "unavailable";
+    await deps.broadcast.send(`user:${user.id}`, [{ type: "input_rejected", instance_id: instance.id, version: current.version, input_id: id, reason }]).catch(() => undefined);
+    if (!(e instanceof ApiError)) throw e;
+  }
+  return { accepted: true, input_id: id };
 }

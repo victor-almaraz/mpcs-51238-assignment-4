@@ -28,7 +28,8 @@ export interface EngineError {
   detail: string;
 }
 
-export type Result = { ok: true; events: GameEvent[]; state: State } | { ok: false; error: EngineError };
+/** `facts` holds narrator facts the call produced: trigger `narrate` text, topic briefs, revealed secrets. */
+export type Result = { ok: true; events: GameEvent[]; state: State; facts?: string[] } | { ok: false; error: EngineError };
 
 export interface ToolCall {
   tool: string;

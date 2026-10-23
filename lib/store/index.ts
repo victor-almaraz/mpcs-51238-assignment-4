@@ -537,4 +537,18 @@ export class Store {
   async deletedCampaign(id: string): Promise<{ id: string; author_id: string; deleted_at: string } | undefined> {
     return (await this.rpc.call<{ id: string; author_id: string; deleted_at: string } | null>("cadmium_deleted_campaign", { p_id: id })) ?? undefined;
   }
+
+  // Parsed inputs --------------------------------------------------------------------------------
+
+  async inputProcessing(instanceId: string, characterId: string, seconds: number): Promise<boolean> {
+    return this.rpc.call<boolean>("cadmium_input_processing", { p_instance: instanceId, p_character: characterId, p_seconds: seconds });
+  }
+
+  async setInputCharacter(id: string, characterId: string): Promise<void> {
+    await this.rpc.call("cadmium_set_input_character", { p_id: id, p_character: characterId });
+  }
+
+  async recordParse(id: string, parserContext: unknown, toolCalls: unknown[]): Promise<void> {
+    await this.rpc.call("cadmium_record_parse", { p_id: id, p_parser_context: parserContext, p_tool_calls: toolCalls });
+  }
 }

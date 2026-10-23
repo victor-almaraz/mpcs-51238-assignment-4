@@ -1,8 +1,8 @@
 // The engine (architecture.md, "Engine interface"): submit and advance. Pure: no I/O, no clock;
 // randomness only from the Rng argument. Each call returns a complete result or an error.
 
-import type { Rng } from "../rng";
-import { FREE_TOOLS, checkActor, resolve, validateCall } from "./actions";
+import { Rng } from "../rng";
+import { FREE_TOOLS, availableTools, checkActor, resolve, validateCall } from "./actions";
 import { content } from "./content";
 import { Ctx, Reject, reject } from "./ctx";
 import { applyEffects } from "./effects";
@@ -21,7 +21,7 @@ function run(state: State, bundles: Bundles, rng: Rng, body: (ctx: Ctx) => void)
     if (ctx.state.ended) reject("instance_not_active", "the instance has ended");
     body(ctx);
     ctx.state.rng_counter = rng.counter;
-    return { ok: true, events: ctx.events, state: ctx.state };
+    return { ok: true, events: ctx.events, state: ctx.state, facts: [...ctx.facts] };
   } catch (e) {
     if (e instanceof Reject) return { ok: false, error: e.error };
     throw e;
@@ -87,6 +87,17 @@ export function join(state: State, bundles: Bundles, joining: JoiningCharacter, 
 /** Removes a character from a paused instance's party; its sheet is in `state.characters` before the call. */
 export function leave(state: State, bundles: Bundles, characterId: string, rng: Rng): Result {
   return run(state, bundles, rng, (ctx) => leaveParty(ctx, characterId));
+}
+
+/** The tools `actor` may call now, and whether it may take a non-free action (tools.md, Parser context). */
+export function toolsFor(state: State, bundles: Bundles, actor: string): { tools: string[]; can_act: boolean } {
+  return availableTools(new Ctx(state, content(bundles), new Rng(0), applyEffects), actor);
+}
+
+/** A character's movement speed in cells per turn, from the rules system. */
+export function speedOf(state: State, bundles: Bundles, actor: string): number {
+  const ctx = new Ctx(state, content(bundles), new Rng(0), applyEffects);
+  return bundles.system.speed(ctx.combatant(actor));
 }
 
 /** A simultaneous round closes when every character has declared and no choice is pending. */

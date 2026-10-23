@@ -87,6 +87,25 @@ export function checkActor(ctx: Ctx, actor: string, call: ToolCall): void {
   }
 }
 
+/**
+ * The tools an actor may call now, before arguments: the checks of `checkActor`, plus turn order
+ * under sequential resolution (tools.md, Parser context: `can_act` false offers only free tools).
+ */
+export function availableTools(ctx: Ctx, actor: string): { tools: string[]; can_act: boolean } {
+  const s = ctx.state;
+  const ch = s.characters[actor];
+  if (!ch) return { tools: [], can_act: false };
+  const all = Object.keys(ARGS);
+  const free = all.filter((t) => FREE_TOOLS.has(t) && (t !== "choose" || s.pending_choices[actor]));
+  const current = s.round.resolution === "sequential" && s.round.order && s.round.turn_index !== null ? s.round.order[s.round.turn_index] : undefined;
+  const can_act = !(s.round.resolution === "sequential" && current !== actor) && ch.sheet.status === "active";
+  if (!can_act || s.pending_choices[actor]) return { tools: free, can_act };
+  const blocked = new Set(ch.conditions.flatMap((k) => ctx.c.condition(k.id)?.blocks ?? []));
+  const combat = s.round.mode === "combat" && inCombatAreaOf(ctx, actor);
+  const tools = all.filter((t) => t !== "choose" && !blocked.has(t) && !(combat && EXPLORATION_ONLY.has(t)));
+  return { tools, can_act };
+}
+
 const str = (v: unknown) => v as string;
 
 function inCombatAreaOf(ctx: Ctx, id: string): boolean {

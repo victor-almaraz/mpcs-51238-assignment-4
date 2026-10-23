@@ -12,6 +12,40 @@ export interface Labels {
   ending(id: string): string;
 }
 
+/** A tool call in words, for suggestions and action menus: "move to the hangar". */
+export function describeCall(call: { tool: string; args: Record<string, unknown> }, l: Labels): string {
+  const a = call.args;
+  const n = (field: string) => (typeof a[field] === "string" ? l.entity(a[field] as string) : "");
+  switch (call.tool) {
+    case "move":
+      return typeof a.to_id === "string" ? `move to ${l.room(a.to_id) !== a.to_id ? l.room(a.to_id) : n("to_id")}` : `move away from ${n("away_from_id")}`;
+    case "attack":
+      return `attack ${n("target_id")}`;
+    case "ability":
+      return `use ${l.ability(String(a.ability_id))}${typeof a.target_id === "string" ? ` on ${n("target_id")}` : ""}`;
+    case "use":
+      return `use ${n("item_id")}${typeof a.target_id === "string" ? ` on ${n("target_id")}` : ""}`;
+    case "interact":
+      return `${String(a.verb)} ${n("target_id")}`;
+    case "examine":
+      return typeof a.target_id === "string" ? `examine ${n("target_id")}` : "look around";
+    case "take":
+      return `take ${n("entity_id")}`;
+    case "drop":
+      return `drop ${n("item_id")}`;
+    case "give":
+      return `give ${n("item_id")} to ${n("target_id")}`;
+    case "talk":
+      return `talk to ${n("npc_id")}`;
+    case "rest":
+      return a.kind === "long" ? "take a long rest" : "take a short rest";
+    case "choose":
+      return `choose ${String(a.option_id)}`;
+    default:
+      return call.tool;
+  }
+}
+
 const third = (verb: string) => (/(s|sh|ch|x|z)$/.test(verb) ? `${verb}es` : `${verb}s`);
 const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -45,8 +79,10 @@ function line(e: GameEvent, l: Labels): string | null {
       return `${n("actor")} speaks with ${n("npc")}.`;
     case "waited":
       return `${n("actor")} waits.`;
-    case "improvised":
-      return `${n("actor")} tries something.`;
+    case "improvised": {
+      const ideas = Array.isArray(p.suggestions) ? (p.suggestions as { tool: string; args: Record<string, unknown> }[]).map((c) => describeCall(c, l)) : [];
+      return ideas.length > 0 ? `${n("actor")} hesitates. Perhaps ${ideas.join(", or ")}.` : `${n("actor")} hesitates.`;
+    }
     case "action_voided":
       return `${n("actor")}'s action comes to nothing.`;
     case "attacked":

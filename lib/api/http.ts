@@ -33,6 +33,7 @@ import {
   resumeInstance,
   startInstance,
   submitAction,
+  submitInput,
   type Deps,
 } from "./instances";
 import { acceptInvitation, declineInvitation, invite, listInvitations, previewInvitation, revokeInvitation } from "./invitations";
@@ -149,11 +150,7 @@ const ROUTES: Route[] = [
   [
     "POST",
     "/instances/:instance_id/inputs",
-    async (c) => {
-      await gated(c, "submit_input");
-      // The parser adapter arrives with sprint 15; direct actions work meanwhile.
-      throw new ApiError("unavailable", "text input is not available yet; use actions");
-    },
+    async (c) => ({ status: 202, body: await submitInput(c.deps, c.user, { ...c.body, instance_id: c.params.instance_id, idempotency_key: c.headers.get("idempotency-key") ?? undefined }) }),
   ],
 ];
 

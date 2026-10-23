@@ -34,6 +34,11 @@ The server reads these variables, from `.env.local` locally and from the Vercel 
 | `CLERK_WEBHOOK_SIGNING_SECRET` | yes | Verifies Clerk's webhook at `/api/webhooks/clerk` |
 | `EXPLORATION_ROUND_TIMEOUT` | no | Seconds an exploration round waits before advancing; default 120, 0 disables |
 | `COMBAT_TURN_TIMEOUT` | no | Seconds a combat round or turn waits; default 60, 0 disables |
+| `GROQ_API_KEY` | yes | The parser and narrator; without it, text input is unavailable and narration is template text |
+| `GROQ_PARSER_MODEL`, `GROQ_NARRATOR_MODEL` | no | Groq model ids; default `llama-3.3-70b-versatile` |
+| `PARSER_TIMEOUT`, `NARRATOR_TIMEOUT` | no | Seconds before a model call falls back; defaults 8 and 10 |
+| `PARSER_ENABLED`, `NARRATOR_ENABLED` | no | `0` disables one adapter while keeping the other (runbooks/model-outage.md) |
+| `ACTION_MENU_MODE` | no | `1` sends every character an action menu at each round and turn start |
 
 `GET /api/health` reports which are set, and whether the database schema is applied, without revealing values.
 
@@ -64,6 +69,7 @@ Clerk keeps the `users` table current through a webhook endpoint at `https://<ho
 | `pnpm materials check DIR` | The Content Compiler's `check` subcommand |
 | `pnpm harness play ...` | The engine's command-line harness; see `lib/harness/cli.ts` |
 | `pnpm golden` | Rewrite the golden scenario files after an intended behaviour change |
+| `pnpm eval:parser` | Run the parser evaluation set against the Groq model; needs `GROQ_API_KEY` in the environment; exits 1 below 90% exact match or on an overreach violation |
 
 The Content Compiler's command line follows [`spec/README.md`](cadmium-spec/spec/README.md#compiler-interface). pnpm prints the script line on stdout, so run `build` directly when its output is piped:
 
@@ -91,7 +97,9 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `lib/coordinator/` | The Instance Coordinator: serialized commits, round deadlines, messages; the operator operations `replay_instance` and `restore_instance` |
 | `lib/broadcast/` | Realtime broadcast from the server, and browser subscriptions delivered in version order |
 | `lib/map/` | Play maps as drawing operations with click targets, and their canvas painter |
-| `lib/narrator/` | Narration; so far the template narrator |
+| `lib/models/` | The Groq client over its HTTP API |
+| `lib/parser/` | Parser context, per-input tool definitions, the Parser Adapter, and the evaluation set |
+| `lib/narrator/` | Narrator context, the Narrator Adapter, and template narration |
 | `supabase/migrations/` | SQL migrations, applied by Supabase in production and by PGlite in tests |
 | `lib/systems/` | Rules-system contract, registry, implementations, and the reusable conformance suite in `testing/` |
 | `lib/bundle/` | Schema registry and generated types; generated files are never edited by hand |

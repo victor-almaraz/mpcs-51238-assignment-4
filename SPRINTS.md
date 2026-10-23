@@ -344,3 +344,24 @@ Open:
 - Icon buttons use text labels until `lucide-react` is installed.
 - Hostile creatures have no danger ring yet: the view does not mark hostility.
 - The page is not yet checked in a browser: signed-in pages need migrations 3 to 5 in the remote database.
+
+### Sprint 15: Parser and narrator — open
+
+Done:
+
+- `lib/parser/context.ts`: parser context from the character's view (no coordinates, hidden entities, locks, flags, stages, or secrets) and tool definitions per input, with every id argument an enum of ids valid now; tools the actor cannot call (mode, conditions, turn order, pending choice) are omitted, and so is a tool whose required enum is empty. `lib/engine` adds `toolsFor` and `speedOf`.
+- `lib/parser/adapter.ts`: the Parser Adapter over Groq's HTTP API (`lib/models/groq.ts`, no SDK), with the required prompt rules and the setting packs' synonyms and examples; zero or several tool calls count as `invalid_call`; timeouts and outages return a failure that falls back.
+- `lib/coordinator/inputs.ts`: `submit_input` end to end. One retry with the engine's error for `invalid_call`, `unknown_id`, `not_reachable`, and `requirement_unmet`; otherwise `improvise` with category `unclear` and a valid suggestion; parsed `improvise` suggestions are validated. The input log records the parser context, each model exchange with its latency, and the outcome (`committed` or `fallback`). A character has at most one input in processing (`rate_limited`).
+- `lib/narrator`: narrator context (shared events without cells, labels, dispositions, facts from the engine, improvise payload and streak, room, positions) and the Narrator Adapter, clipped to `max_sentences`. Narration runs in `after()`; a failed or absent model gives template text. Template text for `improvise` names the suggestions.
+- Action menus at an improvise streak of 4 or more, and at every round and turn start in `ACTION_MENU_MODE`.
+- Play page: free-text input when a parser is configured, disabled while processing, during a pending choice, and out of turn.
+- `supabase/migrations/20261023000500_inputs.sql`: the input's character, the processing check, and parse records.
+- Evaluation set: `lib/parser/eval/cases.ts`, 63 cases over states of the golden `sunken_*` runs covering every tool but `give`, each improvise category, compound inputs, misspellings, pronouns, unknown entities, and injection attempts; `pnpm eval:parser` runs it against Groq.
+- Tests: `lib/api/input.test.ts` (8), `lib/parser/adapter.test.ts` (5), `lib/parser/eval/cases.test.ts` (48).
+
+Open:
+
+- The exit criterion (90% exact match, no overreach to a state-changing tool) is unmeasured until `GROQ_API_KEY` is available; then run `pnpm eval:parser` with the key in the environment. Enable Zero Data Retention in the Groq console before launch.
+- The evaluation set is hand-written; the guide asks for cases from real play logs, which the input log now records.
+- `give` has no case: the golden runs never place a container with capacity in reach.
+- Migration 6 is not yet applied to the remote database.

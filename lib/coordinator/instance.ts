@@ -2,9 +2,12 @@
 // instance through optimistic versioning, commits of engine results, round deadlines, and the messages
 // each commit produces (api.md, Messages).
 
-import { advance, join, labelsFor, leave, sharedEvents, startInstance, submit, view, type Bundles, type CommitInput, type GameEvent, type JoiningCharacter, type Result, type State } from "../engine";
+import { advance, join, leave, sharedEvents, startInstance, submit, view, type Bundles, type CommitInput, type GameEvent, type JoiningCharacter, type Result, type State } from "../engine";
 import { instanceTopic, userTopic, type Broadcaster, type Message } from "../broadcast";
-import { templateNarration } from "../narrator/template";
+import type { Narrator } from "../narrator/adapter";
+import type { Parser } from "../parser/adapter";
+import { narrate } from "./narration";
+import { sendActionMenus } from "./menus";
 import { Rng } from "../rng";
 import { VersionConflict, type CharacterRecord, type InstanceRecord, type InstanceStatus, type Store } from "../store";
 import { pinnedBundles } from "./admin";
@@ -33,6 +36,14 @@ export interface Deps {
   broadcast: Broadcaster;
   now: () => Date;
   timeouts: Timeouts;
+  /** The parser for submit_input; without one, text input is unavailable. */
+  parser?: Parser;
+  /** The model narrator; without one, or when it fails, narration is template text. */
+  narrator?: Narrator;
+  /** Runs work after the response, such as narration (Next.js `after`); without it, work runs inline. */
+  defer?: (task: () => Promise<void>) => void;
+  /** Sends `action_menu` to every character at each round and turn start (tools.md, improvise). */
+  actionMenuMode?: boolean;
   /** Logs a failed broadcast; the commit stands and clients backfill. */
   warn?: (message: string) => void;
 }
@@ -40,13 +51,13 @@ export interface Deps {
 /** Attempts per write before giving up on repeated version conflicts. */
 const ATTEMPTS = 8;
 
-async function load(deps: Deps, id: string): Promise<InstanceRecord> {
+export async function load(deps: Deps, id: string): Promise<InstanceRecord> {
   const instance = await deps.store.getInstance(id);
   if (!instance) throw new CoordinatorError("not_found", "no such instance");
   return instance;
 }
 
-const rngFor = (instance: InstanceRecord, state: State) => new Rng(BigInt(instance.seed), state.rng_counter);
+export const rngFor = (instance: InstanceRecord, state: State) => new Rng(BigInt(instance.seed), state.rng_counter);
 
 /** Seconds the current wait of `state` may last, or null when untimed. */
 function timeoutOf(deps: Deps, state: State): number | null {
@@ -76,7 +87,7 @@ function sheetsOf(state: State, ids: readonly string[]) {
     });
 }
 
-async function send(deps: Deps, topic: string, messages: Message[]): Promise<void> {
+export async function send(deps: Deps, topic: string, messages: Message[]): Promise<void> {
   try {
     await deps.broadcast.send(topic, messages);
   } catch (e) {
@@ -94,7 +105,14 @@ interface Committed {
  * Commits an engine result at `instance.version + 1` and sends its messages. Throws VersionConflict
  * when another writer committed first.
  */
-async function commit(deps: Deps, instance: InstanceRecord, bundles: Bundles, result: Extract<Result, { ok: true }>, input: CommitInput, extra: { actor?: string; inputLog?: string; status?: InstanceStatus } = {}): Promise<Committed> {
+export async function commit(
+  deps: Deps,
+  instance: InstanceRecord,
+  bundles: Bundles,
+  result: Extract<Result, { ok: true }>,
+  input: CommitInput,
+  extra: { actor?: string; inputLog?: string; outcome?: "committed" | "fallback"; status?: InstanceStatus } = {},
+): Promise<Committed> {
   const ended = result.state.ended !== null;
   const version = await deps.store.commit({
     instanceId: instance.id,
@@ -102,7 +120,7 @@ async function commit(deps: Deps, instance: InstanceRecord, bundles: Bundles, re
     state: result.state,
     events: result.events,
     input,
-    inputLog: extra.inputLog ? { id: extra.inputLog, outcome: "committed" } : undefined,
+    inputLog: extra.inputLog ? { id: extra.inputLog, outcome: extra.outcome ?? "committed" } : undefined,
     status: ended ? "ended" : extra.status,
     ending: ended ? result.state.ended!.ending : undefined,
   });
@@ -143,18 +161,17 @@ async function commit(deps: Deps, instance: InstanceRecord, bundles: Bundles, re
   }
   for (const [user, messages] of owners) await send(deps, userTopic(user), messages);
 
+  await sendActionMenus(deps, instance.id, version, bundles, result.state, result.events, extra.actor);
+
   // Narration after the commit; a commit with nothing resolved, such as a declaration, has none.
-  // The Groq narrator replaces the template in sprint 15; a failure there falls back to it.
-  const text = templateNarration(visible, labelsFor(instance.state ? [result.state, instance.state] : [result.state], bundles));
-  if (text) {
-    await deps.store.putNarration(instance.id, version, text, "template");
-    await send(deps, instanceTopic(instance.id), [{ type: "narration", ...base, text, source: "template" }]);
-  }
+  const job = () => narrate(deps, { instanceId: instance.id, version, bundles, before: instance.state, after: result.state, events: visible, facts: result.facts ?? [], actor: extra.actor ?? null });
+  if (deps.defer) deps.defer(job);
+  else await job();
   return { version, state: result.state, events: result.events };
 }
 
 /** Repeats `attempt` on a fresh read of the instance until it commits without a version conflict. */
-async function serialized<T>(deps: Deps, id: string, attempt: (instance: InstanceRecord) => Promise<T>): Promise<T> {
+export async function serialized<T>(deps: Deps, id: string, attempt: (instance: InstanceRecord) => Promise<T>): Promise<T> {
   for (let i = 0; i < ATTEMPTS; i++) {
     try {
       return await attempt(await load(deps, id));
@@ -165,7 +182,7 @@ async function serialized<T>(deps: Deps, id: string, attempt: (instance: Instanc
   throw new CoordinatorError("conflict", "the instance is busy; try again");
 }
 
-function requireStatus(instance: InstanceRecord, allowed: InstanceStatus[], action: string): void {
+export function requireStatus(instance: InstanceRecord, allowed: InstanceStatus[], action: string): void {
   if (!allowed.includes(instance.status)) throw new CoordinatorError("conflict", `cannot ${action} an instance that is ${instance.status}`);
 }
 

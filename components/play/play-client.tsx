@@ -12,7 +12,7 @@ import type { View } from "@/lib/engine";
 import type { Message } from "@/lib/broadcast";
 import { realtimeClient, subscribeInstance, subscribeUser, type StreamStatus } from "@/lib/broadcast/client";
 import { Sequencer, type HistoryItem } from "@/lib/broadcast/sequencer";
-import { actAction, advanceAction, historyAction, refreshAction } from "@/lib/server/play-actions";
+import { actAction, advanceAction, historyAction, inputAction, refreshAction } from "@/lib/server/play-actions";
 import { ActionBar } from "./action-bar";
 import { MapPanel } from "./map-panel";
 
@@ -33,6 +33,8 @@ export interface PlayProps {
   names: Record<string, string>;
   endings: Record<string, string>;
   realtime: { url: string; key: string } | null;
+  /** Whether a parser is configured for free-text input. */
+  textInput: boolean;
 }
 
 /** How often to poll history while the Realtime channel is down. */
@@ -73,6 +75,7 @@ export function PlayClient(props: PlayProps) {
   const [selected, setSelected] = useState<string | null>(null);
   const [declaration, setDeclaration] = useState<{ tool: string; label: string } | null>(null);
   const [sheet, setSheet] = useState<Sheet>(null);
+  const [text, setText] = useState("");
   const lastLabel = useRef<string>("");
   // The actor of each commit, for the heading of its narration.
   const actors = useRef(new Map(props.history.map((h) => [h.version, h.actor_id])));
@@ -278,7 +281,33 @@ export function PlayClient(props: PlayProps) {
       <p className="font-ui text-caption text-muted">Reconnecting…</p>
     ) : null;
 
-  const placeholder = !live ? "The game is not running." : view.pending_choice ? "Choose an option first." : notMyTurn ? `It is ${names[round.current ?? ""] ?? "another character"}'s turn.` : "Text input arrives with the parser; use the actions below.";
+  const placeholder = !live
+    ? "The game is not running."
+    : view.pending_choice
+      ? "Choose an option first."
+      : notMyTurn
+        ? `It is ${names[round.current ?? ""] ?? "another character"}'s turn.`
+        : busy
+          ? "Working on your last action…"
+          : props.textInput
+            ? "What do you do?"
+            : "Text input is not available; use the actions.";
+  const typing = live && props.textInput && !busy && !view.pending_choice && !notMyTurn;
+
+  const say = async () => {
+    const t = text.trim();
+    if (!t) return;
+    setBusy(true);
+    setError(null);
+    lastLabel.current = t;
+    const r = await inputAction({ instance_id: instanceId, character_id: characterId, text: t, idempotency_key: crypto.randomUUID() });
+    setBusy(false);
+    if (r.error) setError(r.error);
+    else {
+      setText("");
+      void refresh();
+    }
+  };
 
   return (
     <div className="mx-auto grid max-w-[90rem] grid-cols-1 gap-6 px-4 py-4 lg:grid-cols-[16rem_minmax(0,48rem)_14rem]">
@@ -326,7 +355,22 @@ export function PlayClient(props: PlayProps) {
         {error && <p className="text-danger">{error}</p>}
         {live && !notMyTurn && <ActionBar view={view} selected={selected} onSelect={setSelected} act={act} busy={busy} declaration={declaration} />}
         <div className="lg:hidden">{places}</div>
-        <input disabled aria-label="What do you do?" placeholder={placeholder} className="w-full rounded-control border border-border bg-desk px-3 py-2 font-prose text-prose" />
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void say();
+          }}
+        >
+          <input
+            disabled={!typing}
+            value={text}
+            maxLength={500}
+            onChange={(e) => setText(e.target.value)}
+            aria-label="What do you do?"
+            placeholder={placeholder}
+            className="w-full rounded-control border border-border bg-page px-3 py-2 font-prose text-prose disabled:bg-desk"
+          />
+        </form>
       </section>
 
       <aside className="hidden lg:block">{roundStatus}</aside>

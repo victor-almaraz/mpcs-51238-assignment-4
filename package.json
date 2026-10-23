@@ -14,7 +14,8 @@
     "check": "pnpm gen:check && pnpm typecheck && pnpm lint --max-warnings 0 && pnpm test && pnpm build",
     "materials": "node --import tsx lib/materials/cli.ts",
     "harness": "node --import tsx lib/harness/cli.ts",
-    "golden": "node --import tsx scripts/golden.ts"
+    "golden": "node --import tsx scripts/golden.ts",
+    "eval:parser": "node --import tsx scripts/eval-parser.ts"
   },
   "devEngines": {
     "runtime": {
