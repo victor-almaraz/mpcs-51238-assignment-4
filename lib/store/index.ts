@@ -115,6 +115,69 @@ export interface CharacterRecord {
   created_at: string;
 }
 
+export interface MaterialRef {
+  kind: "setting" | "adventure";
+  id: string;
+  version: string;
+}
+
+/** A bundle as a campaign material: identity, system, who may use it, and its manifest. */
+export interface MaterialRecord extends MaterialRef {
+  system: string;
+  system_versions: string;
+  origin: "operator" | "author";
+  listed: boolean;
+  publisher_id: string | null;
+  manifest: (SettingBundle | AdventureBundle)["manifest"];
+}
+
+export interface CampaignRecord {
+  id: string;
+  title: string;
+  description: string;
+  author_id: string;
+  system: string;
+  system_versions: string;
+  modules: string[];
+  archived: boolean;
+  invite_link_code: string | null;
+  created_at: string;
+  materials: MaterialRef[];
+  members: { user_id: string; display_name: string; role: "author" | "player" }[];
+  instance_ids: string[];
+}
+
+export interface InvitationRecord {
+  id: string;
+  campaign_id: string;
+  campaign_title: string;
+  inviter: { user_id: string; display_name: string };
+  note: string;
+  instance_id: string | null;
+  message: string;
+  status: "pending" | "accepted" | "declined" | "revoked" | "expired";
+  created_at: string;
+  expires_at: string;
+}
+
+/** The instance object of api.md, without the engine state. */
+export interface InstanceView {
+  id: string;
+  campaign_id: string;
+  name: string;
+  system: string;
+  system_version: string;
+  modules: string[];
+  materials: MaterialRef[];
+  status: InstanceStatus;
+  version: number;
+  characters: { id: string; user_id: string; name: string }[];
+  created_at: string;
+  started_at: string | null;
+  ended_at: string | null;
+  ending: string | null;
+}
+
 type BundleMeta = { publisher_id?: string | null; draft_id?: string | null; origin: "operator" | "author"; listed?: boolean };
 
 export class Store {
@@ -292,5 +355,125 @@ export class Store {
   /** The latest listed operator bundle of each id, of a kind, for the given systems. */
   async listedBundles<B extends SettingBundle | AdventureBundle>(kind: B["kind"], systems: readonly string[]): Promise<B[]> {
     return this.rpc.call<B[]>("cadmium_listed_bundles", { p_kind: kind, p_systems: systems });
+  }
+
+  async material(kind: string, id: string, version: string): Promise<MaterialRecord | undefined> {
+    return (await this.rpc.call<MaterialRecord | null>("cadmium_material", { p_kind: kind, p_id: id, p_version: version })) ?? undefined;
+  }
+
+  /** The latest version of each material the user may choose: listed operator bundles and their own, or only their own. */
+  async listMaterials(userId: string, systems: readonly string[], kind: string | null, own: boolean): Promise<MaterialRecord[]> {
+    return this.rpc.call<MaterialRecord[]>("cadmium_list_materials", { p_user: userId, p_systems: systems, p_kind: kind, p_own: own });
+  }
+
+  // Campaigns ------------------------------------------------------------------------------------
+
+  async createCampaign(c: { id: string; title: string; description: string; author_id: string; system: string; system_versions: string; modules: string[]; materials: MaterialRef[] }): Promise<CampaignRecord> {
+    return this.rpc.call<CampaignRecord>("cadmium_create_campaign", {
+      p_id: c.id,
+      p_title: c.title,
+      p_description: c.description,
+      p_author: c.author_id,
+      p_system: c.system,
+      p_system_versions: c.system_versions,
+      p_modules: c.modules,
+      p_materials: c.materials,
+    });
+  }
+
+  async getCampaign(id: string): Promise<CampaignRecord | undefined> {
+    return (await this.rpc.call<CampaignRecord | null>("cadmium_campaign", { p_id: id })) ?? undefined;
+  }
+
+  async listCampaigns(user: string, filter: { role?: string; archived?: boolean; limit: number; after?: string }): Promise<CampaignRecord[]> {
+    return this.rpc.call<CampaignRecord[]>("cadmium_list_campaigns", { p_user: user, p_role: filter.role ?? null, p_archived: filter.archived ?? null, p_limit: filter.limit, p_after: filter.after ?? null });
+  }
+
+  /** Updates the given fields; null leaves a field unchanged. */
+  async updateCampaign(id: string, u: { title?: string; description?: string; modules?: string[] }): Promise<CampaignRecord> {
+    return this.rpc.call<CampaignRecord>("cadmium_update_campaign", { p_id: id, p_title: u.title ?? null, p_description: u.description ?? null, p_modules: u.modules ?? null });
+  }
+
+  /** Replaces the materials; their order is the settings' resolution order. */
+  async setMaterials(id: string, materials: MaterialRef[]): Promise<CampaignRecord> {
+    return this.rpc.call<CampaignRecord>("cadmium_replace_campaign_materials", { p_id: id, p_materials: materials });
+  }
+
+  async archiveCampaign(id: string): Promise<CampaignRecord> {
+    return this.rpc.call<CampaignRecord>("cadmium_archive_campaign", { p_id: id });
+  }
+
+  async setInviteLink(id: string, code: string | null): Promise<void> {
+    await this.rpc.call("cadmium_set_invite_link", { p_id: id, p_code: code });
+  }
+
+  async campaignByLink(code: string): Promise<string | undefined> {
+    return (await this.rpc.call<string | null>("cadmium_campaign_by_link", { p_code: code })) ?? undefined;
+  }
+
+  /** Adds a player; false when the user is already a member. */
+  async addMember(campaignId: string, userId: string): Promise<boolean> {
+    return this.rpc.call<boolean>("cadmium_add_member", { p_campaign: campaignId, p_user: userId });
+  }
+
+  /** Removes a player, taking their characters out of the campaign's instances. */
+  async removeMember(campaignId: string, userId: string): Promise<void> {
+    await this.rpc.call("cadmium_remove_member", { p_campaign: campaignId, p_user: userId });
+  }
+
+  // Invitations ----------------------------------------------------------------------------------
+
+  async createInvitation(i: { id: string; campaign_id: string; inviter_id: string; instance_id: string | null; message: string; note: string; token_hash: string }): Promise<InvitationRecord> {
+    return this.rpc.call<InvitationRecord>("cadmium_create_invitation", {
+      p_id: i.id,
+      p_campaign: i.campaign_id,
+      p_inviter: i.inviter_id,
+      p_instance: i.instance_id,
+      p_message: i.message,
+      p_note: i.note,
+      p_token_hash: i.token_hash,
+    });
+  }
+
+  async getInvitation(id: string): Promise<InvitationRecord | undefined> {
+    return (await this.rpc.call<InvitationRecord | null>("cadmium_get_invitation", { p_id: id })) ?? undefined;
+  }
+
+  async invitationByHash(hash: string): Promise<InvitationRecord | undefined> {
+    return (await this.rpc.call<InvitationRecord | null>("cadmium_invitation_by_hash", { p_token_hash: hash })) ?? undefined;
+  }
+
+  async listInvitations(campaignId: string, status?: string): Promise<InvitationRecord[]> {
+    return this.rpc.call<InvitationRecord[]>("cadmium_list_invitations", { p_campaign: campaignId, p_status: status ?? null });
+  }
+
+  /** Accepts or declines by code hash; returns `done`, or why not: `not_found`, `archived`, or the invitation's status. */
+  async respondInvitation(hash: string, userId: string, accept: boolean): Promise<string> {
+    return this.rpc.call<string>("cadmium_respond_invitation", { p_token_hash: hash, p_user: userId, p_accept: accept });
+  }
+
+  /** Revokes a pending invitation; false when it is no longer pending. */
+  async revokeInvitation(id: string): Promise<boolean> {
+    return this.rpc.call<boolean>("cadmium_revoke_invitation", { p_id: id });
+  }
+
+  // Instance views and party ---------------------------------------------------------------------
+
+  async instanceView(id: string): Promise<InstanceView | undefined> {
+    return (await this.rpc.call<InstanceView | null>("cadmium_instance", { p_id: id })) ?? undefined;
+  }
+
+  async listInstances(campaignId: string): Promise<InstanceView[]> {
+    return this.rpc.call<InstanceView[]>("cadmium_list_instances", { p_campaign: campaignId });
+  }
+
+  /** Puts an available character of the user into an instance; false when it is no longer available. */
+  async joinInstance(instanceId: string, characterId: string, userId: string): Promise<boolean> {
+    return this.rpc.call<boolean>("cadmium_join_instance", { p_instance: instanceId, p_character: characterId, p_user: userId });
+  }
+
+  /** Takes a character out of an instance, writing back `sheet` when given. */
+  async leaveInstance(instanceId: string, characterId: string, sheet: CharacterRecord["sheet"] | null = null): Promise<boolean> {
+    return this.rpc.call<boolean>("cadmium_leave_instance", { p_instance: instanceId, p_character: characterId, p_sheet: sheet });
   }
 }

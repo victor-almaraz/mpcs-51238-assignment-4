@@ -79,9 +79,9 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `lib/engine/` | The engine: `submit`, `advance`, `startInstance`, and views |
 | `lib/harness/` | Command-line harness, scripted scenarios, and golden logs |
 | `lib/store/` | The store: bundles, instances, atomic commits, events, inputs, narration, as SQL functions called through an `Rpc` (supabase-js in production, PGlite in tests) |
-| `lib/api/` | Operations of api.md over the store: users and the terms gate, systems, characters |
+| `lib/api/` | Operations of api.md over the store: users and the terms gate, systems, materials, characters, campaigns, invitations, instances in the lobby |
 | `lib/server/` | Server-only configuration, the service-role Supabase client, the session user, and server actions |
-| `components/systems/` | Creation forms and sheet views, registered by rules-system id |
+| `components/` | Shared form components; `systems/` holds creation forms and sheet views registered by rules-system id |
 | `lib/coordinator/` | Instance operations; so far the operator operations `replay_instance` and `restore_instance` |
 | `supabase/migrations/` | SQL migrations, applied by Supabase in production and by PGlite in tests |
 | `lib/systems/` | Rules-system contract, registry, implementations, and the reusable conformance suite in `testing/` |

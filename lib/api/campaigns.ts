@@ -1,0 +1,182 @@
+// Campaigns (api.md, Campaigns; data-model.md, Campaign, Campaign member, Campaign material).
+
+import { validRange } from "../materials/semver";
+import type { CampaignRecord, Store, UserRecord } from "../store";
+import { cryptoEntropy, type Entropy } from "./entropy";
+import { ApiError, onlyFields } from "./errors";
+import { checkMaterials } from "./materials";
+import { systemOrThrow } from "./systems";
+import { caller } from "./users";
+
+export type Role = "author" | "player";
+
+/** The campaign object of api.md: `invite_link_code` only for the author. */
+export function campaignView(c: CampaignRecord, userId: string) {
+  const { invite_link_code, ...rest } = c;
+  return c.author_id === userId ? { ...rest, invite_link_code } : rest;
+}
+
+export function roleOf(c: CampaignRecord, userId: string): Role | undefined {
+  return c.members.find((m) => m.user_id === userId)?.role;
+}
+
+/** The campaign and the caller's role; not_found for non-members, forbidden below `need`. */
+export async function membership(store: Store, user: UserRecord, campaignId: unknown, need: Role | "member" = "member"): Promise<{ campaign: CampaignRecord; role: Role }> {
+  if (typeof campaignId !== "string") throw new ApiError("invalid_request", "campaign_id must be a string");
+  const campaign = await store.getCampaign(campaignId);
+  const role = campaign && roleOf(campaign, user.id);
+  if (!campaign || !role) throw new ApiError("not_found", "no such campaign");
+  if (need === "author" && role !== "author") throw new ApiError("forbidden", "only the campaign's author may do this");
+  return { campaign, role };
+}
+
+function text(v: unknown, field: string, min: number, max: number): string {
+  if (typeof v !== "string" || v.trim().length < min || v.length > max) throw new ApiError("invalid_request", `${field} must have ${min} to ${max} characters`);
+  return v;
+}
+
+function modulesOf(v: unknown, system: string): string[] {
+  const known = systemOrThrow(system).MODULES;
+  if (!Array.isArray(v) || !v.every((m) => typeof m === "string")) throw new ApiError("invalid_request", "modules must be a list of module ids");
+  const unknown = v.filter((m) => !known.includes(m));
+  if (unknown.length > 0) throw new ApiError("invalid_request", `${system} has no module ${unknown.join(", ")}`);
+  return [...new Set(v as string[])];
+}
+
+export async function createCampaign(store: Store, userId: string | null, input: unknown, entropy: Entropy = cryptoEntropy) {
+  const user = await caller(store, userId, "create_campaign");
+  const req = onlyFields(input, ["title", "description", "system", "system_versions", "modules", "materials"]);
+  const system = systemOrThrow(req.system).ID;
+  if (typeof req.system_versions !== "string" || !validRange(req.system_versions)) throw new ApiError("invalid_request", "system_versions must be a version range such as ^1.0");
+  const terms = { author_id: user.id, system, system_versions: req.system_versions, modules: modulesOf(req.modules ?? [], system) };
+  const materials = await checkMaterials(store, terms, req.materials, { requireUsable: true });
+  const campaign = await store.createCampaign({
+    id: entropy.id("k"),
+    title: text(req.title, "title", 1, 80),
+    description: req.description === undefined ? "" : text(req.description, "description", 0, 2000),
+    ...terms,
+    materials,
+  });
+  return campaignView(campaign, user.id);
+}
+
+export async function listCampaigns(store: Store, userId: string | null, input: unknown = {}) {
+  const user = await caller(store, userId, "list_campaigns");
+  const req = onlyFields(input, ["role", "archived", "limit", "cursor"]);
+  if (req.role !== undefined && req.role !== "author" && req.role !== "player") throw new ApiError("invalid_request", "role must be author or player");
+  if (req.archived !== undefined && typeof req.archived !== "boolean") throw new ApiError("invalid_request", "archived must be a boolean");
+  const limit = req.limit === undefined ? 20 : req.limit;
+  if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > 100) throw new ApiError("invalid_request", "limit must be 1 to 100");
+  if (req.cursor !== undefined && typeof req.cursor !== "string") throw new ApiError("invalid_request", "cursor must be a string");
+  const page = await store.listCampaigns(user.id, { role: req.role as Role | undefined, archived: req.archived as boolean | undefined, limit: limit + 1, after: req.cursor as string | undefined });
+  const items = page.slice(0, limit);
+  return { items: items.map((c) => campaignView(c, user.id)), next_cursor: page.length > limit ? items.at(-1)!.id : null };
+}
+
+export async function getCampaign(store: Store, userId: string | null, campaignId: unknown) {
+  const user = await caller(store, userId, "get_campaign");
+  return campaignView((await membership(store, user, campaignId)).campaign, user.id);
+}
+
+export async function updateCampaign(store: Store, userId: string | null, input: unknown) {
+  const user = await caller(store, userId, "update_campaign");
+  const req = onlyFields(input, ["campaign_id", "title", "description", "modules"]);
+  const { campaign } = await membership(store, user, req.campaign_id, "author");
+  const title = req.title === undefined ? undefined : text(req.title, "title", 1, 80);
+  const description = req.description === undefined ? undefined : text(req.description, "description", 0, 2000);
+  let modules: string[] | undefined;
+  if (req.modules !== undefined) {
+    modules = modulesOf(req.modules, campaign.system);
+    // The current materials must still fit the new modules; their listing no longer matters.
+    await checkMaterials(store, { ...campaign, modules }, campaign.materials, { requireUsable: false });
+  }
+  return campaignView(await store.updateCampaign(campaign.id, { title, description, modules }), user.id);
+}
+
+export async function setMaterials(store: Store, userId: string | null, input: unknown) {
+  const user = await caller(store, userId, "set_materials");
+  const req = onlyFields(input, ["campaign_id", "materials"]);
+  const { campaign } = await membership(store, user, req.campaign_id, "author");
+  const materials = await checkMaterials(store, campaign, req.materials, { requireUsable: true });
+  return campaignView(await store.setMaterials(campaign.id, materials), user.id);
+}
+
+export async function archiveCampaign(store: Store, userId: string | null, campaignId: unknown) {
+  const user = await caller(store, userId, "archive_campaign");
+  const { campaign } = await membership(store, user, campaignId, "author");
+  if (campaign.archived) throw new ApiError("conflict", "the campaign is already archived");
+  return campaignView(await store.archiveCampaign(campaign.id), user.id);
+}
+
+/** Refuses while any of the user's characters is in one of the campaign's instances that has started. */
+// Taking characters out of a started instance needs the coordinator (sprint 13).
+async function onlyLobbyCharacters(store: Store, campaign: CampaignRecord, memberId: string): Promise<void> {
+  for (const id of campaign.instance_ids) {
+    const i = await store.instanceView(id);
+    if (i && i.status !== "lobby" && i.status !== "ended" && i.characters.some((c) => c.user_id === memberId)) {
+      throw new ApiError("conflict", `a character of the member is in the ${i.status} instance ${i.name}`);
+    }
+  }
+}
+
+export async function leaveCampaign(store: Store, userId: string | null, campaignId: unknown) {
+  const user = await caller(store, userId, "leave_campaign");
+  const { campaign, role } = await membership(store, user, campaignId);
+  if (role === "author") throw new ApiError("conflict", "the author cannot leave the campaign");
+  await onlyLobbyCharacters(store, campaign, user.id);
+  await store.removeMember(campaign.id, user.id);
+}
+
+export async function removeMember(store: Store, userId: string | null, input: unknown) {
+  const user = await caller(store, userId, "remove_member");
+  const req = onlyFields(input, ["campaign_id", "user_id"]);
+  const { campaign } = await membership(store, user, req.campaign_id, "author");
+  const target = campaign.members.find((m) => m.user_id === req.user_id);
+  if (!target) throw new ApiError("not_found", "no such member");
+  if (target.role === "author") throw new ApiError("conflict", "the author cannot be removed");
+  await onlyLobbyCharacters(store, campaign, target.user_id);
+  await store.removeMember(campaign.id, target.user_id);
+}
+
+/** An invite link code: three groups of four base32 characters (60 bits). */
+function linkCode(entropy: Entropy): string {
+  return entropy.code(12).replace(/(.{4})(?=.)/g, "$1-");
+}
+
+export async function rotateInviteLink(store: Store, userId: string | null, campaignId: unknown, entropy: Entropy = cryptoEntropy) {
+  const user = await caller(store, userId, "rotate_invite_link");
+  const { campaign } = await membership(store, user, campaignId, "author");
+  if (campaign.archived) throw new ApiError("conflict", "an archived campaign accepts no new members");
+  const code = linkCode(entropy);
+  await store.setInviteLink(campaign.id, code);
+  return { invite_link_code: code };
+}
+
+export async function disableInviteLink(store: Store, userId: string | null, campaignId: unknown) {
+  const user = await caller(store, userId, "disable_invite_link");
+  const { campaign } = await membership(store, user, campaignId, "author");
+  await store.setInviteLink(campaign.id, null);
+}
+
+/** Codes are compared without case or surrounding space, so a code read aloud still works. */
+export function normalizeCode(code: unknown): string {
+  if (typeof code !== "string" || code.trim() === "" || code.length > 64) throw new ApiError("invalid_request", "code must be a non-empty string");
+  return code.trim().toUpperCase();
+}
+
+export async function joinByLink(store: Store, userId: string | null, code: unknown) {
+  const user = await caller(store, userId, "join_by_link");
+  const id = await store.campaignByLink(normalizeCode(code));
+  if (!id) throw new ApiError("not_found", "the invite link is not valid");
+  await store.addMember(id, user.id);
+  return campaignView((await store.getCampaign(id))!, user.id);
+}
+
+/** What the join page shows for an invite link code: the campaign's title and author. */
+export async function previewInviteLink(store: Store, code: unknown) {
+  const id = await store.campaignByLink(normalizeCode(code));
+  const campaign = id && (await store.getCampaign(id));
+  if (!campaign) throw new ApiError("not_found", "the invite link is not valid");
+  const author = campaign.members.find((m) => m.role === "author")!;
+  return { campaign_title: campaign.title, author_display_name: author.display_name };
+}

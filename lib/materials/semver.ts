@@ -42,3 +42,8 @@ export function satisfies(version: string, range: string): boolean {
   }
   return compareVersions(v, high) < 0;
 }
+
+/** Whether `range` is a system version range of the forms `satisfies` accepts. */
+export function validRange(range: string): boolean {
+  return RANGE.test(range);
+}

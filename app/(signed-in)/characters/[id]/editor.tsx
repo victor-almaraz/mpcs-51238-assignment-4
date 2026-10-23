@@ -1,6 +1,7 @@
 "use client";
 import { useActionState } from "react";
-import { retireCharacterAction, updateCharacterAction, type FormState } from "@/lib/server/actions";
+import { retireCharacterAction, updateCharacterAction } from "@/lib/server/actions";
+import type { FormState } from "@/lib/server/forms";
 
 const field = "w-full rounded-control border border-border bg-page px-2 py-1 font-prose text-prose";
 const QUESTIONS = [

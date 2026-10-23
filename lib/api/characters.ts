@@ -5,27 +5,10 @@ import Ajv2020, { type ValidateFunction } from "ajv/dist/2020.js";
 import { Rng } from "../rng";
 import { RulesError, type RulesSystem } from "../systems";
 import type { CharacterRecord, Store } from "../store";
+import { cryptoEntropy, type Entropy } from "./entropy";
 import { ApiError, onlyFields } from "./errors";
-import { systemOrThrow } from "./systems";
+import { accepted, systemOrThrow } from "./systems";
 import { caller } from "./users";
-
-/** Randomness the server supplies: seeds and record ids. Injected so tests are deterministic. */
-export interface Entropy {
-  seed(): number;
-  id(prefix: string): string;
-}
-
-export const cryptoEntropy: Entropy = {
-  seed() {
-    const [hi, lo] = crypto.getRandomValues(new Uint32Array(2));
-    // SPEC_ISSUES.md#seed-range: below 2^53 so the seed survives JSON.
-    return (hi! & 0x1fffff) * 2 ** 32 + lo!;
-  },
-  id(prefix) {
-    const bytes = crypto.getRandomValues(new Uint8Array(10));
-    return `${prefix}_${[...bytes].map((b) => b.toString(16).padStart(2, "0")).join("")}`;
-  },
-};
 
 const validators = new Map<string, ValidateFunction>();
 
@@ -134,8 +117,7 @@ export interface AbilityOption {
  */
 // SPEC_ISSUES.md#starting-abilities-supply: Quest needs six abilities; the example settings define two.
 export async function abilityOptions(store: Store, systemId: string): Promise<AbilityOption[]> {
-  const accepts = systemId === "cadmium" ? ["cadmium", "quest"] : [systemId];
-  const settings = await store.listedBundles<import("../bundle/setting").SettingBundle>("setting", accepts);
+  const settings = await store.listedBundles<import("../bundle/setting").SettingBundle>("setting", accepted(systemId));
   return settings.flatMap((s) =>
     Object.entries(s.abilities).map(([key, a]) => ({ ref: `${s.namespace}:${key}`, label: a.label, roles: ((a.system_stats as { roles?: string[] }).roles ?? []).slice(), setting: s.manifest.title })),
   );

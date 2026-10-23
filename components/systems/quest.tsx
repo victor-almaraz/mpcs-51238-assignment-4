@@ -3,7 +3,8 @@
 // Character creation): sentences with blanks, then abilities as a checklist counted against six.
 import { useActionState, useState } from "react";
 import type { AbilityOption } from "@/lib/api/characters";
-import { createCharacterAction, type FormState } from "@/lib/server/actions";
+import { createCharacterAction } from "@/lib/server/actions";
+import type { FormState } from "@/lib/server/forms";
 
 const blank = "border-0 border-b border-border bg-transparent px-1 font-prose text-prose focus:border-accent focus:outline-none";
 

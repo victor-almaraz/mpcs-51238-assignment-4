@@ -1,25 +1,11 @@
 "use server";
-// Server actions for the signed-in pages. Each resolves the session user, calls the operation in
-// lib/api, and returns an error message for the form instead of throwing.
+// Server actions for accounts and characters. Each calls an operation in lib/api through `attempt`.
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createCharacter, retireCharacter, updateCharacter } from "../api/characters";
-import { ApiError } from "../api/errors";
 import { acceptTerms } from "../api/users";
-import { sessionUser } from "./session";
+import { attempt, safeNext, type FormState } from "./forms";
 import { serverStore } from "./supabase";
-
-export type FormState = { error: string | null };
-
-async function attempt<T>(fn: (userId: string | null) => Promise<T>): Promise<{ ok: T } | { error: string }> {
-  const user = await sessionUser();
-  try {
-    return { ok: await fn(user?.id ?? null) };
-  } catch (e) {
-    if (e instanceof ApiError) return { error: e.detail };
-    throw e;
-  }
-}
 
 function profileFrom(form: FormData): Record<string, string> | undefined {
   const entries = [...form.entries()].filter(([k, v]) => k.startsWith("profile.") && typeof v === "string" && v.trim() !== "");
@@ -29,7 +15,7 @@ function profileFrom(form: FormData): Record<string, string> | undefined {
 export async function acceptTermsAction(form: FormData): Promise<void> {
   const r = await attempt((id) => acceptTerms(serverStore(), id, form.get("version")));
   if ("error" in r) throw new Error(r.error);
-  redirect("/dashboard");
+  redirect(safeNext(form.get("next")));
 }
 
 export async function createCharacterAction(_: FormState, form: FormData): Promise<FormState> {

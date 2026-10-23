@@ -1,41 +1,18 @@
 // Users and characters (app build order step 4: a user creates and renames a character in each system).
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { compileSetting } from "../materials";
-import { edit, example } from "../materials/testing/fixtures";
 import { Store } from "../store";
 import { sqlRpc } from "../store/sql-rpc";
 import { testDb } from "../store/testing/pglite";
-import { abilityOptions, createCharacter, getCharacter, listCharacters, retireCharacter, updateCharacter, type Entropy } from "./characters";
-import { ApiError } from "./errors";
+import { abilityOptions, createCharacter, getCharacter, listCharacters, retireCharacter, updateCharacter } from "./characters";
 import { getSystemSchema, listSystems } from "./systems";
+import { ApiError } from "./errors";
+import { code, entropy, richSetting, SIX } from "./testing/fixtures";
 import { TERMS_VERSION } from "./terms";
 import { acceptTerms, getMe } from "./users";
 
 let db: Awaited<ReturnType<typeof testDb>>;
 let store: Store;
-
-/** derelict_station with five more abilities, so a Quest character can choose six. */
-function richSetting() {
-  const extra = Array.from({ length: 5 }, (_, i) => `drill_${i}:\n  label: Drill ${i}\n  target: self\n  system_stats: { cost: { ap: 1 } }\n  effects: []\n`).join("");
-  const files = new Map(example("derelict_station")).set("abilities/drills.yaml", extra);
-  return compileSetting(files).bundle!;
-}
-
-function entropy(): Entropy {
-  let n = 0;
-  return { seed: () => 42, id: (prefix) => `${prefix}_${++n}` };
-}
-
-async function code(p: Promise<unknown>): Promise<string> {
-  try {
-    await p;
-  } catch (e) {
-    if (e instanceof ApiError) return e.code;
-    throw e;
-  }
-  return "ok";
-}
 
 beforeEach(async () => {
   db = await testDb();
@@ -48,8 +25,6 @@ beforeEach(async () => {
 afterEach(async () => {
   await db.close();
 });
-
-const SIX = ["base:overload", "base:drill_0", "base:drill_1", "base:drill_2", "base:drill_3", "base:drill_4"];
 
 describe("users", () => {
   it("rejects unknown and signed-out callers", async () => {

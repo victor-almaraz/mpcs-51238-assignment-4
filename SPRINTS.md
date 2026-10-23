@@ -289,3 +289,18 @@ Open:
 - The third migration is not yet applied to the remote database.
 - The installed materials cannot supply six starting abilities (`SPEC_ISSUES.md#starting-abilities-supply`), so no Quest or Cadmium character can be created in the deployed app until a setting with enough abilities is installed. Bundles are not yet installed in the remote database at all.
 - Portrait uploads come with sprint 23.
+
+### Sprint 12: Campaigns, invitations, instances — open
+
+Done:
+
+- `supabase/migrations/20261023000300_campaigns.sql`: `campaigns`, `campaign_members` (one author), `campaign_materials`, `invitations` (code hashes only; a pending invitation past `expires_at` reads as `expired`), foreign keys from instances and instance characters, and functions for each operation, with access limited to the service role. Accepting an invitation and adding the member happen in one transaction.
+- `lib/api`: `list_materials`; `create_campaign`, `list_campaigns`, `get_campaign`, `update_campaign`, `set_materials`, `archive_campaign`, `leave_campaign`, `remove_member`, `rotate_invite_link`, `disable_invite_link`, `join_by_link`; `invite`, `preview_invitation`, `list_invitations`, `accept_invitation`, `decline_invitation`, `revoke_invitation`; `create_instance`, `list_instances`, `get_instance`, `add_character`, `remove_character`. Material checks cover usability (listed operator bundles and the author's own), system and version compatibility, required modules, one adventure, and `requires_settings`.
+- Pages: `/campaigns/new`, `/campaigns/[id]`, `/campaigns/[id]/edit` (Details, Materials, Members, Invitations), `/invite/[code]`, `/join/[code]`, `/instances/[id]` (lobby: party, Add my character), and the dashboard's Active instances and Campaigns sections with a code field. `/accept-terms?next=` returns to an invitation after acceptance.
+- Tests: `lib/api/campaigns.test.ts` (16): joining by code and by link, two characters in one instance, version pinning across `set_materials`, `system_mismatch` for materials and characters, archived campaigns, revocation rights, expiry.
+- `SPEC_ISSUES.md`: `cross-system-versions`.
+
+Open:
+
+- The third and fourth migrations are not yet applied to the remote database.
+- For sprint 13: `start_instance`, `pause_instance`, `resume_instance`, `end_instance`, `get_instance` with a view, and adding or removing characters while `paused` (today only in `lobby`). `leave_campaign` and `remove_member` refuse while the member has a character in a started instance; they need the coordinator to write sheets back. `delete_campaign` and `restore_campaign` end instances and come with the lifecycle.

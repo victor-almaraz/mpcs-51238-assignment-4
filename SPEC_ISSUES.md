@@ -751,3 +751,17 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** The creation form offers the abilities of every listed operator setting the system accepts, and states the shortfall when there are fewer than six. Tests add five abilities to `derelict_station`.
 
 **Proposed resolution.** Ship at least six abilities usable by any role in the example settings, or a starter setting installed with Cadmium that holds a starting set.
+
+## cross-system-versions
+
+| Field | Value |
+|---|---|
+| Document | `docs/systems/README.md`; `docs/api.md`; `docs/data-model.md` |
+| Section | Compatibility; Campaigns (`system_mismatch`), Instances (`add_character`); Campaign material, Instance character |
+| Marker | `lib/api/materials.ts`, `lib/api/instances.ts` |
+
+**Problem.** A Cadmium campaign accepts characters and packs declared for Quest, but the version rules compare against the campaign's own system: a material's range "MUST overlap the campaign's `system_versions`", and a character joins only when its system "equals" the campaign's and its major version equals the instance's pinned version. A Quest range or version compared with a Cadmium range or version has no meaning, and the "equals" rule contradicts Compatibility.
+
+**Implemented.** A declaration for the campaign's own system must be satisfied by the installed version of that system, which must also satisfy the campaign's range. A Quest declaration in a Cadmium campaign is checked against the installed Quest version instead: a material's range must be satisfied by it, and a character's major version must equal its major version.
+
+**Proposed resolution.** State that version checks use the declared system's installed version, and that a Cadmium campaign checks only its own range against Cadmium.

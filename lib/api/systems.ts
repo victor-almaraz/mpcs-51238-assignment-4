@@ -65,3 +65,8 @@ export function creationRules(id: unknown): { roles: string[]; starting_abilitie
   const data = SYSTEM_DATA[system.ID]!.data as { roles: string[]; starting_abilities: number };
   return { roles: data.roles.slice(), starting_abilities: data.starting_abilities };
 }
+
+/** The declared systems a campaign of `id` accepts (systems/README.md, Compatibility). */
+export function accepted(id: string): string[] {
+  return (PRESENTATION[id]?.accepts ?? [id]).slice();
+}

@@ -28,6 +28,11 @@ async function install(bundles: Bundles, id = "i_1", seed = 7): Promise<void> {
   for (const b of [...bundles.settings, bundles.adventure]) {
     if (!(await store.getBundle(b.kind, b.id, b.version))) await store.putBundle(b, { origin: "operator" });
   }
+  const materials = [...bundles.settings.map((s, i) => ({ kind: "setting" as const, id: s.id, version: s.version, position: i })), { kind: "adventure" as const, id: bundles.adventure.id, version: bundles.adventure.version, position: bundles.settings.length }];
+  if (!(await store.getCampaign("camp_1"))) {
+    await store.upsertUser({ id: "user_1", email: "u1@example.org", display_name: "U1", terms_accepted_at: null });
+    await store.createCampaign({ id: "camp_1", title: "Campaign", description: "", author_id: "user_1", system: bundles.system.ID, system_versions: "^1.0", modules: [], materials });
+  }
   await store.createInstance({
     id,
     campaign_id: "camp_1",
@@ -35,7 +40,7 @@ async function install(bundles: Bundles, id = "i_1", seed = 7): Promise<void> {
     system: bundles.system.ID,
     system_version: bundles.system.VERSION,
     modules: [],
-    materials: [...bundles.settings.map((s, i) => ({ kind: "setting" as const, id: s.id, version: s.version, position: i })), { kind: "adventure", id: bundles.adventure.id, version: bundles.adventure.version, position: bundles.settings.length }],
+    materials,
     seed,
   });
 }
