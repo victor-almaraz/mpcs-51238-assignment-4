@@ -1,9 +1,11 @@
 // Generates lib/bundle/schemas.generated.ts (the schema index) and lib/bundle/types/*.ts
-// from cadmium-spec/spec/schema and cadmium-spec/systems/*/ (AGENTS.md, Setup step 3).
+// from cadmium-spec/spec/schema and cadmium-spec/systems/*/ (AGENTS.md, Setup step 3), and the
+// version of the legal documents in cadmium-spec/docs/legal.
 // Generated files are never edited by hand; rerun `pnpm gen` instead.
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join, relative, dirname } from "node:path";
 import { compile } from "json-schema-to-typescript";
+import { fnv1a64 } from "../lib/rng";
 
 const ROOT = join(dirname(new URL(import.meta.url).pathname), "..");
 const SPEC = join(ROOT, "cadmium-spec");
@@ -85,6 +87,10 @@ async function main(): Promise<void> {
     index += `  ${sys}: { data: ${sys}Data${mod ? `, modules: ${mod.ident}` : ""} },\n`;
   }
   index += "};\n";
+  const legal = (name: string) => readFileSync(join(SPEC, "docs/legal", name), "utf8");
+  const terms = fnv1a64(legal("terms.md") + "\0" + legal("privacy.md")).toString(16).padStart(16, "0");
+  index += "\n/** `fnv1a64` of legal/terms.md, a NUL, and legal/privacy.md: changes when either document does. */\n";
+  index += `export const TERMS_VERSION = "${terms}";\n`;
   writeFileSync(OUT_INDEX, index);
 
   rmSync(OUT_TYPES, { recursive: true, force: true });

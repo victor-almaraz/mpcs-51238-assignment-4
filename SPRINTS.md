@@ -271,4 +271,21 @@ Notes for sprints 11 to 13:
 - `lib/store`: `Store` calls those functions through an `Rpc`; `sql-rpc.ts` runs them as SQL (tests), `lib/server/supabase.ts` through supabase-js `.rpc()` with the service-role key. The `postgres` driver and `DATABASE_URL` are not needed.
 - `lib/store/migrate.ts`: an ordered, transactional migration runner with a read-only dry run, used by the test database.
 - `lib/server/env.ts` and `GET /api/health`.
-- Not yet done: `SUPABASE_SERVICE_ROLE_KEY` is unset locally, and the migrations are not applied to the remote database.
+- The first two migrations are applied to the remote database through the SQL Editor.
+
+### Sprint 11: Accounts and characters — open
+
+Done:
+
+- `supabase/migrations/20261023000200_users_characters.sql`: `users` (the id is the Clerk user id) and `characters`, with one function per operation and access limited to the service role. A late identity update never revives a deleted user.
+- `app/api/webhooks/clerk/route.ts`: verifies the Clerk signature (`CLERK_WEBHOOK_SIGNING_SECRET`) and upserts the user on `user.created` and `user.updated`; `user.deleted` marks the user deleted. `lib/server/session.ts` creates the user on first request when the webhook has not arrived.
+- `lib/api`: `get_me`, `accept_terms`, `list_systems`, `get_system_schema`, `create_character`, `get_character`, `list_characters`, `update_character`, `retire_character`, with the terms gate and the error codes of api.md. Sheets are built by the rules system from the player's choices and a server seed.
+- Pages: `/accept-terms` (the terms gate), the dashboard's Characters list, `/characters/new` (system picker, then Quest's sentence form with abilities counted against six), and `/characters/[id]` (sheet, name and profile, Retire). Creation and sheet components are registered by system id in `components/systems`.
+- Tests: `lib/api/api.test.ts` and `lib/api/identity.test.ts`.
+- `SPEC_ISSUES.md`: `terms-version`, `starting-abilities-supply`.
+
+Open:
+
+- The third migration is not yet applied to the remote database.
+- The installed materials cannot supply six starting abilities (`SPEC_ISSUES.md#starting-abilities-supply`), so no Quest or Cadmium character can be created in the deployed app until a setting with enough abilities is installed. Bundles are not yet installed in the remote database at all.
+- Portrait uploads come with sprint 23.

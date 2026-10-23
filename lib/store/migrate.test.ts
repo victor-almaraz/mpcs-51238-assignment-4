@@ -56,7 +56,7 @@ describe("migrations", () => {
       );
       expect(rows[0], f).toEqual({ anon: false, auth: false, service: true });
     }
-    for (const table of ["bundles", "instances", "events", "commits", "input_logs", "narrations", "instance_characters"]) {
+    for (const table of ["bundles", "instances", "events", "commits", "input_logs", "narrations", "instance_characters", "users", "characters"]) {
       const { rows } = await db.query<{ anon: boolean; rls: boolean }>(
         "select has_table_privilege('anon', $1, 'select') as anon, relrowsecurity as rls from pg_class where relname = $1",
         [table],

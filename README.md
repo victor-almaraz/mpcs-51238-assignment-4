@@ -31,12 +31,17 @@ The server reads these variables, from `.env.local` locally and from the Vercel 
 | `NEXT_PUBLIC_SUPABASE_URL` | no | The Supabase project |
 | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | no | Browser access to Supabase; it cannot reach the store |
 | `SUPABASE_SERVICE_ROLE_KEY` | yes | The store, on the server only: the Supabase secret key (`sb_secret_…`) or legacy service-role key |
+| `CLERK_WEBHOOK_SIGNING_SECRET` | yes | Verifies Clerk's webhook at `/api/webhooks/clerk` |
 
 `GET /api/health` reports which are set, and whether the database schema is applied, without revealing values.
 
 ### Database schema
 
 The migrations in `supabase/migrations/` create the store's tables and functions, and restrict both to the service role. Apply them in file-name order by pasting each file into the Supabase SQL Editor. Each file applies once; `/api/health` then reports `"schema": "applied"`.
+
+### Clerk webhook
+
+Clerk keeps the `users` table current through a webhook endpoint at `https://<host>/api/webhooks/clerk`, subscribed to `user.created`, `user.updated`, and `user.deleted`. Its signing secret is `CLERK_WEBHOOK_SIGNING_SECRET`. A signed-in user without a row is created on first request, so a missed delivery is repaired on the next visit.
 
 ## Scripts
 
@@ -74,7 +79,9 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `lib/engine/` | The engine: `submit`, `advance`, `startInstance`, and views |
 | `lib/harness/` | Command-line harness, scripted scenarios, and golden logs |
 | `lib/store/` | The store: bundles, instances, atomic commits, events, inputs, narration, as SQL functions called through an `Rpc` (supabase-js in production, PGlite in tests) |
-| `lib/server/` | Server-only configuration and the service-role Supabase client |
+| `lib/api/` | Operations of api.md over the store: users and the terms gate, systems, characters |
+| `lib/server/` | Server-only configuration, the service-role Supabase client, the session user, and server actions |
+| `components/systems/` | Creation forms and sheet views, registered by rules-system id |
 | `lib/coordinator/` | Instance operations; so far the operator operations `replay_instance` and `restore_instance` |
 | `supabase/migrations/` | SQL migrations, applied by Supabase in production and by PGlite in tests |
 | `lib/systems/` | Rules-system contract, registry, implementations, and the reusable conformance suite in `testing/` |

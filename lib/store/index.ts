@@ -88,6 +88,33 @@ export interface NewInputLog {
   tool_calls?: unknown[];
 }
 
+export interface UserRecord {
+  id: string;
+  email: string;
+  display_name: string;
+  timezone: string;
+  reminders: { push: boolean; lead_minutes: number[] };
+  operator: boolean;
+  status: "active" | "closing" | "deleted";
+  deletion_requested_at: string | null;
+  terms_accepted_at: string | null;
+  terms_version: string | null;
+  created_at: string;
+}
+
+export interface CharacterRecord {
+  id: string;
+  owner_id: string;
+  system: string;
+  system_version: string;
+  name: string;
+  sheet: Record<string, unknown> & { status: string };
+  portrait_asset: string | null;
+  status: "available" | "in_instance" | "dead" | "retired";
+  instance_id: string | null;
+  created_at: string;
+}
+
 type BundleMeta = { publisher_id?: string | null; draft_id?: string | null; origin: "operator" | "author"; listed?: boolean };
 
 export class Store {
@@ -203,5 +230,67 @@ export class Store {
 
   async putNarration(instanceId: string, version: number, text: string, source: "model" | "template"): Promise<void> {
     await this.rpc.call("cadmium_put_narration", { p_instance: instanceId, p_version: version, p_text: text, p_source: source });
+  }
+
+  // Users ----------------------------------------------------------------------------------------
+
+  /** Creates or updates a user from the identity provider; undefined for a deleted user. */
+  async upsertUser(u: { id: string; email: string; display_name: string; terms_accepted_at: string | null }): Promise<UserRecord | undefined> {
+    return (
+      (await this.rpc.call<UserRecord | null>("cadmium_upsert_user", { p_id: u.id, p_email: u.email, p_display_name: u.display_name, p_terms_accepted_at: u.terms_accepted_at })) ??
+      undefined
+    );
+  }
+
+  async getUser(id: string): Promise<UserRecord | undefined> {
+    return (await this.rpc.call<UserRecord | null>("cadmium_get_user", { p_id: id })) ?? undefined;
+  }
+
+  async acceptTerms(id: string, version: string): Promise<UserRecord | undefined> {
+    return (await this.rpc.call<UserRecord | null>("cadmium_accept_terms", { p_id: id, p_version: version })) ?? undefined;
+  }
+
+  async markUserDeleted(id: string): Promise<void> {
+    await this.rpc.call("cadmium_mark_user_deleted", { p_id: id });
+  }
+
+  // Characters -----------------------------------------------------------------------------------
+
+  async createCharacter(c: { id: string; owner_id: string; system: string; system_version: string; name: string; sheet: CharacterRecord["sheet"] }): Promise<CharacterRecord> {
+    return this.rpc.call<CharacterRecord>("cadmium_create_character", {
+      p_id: c.id,
+      p_owner: c.owner_id,
+      p_system: c.system,
+      p_system_version: c.system_version,
+      p_name: c.name,
+      p_sheet: c.sheet,
+    });
+  }
+
+  async getCharacter(id: string): Promise<CharacterRecord | undefined> {
+    return (await this.rpc.call<CharacterRecord | null>("cadmium_get_character", { p_id: id })) ?? undefined;
+  }
+
+  async listCharacters(owner: string, filter: { system?: string; status?: string; limit: number; after?: string }): Promise<CharacterRecord[]> {
+    return this.rpc.call<CharacterRecord[]>("cadmium_list_characters", {
+      p_owner: owner,
+      p_system: filter.system ?? null,
+      p_status: filter.status ?? null,
+      p_limit: filter.limit,
+      p_after: filter.after ?? null,
+    });
+  }
+
+  async updateCharacter(id: string, name: string, sheet: CharacterRecord["sheet"]): Promise<CharacterRecord | undefined> {
+    return (await this.rpc.call<CharacterRecord | null>("cadmium_update_character", { p_id: id, p_name: name, p_sheet: sheet })) ?? undefined;
+  }
+
+  async setCharacterStatus(id: string, status: CharacterRecord["status"]): Promise<CharacterRecord | undefined> {
+    return (await this.rpc.call<CharacterRecord | null>("cadmium_set_character_status", { p_id: id, p_status: status })) ?? undefined;
+  }
+
+  /** The latest listed operator bundle of each id, of a kind, for the given systems. */
+  async listedBundles<B extends SettingBundle | AdventureBundle>(kind: B["kind"], systems: readonly string[]): Promise<B[]> {
+    return this.rpc.call<B[]>("cadmium_listed_bundles", { p_kind: kind, p_systems: systems });
   }
 }

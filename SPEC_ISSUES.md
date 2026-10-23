@@ -723,3 +723,31 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** Replay checks every commit's events on the way and stops at the first one that differs, reporting it as `diverges_at`. `matches_stored` holds when the events reproduce through `to_version` and, at the latest version, the replayed state equals the stored state.
 
 **Proposed resolution.** Define `matches_stored` this way and add `diverges_at` to the output; the runbook then reads the diverging version directly.
+
+## terms-version
+
+| Field | Value |
+|---|---|
+| Document | `docs/data-model.md`; `docs/api.md`; `docs/app-flow.md` |
+| Section | Records, User (`terms_accepted_at`); Users (`accept_terms` takes `version`); Route map ("When either document changes, users accept the new version on their next sign-in") |
+| Marker | `supabase/migrations/20261023000200_users_characters.sql` |
+
+**Problem.** `accept_terms` takes a `version` and users must accept again when either document changes, but the User record keeps only `terms_accepted_at`, and no document defines the version's value.
+
+**Implemented.** The User record also keeps `terms_version`. The version is the `fnv1a64` hash of `legal/terms.md` followed by `legal/privacy.md` (generated into `lib/bundle/schemas.generated.ts`), so any edit to either document asks every user again. Clerk's legal-compliance acceptance at sign-up sets `terms_accepted_at` but not the version, so new users also accept in the app once.
+
+**Proposed resolution.** Add `terms_version` to the User record and define the version, for example as the documents' effective date or a hash of their text.
+
+## starting-abilities-supply
+
+| Field | Value |
+|---|---|
+| Document | `docs/systems/quest.md`; `spec/examples/` |
+| Section | Character creation (exactly `starting_abilities` (6) distinct abilities); the example settings `derelict_station` and `sunless_crypt` |
+| Marker | `lib/api/characters.ts` |
+
+**Problem.** A Quest or Cadmium character needs six distinct abilities from installed materials, but the settings installed with Cadmium define two abilities in total (`base:overload` and `crypt:turn_undead`). No character can be created with the shipped materials.
+
+**Implemented.** The creation form offers the abilities of every listed operator setting the system accepts, and states the shortfall when there are fewer than six. Tests add five abilities to `derelict_station`.
+
+**Proposed resolution.** Ship at least six abilities usable by any role in the example settings, or a starter setting installed with Cadmium that holds a starting set.

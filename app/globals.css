@@ -1,2 +1,7 @@
 @import "tailwindcss";
 @import "../cadmium-spec/design/theme.css";
+
+/* The page zone (docs/design/foundations.md, Layout): 34rem for prose and forms. */
+@theme {
+  --container-page: 34rem;
+}

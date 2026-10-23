@@ -70,3 +70,6 @@ export const SYSTEM_DATA: Readonly<Record<string, { data: unknown; modules?: unk
   cadmium: { data: cadmiumData, modules: cadmiumModules },
   quest: { data: questData },
 };
+
+/** `fnv1a64` of legal/terms.md, a NUL, and legal/privacy.md: changes when either document does. */
+export const TERMS_VERSION = "8e046529dff5b3c5";
