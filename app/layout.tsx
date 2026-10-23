@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ClerkProvider, Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import { THEME_SCRIPT } from "@/components/settings/theme-script";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -12,7 +13,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="flex min-h-screen flex-col bg-page font-prose text-prose text-ink">
         <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up" telemetry={false}>
           <header className="flex items-center justify-between border-b border-rule px-6 py-3 font-ui text-control">
@@ -26,6 +30,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               </Show>
               <Show when="signed-in">
                 <Link href="/dashboard">Dashboard</Link>
+                <Link href="/settings">Settings</Link>
                 <UserButton />
               </Show>
             </nav>

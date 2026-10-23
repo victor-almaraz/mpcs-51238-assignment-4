@@ -385,3 +385,21 @@ Open:
 - The cron schedule is not configured: Vercel Hobby allows daily cron jobs only, and a more frequent schedule fails the deployment. Every-minute runs need a plan that allows them, or an external scheduler calling `/api/cron/scheduler` with `CRON_SECRET`. Deadlines are also enforced on every request to an instance.
 - `/notifications` (live session reminders) is not built.
 - Migration 7 is not yet applied to the remote database.
+
+### Sprint 19: Settings, export, deletion — open
+
+Done:
+
+- `supabase/migrations/20261023000700_accounts.sql`: push subscriptions, holds (`held_at`, `hold_reason`) on users, characters, and campaigns, `update_me`, the recovery stage and restore within 30 days, closing accounts hidden from campaign members, the export query, and the purge of accounts and campaigns 90 days after deletion, skipping held ones. Purging an account erases its characters, published adventures, RSVPs, memberships, push subscriptions, invitations, authored campaigns with their instances and records, and its inputs elsewhere; its remaining events elsewhere carry `actor_label: "Former player"`; instances pinning its bundles end.
+- `lib/api/account.ts`: `update_me` (display name, time zone, reminders; email and password stay with Clerk), `request_account_deletion` (confirmed by display name), `restore_account`, `export_my_data`, `get_push_key`, `add_push_subscription`, `list_push_subscriptions`, `remove_push_subscription`, and the purge run; routes under `/v1/me`.
+- `lib/export/zip.ts`: a stored ZIP writer with CRC-32, no dependency. The export holds `README.txt`, `profile.json`, `characters/`, `adventures/`, `campaigns/`, `memberships.json`, `inputs.json`, `invitations.json`, and `schedule.json`.
+- `app/api/cron/purge` (Bearer `CRON_SECRET`) and `vercel.json` with a daily purge at 03:30 UTC; erased users are deleted at Clerk.
+- `/settings`: display name and time zone, Clerk's `<UserProfile />`, theme (System, Light, Dark in browser storage, applied before paint), reminder lead times and push preference, browser notifications through `public/sw.js`, the list of browsers with Remove, the calendar feed with Copy, New URL, and Turn off, Export my data, and Delete account (then sign-out). A closing account sees Restore my account and Export my data.
+- Tests: `lib/api/account.test.ts` (6).
+
+Open:
+
+- In the Clerk dashboard, turn off users deleting their own accounts, so deletion goes through Settings and its 30-day recovery. A deletion at Clerk still marks the user deleted, and the purge erases the data after 90 days.
+- Sending Web Push needs `web-push` and VAPID keys; subscriptions are stored meanwhile.
+- `drafts/` and `assets/` in the export arrive with the adventure editor and portrait uploads.
+- Migration 8 is not yet applied to the remote database.

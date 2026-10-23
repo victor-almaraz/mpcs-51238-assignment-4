@@ -22,6 +22,7 @@ function instantFrom(local: string | undefined, tz: string): string | undefined 
 function refresh(instanceId: unknown): FormState {
   revalidatePath(`/instances/${String(instanceId)}/schedule`);
   revalidatePath("/dashboard");
+  revalidatePath("/settings");
   return { error: null };
 }
 

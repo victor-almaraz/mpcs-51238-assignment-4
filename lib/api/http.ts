@@ -39,6 +39,7 @@ import {
 } from "./instances";
 import { acceptInvitation, declineInvitation, invite, listInvitations, previewInvitation, revokeInvitation } from "./invitations";
 import { listMaterials } from "./materials";
+import { addPushSubscription, exportMyData, getPushKey, listPushSubscriptions, removePushSubscription, requestAccountDeletion, restoreAccount, updateMe } from "./account";
 import { calendarFeed, cancelSession, disableCalendarFeed, exportCalendar, getCalendarFeed, listOccurrences, moveOccurrence, rotateCalendarFeed, rsvp, scheduleSession, updateSession } from "./schedules";
 import { getSystemSchema, listSystems } from "./systems";
 import { acceptTerms, caller, getMe } from "./users";
@@ -68,7 +69,7 @@ interface Call {
   origin: string;
 }
 
-type Reply = { status: number; body?: unknown; calendar?: string };
+type Reply = { status: number; body?: unknown; calendar?: string; file?: { type: string; name: string; data: Uint8Array } };
 
 const ok = (body: unknown): Reply => ({ status: 200, body });
 const created = (body: unknown): Reply => ({ status: 201, body });
@@ -103,6 +104,14 @@ type Route = [method: string, pattern: string, run: (c: Call) => Promise<Reply>]
 const ROUTES: Route[] = [
   // Users
   ["GET", "/me", async (c) => ok(await getMe(c.deps.store, c.user))],
+  ["PATCH", "/me", async (c) => ok({ user: await updateMe(c.deps.store, c.user, c.body) })],
+  ["GET", "/me/export.zip", async (c) => ({ status: 200, file: { type: "application/zip", name: "cadmium-export.zip", data: await exportMyData(c.deps.store, c.user) } })],
+  ["POST", "/me/deletion", async (c) => ok(await requestAccountDeletion(c.deps.store, c.user, c.body))],
+  ["DELETE", "/me/deletion", async (c) => ok({ user: await restoreAccount(c.deps.store, c.user) })],
+  ["GET", "/push/key", async (c) => (await gated(c, "get_push_key"), ok(getPushKey(process.env.VAPID_PUBLIC_KEY)))],
+  ["POST", "/me/push-subscriptions", async (c) => created({ push_subscription: await addPushSubscription(c.deps.store, c.user, c.body) })],
+  ["GET", "/me/push-subscriptions", async (c) => ok({ items: await listPushSubscriptions(c.deps.store, c.user) })],
+  ["DELETE", "/me/push-subscriptions/:subscription_id", async (c) => (await removePushSubscription(c.deps.store, c.user, c.params.subscription_id), none())],
   ["GET", "/me/calendar-feed", async (c) => ok(await getCalendarFeed(c.deps.store, c.user, feedConfig(c)))],
   ["POST", "/me/calendar-feed", async (c) => ok(await rotateCalendarFeed(c.deps.store, c.user, feedConfig(c)))],
   ["DELETE", "/me/calendar-feed", async (c) => (await disableCalendarFeed(c.deps.store, c.user), none())],
@@ -246,6 +255,7 @@ export async function handle(request: Request, user: string | null, deps: Deps):
       body = parsed as Record<string, unknown>;
     }
     const reply = await route[2]({ deps, user, params, query: url.searchParams, body, headers: request.headers, origin: url.origin });
+    if (reply.file) return new Response(reply.file.data as BodyInit, { status: reply.status, headers: { "Content-Type": reply.file.type, "Content-Disposition": `attachment; filename="${reply.file.name}"` } });
     if (reply.calendar !== undefined) return new Response(reply.calendar, { status: reply.status, headers: { "Content-Type": "text/calendar; charset=utf-8" } });
     return json(reply.status, reply.body);
   } catch (e) {

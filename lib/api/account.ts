@@ -1,0 +1,151 @@
+// The user's own account (api.md, Users: update_me, export_my_data, request_account_deletion,
+// restore_account, push subscriptions; data-model.md, Deletion; app-flow.md, Settings).
+
+import { zip, type ZipFile } from "../export/zip";
+import { validZone } from "../scheduler/zone";
+import type { Store } from "../store";
+import { cryptoEntropy, type Entropy } from "./entropy";
+import { ApiError, onlyFields } from "./errors";
+import { caller, userView } from "./users";
+
+const DAY = 86_400_000;
+
+function reminders(v: unknown) {
+  const r = onlyFields(v, ["push", "lead_minutes"]);
+  if (typeof r.push !== "boolean") throw new ApiError("invalid_request", "reminders.push must be a boolean");
+  if (!Array.isArray(r.lead_minutes) || r.lead_minutes.length > 5 || !r.lead_minutes.every((m) => Number.isInteger(m) && m >= 5 && m <= 10_080)) {
+    throw new ApiError("invalid_request", "reminders.lead_minutes must list up to 5 lead times of 5 to 10,080 minutes");
+  }
+  return { push: r.push, lead_minutes: [...new Set(r.lead_minutes as number[])].sort((a, b) => b - a) };
+}
+
+export async function updateMe(store: Store, userId: string | null, input: unknown) {
+  const user = await caller(store, userId, "update_me");
+  const req = onlyFields(input, ["display_name", "email", "timezone", "reminders", "password", "current_password"]);
+  // SPEC_ISSUES.md#binding-gaps: Clerk holds the sign-in address and password.
+  if (req.email !== undefined || req.password !== undefined || req.current_password !== undefined) throw new ApiError("invalid_request", "change your email address and password in your account settings with the identity provider");
+  if (req.display_name !== undefined && (typeof req.display_name !== "string" || req.display_name.trim().length < 1 || req.display_name.length > 40)) throw new ApiError("invalid_request", "display_name must have 1 to 40 characters");
+  if (req.timezone !== undefined && (typeof req.timezone !== "string" || !validZone(req.timezone))) throw new ApiError("invalid_request", "timezone must be an IANA time zone name");
+  const updated = await store.updateMe(user.id, {
+    display_name: req.display_name as string | undefined,
+    timezone: req.timezone as string | undefined,
+    reminders: req.reminders === undefined ? undefined : reminders(req.reminders),
+  });
+  return userView(updated!);
+}
+
+/** The recovery stage: the account closes; it can be restored for 30 days and is erased after 90. */
+export async function requestAccountDeletion(store: Store, userId: string | null, input: unknown) {
+  const user = await caller(store, userId, "request_account_deletion");
+  const req = onlyFields(input, ["confirm"]);
+  if (req.confirm !== user.display_name) throw new ApiError("invalid_request", "confirm must be your display name");
+  const closed = (await store.requestDeletion(user.id))!;
+  const at = Date.parse(closed.deletion_requested_at!);
+  return { restorable_until: new Date(at + 30 * DAY).toISOString(), purge_after: new Date(at + 90 * DAY).toISOString() };
+}
+
+export async function restoreAccount(store: Store, userId: string | null) {
+  const user = await caller(store, userId, "restore_account");
+  if (user.status !== "closing") throw new ApiError("conflict", "the account is not closing");
+  const restored = await store.restoreAccount(user.id);
+  if (!restored) throw new ApiError("conflict", "the account can no longer be restored");
+  return userView(restored);
+}
+
+// Push subscriptions ---------------------------------------------------------------------------------
+
+export function getPushKey(publicKey: string | undefined) {
+  if (!publicKey) throw new ApiError("unavailable", "browser notifications are not configured");
+  return { public_key: publicKey };
+}
+
+export async function addPushSubscription(store: Store, userId: string | null, input: unknown, entropy: Entropy = cryptoEntropy) {
+  const user = await caller(store, userId, "add_push_subscription");
+  const req = onlyFields(input, ["endpoint", "keys", "label"]);
+  if (typeof req.endpoint !== "string" || !/^https:\/\//.test(req.endpoint) || req.endpoint.length > 1000) throw new ApiError("invalid_request", "endpoint must be an https URL");
+  const keys = onlyFields(req.keys, ["p256dh", "auth"]);
+  if (typeof keys.p256dh !== "string" || typeof keys.auth !== "string") throw new ApiError("invalid_request", "keys must have p256dh and auth");
+  const label = req.label === undefined ? "" : req.label;
+  if (typeof label !== "string" || label.length > 80) throw new ApiError("invalid_request", "label must have at most 80 characters");
+  return store.addPush({ id: entropy.id("ps"), user_id: user.id, endpoint: req.endpoint, p256dh: keys.p256dh, auth: keys.auth, label });
+}
+
+export async function listPushSubscriptions(store: Store, userId: string | null) {
+  const user = await caller(store, userId, "list_push_subscriptions");
+  return (await store.listPush(user.id)).map(({ id, label, created_at, last_used_at }) => ({ id, label, created_at, last_used_at }));
+}
+
+export async function removePushSubscription(store: Store, userId: string | null, subscriptionId: unknown) {
+  const user = await caller(store, userId, "remove_push_subscription");
+  if (typeof subscriptionId !== "string" || !(await store.removePush(subscriptionId, user.id))) throw new ApiError("not_found", "no such push subscription");
+}
+
+// Export ------------------------------------------------------------------------------------------
+
+const README = `Cadmium data export
+
+profile.json        Your account: profile, terms acceptance, reminder settings, browser
+                    notification subscriptions (labels and creation times), calendar feed state.
+characters/*.json   Every character, with sheet and status.
+adventures/*.json   Every adventure you published, as a compiled bundle.
+campaigns/*.json    Campaigns you authored, with members, materials, invitations, and their
+                    instances with events, input logs, narration, and schedules.
+memberships.json    Campaigns you joined, with role and join time.
+inputs.json         Your inputs in every instance, with the events and narration of each commit.
+invitations.json    Invitations you created or accepted.
+schedule.json       Your RSVPs and the sessions you created.
+
+drafts/ and assets/ appear once adventure drafts and portrait uploads exist.
+The export is generated on request and is not stored.
+`;
+
+const json = (v: unknown) => JSON.stringify(v, null, 2) + "\n";
+const safe = (s: string) => s.replace(/[^A-Za-z0-9._-]/g, "_");
+
+/** The ZIP of every record that refers to the user (api.md, Data export). */
+export async function exportMyData(store: Store, userId: string | null, now = new Date()): Promise<Uint8Array> {
+  const user = await caller(store, userId, "export_my_data");
+  const x = (await store.exportUser(user.id)) as {
+    profile: Record<string, unknown>;
+    push_subscriptions: unknown[];
+    characters: { id: string }[];
+    adventures: { id: string; version: string }[];
+    campaigns: { campaign: { id: string } }[];
+    memberships: unknown[];
+    inputs: unknown[];
+    invitations: unknown[];
+    schedule: unknown;
+  };
+  const { calendar_feed_generation, ...profile } = x.profile;
+  void calendar_feed_generation;
+  const files: ZipFile[] = [
+    { name: "README.txt", data: README },
+    { name: "profile.json", data: json({ ...profile, push_subscriptions: x.push_subscriptions, calendar_feed: { enabled: (await store.getUser(user.id))?.calendar_token_hash ? true : false } }) },
+    ...x.characters.map((c) => ({ name: `characters/${safe(c.id)}.json`, data: json(c) })),
+    ...x.adventures.map((a) => ({ name: `adventures/${safe(a.id)}-${safe(a.version)}.json`, data: json(a) })),
+    ...x.campaigns.map((c) => ({ name: `campaigns/${safe(c.campaign.id)}.json`, data: json(c) })),
+    { name: "memberships.json", data: json(x.memberships) },
+    { name: "inputs.json", data: json(x.inputs) },
+    { name: "invitations.json", data: json(x.invitations) },
+    { name: "schedule.json", data: json(x.schedule) },
+  ];
+  return zip(files, now);
+}
+
+// Purge -------------------------------------------------------------------------------------------
+
+/**
+ * The purge stage (data-model.md, Deletion): erases accounts and campaigns deleted more than 90 days
+ * ago, skipping held ones, and deletes each erased account's identity at the provider.
+ */
+export async function runPurge(store: Store, deleteIdentity: (userId: string) => Promise<void>, now = new Date()) {
+  const due = await store.purgeDue(now);
+  for (const id of due.campaigns) await store.purgeCampaign(id);
+  const users: string[] = [];
+  for (const id of due.users) {
+    await store.purgeUser(id);
+    await deleteIdentity(id).catch(() => undefined);
+    users.push(id);
+  }
+  return { users: users.length, campaigns: due.campaigns.length };
+}

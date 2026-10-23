@@ -188,6 +188,13 @@ export interface HistoryItem {
   narration: { text: string; source: "model" | "template" } | null;
 }
 
+export interface PushView {
+  id: string;
+  label: string;
+  created_at: string;
+  last_used_at: string | null;
+}
+
 export interface Rsvp {
   session_id: string;
   occurrence_start: string;
@@ -632,5 +639,52 @@ export class Store {
 
   async userByFeed(hash: string): Promise<(UserRecord & { calendar_feed_generation: number; calendar_token_hash: string | null }) | undefined> {
     return (await this.rpc.call<(UserRecord & { calendar_feed_generation: number; calendar_token_hash: string | null }) | null>("cadmium_user_by_feed", { p_hash: hash })) ?? undefined;
+  }
+
+  // Accounts -------------------------------------------------------------------------------------
+
+  async updateMe(id: string, u: { display_name?: string; timezone?: string; reminders?: UserRecord["reminders"] }): Promise<UserRecord | undefined> {
+    return (await this.rpc.call<UserRecord | null>("cadmium_update_me", { p_id: id, p_display_name: u.display_name ?? null, p_timezone: u.timezone ?? null, p_reminders: u.reminders ?? null })) ?? undefined;
+  }
+
+  async requestDeletion(id: string): Promise<UserRecord | undefined> {
+    return (await this.rpc.call<UserRecord | null>("cadmium_request_deletion", { p_id: id })) ?? undefined;
+  }
+
+  async restoreAccount(id: string): Promise<UserRecord | undefined> {
+    return (await this.rpc.call<UserRecord | null>("cadmium_restore_account", { p_id: id })) ?? undefined;
+  }
+
+  async addPush(s: { id: string; user_id: string; endpoint: string; p256dh: string; auth: string; label: string }): Promise<PushView> {
+    return this.rpc.call<PushView>("cadmium_add_push", { p_id: s.id, p_user: s.user_id, p_endpoint: s.endpoint, p_public_key: s.p256dh, p_auth_secret: s.auth, p_label: s.label });
+  }
+
+  async listPush(userId: string): Promise<(PushView & { endpoint: string; p256dh: string; auth: string })[]> {
+    return this.rpc.call("cadmium_list_push", { p_user: userId });
+  }
+
+  async removePush(id: string, userId: string): Promise<boolean> {
+    return this.rpc.call<boolean>("cadmium_remove_push", { p_id: id, p_user: userId });
+  }
+
+  /** Records a delivery, or deletes a subscription the push service reported gone. */
+  async pushResult(endpoint: string, gone: boolean): Promise<void> {
+    await this.rpc.call("cadmium_push_result", { p_endpoint: endpoint, p_gone: gone });
+  }
+
+  async exportUser(id: string): Promise<Record<string, unknown>> {
+    return this.rpc.call<Record<string, unknown>>("cadmium_export_user", { p_user: id });
+  }
+
+  async purgeDue(now: Date): Promise<{ users: string[]; campaigns: string[] }> {
+    return this.rpc.call("cadmium_purge_due", { p_now: now.toISOString() });
+  }
+
+  async purgeUser(id: string): Promise<void> {
+    await this.rpc.call("cadmium_purge_user", { p_user: id });
+  }
+
+  async purgeCampaign(id: string): Promise<void> {
+    await this.rpc.call("cadmium_purge_campaign", { p_id: id });
   }
 }
