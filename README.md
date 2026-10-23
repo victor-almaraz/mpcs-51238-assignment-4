@@ -42,6 +42,7 @@ CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs `gen:check`, `t
 | `app/` | Next.js routes and pages |
 | `lib/rng/` | `splitmix64_v1` draws, dice, selection by RNG, `fnv1a64` |
 | `lib/grid/` | Map parsing, distance, adjacency, line of sight, pathfinding, movement allowance |
+| `lib/systems/` | Rules-system contract, registry, implementations, and the reusable conformance suite in `testing/` |
 | `lib/bundle/` | Schema registry and generated types; generated files are never edited by hand |
 | `lib/materials/` | Content Compiler |
 | `scripts/` | Build-time scripts, such as type generation |

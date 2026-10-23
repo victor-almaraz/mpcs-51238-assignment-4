@@ -57,3 +57,81 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** The mover stops on the last free cell at or before the cell that triggers the early stop, and the walk reports the early stop. A path whose remaining cells are not free ends on the last free cell before them.
 
 **Proposed resolution.** State that an early stop on a cell that is not free ends on the last free cell before it, with the early-stop reason.
+
+## systems-generated-types
+
+| Field | Value |
+|---|---|
+| Document | `AGENTS.md`; `docs/guides/engine-implementation.md` |
+| Section | Setup, step 3; Module boundaries |
+| Marker | `lib/systems/quest/index.ts` |
+
+**Problem.** Setup step 3 generates TypeScript types from `systems/*/` into `lib/bundle/types/`, but the module table lets `systems` depend only on `rng`. A system cannot use its own generated sheet types without importing from `bundle`.
+
+**Implemented.** `lib/systems` imports generated types from `lib/bundle/types` with type-only imports, which add no runtime dependency. `bundle` depends on nothing, so no cycle forms.
+
+**Proposed resolution.** Allow `systems` to depend on `bundle` for generated types, or generate system types into `lib/systems/<id>/types/`.
+
+## quest-tool-priority
+
+| Field | Value |
+|---|---|
+| Document | `docs/systems/quest.md`; `docs/engine.md` |
+| Section | Ordering; Ordering policy |
+| Marker | `lib/systems/quest/index.ts` |
+
+**Problem.** quest.md gives the exploration order as `tool_priority` without its `tools` list. The only list is the example in engine.md, which omits `rest`, an ordered tool in `ordered_tool` of `defs.schema.json`. engine.md does not say where a tool missing from the list sorts.
+
+**Implemented.** Quest uses the engine.md list verbatim: `move`, `talk`, `interact`, `take`, `give`, `drop`, `use`, `ability`, `attack`, `search`, `wait`.
+
+**Proposed resolution.** List Quest's `tools` in quest.md, including `rest`, and state in engine.md that tools absent from the list sort after every listed tool.
+
+## quest-setbacks
+
+| Field | Value |
+|---|---|
+| Document | `docs/systems/quest.md` |
+| Section | Checks; Attacks; Automation adaptations |
+| Marker | `lib/systems/quest/index.ts` |
+
+**Problem.** Three points are open:
+
+1. Tough choices exclude "those that do not apply", but no rule says when a setback applies, and failure and severe setbacks have no such exclusion. "Lose your grip: drop what you are using" can be drawn when nothing is in use.
+2. A tough choice offers two setbacks; the specification does not say what happens when fewer than two apply.
+3. A pending choice carries precomputed `updates`. An option that changes the actor's sheet, such as losing AP, can overwrite changes made between the offer and the choice.
+
+**Implemented.**
+
+1. `drop_item` applies when an item is in use (the weapon of an attack); `lose_ap` applies when AP is at least 1; `harm_actor` always applies. Only tough choices exclude setbacks that do not apply; a failure or severe setback that cannot change anything has no effect.
+2. The choice offers the setbacks that apply, one draw by RNG each, up to two.
+3. `harm_actor` is returned as a `damage` effect and `drop_item` as a `drop_item` effect, so the engine applies them when chosen. `lose_ap` is an update computed from the sheet at the offer.
+
+**Proposed resolution.** Define "applies" per setback field and use it for all three lists; state the behaviour with one applicable setback; express every setback as an effect, adding an effect for spending a resource if needed.
+
+## quest-event-payloads
+
+| Field | Value |
+|---|---|
+| Document | `docs/engine.md`; `docs/systems/quest.md` |
+| Section | Events (`damaged`, `attacked`, `check_rolled`); Harm, death, and healing |
+| Marker | `lib/systems/quest/index.ts` |
+
+**Problem.** `damaged.amount` could be the harm dealt or the HP lost, which differ when harm exceeds the remaining HP or the target is at death's door. Whether harm at death's door emits `damaged` is not stated. The `attacked` example in api.md carries `roll`, `outcome`, and `damage`; `check_rolled` has only "system-specific fields".
+
+**Implemented.** `damaged.amount` is the harm dealt and `remaining` the HP after it; harm at death's door emits `damaged` with `remaining: 0`, then `died` when the roll kills. `attacked` carries `roll`, `outcome`, and `damage`, the damage dealt after the tier multiplier; `check_rolled` carries `roll` and `outcome`.
+
+**Proposed resolution.** State the payloads in quest.md.
+
+## quest-creation-items
+
+| Field | Value |
+|---|---|
+| Document | `docs/systems/quest.md` |
+| Section | Character creation |
+| Marker | `lib/systems/quest/index.ts` |
+
+**Problem.** The creation choices example has `"items": []` but no rule for what `items` holds or how it reaches the sheet.
+
+**Implemented.** `items` is an optional list of at most 12 item refs, placed in `inventory` as `{ ref }` entries.
+
+**Proposed resolution.** Document `items`, or remove it from the choices if starting items come only from setting packs' `starting_items`.

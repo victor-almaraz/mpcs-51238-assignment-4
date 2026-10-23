@@ -88,3 +88,20 @@ Notes for sprint 2 and later:
 - Geometry takes predicates (`open`, `blocksMovement`, `blocksSight`, `cost`), so the engine overlays entities, doors, and creatures on `TerrainGrid` without changing `lib/grid`.
 - The corner rule takes `blocksMovement`; whether opposing creatures count for it is the engine's decision in sprint 6.
 - `walk` reports `arrived`, `allowance`, `early`, or `short`; the engine maps `early` to `new_room` or `hostile_seen` for the `moved` event.
+
+### Sprint 2: Quest system — closed
+
+Done:
+
+- `lib/systems/contract.ts`: the contract types (`RulesSystem`, `Combatant`, `Situation`, `Resolution`, `PendingChoice`, `RulesError`, ordering policy, `SPATIAL`) and `emptyResolution`.
+- `lib/systems/quest`: every contract name, reading `data.json` and the six schemas from the specification. Tiers, setbacks (tough choice as a pending choice, failure, severe), attacks by tier, harm with death's door, healing, rests, AP costs and the session award, creature and structure sheets, reach, speed, senses, summary, and ordering.
+- `lib/systems/index.ts`: the `SYSTEMS` registry.
+- `lib/systems/testing/conformance.ts`: every item of the conformance list as a suite taking a system. `testing/quest-cases.ts`: every rule in quest.md as a suite taking a system, including the api.md partial-hit example.
+- `SPEC_ISSUES.md`: `systems-generated-types`, `quest-tool-priority`, `quest-setbacks`, `quest-event-payloads`, `quest-creation-items`.
+
+Notes for sprint 3 and later:
+
+- Cadmium runs `conformance(CADMIUM)` and `questCases(CADMIUM)` unchanged for the no-module case, and `conformance` for each module combination.
+- Quest exports `harmSheet`, `healSheet`, `standardDamage`, and `tierOf` so that Cadmium's `armor` module can wrap harm without copying it.
+- Setback harm and drops are returned as `damage` and `drop_item` effects; the engine applies effects after updates (sprint 6).
+- `initiative` returns ascending ids with no draws; Quest orders combat by `side`, so the engine never calls it for Quest.
