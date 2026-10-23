@@ -695,3 +695,17 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** Only combatant entities extend the combat area, after each resolved action.
 
 **Proposed resolution.** State that combatants are entities.
+
+## replay-source
+
+| Field | Value |
+|---|---|
+| Document | `docs/architecture.md`; `docs/guides/engine-implementation.md` |
+| Section | Determinism and replay ("Replaying an instance's events from its initial state"); Command-line harness (`--log`, `replay`) |
+| Marker | `lib/harness/harness.ts` |
+
+**Problem.** Replay is described as replaying events, but the event payloads cannot rebuild state. They omit the RNG counter, spawned entities' templates and cells, sheet fields such as Quest's death's door, choice options, and declaration arguments. Rebuilding state needs the inputs: tool calls and advances, which the Input log records.
+
+**Implemented.** The harness log holds one line per commit: the start (seed and characters) or the input, with the events the commit produced. `replay` starts the instance again and re-runs each input, failing at the first version whose events differ, or when the final state differs from an expected state.
+
+**Proposed resolution.** Define replay as re-running the recorded inputs and checking each commit's events, and list the inputs in the harness log format.

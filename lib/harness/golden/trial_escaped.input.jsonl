@@ -1,0 +1,8 @@
+{"actor":"c_1","tool":"move","args":{"to_id":"card"}}
+{"actor":"c_1","tool":"take","args":{"entity_id":"card"}}
+{"actor":"c_1","tool":"move","args":{"to_id":"panel"}}
+{"actor":"c_1","tool":"interact","args":{"target_id":"panel","verb":"operate"}}
+{"actor":"c_1","tool":"move","args":{"to_id":"hold"}}
+{"actor":"c_1","tool":"search","args":{}}
+{"actor":"c_1","tool":"move","args":{"to_id":"cache"}}
+{"actor":"c_1","tool":"take","args":{"entity_id":"cache"}}

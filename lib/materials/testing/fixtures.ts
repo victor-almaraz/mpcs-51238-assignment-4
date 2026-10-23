@@ -2,10 +2,13 @@
 // (AGENTS.md, "Test layers": one failing fixture per compilation check).
 
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parse, stringify } from "yaml";
 import { readPackDir } from "../fs";
 
-export const EXAMPLES = join(__dirname, "../../../cadmium-spec/spec/examples");
+const HERE = fileURLToPath(new URL(".", import.meta.url));
+
+export const EXAMPLES = join(HERE, "../../../cadmium-spec/spec/examples");
 
 export type Files = Map<string, Uint8Array | string>;
 
@@ -420,7 +423,7 @@ import { docBlocks } from "../../../tests/doc-blocks";
 import { compileSetting } from "../setting";
 import type { SettingBundle } from "../../bundle/setting";
 
-const SPEC = join(__dirname, "../../../cadmium-spec");
+const SPEC = join(HERE, "../../../cadmium-spec");
 
 /** The `sunken_archive` adventure assembled from the YAML blocks of the adventure authoring guide. */
 export function guideAdventure(): Files {

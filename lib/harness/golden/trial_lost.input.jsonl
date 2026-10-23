@@ -1,0 +1,8 @@
+{"actor":"c_1","tool":"move","args":{"to_id":"hold"}}
+{"actor":"c_1","tool":"attack","args":{"target_id":"drone"}}
+{"advance":true}
+{"advance":true}
+{"advance":true}
+{"advance":true}
+{"advance":true}
+{"advance":true}

@@ -4,13 +4,14 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 import { parse } from "yaml";
 import { createRegistry, validator } from "@/lib/bundle/registry";
 import { SCHEMAS } from "@/lib/bundle/schemas.generated";
 import { anyLayoutEntry } from "@/lib/materials/layout";
 import { docPackFiles } from "./doc-blocks";
 
-const SPEC = join(__dirname, "..", "cadmium-spec");
+const SPEC = fileURLToPath(new URL("../cadmium-spec", import.meta.url));
 
 // YAML 1.2 core schema: only true and false are booleans (AGENTS.md, Conventions).
 const readYaml = (source: string): unknown => parse(source, { schema: "core", version: "1.2" });

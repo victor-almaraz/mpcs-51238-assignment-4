@@ -219,3 +219,24 @@ Done:
   - a combat round under Quest and under Cadmium with both modules.
 
 Engine milestones 4 to 7 are met. Sprint 9 adds the command-line harness, scripted scenarios to every ending, and golden replays.
+
+### Sprint 9: Triggers and harness — closed
+
+Done:
+
+- Triggers are part of sprint 6's engine (`lib/engine/triggers.ts`). The scenarios exercise them on both adventures.
+- `lib/harness/harness.ts`: `begin`, `step`, `play`, and `replay` over JSON lines. Rejections are data. A malformed line raises `HarnessError` with its line number. The log records each commit's input and events (`SPEC_ISSUES.md#replay-source`).
+- `lib/harness/cli.ts`:
+  - `harness play --bundle FILE... --seed N --character ID=SHEET_FILE... [--state FILE] [--log FILE]` and `harness replay --bundle FILE... LOG`.
+  - Exit status 0, 1 (malformed line, or a replay mismatch naming the version), or 2 (usage).
+- `lib/harness/scenarios.ts`: an autopilot that authors scenarios, reaching every ending of both adventures: `trial_escaped`, `trial_lost`, `sunken_escaped`, and `sunken_lost`.
+- `lib/harness/golden/`: each scenario's input lines and log. `pnpm golden` rewrites them.
+- `lib/harness/harness.test.ts`: 29 tests.
+  - Each scenario plays to its ending and reproduces its golden log byte for byte.
+  - Every golden log replays, and a tampered log reports the first differing version.
+  - Input-line parsing and the command line are tested.
+- Verified end to end: `materials build` writes bundles to disk, and `harness play` and `replay` run on them.
+
+Phase 2 is complete: the harness plays an adventure to every ending from scripted JSON lines, golden logs replay in `pnpm test`, and 1,000 generator seeds verify.
+
+Phase 3 begins with sprint 10 (`store` and replay). It is the first sprint that needs external services: a Supabase project (URL, anon key, service key). The store can be written and tested against a local Postgres-compatible schema without one, but the deployment needs it.

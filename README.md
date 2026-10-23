@@ -33,6 +33,8 @@ pnpm dev
 | `pnpm test` | Vitest: unit tests, test vectors, and specification validation |
 | `pnpm check` | Every gate: `gen:check`, `typecheck`, `lint --max-warnings 0`, `test`, and `build` |
 | `pnpm materials check DIR` | The Content Compiler's `check` subcommand |
+| `pnpm harness play ...` | The engine's command-line harness; see `lib/harness/cli.ts` |
+| `pnpm golden` | Rewrite the golden scenario files after an intended behaviour change |
 
 The Content Compiler's command line follows [`spec/README.md`](cadmium-spec/spec/README.md#compiler-interface). pnpm prints the script line on stdout, so run `build` directly when its output is piped:
 
@@ -52,6 +54,7 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `lib/grid/` | Map parsing, distance, adjacency, line of sight, pathfinding, movement allowance |
 | `lib/generator/` | Dungeon generator: BSP layout, doors and locks, roles, population, verification |
 | `lib/engine/` | The engine: `submit`, `advance`, `startInstance`, and views |
+| `lib/harness/` | Command-line harness, scripted scenarios, and golden logs |
 | `lib/systems/` | Rules-system contract, registry, implementations, and the reusable conformance suite in `testing/` |
 | `lib/bundle/` | Schema registry and generated types; generated files are never edited by hand |
 | `lib/materials/` | Content Compiler: pack reading, schema explanations, rules-system, cross-reference, map, and art checks, bundles, and the `materials` command line |

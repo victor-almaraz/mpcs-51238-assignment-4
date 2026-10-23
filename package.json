@@ -12,7 +12,9 @@
     "lint": "eslint .",
     "test": "vitest run",
     "check": "pnpm gen:check && pnpm typecheck && pnpm lint --max-warnings 0 && pnpm test && pnpm build",
-    "materials": "tsx lib/materials/cli.ts"
+    "materials": "tsx lib/materials/cli.ts",
+    "harness": "tsx lib/harness/cli.ts",
+    "golden": "tsx scripts/golden.ts"
   },
   "devEngines": {
     "runtime": {
