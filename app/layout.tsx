@@ -6,6 +6,8 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Cadmium",
+  // Hidden from search engines until launch; see also app/robots.ts and next.config.ts.
+  robots: { index: false, follow: false },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
