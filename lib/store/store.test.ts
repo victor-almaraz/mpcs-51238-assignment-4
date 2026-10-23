@@ -8,6 +8,7 @@ import { commitOf } from "../harness/harness";
 import { SCENARIOS, author } from "../harness/scenarios";
 import { Rng } from "../rng";
 import { Store, VersionConflict } from "./index";
+import { sqlRpc } from "./sql-rpc";
 import { testDb } from "./testing/pglite";
 
 let db: Awaited<ReturnType<typeof testDb>>;
@@ -15,7 +16,7 @@ let store: Store;
 
 beforeEach(async () => {
   db = await testDb();
-  store = new Store(db);
+  store = new Store(sqlRpc(db));
 });
 afterEach(async () => {
   await db.close();

@@ -264,3 +264,11 @@ Notes for sprints 11 to 13:
 
 - Production needs a `Db` over Supabase Postgres, for example `postgres` (`sql.unsafe(text, params)`) with the Supabase pooler connection string. The migrations apply with `supabase db push`.
 - Users, characters, campaigns, members, invitations, and schedules get their own migrations in sprints 11 and 12. `instances.campaign_id` gains its foreign key when `campaigns` exists.
+
+### Supabase wiring (between sprints 10 and 11)
+
+- `supabase/migrations/20261023000100_store_api.sql`: one function per store operation, and access limited to the service role (execute revoked from `public`, `anon`, `authenticated`; row-level security on every table, no policies). It is tested with Supabase's roles in PGlite.
+- `lib/store`: `Store` calls those functions through an `Rpc`; `sql-rpc.ts` runs them as SQL (tests), `lib/server/supabase.ts` through supabase-js `.rpc()` with the service-role key. The `postgres` driver and `DATABASE_URL` are not needed.
+- `lib/store/migrate.ts`: an ordered, transactional migration runner with a read-only dry run, used by the test database.
+- `lib/server/env.ts` and `GET /api/health`.
+- Not yet done: `SUPABASE_SERVICE_ROLE_KEY` is unset locally, and the migrations are not applied to the remote database.

@@ -1,14 +1,23 @@
 // The store (engine-implementation.md, Module boundaries: records, events, snapshots, bundles;
-// data-model.md, Records and Atomicity). Talks to Postgres through a narrow `Db`: PGlite in tests,
-// Supabase Postgres in production. Every commit goes through the SQL function `cadmium_commit`.
+// data-model.md, Records and Atomicity). Each operation is one SQL function from supabase/migrations,
+// called through an `Rpc`: supabase-js `.rpc()` in production, plain SQL in tests. Commits go through
+// `cadmium_commit`, which writes every item of a commit in one transaction.
 
 import type { AdventureBundle } from "../bundle/adventure";
 import type { SettingBundle } from "../bundle/setting";
 import type { Commit, CommitInput, GameEvent, State } from "../engine";
 
-/** The one operation the store needs from a Postgres client. */
+/** Calls a store function by name with named arguments; rejects with an error carrying `code`. */
+export interface Rpc {
+  call<T>(fn: string, args: Record<string, unknown>): Promise<T>;
+}
+
+/** What tests and the migration runner need from a Postgres connection. */
 export interface Db {
   query<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<{ rows: T[] }>;
+  exec(script: string): Promise<void>;
+  /** Runs `fn` on one connection inside a transaction, committing when it resolves and rolling back when it throws. */
+  transaction<T>(fn: (tx: Db) => Promise<T>): Promise<T>;
 }
 
 /** The stored version is not the expected one: another writer committed first. */
@@ -81,52 +90,60 @@ export interface NewInputLog {
 
 type BundleMeta = { publisher_id?: string | null; draft_id?: string | null; origin: "operator" | "author"; listed?: boolean };
 
-const INSTANCE_COLUMNS = "id, campaign_id, name, system, system_version, modules, materials, status, seed::text as seed, rng_algorithm, version, state, ending";
-
 export class Store {
-  constructor(readonly db: Db) {}
+  constructor(readonly rpc: Rpc) {}
 
   // Bundles --------------------------------------------------------------------------------------
 
   async putBundle(bundle: SettingBundle | AdventureBundle, meta: BundleMeta): Promise<void> {
     const system = bundle.manifest.system;
-    await this.db.query(
-      `insert into bundles (kind, id, version, system, system_versions, publisher_id, draft_id, data, origin, listed)
-       values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
-      [bundle.kind, bundle.id, bundle.version, system.id, system.versions, meta.publisher_id ?? null, meta.draft_id ?? null, JSON.stringify(bundle), meta.origin, meta.listed ?? true],
-    );
+    await this.rpc.call("cadmium_put_bundle", {
+      p_kind: bundle.kind,
+      p_id: bundle.id,
+      p_version: bundle.version,
+      p_system: system.id,
+      p_system_versions: system.versions,
+      p_publisher_id: meta.publisher_id ?? null,
+      p_draft_id: meta.draft_id ?? null,
+      p_data: bundle,
+      p_origin: meta.origin,
+      p_listed: meta.listed ?? true,
+    });
   }
 
   async getBundle(kind: "setting" | "adventure", id: string, version: string): Promise<SettingBundle | AdventureBundle | undefined> {
-    const { rows } = await this.db.query<{ data: SettingBundle | AdventureBundle }>("select data from bundles where kind = $1 and id = $2 and version = $3", [kind, id, version]);
-    return rows[0]?.data;
+    return (await this.rpc.call<SettingBundle | AdventureBundle | null>("cadmium_get_bundle", { p_kind: kind, p_id: id, p_version: version })) ?? undefined;
   }
 
   async setListed(kind: string, id: string, version: string, listed: boolean): Promise<void> {
-    await this.db.query("update bundles set listed = $4 where kind = $1 and id = $2 and version = $3", [kind, id, version, listed]);
+    await this.rpc.call("cadmium_set_listed", { p_kind: kind, p_id: id, p_version: version, p_listed: listed });
   }
 
   // Instances ------------------------------------------------------------------------------------
 
   async createInstance(i: NewInstance): Promise<void> {
-    await this.db.query(
-      `insert into instances (id, campaign_id, name, system, system_version, modules, materials, seed)
-       values ($1, $2, $3, $4, $5, $6, $7, $8)`,
-      [i.id, i.campaign_id, i.name, i.system, i.system_version, JSON.stringify(i.modules), JSON.stringify(i.materials), i.seed],
-    );
+    await this.rpc.call("cadmium_create_instance", {
+      p_id: i.id,
+      p_campaign_id: i.campaign_id,
+      p_name: i.name,
+      p_system: i.system,
+      p_system_version: i.system_version,
+      p_modules: i.modules,
+      p_materials: i.materials,
+      p_seed: i.seed,
+    });
   }
 
   async getInstance(id: string): Promise<InstanceRecord | undefined> {
-    const { rows } = await this.db.query<InstanceRecord>(`select ${INSTANCE_COLUMNS} from instances where id = $1 and deleted_at is null`, [id]);
-    return rows[0];
+    return (await this.rpc.call<InstanceRecord | null>("cadmium_get_instance", { p_id: id })) ?? undefined;
   }
 
   async setStatus(id: string, status: InstanceStatus): Promise<void> {
-    await this.db.query("update instances set status = $2 where id = $1", [id, status]);
+    await this.rpc.call("cadmium_set_status", { p_id: id, p_status: status });
   }
 
   async addCharacter(instanceId: string, characterId: string, userId: string): Promise<void> {
-    await this.db.query("insert into instance_characters (instance_id, character_id, user_id) values ($1, $2, $3)", [instanceId, characterId, userId]);
+    await this.rpc.call("cadmium_add_character", { p_instance: instanceId, p_character: characterId, p_user: userId });
   }
 
   // Commits --------------------------------------------------------------------------------------
@@ -134,18 +151,17 @@ export class Store {
   /** Commits atomically; returns the new version, or throws VersionConflict. */
   async commit(c: CommitRequest): Promise<number> {
     try {
-      const { rows } = await this.db.query<{ v: number }>("select cadmium_commit($1, $2, $3, $4, $5, $6, $7, $8, $9) as v", [
-        c.instanceId,
-        c.expectedVersion,
-        JSON.stringify(c.state),
-        JSON.stringify(c.events),
-        JSON.stringify(c.input),
-        c.inputLog?.id ?? null,
-        c.inputLog?.outcome ?? null,
-        c.status ?? null,
-        c.ending ?? null,
-      ]);
-      return rows[0]!.v;
+      return await this.rpc.call<number>("cadmium_commit", {
+        p_instance: c.instanceId,
+        p_expected: c.expectedVersion,
+        p_state: c.state,
+        p_events: c.events,
+        p_input: c.input,
+        p_input_log: c.inputLog?.id ?? null,
+        p_outcome: c.inputLog?.outcome ?? null,
+        p_status: c.status ?? null,
+        p_ending: c.ending ?? null,
+      });
     } catch (e) {
       if ((e as { code?: string }).code === "CD409") throw new VersionConflict(c.instanceId, c.expectedVersion);
       throw e;
@@ -154,49 +170,38 @@ export class Store {
 
   /** Events after `afterVersion`, in seq order, at most `limit`. */
   async events(instanceId: string, afterVersion = 0, limit = 1000): Promise<StoredEvent[]> {
-    const { rows } = await this.db.query<{ seq: number; version: number; actor_id: string | null; type: string; payload: Record<string, unknown> }>(
-      "select seq, version, actor_id, type, payload from events where instance_id = $1 and version > $2 order by seq limit $3",
-      [instanceId, afterVersion, limit],
-    );
-    return rows.map((r) => ({ seq: r.seq, version: r.version, actor_id: r.actor_id, event: { type: r.type, ...r.payload } }));
+    return this.rpc.call<StoredEvent[]>("cadmium_events", { p_instance: instanceId, p_after: afterVersion, p_limit: limit });
   }
 
   /** Every commit with its input and events, in version order: what replay needs. */
   async commits(instanceId: string): Promise<Commit[]> {
-    const { rows } = await this.db.query<{ version: number; input: CommitInput }>("select version, input from commits where instance_id = $1 order by version", [instanceId]);
-    const events = await this.events(instanceId, 0, 1_000_000);
-    const byVersion = new Map<number, GameEvent[]>();
-    for (const e of events) byVersion.set(e.version, [...(byVersion.get(e.version) ?? []), e.event]);
-    return rows.map((r) => ({ version: r.version, input: r.input, events: byVersion.get(r.version) ?? [] }));
+    return this.rpc.call<Commit[]>("cadmium_commits", { p_instance: instanceId });
   }
 
   // Input log and narration ----------------------------------------------------------------------
 
   /** Records an input; returns false when the idempotency key was already used by the user in the instance. */
   async logInput(i: NewInputLog): Promise<boolean> {
-    const { rows } = await this.db.query<{ id: string }>(
-      `insert into input_logs (id, instance_id, user_id, idempotency_key, text, parser_context, tool_calls)
-       values ($1, $2, $3, $4, $5, $6, $7)
-       on conflict (instance_id, user_id, idempotency_key) do nothing
-       returning id`,
-      [i.id, i.instance_id, i.user_id, i.idempotency_key, i.text, JSON.stringify(i.parser_context ?? null), JSON.stringify(i.tool_calls ?? [])],
-    );
-    return rows.length === 1;
+    return this.rpc.call<boolean>("cadmium_log_input", {
+      p_id: i.id,
+      p_instance: i.instance_id,
+      p_user: i.user_id,
+      p_key: i.idempotency_key,
+      p_text: i.text,
+      p_parser_context: i.parser_context ?? null,
+      p_tool_calls: i.tool_calls ?? [],
+    });
   }
 
   async rejectInput(id: string): Promise<void> {
-    await this.db.query("update input_logs set outcome = 'rejected' where id = $1", [id]);
+    await this.rpc.call("cadmium_reject_input", { p_id: id });
   }
 
   async inputByKey(instanceId: string, userId: string, key: string): Promise<{ id: string; outcome: string | null; version: number | null } | undefined> {
-    const { rows } = await this.db.query<{ id: string; outcome: string | null; version: number | null }>(
-      "select id, outcome, version from input_logs where instance_id = $1 and user_id = $2 and idempotency_key = $3",
-      [instanceId, userId, key],
-    );
-    return rows[0];
+    return (await this.rpc.call<{ id: string; outcome: string | null; version: number | null } | null>("cadmium_input_by_key", { p_instance: instanceId, p_user: userId, p_key: key })) ?? undefined;
   }
 
   async putNarration(instanceId: string, version: number, text: string, source: "model" | "template"): Promise<void> {
-    await this.db.query("insert into narrations (instance_id, version, text, source) values ($1, $2, $3, $4) on conflict (instance_id, version) do nothing", [instanceId, version, text, source]);
+    await this.rpc.call("cadmium_put_narration", { p_instance: instanceId, p_version: version, p_text: text, p_source: source });
   }
 }

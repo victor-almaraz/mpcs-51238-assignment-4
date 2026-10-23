@@ -20,6 +20,24 @@ pnpm install
 pnpm dev
 ```
 
+## Configuration
+
+The server reads these variables, from `.env.local` locally and from the Vercel project's settings when deployed:
+
+| Variable | Secret | Use |
+|---|---|---|
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | no | Clerk in the browser |
+| `CLERK_SECRET_KEY` | yes | Clerk on the server |
+| `NEXT_PUBLIC_SUPABASE_URL` | no | The Supabase project |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | no | Browser access to Supabase; it cannot reach the store |
+| `SUPABASE_SERVICE_ROLE_KEY` | yes | The store, on the server only: the Supabase secret key (`sb_secret_…`) or legacy service-role key |
+
+`GET /api/health` reports which are set, and whether the database schema is applied, without revealing values.
+
+### Database schema
+
+The migrations in `supabase/migrations/` create the store's tables and functions, and restrict both to the service role. Apply them in file-name order by pasting each file into the Supabase SQL Editor. Each file applies once; `/api/health` then reports `"schema": "applied"`.
+
 ## Scripts
 
 | Script | Job |
@@ -55,7 +73,8 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `lib/generator/` | Dungeon generator: BSP layout, doors and locks, roles, population, verification |
 | `lib/engine/` | The engine: `submit`, `advance`, `startInstance`, and views |
 | `lib/harness/` | Command-line harness, scripted scenarios, and golden logs |
-| `lib/store/` | The store over Postgres: bundles, instances, atomic commits, events, inputs, narration |
+| `lib/store/` | The store: bundles, instances, atomic commits, events, inputs, narration, as SQL functions called through an `Rpc` (supabase-js in production, PGlite in tests) |
+| `lib/server/` | Server-only configuration and the service-role Supabase client |
 | `lib/coordinator/` | Instance operations; so far the operator operations `replay_instance` and `restore_instance` |
 | `supabase/migrations/` | SQL migrations, applied by Supabase in production and by PGlite in tests |
 | `lib/systems/` | Rules-system contract, registry, implementations, and the reusable conformance suite in `testing/` |
