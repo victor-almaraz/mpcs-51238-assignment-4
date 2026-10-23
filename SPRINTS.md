@@ -103,3 +103,19 @@ Notes for sprint 3 and later:
 - Quest exports `harmSheet`, `healSheet`, `standardDamage`, and `tierOf` so that Cadmium's `armor` module can wrap harm without copying it.
 - Setback harm and drops are returned as `damage` and `drop_item` effects; the engine applies effects after updates (sprint 6).
 - `initiative` returns ascending ids with no draws; Quest orders combat by `side`, so the engine never calls it for Quest.
+
+### Sprint 3: Cadmium system — closed
+
+Done:
+
+- `lib/systems/cadmium`: Cadmium delegating every contract function to Quest; `configure` builds one cached system per module set in canonical order (`ENABLED`), and rejects unknown modules.
+- Module `armor`: default and creature pools, harm through the pool (bypass types, death's door), attack damage through the pool, donning with `consume: true` and the full-pool refusal, `summary` resource. Module `stash`: `can_carry` with `base_slots`, container `slots`, and `max_containers`.
+- `schemasFor(modules)`: the schemas with disabled module fields removed.
+- Quest's `attack` takes its harm function through `attackWith`, so `armor` reaches attack damage.
+- Tests: conformance for Cadmium and for `armor`, `stash`, and both; every Quest case against Cadmium; a property test that Cadmium with no module returns Quest's results; schema superset and module-field tests; module rule tests.
+- `SPEC_ISSUES.md`: `module-schema-fields`, `armor-events`.
+
+Phase 1's systems criterion holds. Notes for sprint 4:
+
+- The compiler validates `system_stats` with the system configured by `system.modules`: use `SYSTEMS[id].configure(modules).SCHEMAS` in a registry per configuration, since configured schemas keep their `$id`.
+- Error messages from system schemas name the system and kind, as in `quest creature: 'goon' is not one of [...]` (spec/README.md, Compiler interface).

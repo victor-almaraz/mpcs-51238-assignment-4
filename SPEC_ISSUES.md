@@ -135,3 +135,31 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** `items` is an optional list of at most 12 item refs, placed in `inventory` as `{ ref }` entries.
 
 **Proposed resolution.** Document `items`, or remove it from the choices if starting items come only from setting packs' `starting_items`.
+
+## module-schema-fields
+
+| Field | Value |
+|---|---|
+| Document | `systems/cadmium/*.schema.json`; `docs/systems/README.md` |
+| Section | Schema descriptions; Modules |
+| Marker | `lib/systems/cadmium/data.ts` |
+
+**Problem.** Module fields "apply only while the module is enabled", and the Cadmium schemas say "Fields marked with a module are accepted only when that module is enabled". The only mark is prose: each module field's `description` starts with `Module armor:` or `Module stash:`. No keyword states it, and a configured schema keeps the same `$id` as the full one, so two configurations cannot share one schema registry.
+
+**Implemented.** `schemasFor(modules)` removes every property whose description starts with `Module <id>:` for a disabled `<id>`, keeping the `$id`. Each configuration is compiled in its own registry.
+
+**Proposed resolution.** Mark module fields with an annotation keyword, such as `"x-module": "armor"`, and state how a configured schema is identified, for example by a `$id` query such as `?modules=armor,stash`.
+
+## armor-events
+
+| Field | Value |
+|---|---|
+| Document | `docs/systems/cadmium.md` |
+| Section | Module armor |
+| Marker | `lib/systems/cadmium/armor.ts` |
+
+**Problem.** Harm "reduces `armor.value` first and hit points by the remainder", and each pool change emits `resource_changed`. Whether `damaged` is emitted when the pool absorbs all the harm, and whether its `amount` is the harm dealt or the remainder, is not stated. This decides whether `flee_when_harmed` triggers on fully absorbed harm.
+
+**Implemented.** The pool change emits `resource_changed` first. `damaged` follows only when a remainder reaches hit points, with that remainder as `amount`; at death's door the roll uses the remainder.
+
+**Proposed resolution.** State the events in cadmium.md, Module armor.

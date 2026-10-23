@@ -70,8 +70,12 @@ function resolvingCalls(system: RulesSystem): Record<string, (seed: number) => u
   };
 }
 
-export function conformance(system: RulesSystem): void {
-  describe(`${system.ID}: rules-system conformance`, () => {
+/**
+ * Runs the conformance list against `system`. For a system configured with modules, `unconfigured`
+ * is the system as registered, against which `configure([])` is compared.
+ */
+export function conformance(system: RulesSystem, label = system.ID, unconfigured: RulesSystem = system): void {
+  describe(`${label}: rules-system conformance`, () => {
     it("exposes every name in the contract", () => {
       for (const name of NAMES) expect(system[name], name).toBeDefined();
       expect(system.ID).toMatch(/^[a-z][a-z0-9_]*$/);
@@ -171,11 +175,10 @@ export function conformance(system: RulesSystem): void {
 
     it("configure([]) behaves identically to the unconfigured system and rejects unknown modules", () => {
       const configured = system.configure([]);
-      for (const name of ["ID", "VERSION", "ORDERING", "STANDARD_CHECKS", "MODULES", "SPATIAL"] as const) {
-        expect(configured[name]).toEqual(system[name]);
+      for (const name of ["ID", "VERSION", "SCHEMAS", "ORDERING", "STANDARD_CHECKS", "MODULES", "SPATIAL"] as const) {
+        expect(configured[name]).toEqual(unconfigured[name]);
       }
-      expect(Object.keys(configured.SCHEMAS).sort()).toEqual(Object.keys(system.SCHEMAS).sort());
-      const plain = resolvingCalls(system);
+      const plain = resolvingCalls(unconfigured);
       const conf = resolvingCalls(configured);
       for (const name of Object.keys(plain)) {
         for (const seed of [0, 1, 7, 42, 99]) expect(conf[name]!(seed), name).toEqual(plain[name]!(seed));

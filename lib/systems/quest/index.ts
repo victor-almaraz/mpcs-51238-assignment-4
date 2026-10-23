@@ -105,23 +105,23 @@ function d20(rng: Rng, label: string): Roll {
 // ---------------------------------------------------------------------------------------------
 // Harm and healing
 
-interface Part {
+export interface Part {
   updates: Record<string, Sheet>;
   events: GameEvent[];
   effects: Effect[];
   rolls: Roll[];
 }
 
-const emptyPart = (): Part => ({ updates: {}, events: [], effects: [], rolls: [] });
+export const emptyPart = (): Part => ({ updates: {}, events: [], effects: [], rolls: [] });
 
-function merge(into: Part, part: Part): void {
+export function merge(into: Part, part: Part): void {
   Object.assign(into.updates, part.updates);
   into.events.push(...part.events);
   into.effects.push(...part.effects);
   into.rolls.push(...part.rolls);
 }
 
-function hpOf(sheet: Sheet): Meter {
+export function hpOf(sheet: Sheet): Meter {
   const hp = sheet.hp as Meter | undefined;
   if (!hp || !isInt(hp.value, 0) || !isInt(hp.max, 1)) throw new RulesError("invalid_call", "sheet has no hp meter");
   return hp;
@@ -173,7 +173,7 @@ export function healSheet(target: Combatant, sheet: Sheet, amount: number): Part
   return part;
 }
 
-function resolution(outcome: Tier | null, part: Part, choice: Resolution["choice"] = null): Resolution {
+export function resolution(outcome: Tier | null, part: Part, choice: Resolution["choice"] = null): Resolution {
   return { outcome, rolls: part.rolls, updates: part.updates, events: part.events, effects: part.effects, choice };
 }
 
@@ -358,14 +358,34 @@ export function standardDamage(attacker: Combatant, weapon: HeldItem | null): nu
   return isInt(weapon.stats.damage, 0) ? weapon.stats.damage : DATA.damage.weapon;
 }
 
+/** Harm applied to a sheet: Quest's `harmSheet`, or a module's wrapper of it. */
+export type HarmSheet = (target: Combatant, sheet: Sheet, amount: number, rng: Rng, type: string | null) => Part;
+
+/** `attack` with the given harm, so that modules that change harm also change attack damage. */
+export function attackWith(harmFn: HarmSheet) {
+  return (attacker: Combatant, defender: Combatant, weapon: HeldItem | null, situation: unknown, rng: Rng): Resolution =>
+    resolveAttack(harmFn, attacker, defender, weapon, situation, rng);
+}
+
 export function attack(attacker: Combatant, defender: Combatant, weapon: HeldItem | null, situation: unknown, rng: Rng): Resolution {
+  return resolveAttack(harmSheet, attacker, defender, weapon, situation, rng);
+}
+
+function resolveAttack(
+  harmFn: HarmSheet,
+  attacker: Combatant,
+  defender: Combatant,
+  weapon: HeldItem | null,
+  situation: unknown,
+  rng: Rng,
+): Resolution {
   void situation;
   const roll = d20(rng, "attack");
   const tier = tierOf(roll.total);
   const damage = standardDamage(attacker, weapon) * MULTIPLIER[tier];
   const part: Part = { ...emptyPart(), rolls: [roll] };
   part.events.push({ type: "attacked", actor: attacker.id, target: defender.id, roll: roll.total, outcome: tier, damage });
-  merge(part, harmSheet(defender, defender.sheet, damage, rng));
+  merge(part, harmFn(defender, defender.sheet, damage, rng, null));
   const attackerSheet = part.updates[attacker.id] ?? attacker.sheet;
   const { part: sb, choice } = setbacks(attacker, attackerSheet, tier, weapon, rng);
   merge(part, sb);
