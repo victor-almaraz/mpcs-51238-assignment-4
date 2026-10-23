@@ -184,3 +184,21 @@ Already in place for sprint 7:
 - Entity behaviours, approach, and cover.
 
 Sprint 7 adds the tests for those parts, and a fake sequential system with initiative.
+
+### Sprint 8: Generator — closed
+
+Done:
+
+- `lib/generator` (written by a subagent, reviewed and integrated here): `generate(spec, settings, adventure, metric, seed)` implements generation.md's pipeline. It covers location and attempt seeds, BSP layout, adjacency with Kruskal and loops, roles and BFS renumbering, room templates, anchors and links, locks and keys, population, placement cells, verification, and 20 attempts. Output is the compiled authored format plus `legend` and `aliases`.
+- Tests:
+  - A 1,000-seed sweep of the guide's `lower_archive`: every map verifies and passes the authored map checks of `lib/materials`.
+  - Synthetic specs of 200 seeds each.
+  - Determinism, room templates, lighting, and the documented errors.
+- `lib/engine/start.ts` generates every generated location at instance start and stores its aliases. Engine and generator share `pickWeighted`.
+- `lib/engine/adventure.test.ts`: the guide's `sunken_archive` starts, powers its lift with the keycard, and travels into the generated archive.
+- `SPEC_ISSUES.md`: 17 generator entries, from `generator-attempt-seeds` to `verification-passability`; `treasure-role` and `weighted-tables` extended.
+
+Notes for sprints 7 and 9:
+
+- Sprint 7 tests rounds and combat: sequential and initiative policies with a fake system, entity behaviours, approach, cover, structures, the combat area, and combat end.
+- Sprint 9 adds the harness and golden logs; `sunken_archive` and `trial` are the adventures to script to every ending.

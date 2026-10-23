@@ -10,7 +10,7 @@ import { afterAction, beginTurns, closeRound, currentParticipant, dryRun, finish
 import type { Bundles, Result, State, ToolCall } from "./types";
 
 export * from "./types";
-export { startInstance, type Generate, type GeneratedMap, type StartInput } from "./start";
+export { startInstance, type StartInput } from "./start";
 export { view, type View } from "./view";
 
 function run(state: State, bundles: Bundles, rng: Rng, body: (ctx: Ctx) => void): Result {

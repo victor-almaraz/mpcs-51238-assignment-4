@@ -50,6 +50,8 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `app/` | Next.js routes and pages |
 | `lib/rng/` | `splitmix64_v1` draws, dice, selection by RNG, `fnv1a64` |
 | `lib/grid/` | Map parsing, distance, adjacency, line of sight, pathfinding, movement allowance |
+| `lib/generator/` | Dungeon generator: BSP layout, doors and locks, roles, population, verification |
+| `lib/engine/` | The engine: `submit`, `advance`, `startInstance`, and views |
 | `lib/systems/` | Rules-system contract, registry, implementations, and the reusable conformance suite in `testing/` |
 | `lib/bundle/` | Schema registry and generated types; generated files are never edited by hand |
 | `lib/materials/` | Content Compiler: pack reading, schema explanations, rules-system, cross-reference, map, and art checks, bundles, and the `materials` command line |

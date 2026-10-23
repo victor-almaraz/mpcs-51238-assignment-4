@@ -282,11 +282,11 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 |---|---|
 | Document | `docs/generation.md`; `spec/schema/location.schema.json`, `rooms.schema.json` |
 | Section | Roles and depth; link `role`, anchor `prefer_role`, room template `role` |
-| Marker | `lib/materials/adventure.ts` |
+| Marker | `lib/materials/adventure.ts`, `lib/generator/generate.ts` |
 
 **Problem.** The schemas offer the role `treasure` for generated links, anchor preferences, and room templates, but the generator assigns only `entry`, `dead_end`, and `boss`. A generated link with role `treasure` always fails generation, and a `treasure` room template is never placed.
 
-**Implemented.** A generated link with role `treasure` is a compilation error under check 9 ("a generated link names a role the generator cannot produce").
+**Implemented.** A generated link with role `treasure` is a compilation error under check 9 ("a generated link names a role the generator cannot produce"). In the generator, `treasure` never matches: a template with that role is never placed, and `prefer_role: treasure` falls back to the other candidates.
 
 **Proposed resolution.** Define how the generator assigns `treasure`, for example to dead ends that hold loot containers, or remove the value from the schemas.
 
@@ -394,11 +394,11 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 |---|---|
 | Document | `docs/engine.md`; `docs/setting-packs.md` |
 | Section | Random numbers; tables.yaml |
-| Marker | `lib/engine/ctx.ts` |
+| Marker | `lib/generator/generate.ts`, `lib/engine/ctx.ts` |
 
 **Problem.** Selection "by RNG" is defined for lists, not for weighted tables, and an entry's `count` is not described for draws.
 
-**Implemented.** One draw is a die with the total weight; entries are walked in order, subtracting weights, until the roll is used up. The chosen entry places `count` items, rolled when it is dice. `picks` is rolled first when it is dice.
+**Implemented.** One draw is a die with the total weight; the chosen entry is the first whose running total of weights reaches the result, in table order. The generator and the engine share this draw (`pickWeighted`). The chosen entry places `count` items, rolled when it is dice. `picks` is rolled first when it is dice.
 
 **Proposed resolution.** Define weighted selection in engine.md, Random numbers.
 
@@ -443,3 +443,241 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** During combat, a character outside the combat area may use every tool available in exploration mode, including the exploration-only tools; movement uses the combat allowance.
 
 **Proposed resolution.** List the tools available outside the combat area.
+
+## generator-attempt-seeds
+
+| Field | Value |
+|---|---|
+| Document | `docs/generation.md` |
+| Section | Interface |
+| Marker | `lib/generator/generate.ts` |
+
+**Problem.** Retries use `draw(location_seed, attempt)` for attempt number `attempt`, but the number of the first attempt, and whether it uses `location_seed` itself, is not stated.
+
+**Implemented.** Attempt 0 uses `location_seed`; attempts 1 to 19 use `draw(location_seed, attempt)`; 20 attempts in total.
+
+**Proposed resolution.** State the numbering of attempts.
+
+## bsp-split-candidates
+
+| Field | Value |
+|---|---|
+| Document | `docs/generation.md` |
+| Section | Pipeline, 1. Layout, step 2 |
+| Marker | `lib/generator/layout.ts` |
+
+**Problem.** "Take the region with the largest interior area" does not say what happens when that region cannot split.
+
+**Implemented.** The largest region among those that can split is taken.
+
+**Proposed resolution.** Restrict the choice to regions that can split.
+
+## generator-orderings
+
+| Field | Value |
+|---|---|
+| Document | `docs/generation.md` |
+| Section | Pipeline, steps 1 to 3 |
+| Marker | `lib/generator/layout.ts`, `lib/generator/generate.ts` |
+
+**Problem.** Several orders and roundings are unstated: the split direction on equal sides, which child region is created first, room ids before renumbering (used by Kruskal ties and BFS), the order in which adjacencies receive doorways, the doorway order of `d` ids, how `round` treats halves, and whether a tie-break draws when there is no tie.
+
+**Implemented.** The direction is picked from `[vertical, horizontal]`; the west or north child is created first; rooms are numbered before renumbering in row-major order of their region's top-left cell; doorways are chosen in `(a, b)` order of the room pair; door ids follow row-major doorway order; halves round up; the boss tie draws only on a tie, while every other selection by RNG draws even from a one-item list.
+
+**Proposed resolution.** State each order and rounding in generation.md.
+
+## generated-room-roles
+
+| Field | Value |
+|---|---|
+| Document | `docs/generation.md` |
+| Section | Roles and depth, step 3; Output |
+| Marker | `lib/generator/layout.ts` |
+
+**Problem.** A room can hold several roles, such as an entry with one doorway or a boss room that is a dead end, but the output gives one `role`.
+
+**Implemented.** Roles accumulate as a set, and constraints test membership. The output shows the first of `entry`, `boss`, and `dead_end`, or null.
+
+**Proposed resolution.** Define a precedence, or make `role` a list.
+
+## generated-room-aliases
+
+| Field | Value |
+|---|---|
+| Document | `docs/adventure-packs.md`; `docs/generation.md` |
+| Section | Room references; Output |
+| Marker | `lib/generator/types.ts` |
+
+**Problem.** `location.<anchor_id>` names the room holding an anchor, but an anchor without `place.id` places an entity with a generated id, so the output cannot say which room holds it.
+
+**Implemented.** The generator returns `aliases`, mapping `r1`, `entry`, `boss`, anchor ids, and link ids to room ids, beside the location; the engine stores it on the location state.
+
+**Proposed resolution.** Add the aliases, or an anchor-to-room map, to the output format.
+
+## generated-legend
+
+| Field | Value |
+|---|---|
+| Document | `docs/generation.md` |
+| Section | Output |
+| Marker | `lib/generator/generate.ts` |
+
+**Problem.** Room templates bring terrain such as `coolant`, which the output's rows need legend characters for; the example output has no legend.
+
+**Implemented.** The output carries `legend`. Each terrain takes the character the first placed template uses for it, otherwise the first free printable character.
+
+**Proposed resolution.** Include `legend` in the output format.
+
+## room-template-rooms
+
+| Field | Value |
+|---|---|
+| Document | `docs/generation.md` |
+| Section | 4. Room templates |
+| Marker | `lib/generator/generate.ts` |
+
+**Problem.** It is not stated whether two templates can share a room, or which label and tags a room holding a template has.
+
+**Implemented.** One template per room; the room takes the template's label and tags, and draws no label from `room_labels`.
+
+**Proposed resolution.** State both rules.
+
+## placement-free-cells
+
+| Field | Value |
+|---|---|
+| Document | `docs/generation.md` |
+| Section | 7. Population (placement cells) |
+| Marker | `lib/generator/draft.ts` |
+
+**Problem.** Placement cells must be "free", which engine.md defines for movers, not for placing entities. Nothing says whether link cells can hold placements.
+
+**Implemented.** A cell is free for a placement when it is in the room on passable terrain and holds no link and no movement-obstructing entity; when placing a creature it also holds no creature, and when placing an obstructing entity it holds nothing. The doorway restriction applies to every footprint cell. A link takes a placement cell and reserves it.
+
+**Proposed resolution.** Define placement freedom and whether links reserve their cell.
+
+## lock-path
+
+| Field | Value |
+|---|---|
+| Document | `docs/generation.md` |
+| Section | 6. Locks, step 1 |
+| Marker | `lib/generator/generate.ts` |
+
+**Problem.** "The path from the entry to the deepest anchor" may be a path of rooms or of cells, and ties between equally deep anchors are not broken.
+
+**Implemented.** The path is the BFS-tree path of rooms; candidate doorways are in row-major order; the first anchor in list order wins a depth tie.
+
+**Proposed resolution.** State the path and the tie rule.
+
+## lock-candidates
+
+| Field | Value |
+|---|---|
+| Document | `docs/generation.md` |
+| Section | 6. Locks, step 2 |
+| Marker | `lib/generator/generate.ts` |
+
+**Problem.** Nothing covers running out of doorways for later locks, or keeping doorways for them.
+
+**Implemented.** Each lock's doorway must be deeper on the path than the previous lock's; with none left, the attempt fails.
+
+**Proposed resolution.** State whether the attempt fails and whether doorways are kept for later gates.
+
+## lock-key-order
+
+| Field | Value |
+|---|---|
+| Document | `docs/generation.md` |
+| Section | 6. Locks, step 4 |
+| Marker | `lib/generator/generate.ts` |
+
+**Problem.** Read in order, step 4 for one gate cannot know the later locks it must avoid, and on maps with loops a later lock can cut off an earlier key.
+
+**Implemented.** Steps 1 to 3 run for every gate first; keys are then placed in gate order, using reachability over the room graph.
+
+**Proposed resolution.** State that keys are placed after all locks.
+
+## remaining-rooms
+
+| Field | Value |
+|---|---|
+| Document | `docs/generation.md` |
+| Section | 7. Population, step 1 |
+| Marker | `lib/generator/generate.ts` |
+
+**Problem.** "Each remaining room" is not defined.
+
+**Implemented.** Rooms other than the entry that hold no room template and no anchor.
+
+**Proposed resolution.** Define the remaining rooms.
+
+## generator-probability
+
+| Field | Value |
+|---|---|
+| Document | `docs/generation.md` |
+| Section | 7. Population, step 1 |
+| Marker | `lib/generator/generate.ts` |
+
+**Problem.** No procedure turns a probability, such as `density`, into draws.
+
+**Implemented.** One draw `v`; the event happens when `v < floor(p × 2^64)`, and always when `p` is at least 1.
+
+**Proposed resolution.** Define probability draws in engine.md, Random numbers.
+
+## loot-containers
+
+| Field | Value |
+|---|---|
+| Document | `docs/generation.md` |
+| Section | 7. Population, step 2 |
+| Marker | `lib/generator/generate.ts` |
+
+**Problem.** "Place containers with loot" names no container template.
+
+**Implemented.** One container per dead end or boss room, picked by RNG, in ref order, from the container templates whose contents draw from `loot_table`; nothing is placed without a loot table or such a container.
+
+**Proposed resolution.** Add a container template to `generation` or `population`.
+
+## room-label-fallback
+
+| Field | Value |
+|---|---|
+| Document | `docs/generation.md` |
+| Section | 7. Population, step 3 |
+| Marker | `lib/generator/generate.ts` |
+
+**Problem.** "The setting pack table `room_labels`" does not identify the pack, and nothing covers a room no entry matches.
+
+**Implemented.** Labels come from the setting that supplies `generation`; an entry matches when the room carries all its tags; with no match, the label is the room id.
+
+**Proposed resolution.** Name the pack and the fallback.
+
+## lit-rooms-ambient
+
+| Field | Value |
+|---|---|
+| Document | `docs/generation.md`; `spec/schema/location.schema.json` |
+| Section | 7. Population, step 4; `lit_rooms` |
+| Marker | `lib/generator/generate.ts` |
+
+**Problem.** It is not stated whether rooms are drawn for `lit_rooms` when the ambient light is bright.
+
+**Implemented.** With a bright ambient no rooms are drawn and no draws are made; rooms are picked without replacement; a template's own light overrides.
+
+**Proposed resolution.** State the rule.
+
+## verification-passability
+
+| Field | Value |
+|---|---|
+| Document | `docs/generation.md` |
+| Section | 8. Verification |
+| Marker | `lib/generator/draft.ts` |
+
+**Problem.** Verification does not say whether creatures block access, or how doors with locks other than `has_item` count.
+
+**Implemented.** Creatures never block; a door with a lock other than `has_item` never opens; every item on a reached cell counts as collected.
+
+**Proposed resolution.** State both rules.

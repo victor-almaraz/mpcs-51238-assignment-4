@@ -1,6 +1,7 @@
 // The context of one resolution: a private copy of state, the Rng, and the events produced. A
 // rejection throws `Reject`; `submit` and `advance` turn it into an error result, discarding the copy.
 
+import { pickWeighted } from "../generator";
 import type { Rng } from "../rng";
 import type { Combatant, Effect, GameEvent, HeldItem, Resolution, Sheet } from "../systems";
 import { RulesError } from "../systems";
@@ -214,11 +215,9 @@ export class Ctx {
     const entries = this.c.table(table) ?? [];
     const count = typeof picks === "number" ? picks : this.rng.roll(picks).total;
     const refs: string[] = [];
-    const total = entries.reduce((s, e) => s + e.weight, 0);
-    for (let i = 0; i < count && total > 0; i++) {
-      // SPEC_ISSUES.md#weighted-tables: a die with the total weight, walking entries in order.
-      let roll = this.rng.die(total);
-      const entry = entries.find((e) => (roll -= e.weight) <= 0)!;
+    for (let i = 0; i < count && entries.length > 0; i++) {
+      // SPEC_ISSUES.md#weighted-tables: the same weighted draw as the generator.
+      const entry = pickWeighted(this.rng, entries);
       const n = entry.count === undefined ? 1 : typeof entry.count === "number" ? entry.count : this.rng.roll(entry.count).total;
       for (let k = 0; k < n; k++) refs.push(entry.ref);
     }

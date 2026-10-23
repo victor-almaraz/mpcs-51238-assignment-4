@@ -3,6 +3,7 @@
 
 import type { AuthoredLocation, GeneratedLocation } from "../bundle/adventure";
 import type { Placement } from "../bundle/setting";
+import { generate } from "../generator";
 import { footprintCells, type Cell } from "../grid";
 import { Rng, type U64 } from "../rng";
 import { content, type Content } from "./content";
@@ -13,24 +14,10 @@ import { afterAction, startRound } from "./rounds";
 import type { Bundles, JoiningCharacter, LocationState, Result, State } from "./types";
 import { key, moverTests, roomCells } from "./world";
 
-/** A generated location in the compiled authored format (generation.md, "Output"). */
-export interface GeneratedMap {
-  rows: string[];
-  rooms: Record<string, { label: string; tags: string[]; role?: string; depth?: number; light: "bright" | "dim" | "dark"; area: [number, number, number, number][] }>;
-  links: Record<string, { label: string; at: Cell; to: { location: string; link: string } }>;
-  contents: (Placement & { ref: string; at: Cell })[];
-  /** Room aliases: `entry`, `boss`, anchor ids, and link ids. */
-  aliases: Record<string, string>;
-}
-
-/** Generates a location; the engine passes the location id and spec, and the instance seed. */
-export type Generate = (id: string, spec: GeneratedLocation, bundles: Bundles, seed: U64) => { ok: true; map: GeneratedMap } | { ok: false; error: string };
-
 export interface StartInput {
   bundles: Bundles;
   characters: readonly JoiningCharacter[];
   seed: U64;
-  generate?: Generate;
 }
 
 const BUILTIN_LEGEND: Readonly<Record<string, string>> = { ".": "floor", "#": "wall", " ": "void" };
@@ -67,7 +54,10 @@ function terrainFor(c: Content, legend: Record<string, string>): LocationState["
   return out;
 }
 
-function locationFrom(c: Content, rows: string[], legend: Record<string, string>, rooms: GeneratedMap["rooms"], links: GeneratedMap["links"], aliases?: Record<string, string>): LocationState {
+type Rooms = Record<string, { label: string; tags?: string[]; role?: string | null; depth?: number; light?: "bright" | "dim" | "dark"; area: [number, number, number, number][] }>;
+type Links = LocationState["links"];
+
+function locationFrom(c: Content, rows: string[], legend: Record<string, string>, rooms: Rooms, links: Links, aliases?: Record<string, string>): LocationState {
   const loc: LocationState = {
     rows: [...rows],
     terrain: terrainFor(c, legend),
@@ -75,7 +65,15 @@ function locationFrom(c: Content, rows: string[], legend: Record<string, string>
     rooms: Object.fromEntries(
       Object.entries(rooms).map(([id, r]) => [
         id,
-        { label: r.label, tags: [...(r.tags ?? [])], light: r.light ?? "bright", area: r.area.map((a) => [...a] as [number, number, number, number]), visited: false, ...(r.role ? { role: r.role } : {}), ...(r.depth !== undefined ? { depth: r.depth } : {}) },
+        {
+          label: r.label,
+          tags: [...(r.tags ?? [])],
+          light: r.light ?? "bright",
+          area: r.area.map((a) => [...a] as [number, number, number, number]),
+          visited: false,
+          ...(r.role ? { role: r.role } : {}),
+          ...(r.depth !== undefined ? { depth: r.depth } : {}),
+        },
       ]),
     ),
     links: structuredClone(links),
@@ -159,14 +157,13 @@ export function startInstance(input: StartInput): Result {
             if (entry && typeof entry !== "string") legendPlacements.push({ ref: entry.place, at: [x, y] });
           }),
         );
-        state.locations[id] = locationFrom(c, a.map.rows, legend, a.map.rooms as GeneratedMap["rooms"], (a.map.links ?? {}) as GeneratedMap["links"]);
+        state.locations[id] = locationFrom(c, a.map.rows, legend, a.map.rooms as Rooms, (a.map.links ?? {}) as Links);
         placements.push([id, [...legendPlacements, ...(a.map.contents ?? [])]]);
       } else {
-        if (!input.generate) reject("requirement_unmet", `location '${id}' is generated and no generator was supplied`);
-        const g = input.generate(id, def as GeneratedLocation, bundles, seed);
-        if (!g.ok) reject("requirement_unmet", `generating '${id}' failed: ${g.error}`);
-        state.locations[id] = locationFrom(c, g.map.rows, { ...BUILTIN_LEGEND }, g.map.rooms, g.map.links, g.map.aliases);
-        placements.push([id, g.map.contents]);
+        const g = generate(def as GeneratedLocation, bundles.settings, bundles.adventure, bundles.system.SPATIAL.metric, seed);
+        if (!g.ok) reject("requirement_unmet", g.error);
+        state.locations[id] = locationFrom(c, g.location.rows, { ...BUILTIN_LEGEND, ...g.location.legend }, g.location.rooms, g.location.links, g.aliases);
+        placements.push([id, g.location.contents as Placement[]]);
       }
     }
     for (const [id, list] of placements) placeContents(ctx, id, list);
