@@ -82,7 +82,7 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 
 **Problem.** quest.md gives the exploration order as `tool_priority` without its `tools` list. The only list is the example in engine.md, which omits `rest`, an ordered tool in `ordered_tool` of `defs.schema.json`. engine.md does not say where a tool missing from the list sorts.
 
-**Implemented.** Quest uses the engine.md list verbatim: `move`, `talk`, `interact`, `take`, `give`, `drop`, `use`, `ability`, `attack`, `search`, `wait`.
+**Implemented.** Quest uses the engine.md list verbatim: `move`, `talk`, `interact`, `take`, `give`, `drop`, `use`, `ability`, `attack`, `search`, `wait`. The engine sorts a tool missing from the list, such as `rest`, after every listed tool (`lib/engine/rounds.ts`).
 
 **Proposed resolution.** List Quest's `tools` in quest.md, including `rest`, and state in engine.md that tools absent from the list sort after every listed tool.
 
@@ -345,3 +345,101 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** A draft's entities compile as `entities/entities.yaml`.
 
 **Proposed resolution.** Name the file the editor exports entities to.
+
+## engine-state-fields
+
+| Field | Value |
+|---|---|
+| Document | `docs/data-model.md` |
+| Section | Instance state |
+| Marker | `lib/engine/types.ts` |
+
+**Problem.** The example state does not show how carried items, container contents, engine-created entity ids, item uses, `set_hostile`, behaviour switches from `flee_when_harmed`, closed simultaneous rounds, or generated-room aliases are stored. It also shows both a `hidden` field and a `conditions` list, and `hidden` is an engine condition.
+
+**Implemented.** Carried items are entities with `carrier`, listed in `characters[id].items`; the character sheet's `inventory` is kept equal to them. Containers list item ids in `contents`. Entities carry `uses`, `hostile` (set by `set_hostile`), and `behavior`. Engine-created entities take ids `_e<n>` from the counter `next_entity`. `hidden` is a condition only. A simultaneous round's `order` is set when it closes, and `turn_index` counts its resolved actions. Generated locations carry `aliases`.
+
+**Proposed resolution.** Extend the example state with these fields, or add a state schema.
+
+## dead-creatures
+
+| Field | Value |
+|---|---|
+| Document | `docs/engine.md` |
+| Section | Entities on the map; Combatants and sheets |
+| Marker | `lib/engine/world.ts` |
+
+**Problem.** A structure that leaves `active` is removed, but nothing says what happens to a creature or character that dies: whether it stays on the map, still occupies its cells, or drops its `loot`.
+
+**Implemented.** Dead creatures and characters stay in place and occupy no cells. `loot` is not dropped.
+
+**Proposed resolution.** State whether the dead keep their cells and when `loot` is drawn and placed.
+
+## container-contents
+
+| Field | Value |
+|---|---|
+| Document | `docs/setting-packs.md`; `docs/engine.md` |
+| Section | Container (`contents`); Containers |
+| Marker | `lib/engine/ctx.ts` |
+
+**Problem.** A container's `contents` is a pick from a table or a list of refs, but the time the pick is drawn is not stated.
+
+**Implemented.** Contents are drawn when the container is placed, at instance start or when spawned, and stored as item entities held by the container.
+
+**Proposed resolution.** State that contents are drawn on placement.
+
+## weighted-tables
+
+| Field | Value |
+|---|---|
+| Document | `docs/engine.md`; `docs/setting-packs.md` |
+| Section | Random numbers; tables.yaml |
+| Marker | `lib/engine/ctx.ts` |
+
+**Problem.** Selection "by RNG" is defined for lists, not for weighted tables, and an entry's `count` is not described for draws.
+
+**Implemented.** One draw is a die with the total weight; entries are walked in order, subtracting weights, until the roll is used up. The chosen entry places `count` items, rolled when it is dice. `picks` is rolled first when it is dice.
+
+**Proposed resolution.** Define weighted selection in engine.md, Random numbers.
+
+## effect-events
+
+| Field | Value |
+|---|---|
+| Document | `docs/engine.md` |
+| Section | Effects; Events |
+| Marker | `lib/engine/effects.ts` |
+
+**Problem.** The events emitted by `give_item`, `remove_item`, `drop_item`, `apply_condition`, `remove_condition`, `set_hostile`, and `start_combat` are not listed.
+
+**Implemented.** `give_item` emits `entity_spawned` for the new item; `remove_item` emits `entity_despawned`; `drop_item` emits `item_dropped` with the target as `actor`; conditions emit `condition_applied` and `condition_removed`; `start_combat` emits `combat_started` when the instance enters combat; `set_hostile` emits nothing.
+
+**Proposed resolution.** Add an events column to the effects table.
+
+## ability-roll
+
+| Field | Value |
+|---|---|
+| Document | `docs/engine.md`; `docs/systems/README.md` |
+| Section | Action resolution (`ability`); Contract |
+| Marker | `lib/engine/actions.ts` |
+
+**Problem.** The engine calls `check` for an ability "if the system marks the ability as rolled (see each system's document)", but the contract has no function for it, so the engine must read a system-specific field. The check specification for an ability roll is not defined either.
+
+**Implemented.** An ability is rolled when its `system_stats.roll` is `true`, as in Quest; the check uses the empty specification `{}`.
+
+**Proposed resolution.** Add a contract function, such as `ability_check(stats)`, returning the check specification or null.
+
+## outside-combat-area
+
+| Field | Value |
+|---|---|
+| Document | `docs/engine.md` |
+| Section | Rounds ("Characters outside the combat area take part in combat rounds with exploration tools only") |
+| Marker | `lib/engine/actions.ts` |
+
+**Problem.** "Exploration tools only" can mean the tools of exploration mode, which include `attack`, or excluding combat actions. It also conflicts with exploration-only tools being unavailable in combat.
+
+**Implemented.** During combat, a character outside the combat area may use every tool available in exploration mode, including the exploration-only tools; movement uses the combat allowance.
+
+**Proposed resolution.** List the tools available outside the combat area.

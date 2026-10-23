@@ -151,3 +151,36 @@ Phase 1 is complete. Notes for sprint 6:
 
 - `guideAdventure()` and `derelictStation()` in `lib/materials/testing/fixtures.ts` give a compiled setting and adventure for engine tests; `lower_archive` is generated, so playing past the lift needs sprint 8's generator.
 - Bundle refs are qualified (`base:hatch`); room references stay as written and resolve at runtime by the scopes in adventure-packs.md, "Room references".
+
+### Sprint 6: Engine state and exploration — closed
+
+Done:
+
+- `lib/engine`: `submit`, `advance`, `startInstance`, and `view`. Each call works on a private copy of state and returns a complete result or an error.
+  - `world.ts`: terrain, rooms, occupancy, obstruction, light, perception, and visibility.
+  - `movement.ts`: goal cells, the exploration walk (opening unlocked doors, stopping on new rooms and newly seen hostiles), link travel, moving away, approach, and reach.
+  - `actions.ts`: validation and resolution of all fifteen tools.
+  - `effects.ts`: every setting and plot effect.
+  - `requirements.ts`: every requirement form, and room references.
+  - `situation.ts`: advantage, modifier, cover, and illumination tags.
+  - `rounds.ts`: declarations validated by a dry run, closing, ordering, voiding, `tick`, durations, and the clock.
+  - `triggers.ts`: three passes in event and arc order.
+  - `start.ts`: placements, characters, starting items, flags, stages, and start effects.
+- `lib/engine/testing/world.ts`: the `trial` adventure, compiled through `lib/materials`.
+- `lib/engine/engine.test.ts`: 71 tests.
+  - Every error code is produced.
+  - Movement covers doors, the `new_room` and `hostile_seen` stops, and link travel.
+  - Containers, use, light, talk, search, rest, and free tools are covered.
+  - An arrival-order permutation test checks simultaneous resolution.
+  - Pending choices, triggers, endings, effects, requirements, conditions, and situations are covered.
+  - Lighting is tested with `SPATIAL.lighting` true and false.
+  - Views, determinism, and input immutability are covered.
+- `SPEC_ISSUES.md`: `engine-state-fields`, `dead-creatures`, `container-contents`, `weighted-tables`, `effect-events`, `ability-roll`, `outside-combat-area`.
+
+Already in place for sprint 7:
+
+- Both resolution methods, every sort key, and initiative rerolls.
+- Combat start, combat area, combatant recruitment, and combat end.
+- Entity behaviours, approach, and cover.
+
+Sprint 7 adds the tests for those parts, and a fake sequential system with initiative.
