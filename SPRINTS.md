@@ -119,3 +119,19 @@ Phase 1's systems criterion holds. Notes for sprint 4:
 
 - The compiler validates `system_stats` with the system configured by `system.modules`: use `SYSTEMS[id].configure(modules).SCHEMAS` in a registry per configuration, since configured schemas keep their `$id`.
 - Error messages from system schemas name the system and kind, as in `quest creature: 'goon' is not one of [...]` (spec/README.md, Compiler interface).
+
+### Sprint 4: Compiler for setting packs — closed
+
+Done:
+
+- `lib/materials`: `compile(files)` over an in-memory file map. `pack.ts` reads the layout, parses YAML 1.2, validates each file, and merges directories. `explain.ts` turns a failed validation into one specific message per cause, choosing the intended `oneOf` branch. `rules.ts` binds the system and validates `system_stats` and check specifications against the configured system. `setting.ts` runs cross-reference, declaration, generation, remains, depth, light, and currency checks, and builds the bundle. `maps.ts` runs the map checks. `art.ts` checks assets and reads PNG and WebP sizes. `semver.ts` handles version ranges.
+- `lib/materials/cli.ts`: `materials check|build [--json] [-o FILE] [--] DIR`, exit statuses 0, 1, and 2, atomic `-o`.
+- `lib/bundle/setting.ts`: `SettingBundle` types, built-in terrain and conditions, and `loadSettingBundle`, which fails on unknown fields.
+- `lib/materials/testing/fixtures.ts`: 57 fixtures, at least one for every check id, each asserting its exact `FILE: PATH: MESSAGE`, including both examples in spec/README.md.
+- `SPEC_ISSUES.md`: `diagnostic-check-ids`, `pack-file-names`, `attribution-licenses`, `ref-kinds`, `bundle-format`.
+
+Notes for sprint 5:
+
+- `readPack("adventure", ...)` already reads the adventure layout and keys `plot/`, `locations/`, and `npcs/` by `id`.
+- `checkGrid` and `checkPlacements` take a `MapContext` and work for authored locations; adventure-specific checks (rooms covering every passable cell, links, `npc`, `id`, `room`) are still to add.
+- `languageVisitor` collects refs and declaration checks for any effect list; adventure refs may point into required settings' namespaces, so resolution needs the setting bundles.

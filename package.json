@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
-    "check": "pnpm gen:check && pnpm typecheck && pnpm lint --max-warnings 0 && pnpm test && pnpm build"
+    "check": "pnpm gen:check && pnpm typecheck && pnpm lint --max-warnings 0 && pnpm test && pnpm build",
+    "materials": "tsx lib/materials/cli.ts"
   },
   "devEngines": {
     "runtime": {

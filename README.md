@@ -32,6 +32,13 @@ pnpm dev
 | `pnpm lint` | ESLint |
 | `pnpm test` | Vitest: unit tests, test vectors, and specification validation |
 | `pnpm check` | Every gate: `gen:check`, `typecheck`, `lint --max-warnings 0`, `test`, and `build` |
+| `pnpm materials check DIR` | The Content Compiler's `check` subcommand |
+
+The Content Compiler's command line follows [`spec/README.md`](cadmium-spec/spec/README.md#compiler-interface). pnpm prints the script line on stdout, so run `build` directly when its output is piped:
+
+```bash
+pnpm exec tsx lib/materials/cli.ts build -o bundle.json cadmium-spec/spec/examples/derelict_station
+```
 
 Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before every commit; it is the gate that the specification's CI requirement describes.
 
@@ -45,7 +52,7 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `lib/grid/` | Map parsing, distance, adjacency, line of sight, pathfinding, movement allowance |
 | `lib/systems/` | Rules-system contract, registry, implementations, and the reusable conformance suite in `testing/` |
 | `lib/bundle/` | Schema registry and generated types; generated files are never edited by hand |
-| `lib/materials/` | Content Compiler |
+| `lib/materials/` | Content Compiler: pack reading, schema explanations, rules-system, cross-reference, map, and art checks, bundles, and the `materials` command line |
 | `scripts/` | Build-time scripts, such as type generation |
 | `tests/` | Tests that span modules, such as specification validation |
 

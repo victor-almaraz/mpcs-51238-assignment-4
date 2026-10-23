@@ -163,3 +163,73 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** The pool change emits `resource_changed` first. `damaged` follows only when a remainder reaches hit points, with that remainder as `amount`; at death's door the roll uses the remainder.
 
 **Proposed resolution.** State the events in cadmium.md, Module armor.
+
+## diagnostic-check-ids
+
+| Field | Value |
+|---|---|
+| Document | `spec/README.md` |
+| Section | Compiler interface; Checks |
+| Marker | `lib/materials/diagnostics.ts` |
+
+**Problem.** A `--json` diagnostic's `check` "names the failed check", but the checks are listed in prose with no identifiers. The `PATH` of a diagnostic about a whole file, such as an unexpected file, is not defined.
+
+**Implemented.** Check ids `file`, `duplicate_key`, `schema`, `system`, `system_stats`, `ref`, `declared`, `generation`, `remains`, `depth`, `light`, `currency`, `map`, `placement`, and `art`, each described in `CHECKS`. Paths join keys with `.` and indexes with `[n]`, quote keys that are not identifiers (`legend["~"]`), and write the root as `.`.
+
+**Proposed resolution.** List check ids next to the checks in spec/README.md and define the root path.
+
+## pack-file-names
+
+| Field | Value |
+|---|---|
+| Document | `docs/README.md`; `spec/README.md` |
+| Section | Conventions ("JSON files are accepted wherever YAML is"); Pack directory ("Any other file in the pack directory is an error") |
+| Marker | `lib/materials/pack.ts` |
+
+**Problem.** It is unclear whether "JSON files are accepted wherever YAML is" allows `manifest.json` in place of `manifest.yaml`. "Any other file is an error" also rejects files that operating systems and editors create, such as `.DS_Store`.
+
+**Implemented.** A `.json` file stands in for the `.yaml` file of the same name, and having both is an error. Files and directories whose name starts with `.` are ignored.
+
+**Proposed resolution.** State both rules in spec/README.md, Pack directory.
+
+## attribution-licenses
+
+| Field | Value |
+|---|---|
+| Document | `docs/setting-packs.md` |
+| Section | Art |
+| Marker | `lib/materials/art.ts` |
+
+**Problem.** `credit` is "required when the license requires attribution", but no list of such licenses is given, and the default license `CC0-1.0` applies even to `game_icons` sources, which game-icons.net publishes under CC BY 3.0.
+
+**Implemented.** Licenses whose SPDX identifier starts with `CC-BY` require `credit`.
+
+**Proposed resolution.** List the licenses that require attribution, and make `license` required, or default to `CC-BY-3.0`, for `game_icons` sources.
+
+## ref-kinds
+
+| Field | Value |
+|---|---|
+| Document | `spec/README.md`; `docs/setting-packs.md` |
+| Section | Cross-reference checks ("of the expected kind") |
+| Marker | `lib/materials/setting.ts` |
+
+**Problem.** Each ref must resolve to a template, table, or ability "of the expected kind", but the expected kind is stated only for `generation`. Table entries, `remains`, `spawn`, and placements have no stated kind.
+
+**Implemented.** `has_item`, `give_item`, `remove_item`, `drop_item`, container `contents` lists, and lock keys are items; `generation.door`, lock doors, and placements with `lock` are doors. Tables named by `starting_items`, creature `loot`, and container `contents` hold only items. Table entries, `remains`, `spawn`, legend `place`, and placements are any entity template.
+
+**Proposed resolution.** State the expected kind of each ref field in setting-packs.md, Validation.
+
+## bundle-format
+
+| Field | Value |
+|---|---|
+| Document | `spec/README.md`; `docs/guides/engine-implementation.md` |
+| Section | Bundle; Build order, milestone 2 ("Unknown fields fail") |
+| Marker | `lib/bundle/setting.ts` |
+
+**Problem.** The bundle is described by one example and a sentence; it has no schema. The example's `manifest` holds only `system`, so it is not stated whether the rest of the manifest, `assets`, or `system.modules` appear in the bundle, and "unknown fields fail" has nothing to check against.
+
+**Implemented.** The bundle holds the identity fields at the top level, the rest of the manifest under `manifest` with `terrain` merged and `system` carrying `modules` (default `[]`) and `resolved`, and `assets`. The loader accepts the fields of the pack schemas plus the compiler's defaults.
+
+**Proposed resolution.** Add `bundle.schema.json` to `spec/schema/`.
