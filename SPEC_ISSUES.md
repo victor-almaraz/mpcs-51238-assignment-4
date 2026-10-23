@@ -702,10 +702,24 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 |---|---|
 | Document | `docs/architecture.md`; `docs/guides/engine-implementation.md` |
 | Section | Determinism and replay ("Replaying an instance's events from its initial state"); Command-line harness (`--log`, `replay`) |
-| Marker | `lib/harness/harness.ts` |
+| Marker | `lib/harness/harness.ts`, `lib/engine/replay.ts`, `supabase/migrations/20261023000000_store.sql` |
 
 **Problem.** Replay is described as replaying events, but the event payloads cannot rebuild state. They omit the RNG counter, spawned entities' templates and cells, sheet fields such as Quest's death's door, choice options, and declaration arguments. Rebuilding state needs the inputs: tool calls and advances, which the Input log records.
 
-**Implemented.** The harness log holds one line per commit: the start (seed and characters) or the input, with the events the commit produced. `replay` starts the instance again and re-runs each input, failing at the first version whose events differ, or when the final state differs from an expected state.
+**Implemented.** Every commit records its input: the start (seed and characters), a tool call, an advance, or a restore. The store keeps them in a `commits` table written by the same atomic commit; the harness log holds them line by line. Replay (`lib/engine/replay.ts`) starts the instance again and re-runs each input, failing at the first version whose events differ. A `state_restored` commit takes the state replayed up to its `to_version`. Events and state read back from Postgres `jsonb` are compared with object keys sorted.
 
 **Proposed resolution.** Define replay as re-running the recorded inputs and checking each commit's events, and list the inputs in the harness log format.
+
+## replay-to-version
+
+| Field | Value |
+|---|---|
+| Document | `docs/api.md`; `docs/runbooks/instance-recovery.md` |
+| Section | Administrative operations (`replay_instance`); C. State inconsistency, step 4 |
+| Marker | `lib/coordinator/admin.ts` |
+
+**Problem.** `replay_instance` "replays events to `to_version` and compares the result with the stored state", but only the latest state is stored, so a replay to an earlier version has nothing to compare with. The runbook's search by decreasing `to_version` assumes per-version stored states.
+
+**Implemented.** Replay checks every commit's events on the way and stops at the first one that differs, reporting it as `diverges_at`. `matches_stored` holds when the events reproduce through `to_version` and, at the latest version, the replayed state equals the stored state.
+
+**Proposed resolution.** Define `matches_stored` this way and add `diverges_at` to the output; the runbook then reads the diverging version directly.

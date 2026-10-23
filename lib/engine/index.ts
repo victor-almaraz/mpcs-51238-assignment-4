@@ -95,3 +95,4 @@ function resolveTurn(ctx: Ctx, actor: string, call: ToolCall): void {
   ctx.state.round.turn_index! += 1;
   beginTurns(ctx);
 }
+export { applyInput, canonical, replay, type Commit, type CommitInput, type Replayed } from "./replay";

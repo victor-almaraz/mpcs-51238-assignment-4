@@ -240,3 +240,27 @@ Done:
 Phase 2 is complete: the harness plays an adventure to every ending from scripted JSON lines, golden logs replay in `pnpm test`, and 1,000 generator seeds verify.
 
 Phase 3 begins with sprint 10 (`store` and replay). It is the first sprint that needs external services: a Supabase project (URL, anon key, service key). The store can be written and tested against a local Postgres-compatible schema without one, but the deployment needs it.
+
+### Sprint 10: Store and replay — closed
+
+Done:
+
+- `supabase/migrations/20261023000000_store.sql`:
+  - Tables `bundles` (data immutable by trigger), `instances`, `instance_characters`, `events`, `commits`, `input_logs` (idempotency key unique per user and instance), and `narrations`.
+  - `cadmium_commit` writes a commit's events (contiguous `seq`), state, version, input, and input-log outcome in one transaction. It fails with `CD409` unless the stored version is the expected one.
+- `lib/store`: `Store` over a narrow `Db` interface (`query(text, params)`), covering bundles, instances, commits, events after a version, commits for replay, input log, and narration. `VersionConflict` signals a lost race.
+- `lib/store/testing/pglite.ts`: an in-process Postgres (PGlite) with every migration applied.
+- `lib/engine/replay.ts`: replay of commit inputs with `state_restored`, and canonical JSON comparison. The harness delegates to it.
+- `lib/coordinator/admin.ts`: `pinnedBundles`, `replayInstance`, and `restoreInstance` (requires `paused`).
+- `lib/store/store.test.ts`: 15 tests.
+  - Atomic rollback after the events are inserted, version conflicts with nothing written, and exactly one winner between two concurrent writers.
+  - Idempotency keys, and bundle immutability.
+  - Every golden scenario stored commit by commit replays to the stored state.
+  - Restore, play continuing after a restore, and undoing a restore.
+  - Divergence reported at the right version.
+- `SPEC_ISSUES.md`: `replay-to-version`; `replay-source` extended.
+
+Notes for sprints 11 to 13:
+
+- Production needs a `Db` over Supabase Postgres, for example `postgres` (`sql.unsafe(text, params)`) with the Supabase pooler connection string. The migrations apply with `supabase db push`.
+- Users, characters, campaigns, members, invitations, and schedules get their own migrations in sprints 11 and 12. `instances.campaign_id` gains its foreign key when `campaigns` exists.

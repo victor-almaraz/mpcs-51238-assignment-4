@@ -1,7 +1,7 @@
 // The command-line harness core (engine-implementation.md, "Command-line harness"): drives the engine
 // from JSON lines with no network, store, or model. Pure; the command line in cli.ts does the I/O.
 
-import { advance, startInstance, submit, view, type Bundles, type GameEvent, type JoiningCharacter, type State } from "../engine";
+import { advance, replay as replayCommits, startInstance, submit, view, type Bundles, type Commit, type GameEvent, type JoiningCharacter, type State } from "../engine";
 import { Rng, type U64 } from "../rng";
 
 /** One input line: a tool call, an advance, or a view request. */
@@ -84,23 +84,25 @@ export function play(session: Session, lines: readonly string[]): string[] {
 
 export type ReplayResult = { ok: true; state: State } | { ok: false; version: number; reason: string };
 
+/** The engine commit an input line records. */
+export function commitOf(line: LogLine): Commit {
+  if ("start" in line) return { version: line.version, input: { start: line.start }, events: line.events };
+  const input = line.input;
+  if ("advance" in input) return { version: line.version, input: { advance: true }, events: line.events };
+  if ("view" in input) throw new Error(`version ${line.version}: a view is not a commit`);
+  return { version: line.version, input: { call: input }, events: line.events };
+}
+
 /** Rebuilds state from a log, re-running each input; reports the first version that differs. */
 export function replay(bundles: Bundles, log: readonly LogLine[], expected?: State): ReplayResult {
-  const first = log[0];
-  if (!first || !("start" in first)) return { ok: false, version: 1, reason: "the log does not begin with a start line" };
-  let session: Session;
+  let commits: Commit[];
   try {
-    session = begin(bundles, BigInt(first.start.seed), first.start.characters);
+    commits = log.map(commitOf);
   } catch (e) {
-    return { ok: false, version: 1, reason: (e as Error).message };
+    return { ok: false, version: 0, reason: (e as Error).message };
   }
-  if (JSON.stringify(session.log[0]!.events) !== JSON.stringify(first.events)) return { ok: false, version: 1, reason: "start events differ" };
-  for (const line of log.slice(1)) {
-    if (!("input" in line)) return { ok: false, version: line.version, reason: "a second start line" };
-    const out = step(session, line.input);
-    if (!("version" in out) || out.version !== line.version) return { ok: false, version: line.version, reason: "the input was not committed at this version" };
-    if (JSON.stringify(out.events) !== JSON.stringify(line.events)) return { ok: false, version: line.version, reason: "events differ" };
-  }
-  if (expected && JSON.stringify(session.state) !== JSON.stringify(expected)) return { ok: false, version: session.version, reason: "final state differs" };
-  return { ok: true, state: session.state };
+  const r = replayCommits(bundles, commits);
+  if (!r.ok) return r;
+  if (expected && JSON.stringify(r.state) !== JSON.stringify(expected)) return { ok: false, version: r.version, reason: "final state differs" };
+  return { ok: true, state: r.state };
 }
