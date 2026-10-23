@@ -3,6 +3,7 @@
 // The bearer token is the Clerk session token; Clerk authenticates it before `handle` runs.
 // SPEC_ISSUES.md#binding-gaps: account routes belong to Clerk; deletion routes are not listed.
 import { createHash } from "node:crypto";
+import { shutdownPhase } from "../ops/shutdown";
 
 import { createCharacter, getCharacter, listCharacters, retireCharacter, updateCharacter } from "./characters";
 import {
@@ -238,6 +239,8 @@ export async function handle(request: Request, user: string | null, deps: Deps):
   if (!route || !params) return json(allowed ? 405 : 404, { error: { code: allowed ? "invalid_request" : "not_found", detail: `no route ${request.method} ${url.pathname}` } });
 
   try {
+    const phase = shutdownPhase(process.env.SHUTDOWN_AT, new Date()).phase;
+    if (phase === "closed" || phase === "purge") throw new ApiError("unavailable", "Cadmium has closed");
     if (user) {
       const wait = await deps.store.rateHit(user, "api", RATE_LIMIT.window_seconds, RATE_LIMIT.limit);
       if (wait > 0) throw new ApiError("rate_limited", "too many requests", { retry_after_ms: wait });

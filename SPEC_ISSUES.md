@@ -863,3 +863,17 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** The secret is an HMAC of the user id and a feed generation under a deployment key (`CALENDAR_FEED_KEY`, or the service key when unset). The user record stores the hash and the generation; rotating increments the generation, so the previous URL stops working.
 
 **Proposed resolution.** Define the secret as derived from a deployment key and a stored generation, or have `get_calendar_feed` return only whether the feed is enabled.
+
+## account-suspension
+
+| Field | Value |
+|---|---|
+| Document | `docs/legal/terms.md`; `docs/runbooks/content-reports.md`; `docs/data-model.md` |
+| Section | Terms, reports ("suspend accounts"); Procedure, step 2; User |
+| Marker | `supabase/migrations/20261023000800_operations.sql`, `lib/api/users.ts` |
+
+**Problem.** Operators may suspend accounts, but the User record has no field for it and no document says what a suspended user may still do.
+
+**Implemented.** The user record has `suspended_at`. A suspended user may call only `get_me`, `export_my_data`, and `logout`; every other operation fails with `forbidden`.
+
+**Proposed resolution.** Add `suspended_at` to the User record and list the operations a suspended account keeps.

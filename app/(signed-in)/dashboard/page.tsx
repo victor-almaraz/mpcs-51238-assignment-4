@@ -36,6 +36,7 @@ export default async function Dashboard() {
   const [characters, campaigns] = await Promise.all([listCharacters(store, user.id, { limit: 100 }), listCampaigns(store, user.id, { archived: false, limit: 100 })]);
   const instances = (await Promise.all(campaigns.items.map((c) => listInstances(store, user.id, c.id).then((list) => list.map((i) => ({ ...i, campaign: c.title })))))).flat();
   const active = instances.filter((i) => i.status !== "ended");
+  const finished = instances.filter((i) => i.status === "ended");
   const where = new Map(instances.map((i) => [i.id, i.name]));
   const authored = campaigns.items.filter((c) => c.author_id === user.id);
   // The next 7 days across all instances (app-flow.md, Dashboard: Upcoming sessions).
@@ -112,6 +113,22 @@ export default async function Dashboard() {
           </ul>
         )}
       </section>
+
+      {finished.length > 0 && (
+        <section className="mt-8">
+          <Heading title="Finished" />
+          <ul className="mt-2">
+            {finished.map((i) => (
+              <li key={i.id} className={row}>
+                <Link href={`/instances/${i.id}/history`} className="text-accent">
+                  {i.name}
+                </Link>
+                <span className={meta}>{i.campaign}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="mt-8">
         <Heading title="Campaigns" href="/campaigns/new" action="New campaign" />

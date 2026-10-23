@@ -403,3 +403,20 @@ Open:
 - Sending Web Push needs `web-push` and VAPID keys; subscriptions are stored meanwhile.
 - `drafts/` and `assets/` in the export arrive with the adventure editor and portrait uploads.
 - Migration 8 is not yet applied to the remote database.
+
+### Sprint 20: Operations — open
+
+Done:
+
+- `supabase/migrations/20261023000800_operations.sql`: `suspended_at`, the operator log, holds that also hold the owner (and a held user's characters and campaigns), content removal, the bundle list, and the shutdown purge, which erases every account and campaign that is not held and every bundle no held campaign uses.
+- `lib/api/admin.ts`: `publish_bundle` (loads and checks the bundle; `conflict`, `system_mismatch`, and `requires_settings`), `set_listed`, `inspect_instance` (with a logged reason), `replay_instance`, `restore_instance`, holds, suspension, removing a character (taken out of a running game first) or a campaign, and ending a game. Non-operators get `not_found`. Every operation is logged.
+- `/admin`: materials (publish from a file or pasted JSON, list and unlist), instance inspection with replay and restore, reports, and the log. Operators are users with `operator = true`, set in the database.
+- `/instances/[id]/history`: commits with narration grouped by round, event details per commit, paged by `after_version`; the dashboard lists finished games, and the lobby links to history.
+- Shutdown (`SHUTDOWN_AT`): a banner with the date and Export my data from 14 days before; from the time itself, every page but `/terms`, `/privacy`, and `/attribution` shows the closed notice (with `CONTACT_EMAIL`), sign-in stops, and the binding answers `unavailable`; 90 days after, the daily purge erases every record that is not held.
+- Tests: `lib/api/admin.test.ts` (6).
+- `SPEC_ISSUES.md`: `account-suspension`.
+
+Open:
+
+- Migration 9 is not yet applied to the remote database.
+- Reports arrive by email; the operator works from the log and the console. Asset removal (`removed_at`) comes with portrait uploads.

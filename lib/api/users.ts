@@ -22,6 +22,8 @@ export async function caller(store: Store, userId: string | null, operation: str
   if (userId === null) throw new ApiError("unauthenticated", "sign in first");
   const user = await store.getUser(userId);
   if (!user || user.status === "deleted") throw new ApiError("unauthenticated", "the account does not exist");
+  // SPEC_ISSUES.md#account-suspension: a suspended account may still read and export its own data.
+  if (user.suspended_at && !["get_me", "export_my_data", "logout"].includes(operation)) throw new ApiError("forbidden", "the account is suspended");
   if (user.status === "closing" && !["get_me", "restore_account", "export_my_data", "logout"].includes(operation)) {
     throw new ApiError("forbidden", "the account is being deleted");
   }

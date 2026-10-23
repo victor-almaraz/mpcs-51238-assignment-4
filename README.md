@@ -41,6 +41,8 @@ The server reads these variables, from `.env.local` locally and from the Vercel 
 | `ACTION_MENU_MODE` | no | `1` sends every character an action menu at each round and turn start |
 | `CRON_SECRET` | yes | Authorizes calls to the scheduler at `/api/cron/scheduler` (Vercel Cron sends it as a bearer token) |
 | `CALENDAR_FEED_KEY` | yes | Derives calendar feed secrets; the service key is used when unset |
+| `SHUTDOWN_AT` | no | The end-of-course shutdown time (ISO 8601): a banner from 14 days before, the closed notice from then, the purge 90 days after |
+| `CONTACT_EMAIL` | no | The contact address on the closed notice |
 | `VAPID_PUBLIC_KEY` | no | Offers browser notifications in Settings; sending also needs the private key and the `web-push` package |
 
 `GET /api/health` reports which are set, and whether the database schema is applied, without revealing values.
@@ -106,6 +108,7 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `lib/scheduler/` | Time zones, occurrence expansion, iCalendar, and the scheduler run |
 | `lib/notifier/` | Session reminders on the user channel |
 | `lib/export/` | The ZIP writer for data exports |
+| `lib/ops/` | The shutdown phases |
 | `supabase/migrations/` | SQL migrations, applied by Supabase in production and by PGlite in tests |
 | `lib/systems/` | Rules-system contract, registry, implementations, and the reusable conformance suite in `testing/` |
 | `lib/bundle/` | Schema registry and generated types; generated files are never edited by hand |

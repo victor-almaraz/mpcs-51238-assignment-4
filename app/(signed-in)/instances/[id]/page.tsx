@@ -79,6 +79,9 @@ export default async function Lobby({ params }: { params: Promise<{ id: string }
           {next ? formatWhen(next.starts_at, user.timezone) : "None scheduled."}{" "}
           <Link href={`/instances/${instance.id}/schedule`} className="font-ui text-control text-accent">
             Schedule
+          </Link>{" "}
+          <Link href={`/instances/${instance.id}/history`} className="font-ui text-control text-accent">
+            History
           </Link>
         </p>
       </section>

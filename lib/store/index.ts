@@ -102,6 +102,8 @@ export interface UserRecord {
   terms_version: string | null;
   calendar_token_hash?: string | null;
   calendar_feed_generation?: number;
+  held_at?: string | null;
+  suspended_at?: string | null;
   created_at: string;
 }
 
@@ -686,5 +688,40 @@ export class Store {
 
   async purgeCampaign(id: string): Promise<void> {
     await this.rpc.call("cadmium_purge_campaign", { p_id: id });
+  }
+
+  // Operations -----------------------------------------------------------------------------------
+
+  async isOperator(id: string): Promise<boolean> {
+    return this.rpc.call<boolean>("cadmium_is_operator", { p_id: id });
+  }
+
+  async logOperation(operatorId: string, action: string, target: string, detail = ""): Promise<void> {
+    await this.rpc.call("cadmium_log_operation", { p_operator: operatorId, p_action: action, p_target: target, p_detail: detail });
+  }
+
+  async operatorLog(limit = 100): Promise<{ id: number; operator_id: string; action: string; target: string; detail: string; at: string }[]> {
+    return this.rpc.call("cadmium_operator_log", { p_limit: limit });
+  }
+
+  /** Sets (with a reason) or clears (null) a hold; holding a record also holds its owner. */
+  async setHold(kind: "user" | "character" | "campaign", id: string, reason: string | null): Promise<boolean> {
+    return this.rpc.call<boolean>("cadmium_set_hold", { p_kind: kind, p_id: id, p_reason: reason });
+  }
+
+  async setSuspended(id: string, suspended: boolean): Promise<boolean> {
+    return this.rpc.call<boolean>("cadmium_set_suspended", { p_id: id, p_suspended: suspended });
+  }
+
+  async removeCharacter(id: string): Promise<boolean> {
+    return this.rpc.call<boolean>("cadmium_remove_character", { p_id: id });
+  }
+
+  async allBundles(): Promise<(Omit<MaterialRecord, "manifest"> & { created_at: string })[]> {
+    return this.rpc.call("cadmium_all_bundles", {});
+  }
+
+  async shutdownPurge(): Promise<{ users: number; campaigns: number }> {
+    return this.rpc.call("cadmium_shutdown_purge", {});
   }
 }
