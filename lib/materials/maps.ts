@@ -2,7 +2,7 @@
 // cells placed entities occupy.
 
 import { BUILTIN_TERRAIN, MAX_SIZE, footprintCells, parseMap, type Cell, type Footprint, type LegendEntry, type ParsedMap, type TerrainType } from "../grid";
-import type { Segment } from "./diagnostics";
+import { formatPath, type Segment } from "./diagnostics";
 import type { Diagnostics } from "./pack";
 import { isObject, type Json, type JsonObject } from "./walk";
 
@@ -11,6 +11,9 @@ export interface Template {
   footprint: Footprint;
   obstructsMovement: boolean;
 }
+
+/** The template key an NPC placement resolves through `MapContext.template`. */
+export const npcRef = (npc: string): string => `npc:${npc}`;
 
 export interface MapContext {
   file: string;
@@ -130,8 +133,7 @@ export function checkPlacements(
           me.template.obstructsMovement ||
           other.template.obstructsMovement;
         if (clash) {
-          const why = me.template.obstructsMovement || other.template.obstructsMovement ? ", and one obstructs movement" : "";
-          out.add(ctx.file, path, `cell [${x}, ${y}] already holds '${other.ref}' (${other.where})${why}`, "placement");
+          out.add(ctx.file, path, `cell [${x}, ${y}] is already occupied by ${other.where}`, "placement");
           return;
         }
       }
@@ -141,11 +143,14 @@ export function checkPlacements(
   };
 
   for (const { at, ref } of parsed.placements) {
-    place(ref, at, [...ctx.path, "rows", at[1]], `legend at [${at[0]}, ${at[1]}]`);
+    const path = [...ctx.path, "rows", at[1]];
+    place(ref, at, path, formatPath(path));
   }
   contents.forEach((entry, i) => {
-    if (!isObject(entry) || !Array.isArray(entry.at) || typeof entry.ref !== "string") return;
-    place(entry.ref, entry.at as unknown as Cell, [...contentsPath, i, "at"], `contents[${i}]`);
+    if (!isObject(entry) || !Array.isArray(entry.at)) return;
+    const ref = typeof entry.ref === "string" ? entry.ref : typeof entry.npc === "string" ? npcRef(entry.npc) : undefined;
+    if (ref === undefined) return;
+    place(ref, entry.at as unknown as Cell, [...contentsPath, i, "at"], formatPath([...contentsPath, i]));
   });
 }
 

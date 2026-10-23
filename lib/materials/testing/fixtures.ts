@@ -190,7 +190,7 @@ export const SETTING_FIXTURES: Fixture[] = [
     name: "a ref that resolves to nothing",
     check: "ref",
     files: () => edit(ds(), "tables.yaml", (d) => (at(d, "locker_loot", 0).ref = "stimpack")),
-    expected: ["tables.yaml: locker_loot[0].ref: 'stimpack' is not an entity template of this pack"],
+    expected: ["tables.yaml: locker_loot[0].ref: unknown ref 'stimpack'"],
   },
   {
     name: "a ref of the wrong kind",
@@ -281,7 +281,7 @@ export const SETTING_FIXTURES: Fixture[] = [
     name: "an art ref that resolves to no asset",
     check: "art",
     files: () => edit(sc(), "entities/items.yaml", (d) => (at(d, "torch").art = ["torch_icon"])),
-    expected: ["entities/items.yaml: torch.art[0]: 'torch_icon' is not an asset of this pack"],
+    expected: ["entities/items.yaml: torch.art[0]: unknown ref 'torch_icon'"],
   },
   {
     name: "an art list with two assets of one kind",
@@ -376,7 +376,7 @@ export const SETTING_FIXTURES: Fixture[] = [
       edit(sc(), "rooms/tomb.yaml", (d) => {
         at(d, "founders_tomb").contents = [{ ref: "crypt_warden", at: [1, 2] }, { ref: "skeleton", at: [1, 2] }];
       }),
-    expected: ["rooms/tomb.yaml: founders_tomb.contents[1].at: cell [1, 2] already holds 'crypt_warden' (contents[0])"],
+    expected: ["rooms/tomb.yaml: founders_tomb.contents[1].at: cell [1, 2] is already occupied by founders_tomb.contents[0]"],
   },
   {
     name: "two doors on one cell",
@@ -385,19 +385,19 @@ export const SETTING_FIXTURES: Fixture[] = [
       edit(sc(), "rooms/tomb.yaml", (d) => {
         at(d, "founders_tomb").contents = [{ ref: "iron_door", at: [0, 1] }, { ref: "wooden_door", at: [0, 1] }];
       }),
-    expected: ["rooms/tomb.yaml: founders_tomb.contents[1].at: cell [0, 1] already holds 'iron_door' (contents[0]), and one obstructs movement"],
+    expected: ["rooms/tomb.yaml: founders_tomb.contents[1].at: cell [0, 1] is already occupied by founders_tomb.contents[0]"],
   },
   {
     name: "a movement-obstructing entity sharing a cell",
     check: "placement",
     files: () => edit(sc(), "rooms/tomb.yaml", (d) => (at(d, "founders_tomb", "contents", 1).at = [3, 1])),
-    expected: ["rooms/tomb.yaml: founders_tomb.contents[1].at: cell [3, 1] already holds 'sarcophagus' (contents[0]), and one obstructs movement"],
+    expected: ["rooms/tomb.yaml: founders_tomb.contents[1].at: cell [3, 1] is already occupied by founders_tomb.contents[0]"],
   },
   {
     name: "a legend placement on an occupied cell",
     check: "placement",
     files: () => edit(ds(), "rooms/reactor.yaml", (d) => (at(d, "reactor_room", "contents", 0).at = [2, 0])),
-    expected: ["rooms/reactor.yaml: reactor_room.contents[0].at: cell [2, 0] already holds 'support_pillar' (legend at [2, 0]), and one obstructs movement"],
+    expected: ["rooms/reactor.yaml: reactor_room.contents[0].at: cell [2, 0] is already occupied by reactor_room.map.rows[0]"],
   },
   {
     name: "at combined with count",
@@ -410,5 +410,329 @@ export const SETTING_FIXTURES: Fixture[] = [
     check: "placement",
     files: () => edit(sc(), "rooms/tomb.yaml", (d) => (at(d, "founders_tomb", "contents", 1).id = "warden")),
     expected: ["rooms/tomb.yaml: founders_tomb.contents[1].id: room template contents cannot use 'id'"],
+  },
+];
+
+// ---------------------------------------------------------------------------------------------
+// Adventures
+
+import { docBlocks } from "../../../tests/doc-blocks";
+import { compileSetting } from "../setting";
+import type { SettingBundle } from "../../bundle/setting";
+
+const SPEC = join(__dirname, "../../../cadmium-spec");
+
+/** The `sunken_archive` adventure assembled from the YAML blocks of the adventure authoring guide. */
+export function guideAdventure(): Files {
+  const files: Files = new Map();
+  for (const b of docBlocks(SPEC)) {
+    if (b.doc === "docs/guides/adventure-authoring.md" && b.file && !b.file.includes("*")) files.set(b.file, b.source + "\n");
+  }
+  return files;
+}
+
+let settingCache: SettingBundle | undefined;
+
+/** The compiled `derelict_station` example, the setting the guide adventure requires. */
+export function derelictStation(): SettingBundle {
+  settingCache ??= compileSetting(example("derelict_station")).bundle!;
+  return structuredClone(settingCache);
+}
+
+/** The adventure assembled from the reference blocks of adventure-packs.md; one-per-file blocks are named by their `id`. */
+export function referenceAdventure(): Files {
+  const files: Files = new Map();
+  for (const b of docBlocks(SPEC)) {
+    if (b.doc !== "docs/adventure-packs.md" || !b.file) continue;
+    const path = b.file.includes("*") ? b.file.replace("*", (parse(b.source) as { id: string }).id) : b.file;
+    files.set(path, b.source + "\n");
+  }
+  return files;
+}
+
+export interface AdventureFixture extends Fixture {
+  settings?: () => SettingBundle[];
+}
+
+const ga = () => guideAdventure();
+const trig = (d: Data, i: number) => at(d, "triggers", i);
+const dockMap = (d: Data) => at(d, "map");
+
+export const ADVENTURE_FIXTURES: AdventureFixture[] = [
+  // 3, 15. Settings and modules
+  {
+    name: "a required setting that is not supplied",
+    check: "settings",
+    files: ga,
+    settings: () => [],
+    expected: ["adventure.yaml: requires_settings[0]: requires setting 'derelict_station' ^3.0, which is not supplied"],
+  },
+  {
+    name: "a supplied setting outside the version range",
+    check: "settings",
+    files: () => edit(ga(), "adventure.yaml", (d) => (at(d, "requires_settings", 0).versions = "^4.0")),
+    expected: ["adventure.yaml: requires_settings[0].versions: supplied derelict_station 3.0.0 does not satisfy '^4.0'"],
+  },
+  {
+    name: "a setting bound to another system",
+    check: "settings",
+    files: () => edit(ga(), "adventure.yaml", (d) => (d.system = { id: "cadmium", versions: "^1.0" })),
+    expected: ["adventure.yaml: requires_settings[0]: setting 'derelict_station' binds quest; the adventure binds cadmium"],
+  },
+  {
+    name: "a setting that needs a module the adventure does not declare",
+    check: "settings",
+    files: () => edit(ga(), "adventure.yaml", (d) => (d.system = { id: "cadmium", versions: "^1.0" })),
+    settings: () => [compileSetting(edit(example("derelict_station"), "manifest.yaml", (d) => (d.system = { id: "cadmium", versions: "^1.0", modules: ["armor"] }))).bundle!],
+    expected: ["adventure.yaml: requires_settings[0]: setting 'derelict_station' needs module 'armor', which the adventure does not declare"],
+  },
+  {
+    name: "a module the adventure's system does not offer",
+    check: "system",
+    files: () => edit(ga(), "adventure.yaml", (d) => (at(d, "system").modules = ["armor"])),
+    expected: ["adventure.yaml: system.modules: 'armor' is not a module of quest; modules: none"],
+  },
+  // 2. References
+  {
+    name: "a misspelled content ref in a trigger match",
+    check: "ref",
+    files: () => edit(ga(), "plot/find_the_core.yaml", (d) => (at(trig(d, 2), "on").ref = "sunken_archive:reactor_cor")),
+    expected: ["plot/find_the_core.yaml: triggers[2].on.ref: unknown ref 'sunken_archive:reactor_cor'"],
+  },
+  {
+    name: "a ref into a namespace the adventure does not require",
+    check: "ref",
+    files: () => edit(ga(), "locations/dock.yaml", (d) => (at(dockMap(d), "contents", 2).ref = "crypt:mace")),
+    expected: ["locations/dock.yaml: map.contents[2].ref: 'crypt:mace' is outside the namespaces of this adventure and its settings: sunken_archive, base"],
+  },
+  {
+    name: "an undeclared flag",
+    check: "flag",
+    files: () => edit(ga(), "plot/find_the_core.yaml", (d) => (at(trig(d, 2), "effects", 1, "add_flag").flag = "alarm")),
+    expected: ["plot/find_the_core.yaml: triggers[2].effects[1].add_flag.flag: undeclared flag 'alarm'"],
+  },
+  {
+    name: "a literal of the wrong type for a flag",
+    check: "flag",
+    files: () => edit(ga(), "plot/find_the_core.yaml", (d) => (at(trig(d, 1), "effects", 0, "set_flag").value = 3)),
+    expected: ["plot/find_the_core.yaml: triggers[1].effects[0].set_flag.value: flag 'lift_powered' is bool; 3 is not a boolean"],
+  },
+  {
+    name: "a literal outside a flag's range",
+    check: "flag",
+    files: () => edit(ga(), "plot/find_the_core.yaml", (d) => (trig(d, 1).effects = [...(trig(d, 1).effects as unknown[]), { set_flag: { flag: "alarm_level", value: 5 } }])),
+    expected: ["plot/find_the_core.yaml: triggers[1].effects[2].set_flag.value: 5 is outside the range [0, 3] of flag 'alarm_level'"],
+  },
+  {
+    name: "target on a party-scoped flag",
+    check: "flag",
+    files: () => edit(ga(), "plot/find_the_core.yaml", (d) => (at(trig(d, 2), "effects", 1, "add_flag").target = "room")),
+    expected: ["plot/find_the_core.yaml: triggers[2].effects[1].add_flag.target: flag 'alarm_level' is party-scoped; target applies only to character-scoped flags"],
+  },
+  {
+    name: "a flag currency that resolves to no setting's currency",
+    check: "flag",
+    files: () => edit(ga(), "flags.yaml", (d) => (d.purse = { type: "int", min: 0, max: 400, initial: 12, scope: "character", currency: "base:gold" })),
+    expected: ["flags.yaml: purse.currency: unknown ref 'base:gold'"],
+  },
+  {
+    name: "an unknown stage",
+    check: "plot",
+    files: () => edit(ga(), "plot/find_the_core.yaml", (d) => (at(trig(d, 0), "effects", 0, "set_stage").stage = "started")),
+    expected: ["plot/find_the_core.yaml: triggers[0].effects[0].set_stage: arc 'find_the_core' has no stage 'started'"],
+  },
+  {
+    name: "an unknown NPC in a trigger match",
+    check: "plot",
+    files: () => edit(ga(), "plot/find_the_core.yaml", (d) => ((at(trig(d, 0), "on").npc = "librarian"), delete at(trig(d, 0), "on").topic)),
+    expected: ["plot/find_the_core.yaml: triggers[0].on.npc: unknown NPC 'librarian'"],
+  },
+  {
+    name: "an unknown topic",
+    check: "plot",
+    files: () => edit(ga(), "plot/find_the_core.yaml", (d) => (at(trig(d, 0), "on").topic = "lift")),
+    expected: ["plot/find_the_core.yaml: triggers[0].on.topic: unknown topic 'lift'"],
+  },
+  {
+    name: "an unknown secret",
+    check: "plot",
+    files: () => edit(ga(), "plot/find_the_core.yaml", (d) => (at(trig(d, 2), "effects", 3, "reveal").secret = "archivist.plans")),
+    expected: ["plot/find_the_core.yaml: triggers[2].effects[3].reveal.secret: NPC 'archivist' has no secret 'plans'"],
+  },
+  {
+    name: "an unknown door",
+    check: "plot",
+    files: () => edit(ga(), "plot/find_the_core.yaml", (d) => (at(trig(d, 1), "effects", 1, "open_door").door = "lift_dor")),
+    expected: ["plot/find_the_core.yaml: triggers[1].effects[1].open_door.door: unknown door 'lift_dor'"],
+  },
+  {
+    name: "a door effect on an entity that is not a door",
+    check: "plot",
+    files: () => edit(ga(), "plot/find_the_core.yaml", (d) => (at(trig(d, 1), "effects", 1, "open_door").door = "lift_panel")),
+    expected: ["plot/find_the_core.yaml: triggers[1].effects[1].open_door.door: 'lift_panel' is not a door"],
+  },
+  {
+    name: "an unknown entity id in a trigger match",
+    check: "plot",
+    files: () => edit(ga(), "plot/find_the_core.yaml", (d) => (at(trig(d, 1), "on").target = "lift_pnl")),
+    expected: ["plot/find_the_core.yaml: triggers[1].on.target: unknown entity id 'lift_pnl'"],
+  },
+  {
+    name: "an unknown location",
+    check: "plot",
+    files: () => edit(ga(), "plot/find_the_core.yaml", (d) => (at(trig(d, 3), "on").location = "pier")),
+    expected: ["plot/find_the_core.yaml: triggers[3].on.location: unknown location 'pier'"],
+  },
+  {
+    name: "an unknown ending",
+    check: "plot",
+    files: () =>
+      edit(ga(), "plot/find_the_core.yaml", (d) => {
+        trig(d, 3).effects = [...(trig(d, 3).effects as unknown[]), { end_campaign: { ending: "won" } }];
+      }),
+    expected: ["plot/find_the_core.yaml: triggers[3].effects[2].end_campaign.ending: unknown ending 'won'"],
+  },
+  {
+    name: "an NPC template that is not a creature",
+    check: "npc",
+    files: () => edit(ga(), "npcs/archivist.yaml", (d) => (d.template = "base:wrench")),
+    expected: ["npcs/archivist.yaml: template: 'base:wrench' is an item template, not a creature template"],
+  },
+  {
+    name: "an entity id used twice",
+    check: "plot",
+    files: () => edit(ga(), "locations/dock.yaml", (d) => (at(dockMap(d), "contents", 2).id = "lift_panel")),
+    expected: ["locations/dock.yaml: map.contents[2].id: entity id 'lift_panel' is already used at locations/dock.yaml: map.contents[1].id"],
+  },
+  // 4. Rules system
+  {
+    name: "adventure entity system_stats outside the system's schema",
+    check: "system_stats",
+    files: () => edit(ga(), "entities/items.yaml", (d) => (at(d, "reactor_core").system_stats = { weapon: "yes" })),
+    expected: ["entities/items.yaml: reactor_core.system_stats.weapon: quest item: expected boolean, got string 'yes'"],
+  },
+  {
+    name: "an undeclared condition in a plot effect",
+    check: "declared",
+    files: () => edit(ga(), "plot/find_the_core.yaml", (d) => (trig(d, 0).effects = [...(trig(d, 0).effects as unknown[]), { apply_condition: { target: "actor", condition: "hopeful" } }])),
+    expected: ["plot/find_the_core.yaml: triggers[0].effects[1].apply_condition.condition: condition 'hopeful' is not declared"],
+  },
+  // 5. Maps and rooms
+  {
+    name: "an NPC placed on an occupied cell",
+    check: "placement",
+    files: () => edit(ga(), "locations/dock.yaml", (d) => (at(dockMap(d), "contents", 4).at = [9, 2])),
+    expected: ["locations/dock.yaml: map.contents[4].at: cell [9, 2] is already occupied by map.rows[2]"],
+  },
+  {
+    name: "a placement on a wall",
+    check: "placement",
+    files: () => edit(ga(), "locations/dock.yaml", (d) => (at(dockMap(d), "contents", 4).at = [0, 0])),
+    expected: ["locations/dock.yaml: map.contents[4].at: cell [0, 0] has terrain 'wall', which obstructs movement"],
+  },
+  {
+    name: "rooms that overlap",
+    check: "rooms",
+    files: () => edit(ga(), "locations/dock.yaml", (d) => (at(dockMap(d), "rooms", "airlock").area = [[1, 1, 5, 4]])),
+    expected: ["locations/dock.yaml: map.rooms.hangar.area[0]: cell [5, 2] is also in room 'airlock'"],
+  },
+  {
+    name: "a passable cell in no room",
+    check: "rooms",
+    files: () => edit(ga(), "locations/dock.yaml", (d) => (at(dockMap(d), "rooms", "hangar").area = [[6, 1, 9, 4]])),
+    expected: ["locations/dock.yaml: map.rooms: cell [5, 2] belongs to no room"],
+  },
+  {
+    name: "a room area outside the map",
+    check: "rooms",
+    files: () => edit(ga(), "locations/dock.yaml", (d) => (at(dockMap(d), "rooms", "hangar").area = [[5, 2, 1, 1], [6, 1, 12, 4]])),
+    expected: ["locations/dock.yaml: map.rooms.hangar.area[1]: rectangle [6, 1, 12, 4] extends outside the 16x6 map"],
+  },
+  // 6. Links
+  {
+    name: "a link cell outside every room",
+    check: "link",
+    files: () => edit(ga(), "locations/dock.yaml", (d) => (at(dockMap(d), "links", "x_lift").at = [15, 2])),
+    expected: ["locations/dock.yaml: map.links.x_lift.at: link cell [15, 2] is not in a room"],
+  },
+  {
+    name: "a link to a link that does not exist",
+    check: "link",
+    files: () => edit(ga(), "locations/dock.yaml", (d) => (at(dockMap(d), "links", "x_lift", "to").link = "x_down")),
+    expected: ["locations/dock.yaml: map.links.x_lift.to.link: location 'lower_archive' has no link 'x_down'"],
+  },
+  // 7. Endings
+  {
+    name: "no reachable ending",
+    check: "ending",
+    files: () => edit(ga(), "plot/find_the_core.yaml", (d) => (trig(d, 3).effects = [{ set_stage: { arc: "find_the_core", stage: "done" } }])),
+    expected: ["adventure.yaml: endings: no ending is reachable"],
+  },
+  // 8. Door locks
+  {
+    name: "a door lock on a flag no effect sets",
+    check: "lock",
+    files: () => edit(ga(), "plot/find_the_core.yaml", (d) => (trig(d, 1).effects = [{ open_door: { door: "lift_door" } }])),
+    expected: ["locations/dock.yaml: map.contents[0].lock: no effect sets flag 'lift_powered'"],
+  },
+  // 9, 13. Generated locations
+  {
+    name: "an anchor deeper than the room count allows",
+    check: "anchors",
+    files: () => edit(ga(), "locations/lower_archive.yaml", (d) => (at(d, "anchors", 0, "constraints").min_depth = 12)),
+    expected: ["locations/lower_archive.yaml: anchors[0]: min_depth 12 unreachable with at most 12 rooms"],
+  },
+  {
+    name: "a generated link with a role the generator never assigns",
+    check: "anchors",
+    files: () => edit(ga(), "locations/lower_archive.yaml", (d) => (at(d, "links", "x_up").role = "treasure")),
+    expected: ["locations/lower_archive.yaml: links.x_up.role: the generator assigns no room the role 'treasure'"],
+  },
+  {
+    name: "a reserved anchor id",
+    check: "anchors",
+    files: () => edit(ga(), "locations/lower_archive.yaml", (d) => (at(d, "anchors", 0).id = "boss")),
+    expected: ["locations/lower_archive.yaml: anchors[0].id: anchor id 'boss' is reserved for room aliases"],
+  },
+  // 10. Start room
+  {
+    name: "a start room with fewer free cells than players",
+    check: "start",
+    files: () =>
+      edit(edit(ga(), "adventure.yaml", (d) => (d.players = [1, 8])), "locations/dock.yaml", (d) => {
+        at(dockMap(d), "rooms").airlock = { label: "airlock", area: [[1, 1, 2, 2]] };
+        at(dockMap(d), "rooms").bay = { label: "bay", area: [[3, 1, 2, 4], [1, 3, 2, 2]] };
+      }),
+    expected: ["adventure.yaml: start.room: room 'airlock' has 4 free cells; players allows 8"],
+  },
+  // 11. Room references
+  {
+    name: "a room reference that does not resolve",
+    check: "room",
+    files: () => edit(ga(), "plot/find_the_core.yaml", (d) => (at(trig(d, 2), "effects", 2, "spawn").room = "dock.hall")),
+    expected: ["plot/find_the_core.yaml: triggers[2].effects[2].spawn.room: location 'dock' has no room 'hall'"],
+  },
+  {
+    name: "an unqualified room reference in a trigger on an event without an actor",
+    check: "room",
+    files: () =>
+      edit(ga(), "plot/find_the_core.yaml", (d) => {
+        (d.triggers as unknown[]).push({ id: "patrol", on: { type: "round_ended" }, effects: [{ spawn: { ref: "base:maintenance_drone", room: "hangar" } }] });
+      }),
+    expected: ["plot/find_the_core.yaml: triggers[4].effects[0].spawn.room: 'round_ended' events have no actor; qualify the room as location.hangar"],
+  },
+  // 12. NPC placement
+  {
+    name: "an NPC placed twice",
+    check: "npc",
+    files: () => edit(ga(), "locations/lower_archive.yaml", (d) => (d.anchors as unknown[]).push({ id: "archivist_anchor", place: { npc: "archivist" } })),
+    expected: ["locations/lower_archive.yaml: anchors[1].place.npc: NPC 'archivist' is already placed at locations/dock.yaml: map.contents[4].npc"],
+  },
+  // 16. Art
+  {
+    name: "an NPC art ref that resolves to no asset",
+    check: "art",
+    files: () => edit(ga(), "npcs/archivist.yaml", (d) => (d.art = ["archivist_portrait"])),
+    expected: ["npcs/archivist.yaml: art[0]: unknown ref 'archivist_portrait'"],
   },
 ];

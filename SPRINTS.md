@@ -135,3 +135,19 @@ Notes for sprint 5:
 - `readPack("adventure", ...)` already reads the adventure layout and keys `plot/`, `locations/`, and `npcs/` by `id`.
 - `checkGrid` and `checkPlacements` take a `MapContext` and work for authored locations; adventure-specific checks (rooms covering every passable cell, links, `npc`, `id`, `room`) are still to add.
 - `languageVisitor` collects refs and declaration checks for any effect list; adventure refs may point into required settings' namespaces, so resolution needs the setting bundles.
+
+### Sprint 5: Compiler for adventure packs — closed
+
+Done:
+
+- `lib/materials/adventure.ts`: `compileAdventure(files, settings)` with all 17 checks of adventure-packs.md, "Compilation". It covers settings and modules, refs across the adventure's and its settings' namespaces, flags (declarations, literal types and ranges, `target` scope, currency), arcs, stages, endings, NPCs, topics, secrets, doors, entity ids, room references with generated-room aliases and actor scopes, map, room, and link checks, ending reachability, flag-only door locks, anchor and generated-link constraints, start-room capacity, and NPC placement.
+- `lib/materials/content.ts`: the catalog, ref resolution, entity checks, and content visitor shared with setting packs. Missing refs read `unknown ref 'x'`, and occupancy reads `is already occupied by PATH`, as in the specification's examples.
+- `lib/bundle/adventure.ts`: `AdventureBundle` (arcs in file order, `requires_settings[].resolved`, flag `scope` and trigger `once` defaults) and `loadAdventureBundle`.
+- `compileDraft` compiles an editor draft through the same code; `materials --setting PATH` supplies required settings.
+- Fixtures: the guide's `sunken_archive` assembled from its YAML blocks compiles cleanly; 41 adventure fixtures each assert an exact diagnostic; every check id has a fixture.
+- `SPEC_ISSUES.md`: `cli-adventure-settings`, `trigger-match-refs`, `container-locks`, `treasure-role`, `ending-reachability`, `start-free-cells`, `room-scopes`, `draft-entity-files`.
+
+Phase 1 is complete. Notes for sprint 6:
+
+- `guideAdventure()` and `derelictStation()` in `lib/materials/testing/fixtures.ts` give a compiled setting and adventure for engine tests; `lower_archive` is generated, so playing past the lift needs sprint 8's generator.
+- Bundle refs are qualified (`base:hatch`); room references stay as written and resolve at runtime by the scopes in adventure-packs.md, "Room references".

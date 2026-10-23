@@ -7,7 +7,8 @@ export type Json = null | boolean | number | string | Json[] | { [k: string]: Js
 export type JsonObject = { [k: string]: Json };
 
 export interface Visitor {
-  requirement?(form: string, args: Json, path: Segment[]): void;
+  /** `node` is the requirement object holding the leaf, so visitors may rewrite it. */
+  requirement?(form: string, args: Json, path: Segment[], node: JsonObject): void;
   effect?(name: string, args: JsonObject, path: Segment[]): void;
 }
 
@@ -20,7 +21,7 @@ export function walkRequirement(req: Json | undefined, path: Segment[], visit: V
   if (Array.isArray(req.any)) return req.any.forEach((r, i) => walkRequirement(r, [...path, "any", i], visit));
   if ("not" in req) return walkRequirement(req.not, [...path, "not"], visit);
   const form = ["flag", "stage", "has_item", "location", "room", "near", "illumination", "defeated", "check"].find((k) => k in req);
-  if (form) visit.requirement?.(form, form === "flag" || form === "near" ? req : req[form]!, path);
+  if (form) visit.requirement?.(form, form === "flag" || form === "near" ? req : req[form]!, path, req);
 }
 
 /** A list of effects; `if` recurses into `when`, `then`, and `else`. */

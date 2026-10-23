@@ -6,9 +6,9 @@ import { join } from "node:path";
 import { BundleError, loadSettingBundle } from "../bundle/setting";
 import { imageSize } from "./art";
 import { main } from "./cli";
-import { CHECKS, compile, formatDiagnostic } from "./index";
+import { CHECKS, compile, compileSetting, formatDiagnostic } from "./index";
 import { satisfies } from "./semver";
-import { EXAMPLES, SETTING_FIXTURES, at, edit, example, png } from "./testing/fixtures";
+import { ADVENTURE_FIXTURES, EXAMPLES, SETTING_FIXTURES, at, edit, example, png } from "./testing/fixtures";
 
 describe("example setting packs", () => {
   it.each(["derelict_station", "sunless_crypt"] as const)("%s compiles without diagnostics and its bundle loads", (name) => {
@@ -19,7 +19,7 @@ describe("example setting packs", () => {
   });
 
   it("qualifies refs, writes engine defaults, and adds built-in terrain and conditions", () => {
-    const b = compile(example("derelict_station")).bundle!;
+    const b = compileSetting(example("derelict_station")).bundle!;
     expect([b.kind, b.format_version, b.id, b.version, b.namespace]).toEqual(["setting", 2, "derelict_station", "3.0.0", "base"]);
     expect(b.manifest.system).toEqual({ id: "quest", versions: "^1.0", modules: [], resolved: "1.2.0" });
     expect(b.manifest.generation).toEqual({ door: "base:hatch", locks: { "base:bulkhead": "base:keycard", "base:airlock_door": "base:override_code" } });
@@ -63,8 +63,8 @@ describe("setting compiler fixtures", () => {
     expect(new Set(result.diagnostics.map((d) => d.check))).toEqual(new Set([check]));
   });
 
-  it("has a fixture for every check", () => {
-    expect(new Set(SETTING_FIXTURES.map((f) => f.check))).toEqual(new Set(Object.keys(CHECKS)));
+  it("has a fixture for every check, across setting and adventure fixtures", () => {
+    expect(new Set([...SETTING_FIXTURES, ...ADVENTURE_FIXTURES].map((f) => f.check))).toEqual(new Set(Object.keys(CHECKS)));
   });
 });
 
@@ -141,7 +141,7 @@ describe("materials command line", () => {
   });
 
   it("prints help and version", () => {
-    expect(run("--help").stdout).toContain("materials check [--json] [--] DIR");
+    expect(run("--help").stdout).toContain("materials check [--json] [--setting PATH]... [--] DIR");
     expect(run("--version").stdout).toMatch(/^materials \d+\.\d+\.\d+ \(format_version 2\)\n$/);
   });
 });

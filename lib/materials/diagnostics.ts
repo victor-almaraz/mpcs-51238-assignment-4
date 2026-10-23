@@ -28,6 +28,17 @@ export const CHECKS = {
   map: "Map rows have equal length within 64 x 64 and use built-in or legend characters",
   placement: "Placements lie on passable cells inside the map without conflicting occupants",
   art: "Art refs, kinds, files, types, sizes, alt text, and credits",
+  settings: "requires_settings is satisfied by the supplied settings, which bind the adventure's system and modules",
+  flag: "Flags are declared, literal values fit their type and range, and target is used only on character-scoped flags",
+  plot: "Arcs, stages, endings, NPCs, topics, secrets, locations, links, and entity ids resolve",
+  room: "Room references resolve, and triggers on events without an actor qualify them",
+  rooms: "Room areas lie in the map, do not overlap, and cover every passable cell",
+  link: "Links lie in a room and lead to an existing link",
+  ending: "Some ending is reachable",
+  lock: "A door lock that references only flags references a flag some effect sets",
+  anchors: "Anchor constraints and generated links can be met by the generator; their ids are not reserved",
+  start: "The start room has a free cell for every player",
+  npc: "Each NPC is placed at most once, from a creature template",
 } as const;
 
 export type Check = keyof typeof CHECKS;

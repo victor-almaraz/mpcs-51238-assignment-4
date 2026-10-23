@@ -233,3 +233,115 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** The bundle holds the identity fields at the top level, the rest of the manifest under `manifest` with `terrain` merged and `system` carrying `modules` (default `[]`) and `resolved`, and `assets`. The loader accepts the fields of the pack schemas plus the compiler's defaults.
 
 **Proposed resolution.** Add `bundle.schema.json` to `spec/schema/`.
+
+## cli-adventure-settings
+
+| Field | Value |
+|---|---|
+| Document | `spec/README.md`; `docs/adventure-packs.md` |
+| Section | Compiler interface; Compilation |
+| Marker | `lib/materials/cli.ts` |
+
+**Problem.** The compiler "accepts an adventure directory ... and the bundles of its required setting packs", but the command line takes only `DIR`, so `materials check` cannot compile an adventure.
+
+**Implemented.** `--setting PATH`, repeatable, names a setting bundle (JSON) or a setting pack directory, which is compiled first.
+
+**Proposed resolution.** Add `--setting PATH`... to both subcommands in spec/README.md.
+
+## trigger-match-refs
+
+| Field | Value |
+|---|---|
+| Document | `docs/adventure-packs.md`; `docs/engine.md` |
+| Section | Compilation (error example); Events (`item_taken`) |
+| Marker | `lib/materials/adventure.ts` |
+
+**Problem.** The error example `plot/core.yaml: triggers[1].on.item: unknown ref 'reactor_cor'` treats `on.item` as a content ref, but the `item_taken` payload's `item` is an entity id and its `ref` is the template ref; the plot example and the authoring guide match on `ref`.
+
+**Implemented.** In `on`, `ref` is a content ref; `item`, `target`, `door`, and `entity` are entity ids.
+
+**Proposed resolution.** Change the example to `triggers[1].on.ref: unknown ref 'sunken_archive:reactor_cor'`.
+
+## container-locks
+
+| Field | Value |
+|---|---|
+| Document | `docs/guides/adventure-authoring.md`; `docs/engine.md` |
+| Section | Patterns ("A chest with a lock"); Containers |
+| Marker | `lib/materials/content.ts` |
+
+**Problem.** The guide says "a container has no lock" and recommends a fixture verb instead. engine.md, setting-packs.md, and `entities.schema.json` give containers a `lock`.
+
+**Implemented.** engine.md and the schema govern: containers take `lock`.
+
+**Proposed resolution.** Rewrite the guide's pattern to use a container with `lock`.
+
+## treasure-role
+
+| Field | Value |
+|---|---|
+| Document | `docs/generation.md`; `spec/schema/location.schema.json`, `rooms.schema.json` |
+| Section | Roles and depth; link `role`, anchor `prefer_role`, room template `role` |
+| Marker | `lib/materials/adventure.ts` |
+
+**Problem.** The schemas offer the role `treasure` for generated links, anchor preferences, and room templates, but the generator assigns only `entry`, `dead_end`, and `boss`. A generated link with role `treasure` always fails generation, and a `treasure` room template is never placed.
+
+**Implemented.** A generated link with role `treasure` is a compilation error under check 9 ("a generated link names a role the generator cannot produce").
+
+**Proposed resolution.** Define how the generator assigns `treasure`, for example to dead ends that hold loot containers, or remove the value from the schemas.
+
+## ending-reachability
+
+| Field | Value |
+|---|---|
+| Document | `docs/adventure-packs.md` |
+| Section | Compilation, check 7; adventure.yaml (`lost`) |
+| Marker | `lib/materials/adventure.ts` |
+
+**Problem.** "No ending is reachable" is tested by treating every trigger as able to fire once and every requirement as satisfiable. Under that rule an ending is reachable exactly when some effect ends the campaign with it. The automatic ending `lost` is reached without any effect; whether it counts is not stated.
+
+**Implemented.** An adventure passes when some `end_campaign` effect, in a trigger, topic, or the start effects, names a declared ending. `lost` alone does not count.
+
+**Proposed resolution.** State that the automatic ending does not satisfy check 7.
+
+## start-free-cells
+
+| Field | Value |
+|---|---|
+| Document | `docs/adventure-packs.md` |
+| Section | Compilation, check 10 |
+| Marker | `lib/materials/adventure.ts` |
+
+**Problem.** "The start room has fewer free cells than the adventure's maximum player count" cannot be decided when compiling for placements chosen by RNG, or when the start location is generated.
+
+**Implemented.** For an authored start location, the free cells are the room's passable cells minus those occupied by fixed placements (legend and `at`) of creatures, NPCs, and movement-obstructing entities. Generated start locations are not checked.
+
+**Proposed resolution.** State that the check counts fixed placements only, and how it applies to generated start locations.
+
+## room-scopes
+
+| Field | Value |
+|---|---|
+| Document | `docs/adventure-packs.md` |
+| Section | Room references |
+| Marker | `lib/materials/adventure.ts` |
+
+**Problem.** The table of where an unqualified room resolves does not list NPC topic effects and requirements.
+
+**Implemented.** Topic `when` and `effects` resolve unqualified rooms in the actor's location, as item, ability, and verb effects do.
+
+**Proposed resolution.** Add topics to the table.
+
+## draft-entity-files
+
+| Field | Value |
+|---|---|
+| Document | `spec/README.md`; `spec/schema/draft.schema.json` |
+| Section | Adventure directory ("maps one-to-one onto these files") |
+| Marker | `lib/materials/index.ts` |
+
+**Problem.** `entities/` is merged per directory, so the draft's single `entities` map has no one-to-one file name.
+
+**Implemented.** A draft's entities compile as `entities/entities.yaml`.
+
+**Proposed resolution.** Name the file the editor exports entities to.

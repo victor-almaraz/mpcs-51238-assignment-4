@@ -1,24 +1,27 @@
 // The `materials` command line (spec/README.md, "Compiler interface"):
-//   materials check [--json] [--] DIR
-//   materials build [--json] [-o FILE] [--] DIR
+//   materials check [--json] [--setting PATH]... [--] DIR
+//   materials build [--json] [-o FILE] [--setting PATH]... [--] DIR
 //   materials --help | --version
 // Exit status 0: valid; 1: invalid, diagnostics on stderr, no bundle written; 2: usage error.
 
-import { existsSync, renameSync, statSync, writeFileSync } from "node:fs";
-import { dirname, join, basename } from "node:path";
-import { compile } from "./index";
+import { existsSync, readFileSync, renameSync, statSync, writeFileSync } from "node:fs";
+import { basename, dirname, join } from "node:path";
+import { FORMAT_VERSION, loadSettingBundle, type SettingBundle } from "../bundle/setting";
 import { formatDiagnostic } from "./diagnostics";
 import { readPackDir } from "./fs";
-import { FORMAT_VERSION } from "../bundle/setting";
+import { compile, compileSetting } from "./index";
 
 export const VERSION = "0.1.0";
 
-const USAGE = `usage: materials check [--json] [--] DIR
-       materials build [--json] [-o FILE] [--] DIR
+const USAGE = `usage: materials check [--json] [--setting PATH]... [--] DIR
+       materials build [--json] [-o FILE] [--setting PATH]... [--] DIR
        materials --help | --version
 
 check  Validate the pack in DIR. Writes nothing on success.
 build  Validate, then write the bundle as JSON to stdout, or atomically to FILE with -o.
+
+--setting PATH  A setting bundle (JSON) or setting pack directory that an adventure in DIR
+                requires. Repeat for each required setting.
 
 Exit status: 0 valid, 1 invalid (diagnostics on stderr), 2 usage error.`;
 
@@ -51,6 +54,7 @@ export function main(argv: readonly string[], io: Io = processIo): number {
 
   let json = false;
   let output: string | undefined;
+  const settingPaths: string[] = [];
   const positional: string[] = [];
   for (let i = 0; i < rest.length; i++) {
     const arg = rest[i]!;
@@ -62,6 +66,10 @@ export function main(argv: readonly string[], io: Io = processIo): number {
     else if (arg === "-o" && command === "build") {
       output = rest[++i];
       if (output === undefined) return usage("-o needs a FILE");
+    } else if (arg === "--setting") {
+      const path = rest[++i];
+      if (path === undefined) return usage("--setting needs a PATH");
+      settingPaths.push(path);
     } else if (arg.startsWith("-")) return usage(`unknown flag '${arg}'`);
     else positional.push(arg);
   }
@@ -75,7 +83,24 @@ export function main(argv: readonly string[], io: Io = processIo): number {
   } catch (e) {
     return usage(`cannot read directory '${dir}': ${(e as Error).message}`);
   }
-  const result = compile(files);
+  // SPEC_ISSUES.md#cli-adventure-settings: --setting supplies the bundles an adventure requires.
+  const settings: SettingBundle[] = [];
+  for (const path of settingPaths) {
+    if (!existsSync(path)) return usage(`cannot read setting '${path}'`);
+    if (statSync(path).isDirectory()) {
+      const compiled = compileSetting(readPackDir(path));
+      for (const d of compiled.diagnostics) io.stderr(`${json ? JSON.stringify({ ...d, file: `${path}/${d.file}` }) : `${path}/${formatDiagnostic(d)}`}\n`);
+      if (!compiled.bundle) return 1;
+      settings.push(compiled.bundle);
+    } else {
+      try {
+        settings.push(loadSettingBundle(JSON.parse(readFileSync(path, "utf8"))));
+      } catch (e) {
+        return usage(`'${path}' is not a setting bundle: ${(e as Error).message}`);
+      }
+    }
+  }
+  const result = compile(files, settings);
   for (const d of result.diagnostics) io.stderr(`${json ? JSON.stringify(d) : formatDiagnostic(d)}\n`);
   if (!result.ok || !result.bundle) return 1;
   if (command === "build") {
