@@ -7,7 +7,7 @@ import { content, type Content } from "./content";
 import { Ctx } from "./ctx";
 import { applyEffects } from "./effects";
 import { inAttackReach, inTouch } from "./movement";
-import { roomOf } from "./requirements";
+import { holds, roomOf } from "./requirements";
 import type { Bundles, LightLevel, State } from "./types";
 import { Perception, bodyOf, isLit, placement, roomCells, type Body } from "./world";
 import { Rng } from "../rng";
@@ -27,6 +27,8 @@ export interface ViewEntry {
   lit?: boolean;
   /** Containers with capacity in reach. */
   contents?: { id: string; label: string }[];
+  /** Verbs `interact` accepts, for entities in reach. */
+  verbs?: string[];
 }
 
 export interface View {
@@ -48,6 +50,13 @@ export interface View {
   destinations: ViewEntry[];
   visible: ViewEntry[];
   party: { id: string; name: string; room: string | null; at: Cell; summary: Summary }[];
+  /** What direct controls offer: carried items, abilities, and the NPCs `talk` accepts with their topics. */
+  // SPEC_ISSUES.md#view-direct-play: labels and verbs from parser context, so play works without the parser.
+  actions: {
+    inventory: { id: string; label: string }[];
+    abilities: { id: string; label: string }[];
+    npcs: { id: string; name: string; topics: { id: string; label: string }[] }[];
+  };
 }
 
 export function labelOf(c: Content, state: State, id: string): string {
@@ -126,6 +135,13 @@ export function view(state: State, bundles: Bundles, characterId: string): View 
     if (isLit(c, e)) entry.lit = true;
     const capacity = e.kind === "container" ? (c.template(e.ref) as { capacity?: number }).capacity : undefined;
     if (capacity !== undefined && entry.in_reach) entry.contents = (e.contents ?? []).map((i) => ({ id: i, label: labelOf(c, state, i) }));
+    if (entry.in_reach && e.kind !== "creature") {
+      const t = c.template(e.ref) as { verbs?: Record<string, unknown>; light?: unknown };
+      const verbs = Object.keys(t.verbs ?? {});
+      if (e.kind === "door") verbs.push(e.open ? "close" : "open");
+      if (e.kind !== "item" && t.light) verbs.push(e.lit ? "extinguish" : "light");
+      if (verbs.length > 0) entry.verbs = [...new Set(verbs)];
+    }
     visible.push(entry);
   }
 
@@ -197,5 +213,35 @@ export function view(state: State, bundles: Bundles, characterId: string): View 
       .filter((id) => id !== characterId)
       .sort()
       .map((id) => ({ id, name: labelOf(c, state, id), room: roomOf(state, id)?.room ?? null, at: state.characters[id]!.at, summary: c.bundles.system.summary(state.characters[id]!.sheet) })),
+    actions: {
+      inventory: ch.items.map((id) => ({ id, label: labelOf(c, state, id) })),
+      abilities: ((ch.sheet.abilities as string[] | undefined) ?? []).map((ref) => ({ id: ref, label: c.ability(ref)?.label ?? ref })),
+      npcs: visible
+        .filter((v) => state.entities[v.id]?.npc !== undefined && roomOf(state, v.id)?.room === here)
+        .map((v) => {
+          const npc = c.npc(state.entities[v.id]!.npc!)!;
+          const topics = Object.entries(npc.topics ?? {})
+            .filter(([, t]) => holds(ctx, t.when as never, characterId))
+            .map(([id, t]) => ({ id, label: t.label }));
+          return { id: v.id, name: npc.name, topics };
+        }),
+    },
+  };
+}
+
+/** Labels for narration: characters and entities, rooms of any location, abilities, and endings. */
+export function labelsFor(states: readonly State[], bundles: Bundles) {
+  const c = content(bundles);
+  return {
+    entity: (id: string) => {
+      const s = states.find((x) => x.characters[id] || x.entities[id]);
+      return s ? labelOf(c, s, id) : id;
+    },
+    room: (id: string) => {
+      for (const s of states) for (const loc of Object.values(s.locations)) if (loc.rooms[id]) return loc.rooms[id]!.label;
+      return id;
+    },
+    ability: (ref: string) => c.ability(ref)?.label ?? ref,
+    ending: (id: string) => c.adventure.manifest.endings[id]?.label ?? id,
   };
 }

@@ -11,19 +11,37 @@ export function realtimeClient(url: string, publishableKey: string, token: () =>
   return createClient(url, publishableKey, { accessToken: token, auth: { persistSession: false } });
 }
 
+export type StreamStatus = "connecting" | "live" | "reconnecting";
+
+export interface InstanceStream {
+  /** Fetches commits missed so far; also the polling fallback while the channel is down. */
+  backfill(): Promise<void>;
+  stop(): void;
+}
+
 /**
  * Subscribes to an instance's messages after `afterVersion`, in version order. Each (re)connection
- * backfills from the last commit received. Returns a function that unsubscribes.
+ * backfills from the last commit received.
  */
-export function subscribeInstance(client: SupabaseClient, instanceId: string, afterVersion: number, history: (afterVersion: number) => Promise<HistoryItem[]>, onMessage: (m: Message) => void): () => void {
+export function subscribeInstance(
+  client: SupabaseClient,
+  instanceId: string,
+  afterVersion: number,
+  history: (afterVersion: number) => Promise<HistoryItem[]>,
+  onMessage: (m: Message) => void,
+  onStatus: (s: StreamStatus) => void = () => undefined,
+): InstanceStream {
   const sequencer = new Sequencer(afterVersion, instanceId, onMessage, history);
   const channel = client
     .channel(instanceTopic(instanceId), { config: { private: true } })
     .on("broadcast", { event: "*" }, ({ payload }) => sequencer.receive(payload as Message))
     .subscribe((status) => {
-      if (status === "SUBSCRIBED") void sequencer.backfill();
+      if (status === "SUBSCRIBED") {
+        onStatus("live");
+        void sequencer.backfill();
+      } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") onStatus("reconnecting");
     });
-  return () => void client.removeChannel(channel);
+  return { backfill: () => sequencer.backfill(), stop: () => void client.removeChannel(channel) };
 }
 
 /** Subscribes to the user's own messages (subscribe_me): declarations, choices, rejections, reminders. */

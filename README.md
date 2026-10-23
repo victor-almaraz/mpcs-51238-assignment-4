@@ -90,6 +90,8 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `components/` | Shared form components; `systems/` holds creation forms and sheet views registered by rules-system id |
 | `lib/coordinator/` | The Instance Coordinator: serialized commits, round deadlines, messages; the operator operations `replay_instance` and `restore_instance` |
 | `lib/broadcast/` | Realtime broadcast from the server, and browser subscriptions delivered in version order |
+| `lib/map/` | Play maps as drawing operations with click targets, and their canvas painter |
+| `lib/narrator/` | Narration; so far the template narrator |
 | `supabase/migrations/` | SQL migrations, applied by Supabase in production and by PGlite in tests |
 | `lib/systems/` | Rules-system contract, registry, implementations, and the reusable conformance suite in `testing/` |
 | `lib/bundle/` | Schema registry and generated types; generated files are never edited by hand |

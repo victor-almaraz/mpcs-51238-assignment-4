@@ -611,7 +611,9 @@ describe("views", () => {
     expect(v.visible.map((e) => e.id)).not.toContain("cache");
     expect(v.visible.map((e) => e.id)).not.toContain("drone");
     expect(JSON.stringify(v)).not.toContain("lock");
-    expect(JSON.stringify(v)).not.toContain("power");
+    // The `power` topic may be offered; the `power` flag never appears.
+    expect(JSON.stringify({ ...v, actions: { ...v.actions, npcs: [] } })).not.toContain("power");
+    expect(v.actions.npcs.flatMap((n) => n.topics.map((t) => t.id))).not.toContain("gate");
     expect(v.character.currencies).toEqual([{ flag: "purse", label: "credits", amount: 12, coins: [{ id: "scrip", label: "scrip", count: 1 }, { id: "credit", label: "credit", count: 2 }] }]);
     expect(v.round).toEqual({ number: 1, resolution: "simultaneous", declared: [], waiting_on: ["c_1"] });
     // The lamp lying in the bay is lit, so the walls around it are lit too.

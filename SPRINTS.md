@@ -325,3 +325,22 @@ Open:
 - Realtime private channels need Supabase's Clerk third-party auth integration (Supabase dashboard, Authentication, Third-party auth, Clerk) so Supabase accepts Clerk session tokens; until then subscriptions fail and clients see commits only through `get_history`.
 - Two browsers over the deployed binding are verified only in tests with an in-memory broadcaster.
 - `narration` (template and model), `action_menu`, and `submit_input` come with sprints 14 and 15.
+
+### Sprint 14: Play without models — open
+
+Done:
+
+- `/instances/[id]/play`: desk (character with inventory and abilities, map, ways on, party), page (narrative log, action bar), margin (round status, countdown, Advance for the author). Below 1024 px a top bar opens Map, Character, Party, and Round as sheets. Paused returns to the lobby after 5 seconds; ended shows the ending.
+- Direct actions for every tool the view allows: move, examine, attack, take, interact verbs, talk with topics, use, drop, abilities, wait, search, rest, and choices.
+- `lib/map/plan.ts`: the map as drawing operations (seen cells, light overlays, rooms, doors, links, entities, party tokens) with click targets, painted on a canvas; a text list of visible entities.
+- `lib/narrator/template.ts`: template narration of shared events, stored and broadcast as `narration` after each commit; declarations are not narrated.
+- Messages: Realtime when the channel connects; otherwise the client polls `get_history` every 4 seconds through the same sequencer.
+- Tests: `sunken_escaped` and `sunken_lost` played to their endings through `submit_action` alone; template narration; map plan.
+- `SPEC_ISSUES.md`: `view-direct-play`.
+
+Open:
+
+- Playwright journeys in `pnpm check` need Playwright and its browsers installed (`pnpm add -D @playwright/test`, then `pnpm exec playwright install chromium`).
+- Icon buttons use text labels until `lucide-react` is installed.
+- Hostile creatures have no danger ring yet: the view does not mark hostility.
+- The page is not yet checked in a browser: signed-in pages need migrations 3 to 5 in the remote database.

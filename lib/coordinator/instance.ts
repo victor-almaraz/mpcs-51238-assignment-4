@@ -2,8 +2,9 @@
 // instance through optimistic versioning, commits of engine results, round deadlines, and the messages
 // each commit produces (api.md, Messages).
 
-import { advance, join, leave, sharedEvents, startInstance, submit, view, type Bundles, type CommitInput, type GameEvent, type JoiningCharacter, type Result, type State } from "../engine";
+import { advance, join, labelsFor, leave, sharedEvents, startInstance, submit, view, type Bundles, type CommitInput, type GameEvent, type JoiningCharacter, type Result, type State } from "../engine";
 import { instanceTopic, userTopic, type Broadcaster, type Message } from "../broadcast";
+import { templateNarration } from "../narrator/template";
 import { Rng } from "../rng";
 import { VersionConflict, type CharacterRecord, type InstanceRecord, type InstanceStatus, type Store } from "../store";
 import { pinnedBundles } from "./admin";
@@ -141,6 +142,14 @@ async function commit(deps: Deps, instance: InstanceRecord, bundles: Bundles, re
     }
   }
   for (const [user, messages] of owners) await send(deps, userTopic(user), messages);
+
+  // Narration after the commit; a commit with nothing resolved, such as a declaration, has none.
+  // The Groq narrator replaces the template in sprint 15; a failure there falls back to it.
+  const text = templateNarration(visible, labelsFor(instance.state ? [result.state, instance.state] : [result.state], bundles));
+  if (text) {
+    await deps.store.putNarration(instance.id, version, text, "template");
+    await send(deps, instanceTopic(instance.id), [{ type: "narration", ...base, text, source: "template" }]);
+  }
   return { version, state: result.state, events: result.events };
 }
 

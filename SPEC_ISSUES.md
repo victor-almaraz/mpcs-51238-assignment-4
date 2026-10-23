@@ -807,3 +807,17 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** The bearer token is the Clerk session token; Clerk registers, signs in, and signs out, so the binding has no `register`, `login`, or `logout` routes. `delete_campaign` is `DELETE /v1/campaigns/{campaign_id}` with `{ confirm }`, and `restore_campaign` is `POST /v1/campaigns/{campaign_id}/restore`. The subscription limit is not enforced.
 
 **Proposed resolution.** State that a deployment with an identity provider omits the account operations and uses the provider's tokens; add the two campaign routes; scope the subscription limit to bindings that hold connections.
+
+## view-direct-play
+
+| Field | Value |
+|---|---|
+| Document | `docs/api.md`; `docs/app-flow.md` |
+| Section | View; Play interface (Action bar, Character: clicking an item or ability; sprint 14: playable with direct actions) |
+| Marker | `lib/engine/view.ts` |
+
+**Problem.** Direct controls need what parser context carries and the view lacks: the verbs `interact` accepts, the labels of carried items and abilities, and the NPCs `talk` accepts with their available topics. Without them a client can show the map but cannot offer the actions that play an adventure.
+
+**Implemented.** Visible entities in reach carry `verbs`, and the view adds `actions` with `inventory` and `abilities` as `{ id, label }` and `npcs` with their topics whose `when` holds, as in parser context. Nothing hidden is added: no locks, flags, stages, secrets, or topic briefs.
+
+**Proposed resolution.** Add these fields to the View object.

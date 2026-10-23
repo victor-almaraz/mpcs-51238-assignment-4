@@ -1,6 +1,8 @@
 // Playing an instance through the Coordinator (sprint 13 exit criterion: two players play one instance;
 // idempotency, timeouts, and reconnection with after_version).
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { MemoryBroadcaster } from "../broadcast";
 import { canonical, replay } from "../engine";
@@ -138,6 +140,8 @@ describe("play", () => {
     expect(all.next_after_version).toBeNull();
     const page = await getHistory(store, "user_b", { instance_id: instance.id, after_version: 1, limit: 1 });
     expect(page).toMatchObject({ items: [{ version: 2, narration: null }], next_after_version: 2 });
+    expect(all.items[2]!.narration).toEqual({ text: "Vale waits. Rook waits.", source: "template" });
+    expect(broadcast.on(`instance:${instance.id}`).filter((m) => m.type === "narration").map((m) => m.version)).toEqual([3]);
     // History carries the shared events: the same ones the commit messages carried.
     const commits = broadcast.on(`instance:${instance.id}`).filter((m) => m.type === "commit");
     expect(canonical(all.items.map((i) => i.events))).toBe(canonical(commits.map((m) => m.events)));
@@ -154,6 +158,31 @@ describe("play", () => {
     const bundles = { ...sunkenBundles(), settings: [richSetting()] };
     const r = replay(bundles, await store.commits(instance.id));
     expect(r.ok && canonical(r.state) === canonical(stored.state)).toBe(true);
+  });
+});
+
+describe("a full adventure", () => {
+  it.each(["sunken_escaped", "sunken_lost"])("plays %s to its ending with direct actions alone", async (name) => {
+    const ending = name.split("_")[1];
+    // The golden scenario's seed and character id, so its scripted inputs apply unchanged.
+    const golden: Entropy = { ...entropy(), seed: () => 11, id: (prefix) => (prefix === "ch" ? "c_1" : `${prefix}_${Math.random().toString(36).slice(2)}`) };
+    const campaign = await createCampaign(store, "user_a", { title: "Solo", system: "quest", system_versions: "^1.0", materials: SUNKEN }, golden);
+    const instance = await createInstance(store, "user_a", { campaign_id: campaign.id, name: "Solo" }, golden);
+    const vale = await createCharacter(store, "user_a", { system: "quest", name: "Vale", choices: { role: "fighter", abilities: SIX } }, golden);
+    await addCharacter(deps, "user_a", { instance_id: instance.id, character_id: vale.id });
+    await startInstance(deps, "user_a", instance.id);
+    const lines = readFileSync(join(process.cwd(), "lib/harness/golden", `${name}.input.jsonl`), "utf8").trim().split("\n");
+    for (const [n, text] of lines.entries()) {
+      const input = JSON.parse(text) as { actor?: string; tool?: string; args?: Record<string, unknown>; advance?: true };
+      if (input.advance) await advanceRound(deps, "user_a", instance.id);
+      else if (input.tool) await submitAction(deps, "user_a", { instance_id: instance.id, tool: input.tool, args: input.args ?? {}, idempotency_key: `${name}-${String(n).padStart(4, "0")}` }, golden);
+    }
+    expect(broadcast.on("user:user_a").filter((m) => m.type === "input_rejected")).toEqual([]);
+    expect(await store.instanceView(instance.id)).toMatchObject({ status: "ended", ending });
+    // Written back: the lost ending leaves Vale at death's door with 0 HP, which is not dead.
+    const back = (await store.getCharacter(vale.id))!;
+    expect(back.status).toBe("available");
+    if (ending === "lost") expect((back.sheet.hp as { value: number }).value).toBe(0);
   });
 });
 
