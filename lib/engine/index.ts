@@ -94,6 +94,13 @@ export function toolsFor(state: State, bundles: Bundles, actor: string): { tools
   return availableTools(new Ctx(state, content(bundles), new Rng(0), applyEffects), actor);
 }
 
+/** Applies the rules system's end-of-session changes to every character (systems/README.md, session_end). */
+export function sessionEnd(state: State, bundles: Bundles, rng: Rng): Result {
+  return run(state, bundles, rng, (ctx) => {
+    for (const id of Object.keys(ctx.state.characters).sort()) ctx.apply(bundles.system.session_end(ctx.combatant(id)), id);
+  });
+}
+
 /** A character's movement speed in cells per turn, from the rules system. */
 export function speedOf(state: State, bundles: Bundles, actor: string): number {
   const ctx = new Ctx(state, content(bundles), new Rng(0), applyEffects);

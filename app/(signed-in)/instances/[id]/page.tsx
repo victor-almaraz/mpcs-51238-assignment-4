@@ -7,7 +7,9 @@ import { listCharacters } from "@/lib/api/characters";
 import { getInstance } from "@/lib/api/instances";
 import { accepted, systemView } from "@/lib/api/systems";
 import { addCharacterAction, instanceControlAction, removeCharacterAction } from "@/lib/server/campaign-actions";
-import { orNotFound } from "@/lib/server/pages";
+import { listOccurrences } from "@/lib/api/schedules";
+import { formatWhen } from "@/components/when";
+import { orNotFound, requestTime } from "@/lib/server/pages";
 import { pageUser } from "@/lib/server/session";
 import { serverDeps } from "@/lib/server/coordinator";
 import { serverStore } from "@/lib/server/supabase";
@@ -35,6 +37,8 @@ export default async function Lobby({ params }: { params: Promise<{ id: string }
   const names = new Map(campaign.members.map((m) => [m.user_id, m.display_name]));
   const mine = (await listCharacters(store, user.id, { status: "available", limit: 100 })).items.filter((c) => accepted(instance.system).includes(c.system));
   const open = instance.status === "lobby" || instance.status === "paused";
+  const now = requestTime();
+  const next = (await listOccurrences(store, user.id, { instance_id: instance.id, from: new Date(now).toISOString(), to: new Date(now + 92 * 86_400_000).toISOString() })).find((o) => o.status !== "cancelled");
   const controls = (author && CONTROLS[instance.status]) || [];
   const playing = instance.status === "active" && instance.characters.some((c) => c.user_id === user.id);
   return (
@@ -68,6 +72,16 @@ export default async function Lobby({ params }: { params: Promise<{ id: string }
           ))}
         </div>
       )}
+
+      <section className="mt-6">
+        <h2 className="font-display text-heading">Next session</h2>
+        <p className="mt-1">
+          {next ? formatWhen(next.starts_at, user.timezone) : "None scheduled."}{" "}
+          <Link href={`/instances/${instance.id}/schedule`} className="font-ui text-control text-accent">
+            Schedule
+          </Link>
+        </p>
+      </section>
 
       <section className="mt-8">
         <h2 className="font-display text-heading">Party</h2>

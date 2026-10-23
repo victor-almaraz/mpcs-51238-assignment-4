@@ -2,7 +2,7 @@
 // instance through optimistic versioning, commits of engine results, round deadlines, and the messages
 // each commit produces (api.md, Messages).
 
-import { advance, join, leave, sharedEvents, startInstance, submit, view, type Bundles, type CommitInput, type GameEvent, type JoiningCharacter, type Result, type State } from "../engine";
+import { advance, join, leave, sessionEnd, sharedEvents, startInstance, submit, view, type Bundles, type CommitInput, type GameEvent, type JoiningCharacter, type Result, type State } from "../engine";
 import { instanceTopic, userTopic, type Broadcaster, type Message } from "../broadcast";
 import type { Narrator } from "../narrator/adapter";
 import type { Parser } from "../parser/adapter";
@@ -162,6 +162,8 @@ export async function commit(
   for (const [user, messages] of owners) await send(deps, userTopic(user), messages);
 
   await sendActionMenus(deps, instance.id, version, bundles, result.state, result.events, extra.actor);
+  // auto_pause waits for the round under way to close.
+  if (!ended && result.events.some((e) => e.type === "round_ended") && (await deps.store.pauseRequested(instance.id))) await setStatus(deps, instance.id, "paused");
 
   // Narration after the commit; a commit with nothing resolved, such as a declaration, has none.
   const job = () => narrate(deps, { instanceId: instance.id, version, bundles, before: instance.state, after: result.state, events: visible, facts: result.facts ?? [], actor: extra.actor ?? null });
@@ -254,6 +256,7 @@ export async function setStatus(deps: Deps, instanceId: string, status: "active"
     const seconds = status === "active" && instance.state ? timeoutOf(deps, instance.state) : null;
     const deadline = seconds === null ? null : new Date(deps.now().getTime() + seconds * 1000);
     await deps.store.setInstanceStatus(instance.id, instance.version, status, deadline);
+    await deps.store.setPauseRequested(instance.id, false);
     if (status === "ended" && instance.state) await deps.store.releaseCharacters(instance.id, sheetsOf(instance.state, Object.keys(instance.state.characters)));
     const base = { instance_id: instance.id, version: instance.version };
     const messages: Message[] = [{ type: "instance_status", ...base, status }];
@@ -293,4 +296,29 @@ export async function characterView(deps: Deps, instanceId: string, characterId:
   const instance = await load(deps, instanceId);
   if (!instance.state || !instance.state.characters[characterId]) return null;
   return view(instance.state, await pinnedBundles(deps.store, instance), characterId);
+}
+
+/** Applies the rules system's end-of-session changes at an occurrence's end (architecture.md, Scheduling). */
+export async function endOfSession(deps: Deps, instanceId: string, sessionId: string, occurrenceStart: string): Promise<Committed | null> {
+  return serialized(deps, instanceId, async (instance) => {
+    if (!instance.state || (instance.status !== "active" && instance.status !== "paused")) return null;
+    const bundles = await pinnedBundles(deps.store, instance);
+    const result = sessionEnd(instance.state, bundles, rngFor(instance, instance.state));
+    if (!result.ok) throw new CoordinatorError("conflict", result.error.detail, result.error.code);
+    return commit(deps, instance, bundles, result, { session_end: { session_id: sessionId, occurrence_start: occurrenceStart } });
+  });
+}
+
+/** auto_pause: pauses now when no round is under way, else after the current round closes. */
+export async function pauseWhenRoundCloses(deps: Deps, instanceId: string): Promise<"paused" | "requested" | "skipped"> {
+  const instance = await load(deps, instanceId);
+  if (instance.status !== "active" || !instance.state) return "skipped";
+  const r = instance.state.round;
+  const quiet = Object.keys(r.declarations).length === 0 && Object.keys(instance.state.pending_choices).length === 0 && r.order === null;
+  if (quiet) {
+    await setStatus(deps, instanceId, "paused");
+    return "paused";
+  }
+  await deps.store.setPauseRequested(instanceId, true);
+  return "requested";
 }

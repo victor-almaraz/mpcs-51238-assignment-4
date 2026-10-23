@@ -26,3 +26,8 @@ export async function origin(): Promise<string> {
   const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
   return `${proto}://${host}`;
 }
+
+/** The request's time, for windows such as the next 7 days. Server components render once per request. */
+export function requestTime(): number {
+  return Date.now();
+}

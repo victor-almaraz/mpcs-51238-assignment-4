@@ -3,7 +3,7 @@
 // SPEC_ISSUES.md#replay-source: commits record their inputs, since events alone cannot rebuild state.
 
 import { Rng, type U64 } from "../rng";
-import { advance, join, leave, startInstance, submit } from "./index";
+import { advance, join, leave, sessionEnd, startInstance, submit } from "./index";
 import type { Bundles, GameEvent, JoiningCharacter, Result, State } from "./types";
 
 /** What produced a commit. */
@@ -13,6 +13,7 @@ export type CommitInput =
   | { advance: true }
   | { join: { character: JoiningCharacter } }
   | { leave: { character_id: string } }
+  | { session_end: { session_id: string; occurrence_start: string } }
   | { restore: { to_version: number; reason: string } };
 
 export interface Commit {
@@ -50,6 +51,7 @@ export function applyInput(bundles: Bundles, state: State | undefined, version: 
   if ("advance" in input) return advance(state, bundles, rng);
   if ("join" in input) return join(state, bundles, input.join.character, rng);
   if ("leave" in input) return leave(state, bundles, input.leave.character_id, rng);
+  if ("session_end" in input) return sessionEnd(state, bundles, rng);
   return submit(state, bundles, input.call.actor, { tool: input.call.tool, args: input.call.args }, rng);
 }
 

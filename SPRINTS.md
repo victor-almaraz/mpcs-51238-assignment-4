@@ -365,3 +365,23 @@ Open:
 - The evaluation set is hand-written; the guide asks for cases from real play logs, which the input log now records.
 - `give` has no case: the golden runs never place a container with capacity in reach.
 - Migration 6 is not yet applied to the remote database.
+
+### Sprint 18: Schedules and reminders — open
+
+Done:
+
+- `lib/scheduler/zone.ts`: wall-clock time in IANA time zones from `Intl` (no library); times in a daylight-saving gap move forward, ambiguous times take the earlier instant.
+- `lib/scheduler/occurrences.ts`: weekly occurrences every 1 to 4 weeks that keep their local time across daylight-saving changes, up to `count`, `until`, or 52; moved and cancelled exceptions; cancelled series.
+- `supabase/migrations/20261023000600_schedules.sql`: sessions, exceptions, RSVPs, scheduler marks (idempotency per occurrence and moment, and per member and lead time for reminders), calendar feed generation, and `pause_requested`.
+- `lib/api/schedules.ts`: `schedule_session`, `update_session`, `cancel_session`, `move_occurrence`, `list_occurrences` (at most 92 days), `rsvp`, `export_calendar`, `get_calendar_feed`, `rotate_calendar_feed`, `disable_calendar_feed`, and the feed at `/v1/calendar/{secret}.ics` (60 requests per hour per URL). `lib/scheduler/ics.ts` writes RFC 5545 with folded lines and one `VALARM` per lead time in feeds.
+- `lib/scheduler/run.ts` and `app/api/cron/scheduler` (Bearer `CRON_SECRET`): reminders on the user channel at each lead time unless the member answered `no`; `auto_resume` at the start; `session_end` for every character at the end, committed and replayable (Quest awards 5 AP); `auto_pause` after the round under way closes; the deadline sweep; invitation expiry.
+- Pages: `/instances/[id]/schedule` (occurrences by week in the user's time zone, RSVPs, the author's create, move, and cancel controls, Add to calendar, Subscribe), Upcoming sessions on the dashboard with RSVP buttons, and the next session in the lobby.
+- Tests: `lib/scheduler/occurrences.test.ts` (6, Berlin and New York transitions), `lib/api/schedules.test.ts` (7).
+- `SPEC_ISSUES.md`: `session-cancellation`, `session-updates`, `calendar-feed-url`.
+
+Open:
+
+- Web Push: needs `pnpm add web-push` and a VAPID key pair (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`); the Notifier takes a push function once they exist. Push subscriptions and Settings come with sprint 19.
+- The cron schedule is not configured: Vercel Hobby allows daily cron jobs only, and a more frequent schedule fails the deployment. Every-minute runs need a plan that allows them, or an external scheduler calling `/api/cron/scheduler` with `CRON_SECRET`. Deadlines are also enforced on every request to an instance.
+- `/notifications` (live session reminders) is not built.
+- Migration 7 is not yet applied to the remote database.

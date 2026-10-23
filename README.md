@@ -39,6 +39,8 @@ The server reads these variables, from `.env.local` locally and from the Vercel 
 | `PARSER_TIMEOUT`, `NARRATOR_TIMEOUT` | no | Seconds before a model call falls back; defaults 8 and 10 |
 | `PARSER_ENABLED`, `NARRATOR_ENABLED` | no | `0` disables one adapter while keeping the other (runbooks/model-outage.md) |
 | `ACTION_MENU_MODE` | no | `1` sends every character an action menu at each round and turn start |
+| `CRON_SECRET` | yes | Authorizes calls to the scheduler at `/api/cron/scheduler` (Vercel Cron sends it as a bearer token) |
+| `CALENDAR_FEED_KEY` | yes | Derives calendar feed secrets; the service key is used when unset |
 
 `GET /api/health` reports which are set, and whether the database schema is applied, without revealing values.
 
@@ -100,6 +102,8 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `lib/models/` | The Groq client over its HTTP API |
 | `lib/parser/` | Parser context, per-input tool definitions, the Parser Adapter, and the evaluation set |
 | `lib/narrator/` | Narrator context, the Narrator Adapter, and template narration |
+| `lib/scheduler/` | Time zones, occurrence expansion, iCalendar, and the scheduler run |
+| `lib/notifier/` | Session reminders on the user channel |
 | `supabase/migrations/` | SQL migrations, applied by Supabase in production and by PGlite in tests |
 | `lib/systems/` | Rules-system contract, registry, implementations, and the reusable conformance suite in `testing/` |
 | `lib/bundle/` | Schema registry and generated types; generated files are never edited by hand |

@@ -2,6 +2,7 @@
 // HTTP statuses, the Idempotency-Key header, and the per-user rate limit (api.md, Rate limits).
 // The bearer token is the Clerk session token; Clerk authenticates it before `handle` runs.
 // SPEC_ISSUES.md#binding-gaps: account routes belong to Clerk; deletion routes are not listed.
+import { createHash } from "node:crypto";
 
 import { createCharacter, getCharacter, listCharacters, retireCharacter, updateCharacter } from "./characters";
 import {
@@ -38,6 +39,7 @@ import {
 } from "./instances";
 import { acceptInvitation, declineInvitation, invite, listInvitations, previewInvitation, revokeInvitation } from "./invitations";
 import { listMaterials } from "./materials";
+import { calendarFeed, cancelSession, disableCalendarFeed, exportCalendar, getCalendarFeed, listOccurrences, moveOccurrence, rotateCalendarFeed, rsvp, scheduleSession, updateSession } from "./schedules";
 import { getSystemSchema, listSystems } from "./systems";
 import { acceptTerms, caller, getMe } from "./users";
 
@@ -66,11 +68,21 @@ interface Call {
   origin: string;
 }
 
-type Reply = { status: number; body?: unknown };
+type Reply = { status: number; body?: unknown; calendar?: string };
 
 const ok = (body: unknown): Reply => ({ status: 200, body });
 const created = (body: unknown): Reply => ({ status: 201, body });
 const none = (): Reply => ({ status: 204 });
+const ics = (text: string): Reply => ({ status: 200, calendar: text });
+
+/** Requests per calendar feed URL per hour (api.md, Rate limits). */
+const FEED_LIMIT = { window_seconds: 3600, limit: 60 };
+
+function feedConfig(c: Call) {
+  const key = process.env.CALENDAR_FEED_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!key) throw new ApiError("unavailable", "calendar feeds are not configured");
+  return { key, origin: c.origin };
+}
 
 /** Query parameters as operation input: integers and booleans where the operation expects them. */
 function queryInput(query: URLSearchParams, numbers: string[] = [], booleans: string[] = []): Record<string, unknown> {
@@ -91,6 +103,19 @@ type Route = [method: string, pattern: string, run: (c: Call) => Promise<Reply>]
 const ROUTES: Route[] = [
   // Users
   ["GET", "/me", async (c) => ok(await getMe(c.deps.store, c.user))],
+  ["GET", "/me/calendar-feed", async (c) => ok(await getCalendarFeed(c.deps.store, c.user, feedConfig(c)))],
+  ["POST", "/me/calendar-feed", async (c) => ok(await rotateCalendarFeed(c.deps.store, c.user, feedConfig(c)))],
+  ["DELETE", "/me/calendar-feed", async (c) => (await disableCalendarFeed(c.deps.store, c.user), none())],
+  [
+    "GET",
+    "/calendar/:feed",
+    async (c) => {
+      const secret = c.params.feed!.replace(/\.ics$/, "");
+      const wait = await c.deps.store.rateHit(`feed:${createHash("sha256").update(secret).digest("hex")}`, "calendar", FEED_LIMIT.window_seconds, FEED_LIMIT.limit);
+      if (wait > 0) throw new ApiError("rate_limited", "too many requests for this feed", { retry_after_ms: wait });
+      return ics(await calendarFeed(c.deps.store, secret, feedConfig(c)));
+    },
+  ],
   ["POST", "/me/terms", async (c) => ok({ user: await acceptTerms(c.deps.store, c.user, c.body.version) })],
   // Systems and materials
   ["GET", "/systems", async (c) => (await gated(c, "list_systems"), ok({ items: listSystems() }))],
@@ -141,6 +166,14 @@ const ROUTES: Route[] = [
   ["POST", "/instances/:instance_id/resume", async (c) => ok({ instance: await resumeInstance(c.deps, c.user, c.params.instance_id) })],
   ["POST", "/instances/:instance_id/end", async (c) => ok({ instance: await endInstance(c.deps, c.user, c.params.instance_id) })],
   ["POST", "/instances/:instance_id/advance", async (c) => (await advanceRound(c.deps, c.user, c.params.instance_id), none())],
+  // Scheduling
+  ["POST", "/instances/:instance_id/sessions", async (c) => created({ session: await scheduleSession(c.deps.store, c.user, { ...c.body, instance_id: c.params.instance_id }) })],
+  ["PATCH", "/sessions/:session_id", async (c) => ok({ session: await updateSession(c.deps.store, c.user, { ...c.body, session_id: c.params.session_id }) })],
+  ["DELETE", "/sessions/:session_id", async (c) => (await cancelSession(c.deps.store, c.user, { session_id: c.params.session_id, ...queryInput(c.query) }), none())],
+  ["POST", "/sessions/:session_id/occurrences/:occurrence_start/move", async (c) => ok({ occurrence: await moveOccurrence(c.deps.store, c.user, { ...c.body, session_id: c.params.session_id, occurrence_start: c.params.occurrence_start }) })],
+  ["PUT", "/sessions/:session_id/occurrences/:occurrence_start/rsvp", async (c) => ok({ occurrence: await rsvp(c.deps.store, c.user, { ...c.body, session_id: c.params.session_id, occurrence_start: c.params.occurrence_start }) })],
+  ["GET", "/occurrences", async (c) => ok({ items: await listOccurrences(c.deps.store, c.user, queryInput(c.query)) })],
+  ["GET", "/instances/:instance_id/calendar.ics", async (c) => ics(await exportCalendar(c.deps.store, c.user, c.params.instance_id))],
   ["GET", "/instances/:instance_id/history", async (c) => ok(await getHistory(c.deps.store, c.user, { ...queryInput(c.query, ["after_version", "limit"]), instance_id: c.params.instance_id }))],
   [
     "POST",
@@ -213,6 +246,7 @@ export async function handle(request: Request, user: string | null, deps: Deps):
       body = parsed as Record<string, unknown>;
     }
     const reply = await route[2]({ deps, user, params, query: url.searchParams, body, headers: request.headers, origin: url.origin });
+    if (reply.calendar !== undefined) return new Response(reply.calendar, { status: reply.status, headers: { "Content-Type": "text/calendar; charset=utf-8" } });
     return json(reply.status, reply.body);
   } catch (e) {
     if (e instanceof ApiError) return failure(e);

@@ -821,3 +821,45 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** Visible entities in reach carry `verbs`, and the view adds `actions` with `inventory` and `abilities` as `{ id, label }` and `npcs` with their topics whose `when` holds, as in parser context. Nothing hidden is added: no locks, flags, stages, secrets, or topic briefs.
 
 **Proposed resolution.** Add these fields to the View object.
+
+## session-cancellation
+
+| Field | Value |
+|---|---|
+| Document | `docs/api.md`; `docs/data-model.md` |
+| Section | Scheduling (`cancel_session` without `occurrence_start` cancels "every future occurrence"); Scheduled session (`status`) |
+| Marker | `supabase/migrations/20261023000600_schedules.sql` |
+
+**Problem.** Cancelling a series cancels its future occurrences only, so past occurrences stay as they were, but the record holds only `status`, which cannot tell past occurrences from future ones.
+
+**Implemented.** The session also records `cancelled_at`; occurrences whose original start is at or after it are `cancelled`.
+
+**Proposed resolution.** Add `cancelled_at` to the Scheduled session record.
+
+## session-updates
+
+| Field | Value |
+|---|---|
+| Document | `docs/api.md` |
+| Section | Scheduling (`update_session` "applies to occurrences that have not started") |
+| Marker | `lib/api/schedules.ts` |
+
+**Problem.** Occurrences are computed from the session's fields, so a change to `starts_at`, `timezone`, or `recurrence` moves past occurrences too. Keeping them would require splitting the series, which changes the session's id.
+
+**Implemented.** A change applies to the whole series. Scheduler work for past occurrences already ran and is not repeated, so the change affects only what is displayed for them.
+
+**Proposed resolution.** Either accept that changes apply to the series, or define the split: the old session ends at the last started occurrence and a new session continues.
+
+## calendar-feed-url
+
+| Field | Value |
+|---|---|
+| Document | `docs/api.md`; `docs/data-model.md` |
+| Section | Users (`get_calendar_feed` returns `{ url }`); User (`calendar_token_hash`: only a hash of the secret is stored) |
+| Marker | `lib/api/schedules.ts`, `supabase/migrations/20261023000600_schedules.sql` |
+
+**Problem.** `get_calendar_feed` returns the feed URL, which contains the secret, but the server stores only the secret's hash, so it cannot show the URL again.
+
+**Implemented.** The secret is an HMAC of the user id and a feed generation under a deployment key (`CALENDAR_FEED_KEY`, or the service key when unset). The user record stores the hash and the generation; rotating increments the generation, so the previous URL stops working.
+
+**Proposed resolution.** Define the secret as derived from a deployment key and a stored generation, or have `get_calendar_feed` return only whether the feed is enabled.

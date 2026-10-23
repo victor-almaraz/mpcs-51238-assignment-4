@@ -6,6 +6,7 @@
 import type { AdventureBundle } from "../bundle/adventure";
 import type { SettingBundle } from "../bundle/setting";
 import type { Commit, CommitInput, GameEvent, State } from "../engine";
+import type { SessionException, SessionRecord } from "../scheduler/occurrences";
 
 /** Calls a store function by name with named arguments; rejects with an error carrying `code`. */
 export interface Rpc {
@@ -99,6 +100,8 @@ export interface UserRecord {
   deletion_requested_at: string | null;
   terms_accepted_at: string | null;
   terms_version: string | null;
+  calendar_token_hash?: string | null;
+  calendar_feed_generation?: number;
   created_at: string;
 }
 
@@ -183,6 +186,24 @@ export interface HistoryItem {
   actor_id: string | null;
   events: GameEvent[];
   narration: { text: string; source: "model" | "template" } | null;
+}
+
+export interface Rsvp {
+  session_id: string;
+  occurrence_start: string;
+  user_id: string;
+  response: "yes" | "no" | "maybe";
+}
+
+export interface Schedules {
+  sessions: SessionRecord[];
+  exceptions: SessionException[];
+  rsvps: Rsvp[];
+}
+
+export interface SchedulerSnapshot extends Schedules {
+  instances: { id: string; status: InstanceStatus; campaign_id: string }[];
+  members: { campaign_id: string; user_id: string; reminders: UserRecord["reminders"] }[];
 }
 
 type BundleMeta = { publisher_id?: string | null; draft_id?: string | null; origin: "operator" | "author"; listed?: boolean };
@@ -550,5 +571,66 @@ export class Store {
 
   async recordParse(id: string, parserContext: unknown, toolCalls: unknown[]): Promise<void> {
     await this.rpc.call("cadmium_record_parse", { p_id: id, p_parser_context: parserContext, p_tool_calls: toolCalls });
+  }
+
+  // Schedules ------------------------------------------------------------------------------------
+
+  async putSession(session: SessionRecord): Promise<SessionRecord> {
+    return this.rpc.call<SessionRecord>("cadmium_put_session", { p_session: session });
+  }
+
+  async getSession(id: string): Promise<SessionRecord | undefined> {
+    return (await this.rpc.call<SessionRecord | null>("cadmium_get_session", { p_id: id })) ?? undefined;
+  }
+
+  async setException(sessionId: string, occurrenceStart: string, status: "cancelled" | "moved", movedTo: string | null): Promise<void> {
+    await this.rpc.call("cadmium_set_exception", { p_session: sessionId, p_occurrence_start: occurrenceStart, p_status: status, p_moved_to: movedTo });
+  }
+
+  async rsvp(sessionId: string, occurrenceStart: string, userId: string, response: Rsvp["response"]): Promise<void> {
+    await this.rpc.call("cadmium_rsvp", { p_session: sessionId, p_occurrence_start: occurrenceStart, p_user: userId, p_response: response });
+  }
+
+  /** Sessions of the instances, with exceptions and RSVPs. */
+  async schedules(instanceIds: readonly string[]): Promise<Schedules> {
+    return this.rpc.call<Schedules>("cadmium_schedules", { p_instances: instanceIds });
+  }
+
+  async userInstances(userId: string): Promise<{ id: string; name: string; status: InstanceStatus; campaign_id: string; campaign_title: string }[]> {
+    return this.rpc.call("cadmium_user_instances", { p_user: userId });
+  }
+
+  /** Records a unit of scheduler work; false when it was already done. */
+  async scheduleMark(key: string): Promise<boolean> {
+    return this.rpc.call<boolean>("cadmium_schedule_mark", { p_key: key });
+  }
+
+  async schedulerSnapshot(): Promise<SchedulerSnapshot> {
+    return this.rpc.call<SchedulerSnapshot>("cadmium_scheduler_snapshot", {});
+  }
+
+  async expiredDeadlines(now: Date): Promise<string[]> {
+    return this.rpc.call<string[]>("cadmium_expired_deadlines", { p_now: now.toISOString() });
+  }
+
+  async expireInvitations(): Promise<number> {
+    return this.rpc.call<number>("cadmium_expire_invitations", {});
+  }
+
+  async setPauseRequested(id: string, requested: boolean): Promise<void> {
+    await this.rpc.call("cadmium_set_pause_requested", { p_id: id, p_requested: requested });
+  }
+
+  async pauseRequested(id: string): Promise<boolean> {
+    return this.rpc.call<boolean>("cadmium_pause_requested", { p_id: id });
+  }
+
+  /** Enables the user's calendar feed with the secret's hash, or disables it; returns the generation. */
+  async setCalendarFeed(userId: string, hash: string | null): Promise<number> {
+    return this.rpc.call<number>("cadmium_set_calendar_feed", { p_user: userId, p_hash: hash });
+  }
+
+  async userByFeed(hash: string): Promise<(UserRecord & { calendar_feed_generation: number; calendar_token_hash: string | null }) | undefined> {
+    return (await this.rpc.call<(UserRecord & { calendar_feed_generation: number; calendar_token_hash: string | null }) | null>("cadmium_user_by_feed", { p_hash: hash })) ?? undefined;
   }
 }
