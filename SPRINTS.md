@@ -202,3 +202,20 @@ Notes for sprints 7 and 9:
 
 - Sprint 7 tests rounds and combat: sequential and initiative policies with a fake system, entity behaviours, approach, cover, structures, the combat area, and combat end.
 - Sprint 9 adds the harness and golden logs; `sunken_archive` and `trial` are the adventures to script to every ending.
+
+### Sprint 7: Rounds and combat — closed
+
+Done:
+
+- The combat area grows when a combatant entity enters a room (`SPEC_ISSUES.md#combat-area-growth`).
+- `lib/engine/combat.test.ts`: 28 tests with Quest variants for sequential resolution, initiative, and no approach. They cover:
+  - mode changes at the next round, and characters-first ordering;
+  - combat end by defeat and by leaving;
+  - combat area growth, and exploration tools outside the area;
+  - sequential order from initiative, with automatic entity turns and `turn_started`;
+  - `advance` skipping a sequential turn, and initiative rerolls `per_round`, `per_combat`, and `never`;
+  - every behaviour, including `flee_when_harmed`;
+  - approach and its voiding, `approach: false`, cover, and structure destruction with remains;
+  - a combat round under Quest and under Cadmium with both modules.
+
+Engine milestones 4 to 7 are met. Sprint 9 adds the command-line harness, scripted scenarios to every ending, and golden replays.

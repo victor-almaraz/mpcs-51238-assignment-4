@@ -49,8 +49,20 @@ export function dryRun(ctx: Ctx, actor: string, call: ToolCall): void {
 export function afterAction(ctx: Ctx): void {
   evaluateTriggers(ctx);
   updateSeen(ctx.state, ctx.c);
+  growCombatArea(ctx);
   checkCombatEnd(ctx);
   checkLost(ctx);
+}
+
+// SPEC_ISSUES.md#combat-area-growth: combatants are entities; characters leaving or entering do not grow it.
+/** A room joins the combat area when a combatant enters it (engine.md, "Modes"). */
+function growCombatArea(ctx: Ctx): void {
+  const state = ctx.state;
+  if (state.mode !== "combat") return;
+  for (const id of state.combatants) {
+    const room = roomOf(state, id)?.room;
+    if (room !== undefined && !state.combat_area.includes(room)) state.combat_area.push(room);
+  }
 }
 
 /** The instance ends with `lost` when no character is active, if declared; otherwise with no ending. */

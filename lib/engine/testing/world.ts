@@ -33,6 +33,7 @@ lamp: { kind: item, label: lamp, light: { bright: 2, dim: 4 } }
 chest: { kind: container, label: chest, contents: [], capacity: 2, lock: { has_item: base:keycard } }
 brazier: { kind: fixture, label: brazier, light: { bright: 1, dim: 2, lit: false }, verbs: {} }
 idol: { kind: item, label: idol, tags: [objective] }
+barricade: { kind: fixture, label: barricade, cover: true, verbs: {} }
 `,
   "locations/deck.yaml": `
 id: deck

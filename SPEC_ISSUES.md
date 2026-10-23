@@ -681,3 +681,17 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** Creatures never block; a door with a lock other than `has_item` never opens; every item on a reached cell counts as collected.
 
 **Proposed resolution.** State both rules.
+
+## combat-area-growth
+
+| Field | Value |
+|---|---|
+| Document | `docs/engine.md` |
+| Section | Modes |
+| Marker | `lib/engine/rounds.ts` |
+
+**Problem.** "A room joins the combat area when a combatant enters it", and combat ends when "no character is in the combat area". Characters are not called combatants, but entering rooms in combat could be read as extending the area; if characters extended it, a fleeing party could never leave combat.
+
+**Implemented.** Only combatant entities extend the combat area, after each resolved action.
+
+**Proposed resolution.** State that combatants are entities.
