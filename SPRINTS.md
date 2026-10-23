@@ -5,7 +5,7 @@ The work in `cadmium-spec/AGENTS.md` ("Phases") split into sprints that each fit
 ## Working agreement
 
 - Start every sprint by reading `cadmium-spec/AGENTS.md` and the "Read" column of the sprint. The specification is the requirement.
-- A sprint closes when `pnpm gen:check`, `pnpm typecheck`, `pnpm lint --max-warnings 0`, `pnpm test`, and `pnpm build` pass, and its exit criterion holds.
+- A sprint closes when `pnpm check` passes (generated files current, type checking, linting, tests, build) and its exit criterion holds. There is no CI service: Vercel deploys from GitHub and runs only the build, so `pnpm check` runs locally before every commit.
 - Gaps or contradictions in the specification go to `SPEC_ISSUES.md` with a matching `SPEC_ISSUES.md#<anchor>` comment in code.
 - Each sprint ends with a commit and a handoff note in [Status](#status): what was done, what is open, and anything the next sprint needs to know.
 - Sprints run in order. Within a phase, a sprint depends only on earlier sprints.
@@ -14,7 +14,7 @@ The work in `cadmium-spec/AGENTS.md` ("Phases") split into sprints that each fit
 
 | # | Sprint | Phase | Modules | Read | Exit criterion |
 |---|---|---|---|---|---|
-| 0 | Foundations | 0 | repo, CI, `lib/bundle` registry and types | AGENTS.md, spec/README.md, app-flow.md#stack | Every example and doc YAML block validates; types compile; CI gates defined |
+| 0 | Foundations | 0 | repo, gates, `lib/bundle` registry and types | AGENTS.md, spec/README.md, app-flow.md#stack | Every example and doc YAML block validates; types compile; `pnpm check` defined |
 | 1 | Random numbers and grid | 1 | `lib/rng`, `lib/grid` | engine.md#random-numbers, engine.md#space, generation.md (fnv1a64) | Every engine.md vector reproduces; sight symmetric and no corner cuts as property tests |
 | 2 | Quest system | 1 | `lib/systems` contract, `lib/systems/quest` | systems/README.md, systems/quest.md, systems/quest/* | Quest meets every conformance item and its rule tests |
 | 3 | Cadmium system | 1 | `lib/systems/cadmium` | systems/cadmium.md, decisions/0004, systems/cadmium/* | Every Quest case passes against Cadmium with no module; module tests pass with `armor`, `stash`, and both |
@@ -23,12 +23,12 @@ The work in `cadmium-spec/AGENTS.md` ("Phases") split into sprints that each fit
 | 6 | Engine: state and exploration | 2 | `lib/engine` | engine.md (Space through Effects, Action resolution), data-model.md (state) | Every exploration tool, doors, links, lighting (`lighting` true and false), seen cells, containers, conditions, requirements, effects work; every error code is producible |
 | 7 | Engine: rounds and combat | 2 | `lib/engine` | engine.md (Modes, Rounds, Entity turns, Pending choices) | Both resolution methods, every sort key, rerolls, free tools, choices, voided actions, combat area, approach, cover, structures, behaviours; arrival-order permutation tests |
 | 8 | Generator | 2 | `lib/generator` | generation.md, decisions/0002 | 1,000 consecutive seeds verify or return the documented error; generated maps pass the authored map checks |
-| 9 | Triggers and harness | 2 | `lib/engine` triggers, `harness` CLI | adventure-packs.md#triggers, engine-implementation.md#command-line-harness | The harness plays an adventure to every ending from scripted JSON lines; golden logs replay in CI |
+| 9 | Triggers and harness | 2 | `lib/engine` triggers, `harness` CLI | adventure-packs.md#triggers, engine-implementation.md#command-line-harness | The harness plays an adventure to every ending from scripted JSON lines; golden logs replay in `pnpm test` |
 | 10 | Store and replay | 3 | `lib/store`, Supabase schema | data-model.md, architecture.md#determinism-and-replay | Commits are atomic; every golden log replays to stored state, including `state_restored` |
 | 11 | Accounts and characters | 3 | Clerk, webhook, dashboard, character pages | app-flow.md (Route map, Dashboard, Character creation), api.md (users, characters) | A new user signs up, sees an empty dashboard, and creates and renames a Quest and a Cadmium character |
 | 12 | Campaigns, invitations, instances | 3 | campaign pages, lobby | app-flow.md (Campaign editor, Instance lobby), api.md#campaigns, running-a-campaign.md | A second user joins by code and by link; two characters join an instance; versions pin; `system_mismatch` rejects |
 | 13 | Coordinator, API, broadcast | 3 | `lib/coordinator`, `app/api`, `lib/broadcast` | architecture.md, api.md, app-flow.md#server-boundaries | Two browsers play one instance over the binding; idempotency, rate limits, timeouts, reconnection with `after_version` |
-| 14 | Play without models | 4 | play page, `lib/map` canvas | app-flow.md#play-interface, design/screens.md, design/components.md | A full adventure is playable with direct actions on wide and narrow screens; Playwright journeys in CI |
+| 14 | Play without models | 4 | play page, `lib/map` canvas | app-flow.md#play-interface, design/screens.md, design/components.md | A full adventure is playable with direct actions on wide and narrow screens; Playwright journeys in `pnpm check` |
 | 15 | Parser and narrator | 5 | `lib/parser`, `lib/narrator` | tools.md, engine-implementation.md#parser-evaluation-set, runbooks/model-outage.md | The evaluation set meets 90% exact match with no `overreach` resolving to a state-changing tool; play continues with Groq disabled |
 | 16 | Adventure editor: forms and maps | 6 | editor pages | app-flow.md#adventure-editor, draft.schema.json | A three-room map and one-arc adventure built in the editor publishes with the CLI's diagnostics and plays |
 | 17 | Adventure editor: graphs and playtest | 6 | arc graphs, simulator, seed preview | app-flow.md (Playtest, Publishing) | Unreachable endings are reported before publishing |
@@ -45,7 +45,6 @@ The work in `cadmium-spec/AGENTS.md` ("Phases") split into sprints that each fit
 | Needed by sprint | Item |
 |---|---|
 | 0 | Git URL of the specification repository, to replace the vendored `cadmium-spec/` with a submodule pinned at `54f4adcdffe5bf3c8547a5c89a9f55fefbeb2fef` |
-| 0 | A GitHub remote for this repository, so CI runs |
 | 10 | Supabase project (URL, anon and service keys) |
 | 11 | Clerk application (publishable and secret keys, webhook secret) |
 | 13 | Vercel project linked to the repository |
@@ -65,13 +64,12 @@ Done:
 - `lib/bundle/registry.ts`: one `Ajv2020` registry of every schema, with `ajv-formats`. `strictRequired` is off because the schemas use `not: { required: [a, b] }`.
 - `lib/materials/layout.ts`: the pack and adventure directory tables of spec/README.md.
 - `tests/spec-validation.test.ts`: 80 passing tests covering the meta-schema, every example file, and every complete documentation YAML block (`tests/doc-blocks.ts` decides which blocks are complete files).
-- `.github/workflows/ci.yml` runs the gates listed in the working agreement.
+- The gates of the working agreement, as `pnpm check`.
 - `README.md`; `SPEC_ISSUES.md` with one entry, `complete-doc-yaml-blocks`.
 
 Open:
 
 - `cadmium-spec/` is a vendored copy of `cadmium-spec.zip`, not a submodule; see External prerequisites.
-- CI has not run, because the repository has no GitHub remote yet.
 - Playwright is deferred to sprint 14, the first sprint with browser journeys.
 
 ### Sprint 1: Random numbers and grid — closed

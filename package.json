@@ -10,7 +10,8 @@
     "gen:check": "tsx scripts/gen-bundle.ts && git diff --exit-code -- lib/bundle/schemas.generated.ts lib/bundle/types",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
-    "test": "vitest run"
+    "test": "vitest run",
+    "check": "pnpm gen:check && pnpm typecheck && pnpm lint --max-warnings 0 && pnpm test && pnpm build"
   },
   "devEngines": {
     "runtime": {

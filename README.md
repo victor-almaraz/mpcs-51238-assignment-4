@@ -31,8 +31,9 @@ pnpm dev
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm lint` | ESLint |
 | `pnpm test` | Vitest: unit tests, test vectors, and specification validation |
+| `pnpm check` | Every gate: `gen:check`, `typecheck`, `lint --max-warnings 0`, `test`, and `build` |
 
-CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs `gen:check`, `typecheck`, `lint --max-warnings 0`, `test`, and `build` on every change.
+Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before every commit; it is the gate that the specification's CI requirement describes.
 
 ## Layout
 
