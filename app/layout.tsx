@@ -12,7 +12,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body className="flex min-h-screen flex-col bg-page font-prose text-prose text-ink">
-        <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
+        <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up" telemetry={false}>
           <header className="flex items-center justify-between border-b border-rule px-6 py-3 font-ui text-control">
             <Link href="/" className="font-display text-heading">
               Cadmium

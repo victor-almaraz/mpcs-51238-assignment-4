@@ -1,12 +1,8 @@
-// Clerk middleware (app-flow.md, "Route map"): every route except the public ones requires a signed-in
-// user; signed-out users are redirected to /sign-in?redirect_url=<original path>.
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+// Clerk middleware (app-flow.md, "Route map"). It authenticates every request; protection lives in the
+// pages: app/(signed-in)/layout.tsx sends signed-out users to /sign-in?redirect_url=<original path>.
+import { clerkMiddleware } from "@clerk/nextjs/server";
 
-const isPublic = createRouteMatcher(["/", "/sign-in(.*)", "/sign-up(.*)", "/invite/(.*)", "/join/(.*)", "/terms", "/privacy", "/attribution"]);
-
-export default clerkMiddleware(async (auth, request) => {
-  if (!isPublic(request)) await auth.protect();
-});
+export default clerkMiddleware({ signInUrl: "/sign-in", signUpUrl: "/sign-up" });
 
 export const config = {
   matcher: [
