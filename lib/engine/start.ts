@@ -143,9 +143,11 @@ export function startInstance(input: StartInput): Result {
   const rng = new Rng(seed, 0);
   const ctx = new Ctx(state, c, rng, applyEffects);
   try {
-    // Locations, then their contents, in adventure order.
+    // SPEC_ISSUES.md#location-order: locations, then their contents, in ascending location id, the
+    // order of the files in `locations/`. Bundle key order is not kept by storage (jsonb sorts keys).
     const placements: [string, readonly Placement[]][] = [];
-    for (const [id, def] of Object.entries(c.adventure.locations)) {
+    for (const id of Object.keys(c.adventure.locations).sort()) {
+      const def = c.adventure.locations[id]!;
       if (def.kind === "authored") {
         const a = def as AuthoredLocation;
         const legend: Record<string, string> = { ...BUILTIN_LEGEND };

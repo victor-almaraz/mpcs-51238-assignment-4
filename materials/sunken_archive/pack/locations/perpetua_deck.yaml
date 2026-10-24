@@ -1,0 +1,27 @@
+id: perpetua_deck
+kind: authored
+map:
+  legend:
+    "w": window
+    "~": shallows
+  rows:
+    - "########################"
+    - "#.......w......w.......#"
+    - "#..............w.......#"
+    - "#.......w..............#"
+    - "#.......w......w.......#"
+    - "#~~~~~~~#~~~~~~#~~~~~~~#"
+    - "########################"
+  rooms:
+    mooring: { label: Perpetua's mooring, tags: [ship, wreck], light: dim, area: [[1, 1, 7, 5], [8, 2, 1, 1]] }
+    chart_room: { label: chart room, tags: [ship, wreck], light: dim, area: [[9, 1, 6, 5], [15, 3, 1, 1]] }
+    gallery: { label: long gallery, tags: [ship, wreck], light: dark, area: [[16, 1, 7, 5]] }
+  links:
+    x_stair: { label: down to the Drowned Stair, at: [1, 3], to: { location: drowned_stair, link: x_perpetua } }
+    x_down: { label: the hatch to the holds, at: [22, 3], to: { location: perpetua_holds, link: x_up } }
+  contents:
+    - { id: chart_door, ref: coast:hatch, at: [8, 2] }
+    - { id: gallery_door, ref: coast:hatch, at: [15, 3] }
+    - { id: crates, ref: coast:crate_stack, at: [4, 2] }
+    - { id: winch, ref: coast:winch, at: [12, 1] }
+    - { id: holds_hatch, ref: coast:deck_hatch, at: [22, 3], lock: { flag: deck_open } }

@@ -1,0 +1,10 @@
+id: pelagia
+name: Pelagia Marinou
+template: coast:commoner
+disposition: wary
+topics:
+  masks:
+    label: the missing mask
+    brief: >-
+      Pelagia counts the masks every day. One is missing, the golden one. She thinks someone in
+      Salinara borrowed it, because a widow there hangs anything shining on her scarecrow.

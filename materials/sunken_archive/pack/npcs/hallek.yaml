@@ -1,0 +1,32 @@
+id: hallek
+name: Clerk Ortwin Hallek
+template: coast:commoner
+disposition: neutral
+topics:
+  contract:
+    label: a salvage contract under the Concord's writ
+    when: { flag: path, eq: none }
+    brief: >-
+      Hallek counts seals for the Salvors' Concord. He issues a numbered charter writ to salvage the
+      wreck Perpetua, with a prybar and a cold chisel, and pays a fiver to each of you against
+      delivery. The writ binds the holder to hand over everything recovered. He says the Concord's
+      captains sail from Vessaro.
+    effects:
+      - set_flag: { flag: path, value: contract }
+      - give_item: { target: actor, ref: charter_writ }
+      - give_item: { target: actor, ref: coast:prybar }
+      - give_item: { target: actor, ref: coast:cold_chisel }
+      - add_flag: { flag: purse, value: 20, target: room }
+  seal:
+    label: the seal number on the writ
+    when: { has_item: charter_writ }
+    brief: >-
+      Hallek turns the writ to the window and counts under his breath. The number is out of
+      sequence. It belongs to a block of seals reserved a full season before Perpetua sailed, and
+      the reservation carries no name he can show you.
+  law:
+    label: wreck law
+    brief: >-
+      Every wreck in the realm's waters belongs to the Crown. Salvage needs a writ from the
+      Concord, and salvage without one is piracy under Crown law. The Tessera Isles lie outside
+      every power's waters, so what lies there belongs to whoever holds it.

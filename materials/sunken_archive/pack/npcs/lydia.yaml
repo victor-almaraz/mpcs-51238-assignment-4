@@ -1,0 +1,18 @@
+id: lydia
+name: Lydia Korakis
+template: coast:commoner
+disposition: friendly
+topics:
+  nets:
+    label: her nets
+    brief: Lydia hums while she mends. She has mended the same tear three times, waiting for news from Orvelle.
+  parcel:
+    label: the cobbler's parcel
+    when: { has_item: cobbler_parcel }
+    brief: >-
+      Lydia opens the parcel, reads the letter, and puts on the shoes at once. She pays the carriage,
+      two florets, and writes a reply for Tilo on the back of a tide slip.
+    effects:
+      - remove_item: { target: actor, ref: cobbler_parcel }
+      - set_flag: { flag: parcel_delivered, value: true }
+      - give_item: { target: actor, ref: lydia_reply }

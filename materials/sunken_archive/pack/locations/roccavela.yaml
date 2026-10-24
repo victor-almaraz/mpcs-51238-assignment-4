@@ -1,0 +1,44 @@
+id: roccavela
+kind: authored
+map:
+  legend:
+    "w": window
+    "f": low_wall
+  rows:
+    - "##############################"
+    - "#........#.........#.........#"
+    - "#........#.........#.........#"
+    - "#........#.........#.........#"
+    - "#www.wwwwwwwwww.wwwwwwwwww.ww#"
+    - "#............................#"
+    - "#............................."
+    - "#fffffffff.ffffffffffffffffff#"
+    - "#............................#"
+    - "#............................#"
+    - "#............................#"
+    - "##############################"
+  rooms:
+    chapter_house: { label: Chapter house, tags: [indoors, church], area: [[1, 1, 8, 3]] }
+    workshop: { label: instrument workshop, tags: [indoors], area: [[10, 1, 9, 3]] }
+    bookshop: { label: bookshop, tags: [indoors], area: [[20, 1, 9, 3]] }
+    quay: { label: Roccavela quay, tags: [outdoors, harbor], area: [[1, 5, 28, 2], [4, 4, 1, 1], [15, 4, 1, 1], [26, 4, 1, 1], [29, 6, 1, 1]] }
+    cliff_path: { label: cliff path, tags: [outdoors], area: [[1, 8, 28, 3], [10, 7, 1, 1]] }
+  links:
+    x_road: { label: the road to Orvelle, at: [1, 5], to: { location: orvelle, link: x_roccavela } }
+    x_boat: { label: Kapelis's boat, at: [29, 6], to: { location: boat_deck, link: x_roccavela } }
+    x_labyrinth: { label: the path up to the labyrinth, at: [28, 10], to: { location: labyrinth, link: x_gate } }
+  contents:
+    - { id: chapter_door, ref: coast:house_door, at: [4, 4] }
+    - { id: workshop_door, ref: coast:house_door, at: [15, 4] }
+    - { id: bookshop_door, ref: coast:house_door, at: [26, 4] }
+    - { id: cliff_gate, ref: coast:gate, at: [10, 7] }
+    - { id: roccavela_gate, ref: coast:harbor_gate, at: [29, 6], lock: { flag: passage } }
+    - { npc: rilos, at: [3, 2] }
+    - { npc: orsolakis, at: [6, 2] }
+    - { id: fragment_roccavela, ref: chart_fragment, at: [8, 1], hidden: true }
+    - { npc: kleon, at: [12, 2] }
+    - { npc: nikon, at: [16, 1] }
+    - { npc: neon, at: [17, 1] }
+    - { npc: biblis, at: [24, 2] }
+    - { npc: kapelis, at: [24, 5] }
+    - { npc: sozon, at: [14, 9] }

@@ -1,21 +1,20 @@
 // Builds the bundles an operator publishes on a fresh deployment (runbooks/content-publishing.md):
-// the example settings, the Quest quick-start setting, and the guide's sunken_archive adventure.
+// the example settings, the Quest quick-start setting, lantern_coast, and the exemplar sunken_archive.
 // Writes them to bundles/ (not committed); upload each in /admin, settings before the adventure.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { compileAdventure, compileSetting, formatDiagnostic, withFiles } from "../lib/materials";
 import { readPackDir } from "../lib/materials/fs";
-import { guideAdventure } from "../lib/materials/testing/fixtures";
 
 const OUT = join(process.cwd(), "bundles");
 mkdirSync(OUT, { recursive: true });
 
-const compiled = ["cadmium-spec/spec/examples/derelict_station", "cadmium-spec/spec/examples/sunless_crypt", "materials/quest_starter/pack"].map((dir) => {
+const compiled = ["cadmium-spec/spec/examples/derelict_station", "cadmium-spec/spec/examples/sunless_crypt", "materials/quest_starter/pack", "materials/lantern_coast/pack"].map((dir) => {
   const r = compileSetting(readPackDir(join(process.cwd(), dir)));
   if (!r.bundle) throw new Error(`${dir}:\n${r.diagnostics.map(formatDiagnostic).join("\n")}`);
   return r;
 });
-const adventure = compileAdventure(guideAdventure(), compiled.map((r) => r.bundle!));
+const adventure = compileAdventure(readPackDir(join(process.cwd(), "materials/sunken_archive/pack")), compiled.map((r) => r.bundle!));
 if (!adventure.bundle) throw new Error(adventure.diagnostics.map(formatDiagnostic).join("\n"));
 
 for (const [n, r] of [...compiled, adventure].entries()) {

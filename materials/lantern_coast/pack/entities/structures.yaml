@@ -1,0 +1,78 @@
+hatch:
+  kind: door
+  label: ship's hatch
+  system_stats: { hp: 6 }
+vault_door:
+  kind: door
+  label: vault door
+  lock: { has_item: vault_key }
+  system_stats: { hp: 20 }
+harbor_gate:
+  kind: door
+  label: quay gate
+  obstructs: [movement]
+deck_hatch:
+  kind: door
+  label: iron deck hatch
+sea_chest:
+  kind: container
+  label: sea chest
+  capacity: 6
+  contents: []
+tool_chest:
+  kind: container
+  label: tool chest
+  capacity: 4
+  contents: [prybar, cold_chisel]
+notice_board:
+  kind: fixture
+  label: notice board
+  verbs:
+    read:
+      effects: []
+winch:
+  kind: fixture
+  label: hatch winch
+  obstructs: [movement]
+  verbs:
+    operate:
+      effects: []
+beacon:
+  kind: fixture
+  label: beacon lantern
+  obstructs: [movement]
+  light: { bright: 4, dim: 8 }
+  verbs: {}
+fountain:
+  kind: obstacle
+  label: fountain
+  obstructs: [movement]
+  cover: true
+crate_stack:
+  kind: obstacle
+  label: stack of cargo crates
+  cover: true
+  system_stats: { hp: 4 }
+  remains: broken_crates
+broken_crates:
+  kind: obstacle
+  label: broken crates
+  obstructs: []
+fallen_stones:
+  kind: obstacle
+  label: fallen stones
+  cover: true
+  system_stats: { hp: 6 }
+registry_shelf:
+  kind: obstacle
+  label: registry shelf
+  cover: true
+house_door:
+  kind: door
+  label: door
+  open: true
+gate:
+  kind: door
+  label: gate
+  open: true
+  obstructs: [movement]

@@ -1,0 +1,22 @@
+id: dimos
+name: Dimos Solanos
+template: coast:commoner
+disposition: neutral
+topics:
+  catch:
+    label: the co-op's catch
+    brief: >-
+      Dimos counts the catch twice, aloud. Short one float, he says, the big cork one, lost in the
+      kelp off Kestrin where the company men have pitched a claim camp. Bring it back and the co-op
+      pays two florets.
+  dues:
+    label: the co-op's dues
+    brief: >-
+      The Quay Four Net Co-operative pays its dues to the Council of Quays and not to the Crown, and
+      Dimos says so twice.
+  float:
+    label: the lost net float
+    when: { has_item: net_float }
+    brief: Dimos counts the float twice and pays two florets, aloud.
+    effects:
+      - remove_item: { target: actor, ref: net_float }

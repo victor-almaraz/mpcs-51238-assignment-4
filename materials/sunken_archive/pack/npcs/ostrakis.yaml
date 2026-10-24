@@ -1,0 +1,32 @@
+id: ostrakis
+name: Captain Stavros Ostrakis
+template: coast:sailor
+disposition: neutral
+topics:
+  clue:
+    label: where the wreck was charted
+    when: { flag: know_vessaro }
+    brief: >-
+      Ostrakis knows who sent you. Flotsam from Perpetua washed into the Quay Four nets, and with it
+      a scrap of chart in oilcloth. The co-op hid it among the nets in their loft rather than hand
+      it to the Concord.
+  elsewhere:
+    label: who else knows the isles
+    brief: >-
+      The salt-reeves of Salinara keep tide books older than the Concord. If anyone wrote down
+      where the shallows lie among the Tessera Isles, it was them.
+  council:
+    label: Vessaro's council
+    brief: >-
+      Vessaro's Council of Quays does not recognize the Crown's wreck right. It sells letters of
+      marque instead, and calls that law.
+  passage:
+    label: passage south
+    when: { has_item: chart_fragment }
+    brief: >-
+      With the fragment laid against his own chart, Ostrakis sees the way through the shallows. His
+      boat waits beyond the quay gate. He hands you a hand lamp for the fog and says, may the moons
+      be kind.
+    effects:
+      - set_flag: { flag: passage, value: true }
+      - give_item: { target: actor, ref: coast:hand_lamp }

@@ -1,0 +1,12 @@
+registry_vault:
+  label: registry vault
+  tags: [vault, dry]
+  role: boss
+  light: dim
+  map:
+    legend:
+      "s": { terrain: floor, place: registry_shelf }
+    rows:
+      - "s..s"
+      - "...."
+      - "s..s"

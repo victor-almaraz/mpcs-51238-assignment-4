@@ -1,0 +1,16 @@
+id: aristea
+name: Aristea Drakos
+template: coast:commoner
+disposition: friendly
+topics:
+  play:
+    label: the troupe's play
+    brief: >-
+      Aristea speaks in stage directions. Enter the Masked Hours, a troupe of three, stage left. They
+      play the drowning of Meropi, set adrift with her lantern, and they are bound next for Salinara.
+  masks:
+    label: the golden mask
+    when: { has_item: golden_mask }
+    brief: Aristea takes the golden mask, exit worry, enter relief, and pays you two florets and a half.
+    effects:
+      - remove_item: { target: actor, ref: golden_mask }

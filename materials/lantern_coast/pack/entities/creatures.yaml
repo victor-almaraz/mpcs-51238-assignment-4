@@ -1,0 +1,69 @@
+giant_crab:
+  kind: creature
+  label: giant crab
+  tags: [beast, hostile]
+  behavior: defensive
+  system_stats: { template: minion, hp: 5 }
+sea_snake:
+  kind: creature
+  label: sea snake
+  tags: [beast, hostile]
+  behavior: aggressive
+  system_stats: { template: minion, damage: 1, speed: 8 }
+wall_eel:
+  kind: creature
+  label: wall eel
+  tags: [beast, hostile]
+  behavior: defensive
+  system_stats: { template: minion }
+jelly_drift:
+  kind: creature
+  label: drift of jellies
+  tags: [beast, hostile]
+  behavior: aggressive
+  footprint: [2, 2]
+  system_stats: { template: minion, damage: 1 }
+great_octopus:
+  kind: creature
+  label: great octopus
+  tags: [beast, hostile]
+  behavior: defensive
+  footprint: [2, 2]
+  system_stats: { template: boss }
+carrion_gull:
+  kind: creature
+  label: carrion gull
+  tags: [beast, hostile]
+  behavior: aggressive
+  system_stats: { template: minion, damage: 1 }
+marsh_adder:
+  kind: creature
+  label: marsh adder
+  tags: [beast, hostile]
+  behavior: aggressive
+  system_stats: { template: minion }
+wild_boar:
+  kind: creature
+  label: wild boar
+  tags: [beast, hostile]
+  behavior: aggressive
+  system_stats: { template: minion, damage: 2 }
+page_swarm:
+  kind: creature
+  label: swarm of living pages
+  tags: [uncanny, hostile]
+  behavior: aggressive
+  system_stats: { template: minion, ranged: true }
+stone_steward:
+  kind: creature
+  label: stone steward
+  tags: [uncanny, hostile]
+  behavior: defensive
+  footprint: [2, 2]
+  system_stats: { template: boss }
+drowned:
+  kind: creature
+  label: drowned sailor
+  tags: [undead, unseen, hostile]
+  behavior: aggressive
+  system_stats: { template: minion }

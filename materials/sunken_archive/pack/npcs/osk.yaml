@@ -1,0 +1,12 @@
+id: osk
+name: Marthe Osk
+template: coast:commoner
+disposition: neutral
+topics:
+  tide:
+    label: the tides of the two moons
+    brief: >-
+      Osk counts salt grains against the tide as she talks. The Concord bought a printed tide table
+      for Perpetua's route a full season ahead, though no tide-reader trusts a forecast past a
+      month. She learned the trade in the salt pans of Salinara, where the reeves keep the old
+      tide books.

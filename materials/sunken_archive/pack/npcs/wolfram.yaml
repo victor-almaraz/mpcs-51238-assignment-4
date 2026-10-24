@@ -1,0 +1,10 @@
+id: wolfram
+name: Wolfram Eisler
+template: coast:commoner
+disposition: friendly
+topics:
+  tragedy:
+    label: his tragedies
+    brief: >-
+      Wolfram is a tragedian from the northern marches. He weeps at every line, including his own,
+      and at the Battle of Kesser, which he did not see.

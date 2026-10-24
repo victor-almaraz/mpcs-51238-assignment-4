@@ -1,0 +1,86 @@
+id: leads
+title: Leads in Orvelle
+stages: [open, closed]
+initial: open
+triggers:
+  - id: entry_rumor
+    on: { type: interacted, target: back_booth, verb: listen }
+    when: { flag: path, eq: none }
+    effects:
+      - set_flag: { flag: path, value: rumor }
+      - add_flag: { flag: rival_lead, value: 2 }
+      - add_flag: { flag: hints, value: 1 }
+    narrate: >-
+      Behind the booth's curtain a courier in Reliquary grey quarrels with a Concord clerk over a tide
+      table bought a season early. Neither sees you. By the time they leave, the Gull Company's crews
+      have already sailed.
+    once: true
+  - id: lead_writ
+    on: { type: talked, npc: hallek, topic: contract }
+    when: { not: { flag: know_vessaro } }
+    effects:
+      - set_flag: { flag: know_vessaro, value: true }
+      - add_flag: { flag: clues, value: 1 }
+    once: true
+  - id: hint_seal
+    on: { type: talked, npc: hallek, topic: seal }
+    effects:
+      - add_flag: { flag: hints, value: 1 }
+    once: true
+  - id: hint_ledger
+    on: { type: interacted, target: ledger, verb: read }
+    effects:
+      - add_flag: { flag: hints, value: 1 }
+      - if:
+          when: { not: { flag: know_vessaro } }
+          then:
+            - set_flag: { flag: know_vessaro, value: true }
+            - add_flag: { flag: clues, value: 1 }
+    narrate: >-
+      Thanos Vrakas kept his ledger in a sailor's square hand until the day he drowned. The last page
+      records a recovery charter for Perpetua, signed before she ever sailed, and a berth he was
+      promised on a Vessaro boat.
+    once: true
+  - id: lead_song
+    on: { type: talked, npc: wendt, topic: song }
+    when: { not: { flag: know_roccavela } }
+    effects:
+      - set_flag: { flag: know_roccavela, value: true }
+      - add_flag: { flag: clues, value: 1 }
+    once: true
+  - id: hint_courier
+    on: { type: talked, npc: wendt, topic: courier }
+    effects:
+      - add_flag: { flag: hints, value: 1 }
+    once: true
+  - id: lead_map
+    on: { type: talked, npc: liesl, topic: map }
+    when: { not: { flag: know_roccavela } }
+    effects:
+      - set_flag: { flag: know_roccavela, value: true }
+      - add_flag: { flag: clues, value: 1 }
+    once: true
+  - id: lead_chart
+    on: { type: talked, npc: krebs, topic: chart }
+    when: { not: { flag: know_vessaro } }
+    effects:
+      - set_flag: { flag: know_vessaro, value: true }
+      - add_flag: { flag: clues, value: 1 }
+    once: true
+  - id: hint_tide
+    on: { type: talked, npc: osk, topic: tide }
+    effects:
+      - add_flag: { flag: hints, value: 1 }
+      - if:
+          when: { not: { flag: know_salinara } }
+          then:
+            - set_flag: { flag: know_salinara, value: true }
+            - add_flag: { flag: clues, value: 1 }
+    once: true
+  - id: notice_board
+    on: { type: interacted, target: notice_board, verb: read }
+    effects: []
+    narrate: >-
+      The notice board carries a Crown proclamation of the wreck right, a Concord call for licensed
+      salvors, and, pinned beneath both, a child's drawing of a lantern.
+    once: true

@@ -24,6 +24,11 @@ export function MaterialPicker({ materials, modules, chosen, enabled }: { materi
   const [on, setOn] = useState<string[]>(enabled);
   const required = new Set([...materials.filter((m) => key(m) === adventure || picked.includes(key(m))).flatMap((m) => m.modules)]);
   const needed = adventures.find((a) => key(a) === adventure)?.requires_settings ?? [];
+  // SPEC_ISSUES.md#generation-order: the form submits settings in this order. The adventure's own
+  // settings come first, because the generator takes doors and locks from the first setting that
+  // declares them.
+  const isNeeded = (s: MaterialOption) => needed.some((r) => r.id === s.id);
+  const ordered = [...settings].sort((a, b) => Number(isNeeded(b)) - Number(isNeeded(a)));
 
   function chooseAdventure(v: string) {
     setAdventure(v);
@@ -50,13 +55,13 @@ export function MaterialPicker({ materials, modules, chosen, enabled }: { materi
       <fieldset>
         <legend className="font-ui text-label">Settings</legend>
         {settings.length === 0 && <p className="text-muted">No settings are installed for this system.</p>}
-        {settings.map((s) => (
+        {ordered.map((s) => (
           <label key={key(s)} className="flex items-baseline gap-2">
             <input type="checkbox" name="settings" value={key(s)} checked={picked.includes(key(s))} onChange={() => setPicked(picked.includes(key(s)) ? picked.filter((p) => p !== key(s)) : [...picked, key(s)])} />
             <span>
               {s.title} {s.version}
             </span>
-            {needed.some((r) => r.id === s.id) && <span className="font-ui text-caption text-muted">required by the adventure</span>}
+            {isNeeded(s) && <span className="font-ui text-caption text-muted">required by the adventure</span>}
           </label>
         ))}
       </fieldset>

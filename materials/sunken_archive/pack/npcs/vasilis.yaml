@@ -1,0 +1,10 @@
+id: vasilis
+name: Vasilis Pelagos
+template: coast:commoner
+disposition: friendly
+topics:
+  haul:
+    label: the haul
+    brief: >-
+      Vasilis laughs at everything, including the fish the nets brought up from the isles with iron
+      rust on their scales.

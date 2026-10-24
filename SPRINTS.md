@@ -512,8 +512,20 @@ Open:
 - Migrations 10 to 12 are not yet applied to the remote database.
 - The Terms of Service and Privacy Policy already describe portraits; they are offline for revision.
 
-### Sprint 24: Exemplar adventure — blocked
+### Sprint 24: Exemplar adventure — open
 
-The brief (`cadmium-spec/briefs/example-adventure.md`) builds `sunken_archive` and `lantern_coast` from the story in `sunken_archive_campaign_draft.md`, "supplied with this brief", which is not in the repository. The brief also writes into the specification repository (`spec/examples/`, its guides, and `AGENTS.md`), which this application vendors and does not change. The agent-driven run needs a model (`GROQ_API_KEY`).
+Built from the author's campaign draft, supplied separately and not committed.
+
+- `materials/lantern_coast/pack`: the setting for Cadmium with `armor` and `stash`. It adds the floret currency, sea and shore terrain (with `window` and `low_wall`, which block movement but not sight), people and creatures, goods with `armor` and `slots`, chests with `capacity`, the `vault_door` lock-and-key pair, and the `registry_vault` room template.
+- `materials/sunken_archive/pack`: the adventure, 1.0.0. It has 13 locations (one generated), 33 NPCs, six arcs with 71 triggers, and the endings `escaped` (six variants), `archive_sealed` (two), and `lost`. `materials/sunken_archive/README.md` maps the brief's coverage list to the pack, reports the schema and semantic passes, gives a walkthrough per ending, and lists departures from the draft.
+- Scripted runs reach every ending: the golden scenarios `exemplar_escaped` (contract path), `exemplar_archive_sealed` (rumor path), and `exemplar_lost`. `lib/harness/exemplar.test.ts` covers room-wide rewards, purchases and affordability, stash capacity, the strongbox lock, the fog bank's lit-lamp lock, `item_given`, `set_hostile`, and NPCs moved between locations, and checks the coverage list against the pack files.
+- `pnpm bundles` publishes `lantern_coast` and the exemplar in place of the guide adventure. The campaign material picker lists an adventure's required settings first ([generation-order](SPEC_ISSUES.md#generation-order)).
+- Fixed: the compiler read `to` in a trigger's `on` as a room for every event type. On item events it is the recipient's entity id.
+
+Open:
+
+- The agent-driven run needs `GROQ_API_KEY`. `tools/sim` and the balance simulation are not built: the golden runs give their single character 40 hit points.
+- The packs are a proposal for the specification's `spec/examples/`; the brief's documentation updates are not made ([exemplar-location](SPEC_ISSUES.md#exemplar-location)).
+- Not implemented from the draft's proposals: path codas, rations, and the lore names of section 14.10.
 
 Done meanwhile: the play page shows `action_menu` suggestions as chips.

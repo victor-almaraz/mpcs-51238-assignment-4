@@ -1,0 +1,20 @@
+id: orsolakis
+name: Professor Leandros Orsolakis
+template: coast:commoner
+disposition: wary
+topics:
+  trade:
+    label: a trade of knowledge
+    brief: >-
+      Orsolakis trades knowledge for knowledge, and your errand is knowledge enough. He points to
+      his copy-desk, where the chart scrap lies under a stack of tide tables.
+    effects:
+      - reveal: { target: fragment_roccavela }
+  disc:
+    label: the bronze moon disc
+    when: { has_item: moon_disc }
+    brief: >-
+      Orsolakis measures the disc with calipers. Two moons, engraved before the clergy came, with
+      their orbits right. He pays three florets and will not say what it proves.
+    effects:
+      - remove_item: { target: actor, ref: moon_disc }

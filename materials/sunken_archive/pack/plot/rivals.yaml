@@ -1,0 +1,35 @@
+id: rivals
+title: The Rivals
+stages: [quiet, racing]
+initial: quiet
+triggers:
+  - id: behind_vessaro
+    on: { type: moved, location: vessaro, via: x_vessaro }
+    when: { not: { flag: know_vessaro } }
+    effects:
+      - add_flag: { flag: rival_lead, value: 1 }
+    once: true
+  - id: behind_salinara
+    on: { type: moved, location: salinara, via: x_salinara }
+    when: { not: { flag: know_salinara } }
+    effects:
+      - add_flag: { flag: rival_lead, value: 1 }
+    once: true
+  - id: behind_roccavela
+    on: { type: moved, location: roccavela, via: x_roccavela }
+    when: { not: { flag: know_roccavela } }
+    effects:
+      - add_flag: { flag: rival_lead, value: 1 }
+    once: true
+  - id: gull_crew
+    on: { type: moved, to: quay }
+    when: { flag: rival_lead, gte: 2 }
+    effects:
+      - set_stage: { arc: rivals, stage: racing }
+      - spawn: { ref: coast:pirate, room: quay }
+      - spawn: { ref: coast:pirate, room: quay }
+      - start_combat: {}
+    narrate: >-
+      Gull Company privateers are already on the quay, loading picks and iron bars. They know your
+      face from the road, and they draw.
+    once: true

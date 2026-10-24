@@ -1,0 +1,23 @@
+id: kestrin
+kind: authored
+map:
+  legend:
+    "k": kelp
+    "@": whirlpool
+  rows:
+    - "######################"
+    - "#......kkkkkkk.......#"
+    - "#......kk@kkkk.......#"
+    - "#......kkkkkkk.......#"
+    - "######################"
+  rooms:
+    shore: { label: Kestrin shingle, tags: [outdoors], area: [[1, 1, 6, 3]] }
+    kelp_forest: { label: kelp forest, tags: [outdoors, water], area: [[7, 1, 7, 3]] }
+    camp: { label: claim camp, tags: [outdoors], area: [[14, 1, 7, 3]] }
+  links:
+    x_deck: { label: back to the boat, at: [1, 2], to: { location: boat_deck, link: x_kestrin } }
+  contents:
+    - { ref: coast:sea_snake, count: 2, room: kelp_forest }
+    - { id: net_float, ref: net_float, at: [19, 1] }
+    - { id: camp_thug, ref: coast:company_thug, at: [17, 2] }
+    - { id: bailiff, ref: coast:company_bailiff, at: [18, 3] }

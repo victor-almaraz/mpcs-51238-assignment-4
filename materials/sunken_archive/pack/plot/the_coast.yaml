@@ -1,0 +1,61 @@
+id: the_coast
+title: The Coast
+stages: [inland, arrived, clue_found, fragment_found, passage_open]
+initial: inland
+triggers:
+  - id: arrive
+    on: { type: moved, from: plaza }
+    when: { all: [ { stage: [the_coast, inland] }, { not: { location: orvelle } } ] }
+    effects:
+      - set_stage: { arc: the_coast, stage: arrived }
+    narrate: >-
+      The road comes down out of the hills to the sea. Gulls, tar, salt, and lanterns already lit on
+      the harbor towers against the afternoon fog.
+    once: true
+  - id: clue
+    on: { type: talked, topic: clue }
+    effects:
+      - set_stage: { arc: the_coast, stage: clue_found }
+      - add_flag: { flag: clues, value: 1 }
+    once: true
+  - id: fragment
+    on: { type: item_taken, ref: chart_fragment }
+    effects:
+      - set_stage: { arc: the_coast, stage: fragment_found }
+      - add_flag: { flag: clues, value: 1 }
+    narrate: >-
+      The fragment is oilcloth, inked in an Ironmaster's hand: soundings through the shallows of the
+      Tessera Isles, and a small iron ship drawn on its side.
+    once: true
+  - id: passage
+    on: { type: talked, topic: passage }
+    effects:
+      - set_stage: { arc: the_coast, stage: passage_open }
+    once: true
+  - id: lead_elsewhere_salinara
+    on: { type: talked, npc: ostrakis, topic: elsewhere }
+    when: { not: { flag: know_salinara } }
+    effects:
+      - set_flag: { flag: know_salinara, value: true }
+      - add_flag: { flag: clues, value: 1 }
+    once: true
+  - id: lead_elsewhere_roccavela
+    on: { type: talked, npc: dassos, topic: elsewhere }
+    when: { not: { flag: know_roccavela } }
+    effects:
+      - set_flag: { flag: know_roccavela, value: true }
+      - add_flag: { flag: clues, value: 1 }
+    once: true
+  - id: lead_elsewhere_vessaro
+    on: { type: talked, npc: rilos, topic: elsewhere }
+    when: { not: { flag: know_vessaro } }
+    effects:
+      - set_flag: { flag: know_vessaro, value: true }
+      - add_flag: { flag: clues, value: 1 }
+    once: true
+  - id: marsh_fever
+    on: { type: moved, location: salinara, to: marsh }
+    when: { not: { flag: marsh_route } }
+    effects:
+      - apply_condition: { target: actor, condition: fevered }
+    narrate: The marsh breathes warm and sweet, and the fever finds you between one step and the next.

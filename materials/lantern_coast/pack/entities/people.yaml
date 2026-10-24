@@ -1,0 +1,50 @@
+commoner:
+  kind: creature
+  label: townsperson
+  tags: [person]
+  behavior: passive
+  system_stats: { template: commoner, damage: 1 }
+thief:
+  kind: creature
+  label: pickpocket
+  tags: [person]
+  behavior: defensive
+  flee_when_harmed: true
+  loot: { table: thief_loot, picks: 1 }
+  system_stats: { template: minion, damage: 1 }
+guardsman:
+  kind: creature
+  label: guardsman
+  tags: [person]
+  behavior: defensive
+  system_stats: { template: minion, damage: 2 }
+sailor:
+  kind: creature
+  label: sailor
+  tags: [person]
+  behavior: defensive
+  system_stats: { template: minion, damage: 2 }
+pirate:
+  kind: creature
+  label: Gull Company privateer
+  tags: [person, hostile]
+  behavior: aggressive
+  system_stats: { template: minion, damage: 2 }
+pirate_captain:
+  kind: creature
+  label: privateer captain
+  tags: [person]
+  behavior: defensive
+  system_stats: { template: boss, damage: 3 }
+company_thug:
+  kind: creature
+  label: wharf-hand
+  tags: [person]
+  behavior: aggressive
+  system_stats: { template: minion, damage: 2 }
+company_bailiff:
+  kind: creature
+  label: company bailiff
+  tags: [person]
+  behavior: defensive
+  system_stats: { template: minion, hp: 6, damage: 2 }

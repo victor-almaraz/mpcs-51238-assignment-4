@@ -1,0 +1,10 @@
+id: zafeiria
+name: Zafeiria
+template: coast:commoner
+disposition: friendly
+topics:
+  lookout:
+    label: what the lookout saw
+    brief: >-
+      Zafeiria sees everything. A longboat came ashore before the big ship sank, she says, with a
+      grey person in it who never looked back, and it broke on the rocks of the harbor.

@@ -1,0 +1,63 @@
+id: gerasimos
+name: Gerasimos Nefelis
+template: coast:commoner
+disposition: neutral
+topics:
+  weather:
+    label: the weather
+    brief: Gerasimos talks about the weather in every sentence. Fog on the isles, he says, fog for a week.
+  ropes:
+    label: what he sells
+    brief: >-
+      The chandler sells rope for a oner, a boarding axe for six florets, a harpoon for eight, a
+      leather jerkin for five, a round shield for four, a canvas satchel for two, and a sailor's pack
+      for six.
+  rope:
+    label: a coil of rope, one oner
+    when: { flag: purse, gte: 4 }
+    brief: A coil of tarred rope for a oner, good in any weather.
+    effects:
+      - add_flag: { flag: purse, value: -4 }
+      - give_item: { target: actor, ref: coast:rope_coil }
+  axe:
+    label: a boarding axe, six florets
+    when: { flag: purse, gte: 24 }
+    brief: A boarding axe for six florets. Heavy as wet weather.
+    effects:
+      - add_flag: { flag: purse, value: -24 }
+      - give_item: { target: actor, ref: coast:boarding_axe }
+  harpoon:
+    label: a harpoon, eight florets
+    when: { flag: purse, gte: 32 }
+    brief: A whaler's harpoon for eight florets.
+    effects:
+      - add_flag: { flag: purse, value: -32 }
+      - give_item: { target: actor, ref: coast:harpoon }
+  jerkin:
+    label: a leather jerkin, five florets
+    when: { flag: purse, gte: 20 }
+    brief: A salted leather jerkin for five florets. It turns a blade once or twice, then it is done.
+    effects:
+      - add_flag: { flag: purse, value: -20 }
+      - give_item: { target: actor, ref: coast:leather_jerkin }
+  shield:
+    label: a round shield, four florets
+    when: { flag: purse, gte: 16 }
+    brief: A round shield for four florets, painted with a gull.
+    effects:
+      - add_flag: { flag: purse, value: -16 }
+      - give_item: { target: actor, ref: coast:round_shield }
+  satchel:
+    label: a canvas satchel, two florets
+    when: { flag: purse, gte: 8 }
+    brief: A canvas satchel for two florets. Room for four more things.
+    effects:
+      - add_flag: { flag: purse, value: -8 }
+      - give_item: { target: actor, ref: coast:canvas_satchel }
+  pack:
+    label: a sailor's pack, six florets
+    when: { flag: purse, gte: 24 }
+    brief: A sailor's pack for six florets. Room for eight more things.
+    effects:
+      - add_flag: { flag: purse, value: -24 }
+      - give_item: { target: actor, ref: coast:sailor_pack }

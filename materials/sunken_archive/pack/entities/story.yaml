@@ -1,0 +1,77 @@
+fog_bank:
+  kind: door
+  label: bank of fog
+  obstructs: [movement, sight]
+  lock: { all: [ { has_item: coast:hand_lamp }, { not: { illumination: dark } } ] }
+chart_fragment:
+  kind: item
+  label: chart fragment
+  tags: [chart]
+charter_writ:
+  kind: item
+  label: Concord charter writ
+  tags: [document]
+guild_strongbox:
+  kind: container
+  label: guild strongbox
+  capacity: 8
+  contents: []
+  lock: { has_item: charter_writ }
+back_booth:
+  kind: fixture
+  label: tavern back booth
+  verbs:
+    listen:
+      effects: []
+vrakas_ledger:
+  kind: fixture
+  label: drowned sailor's ledger
+  verbs:
+    read:
+      effects: []
+wrecked_longboat:
+  kind: fixture
+  label: wrecked longboat
+  obstructs: [movement]
+  cover: true
+  verbs:
+    read:
+      effects: []
+lamp_cabinet:
+  kind: container
+  label: lamplighter's cabinet
+  capacity: 4
+  contents: []
+cobbler_parcel:
+  kind: item
+  label: cobbler's parcel
+  tags: [errand]
+lydia_reply:
+  kind: item
+  label: folded reply
+  tags: [errand]
+salt_lantern:
+  kind: item
+  label: salt-crusted lantern
+  tags: [errand, light]
+  light: { bright: 1, dim: 3, lit: false }
+net_float:
+  kind: item
+  label: co-op net float
+  tags: [errand]
+herb_bundle:
+  kind: item
+  label: bundle of marsh herbs
+  tags: [errand]
+instrument_case:
+  kind: item
+  label: sealed instrument case
+  tags: [errand]
+moon_disc:
+  kind: item
+  label: bronze moon disc
+  tags: [errand, moons]
+golden_mask:
+  kind: item
+  label: golden mask
+  tags: [errand]

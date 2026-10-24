@@ -1,0 +1,15 @@
+synonyms:
+  attack: [hit, strike, stab, harpoon, hack, swing]
+  interact: [pry, force, crank, wind, operate, seal, listen, read, eavesdrop]
+  talk: [ask, buy, haggle, bargain, greet, bless, pay]
+  use: [don, wear, light, raise]
+  search: [rummage, comb, feel along]
+examples:
+  - input: pry the iron box open with the chisel
+    call: { tool: interact, args: { target_id: "<sealed_iron_box>", verb: open } }
+  - input: I'd like to buy the leather jerkin
+    call: { tool: talk, args: { npc_id: "<chandler>", topic_id: "<jerkin>", utterance: "I'd like to buy the leather jerkin." } }
+  - input: hold the lamp up to the fog
+    call: { tool: interact, args: { target_id: "<fog_bank>", verb: open } }
+  - input: put on the jerkin
+    call: { tool: use, args: { item_id: "<leather_jerkin>" } }

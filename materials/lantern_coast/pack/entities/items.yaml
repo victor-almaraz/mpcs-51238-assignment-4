@@ -1,0 +1,34 @@
+hand_lamp:
+  kind: item
+  label: hand lamp
+  tags: [light]
+  light: { bright: 3, dim: 6 }
+prybar:
+  kind: item
+  label: prybar
+  tags: [tool]
+cold_chisel:
+  kind: item
+  label: cold chisel
+  tags: [tool]
+vault_key:
+  kind: item
+  label: iron vault key
+  tags: [key]
+knife:
+  kind: item
+  label: fishing knife
+  tags: [weapon]
+  system_stats: { weapon: true }
+ration:
+  kind: item
+  label: ship's biscuit
+  tags: [food]
+rope_coil:
+  kind: item
+  label: coil of rope
+  tags: [tool]
+tin_ring:
+  kind: item
+  label: tin ring
+  tags: [trinket]

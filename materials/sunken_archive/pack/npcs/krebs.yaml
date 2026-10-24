@@ -1,0 +1,11 @@
+id: krebs
+name: Geographer Anselm Krebs
+template: coast:commoner
+disposition: wary
+topics:
+  chart:
+    label: his chart of the Tessera Isles
+    brief: >-
+      Krebs has never left his study. His chart of the isles is beautiful and wrong, every
+      coordinate a degree adrift, but the soundings he copied came from a Vessaro captain's log,
+      and those he trusts. The captains of Vessaro know the isles.

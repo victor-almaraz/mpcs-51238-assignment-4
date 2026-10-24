@@ -1,0 +1,18 @@
+path:             { type: enum, values: [none, contract, rumor], initial: none }
+know_vessaro:     { type: bool, initial: false }
+know_salinara:    { type: bool, initial: false }
+know_roccavela:   { type: bool, initial: false }
+clues:            { type: int, min: 0, max: 5, initial: 0 }
+rival_lead:       { type: int, min: 0, max: 5, initial: 0 }
+passage:          { type: bool, initial: false }
+marsh_route:      { type: bool, initial: false }
+leg:              { type: int, min: 0, max: 4, initial: 0 }
+octopus_gone:     { type: bool, initial: false }
+deck_open:        { type: bool, initial: false }
+ward_known:       { type: bool, initial: false }
+ward_sealed:      { type: bool, initial: false }
+ring_taken:       { type: bool, initial: false }
+hints:            { type: int, min: 0, max: 8, initial: 0 }
+purse:            { type: int, min: 0, max: 400, initial: 12, scope: character, currency: coast:floret }
+had_meal:         { type: bool, initial: false }
+parcel_delivered: { type: bool, initial: false }

@@ -1,0 +1,22 @@
+format_version: 2
+kind: adventure
+id: sunken_archive
+version: 1.0.0
+title: The Sunken Archive
+description: >-
+  Perpetua, the Ironmasters' fortress-ship, sank among the Tessera Isles carrying the Royal
+  Reliquary's pledged collection. Crews race for it. Gather a chart fragment in a coast town,
+  cross the fog with a lit lamp, board the half-drowned wreck, and choose between leaving with an
+  artifact and sealing the archive with its keeper. For one to four characters.
+system: { id: cadmium, versions: "^1.0", modules: [armor, stash] }
+requires_settings:
+  - { id: lantern_coast, versions: "^1.0" }
+players: [1, 4]
+start:
+  location: orvelle
+  room: plaza
+  effects: []
+endings:
+  escaped: { label: Escaped with an artifact }
+  archive_sealed: { label: Sealed the archive }
+  lost: { label: Lost to the tide }

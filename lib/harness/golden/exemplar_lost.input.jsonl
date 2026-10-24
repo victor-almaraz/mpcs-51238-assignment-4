@@ -1,0 +1,10 @@
+{"actor":"c_1","tool":"move","args":{"to_id":"tavern_door"}}
+{"actor":"c_1","tool":"move","args":{"to_id":"tavern"}}
+{"actor":"c_1","tool":"move","args":{"to_id":"back_booth"}}
+{"actor":"c_1","tool":"interact","args":{"target_id":"back_booth","verb":"listen"}}
+{"actor":"c_1","tool":"move","args":{"to_id":"tavern_door"}}
+{"actor":"c_1","tool":"move","args":{"to_id":"plaza"}}
+{"actor":"c_1","tool":"move","args":{"to_id":"x_vessaro"}}
+{"advance":true}
+{"advance":true}
+{"advance":true}

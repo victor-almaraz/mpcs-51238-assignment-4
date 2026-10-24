@@ -1,0 +1,23 @@
+id: kassiani
+name: Kassiani Moirakis
+template: coast:commoner
+disposition: neutral
+topics:
+  card_moons:
+    label: the card of the moons, half a floret
+    when: { flag: purse, gte: 2 }
+    brief: For half a floret, Kassiani turns the card of the two moons. Two lights, she says, and someone has counted on both.
+    effects:
+      - add_flag: { flag: purse, value: -2 }
+  card_lamp:
+    label: the card of the lamp, half a floret
+    when: { flag: purse, gte: 2 }
+    brief: For half a floret, Kassiani turns the card of the lamp. Carry a light across water, she says.
+    effects:
+      - add_flag: { flag: purse, value: -2 }
+  card_tide:
+    label: the card of the tide, half a floret
+    when: { flag: purse, gte: 2 }
+    brief: For half a floret, Kassiani turns the card of the tide. The sea keeps what it is told, she says.
+    effects:
+      - add_flag: { flag: purse, value: -2 }

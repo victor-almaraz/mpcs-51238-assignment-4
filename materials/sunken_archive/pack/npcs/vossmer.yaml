@@ -1,0 +1,15 @@
+id: vossmer
+name: Brunhild Vossmer
+template: coast:pirate_captain
+disposition: wary
+topics:
+  bargain:
+    label: a bargain with the Gull Company
+    brief: >-
+      Vossmer will not bargain. She tells you plainly that her crews will reach the wreck first,
+      and that anyone they find aboard is salvage too.
+  letter:
+    label: her letter of marque
+    brief: >-
+      The Gull Company holds Vessaro's letter of marque and sails for House Morcante, which holds the
+      Crown's pledge and wants its collateral back.

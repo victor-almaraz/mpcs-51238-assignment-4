@@ -1,0 +1,59 @@
+id: vantane
+name: Oriel Vantane
+template: coast:commoner
+disposition: wary
+topics:
+  halls:
+    label: the halls of Perpetua
+    brief: >-
+      Oriel Vantane names the ship's halls as a country. The Long Gallery, the Bright Stacks, the
+      Orlop of Iron Boxes, the Ward. She has been locked in the registry vault for weeks, two days
+      past her last ration, and she counts the halls to keep her mind.
+  rising:
+    label: how Perpetua sank
+    brief: >-
+      She saw the dead rise from the sea, sailors with no eyes painted on their lids. They climbed the
+      sides of the ship and tore at the hatches until the holds flooded, and she locked herself in the
+      vault, which opens only from outside.
+  boxes:
+    label: the iron boxes
+    brief: >-
+      The boxes are hard to open and hard to move. Custodians believe that iron holds an artifact's
+      influence in. Opening one is bringing it to light, she says, and it takes a prybar and a cold
+      chisel together.
+  ring:
+    label: the ring in the open box
+    when: { flag: clues, gte: 2 }
+    brief: She calls the ring in the ward chamber a false seal, and asks what you have heard of it.
+    effects:
+      - set_flag: { flag: ward_known, value: true }
+      - reveal: { secret: vantane.forgery }
+  plan:
+    label: why Perpetua sank where she did
+    when: { flag: clues, gte: 3 }
+    brief: She has studied the registry drawings for weeks and asks you what the chart and the ledger said.
+    effects:
+      - reveal: { secret: vantane.plan }
+  visitor:
+    label: who opened the box
+    when: { all: [ { flag: ward_known }, { flag: clues, gte: 4 } ] }
+    brief: She is quiet for a long time, and then she tells you about the last visitor before the voyage.
+    effects:
+      - reveal: { secret: vantane.visitor }
+  seal:
+    label: sealing the archive
+    when: { flag: ward_sealed }
+    brief: >-
+      With the false seal shut in iron, Vantane agrees to leave the vault. She asks you to close the
+      iron doors behind you and flood the lower stacks, so the archive stays beneath the water.
+secrets:
+  forgery: >-
+    The ring is a recent forgery. Its three faces follow the Reliquary's registry drawing of the head,
+    not the Chapter's liturgical order, so whoever forged it had the registry open in front of them. It
+    commands the dead who died unseen.
+  plan: >-
+    The ship was sunk on purpose, in shallows chosen so the cargo could be raised later. A recovery
+    charter existed before the sinking.
+  visitor: >-
+    Before the voyage a visitor in Reliquary grey came aboard carrying a Concord charter case, and gave
+    no name. One person held both a Reliquary commission and a Concord charter.

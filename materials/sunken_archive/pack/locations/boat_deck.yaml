@@ -1,0 +1,27 @@
+id: boat_deck
+kind: authored
+map:
+  rows:
+    - "########################"
+    - "#......................#"
+    - "#......................#"
+    - "#......................#"
+    - "#......................#"
+    - "########################"
+  rooms:
+    stern: { label: stern of the boat, tags: [boat], light: dark, area: [[1, 1, 7, 4]] }
+    bow: { label: bow in the fog, tags: [boat, fog], light: dark, area: [[8, 1, 15, 4]] }
+  links:
+    x_vessaro: { label: back to the Vessaro quay, at: [1, 1], to: { location: vessaro, link: x_boat } }
+    x_salinara: { label: back to the Salinara quay, at: [1, 2], to: { location: salinara, link: x_boat } }
+    x_roccavela: { label: back to the Roccavela quay, at: [1, 3], to: { location: roccavela, link: x_boat } }
+    x_ondrel: { label: course for Ondrel, at: [22, 1], to: { location: ondrel, link: x_deck } }
+    x_kestrin: { label: course for Kestrin, at: [22, 2], to: { location: kestrin, link: x_deck } }
+    x_lamp_shoal: { label: course for Lamp Shoal, at: [22, 3], to: { location: lamp_shoal, link: x_deck } }
+    x_stair: { label: course for the Drowned Stair, at: [22, 4], to: { location: drowned_stair, link: x_deck } }
+  contents:
+    - { id: tool_chest, ref: coast:tool_chest, at: [4, 4] }
+    - { id: fog_ondrel, ref: fog_bank, at: [22, 1] }
+    - { id: fog_kestrin, ref: fog_bank, at: [22, 2] }
+    - { id: fog_lamp_shoal, ref: fog_bank, at: [22, 3] }
+    - { id: fog_stair, ref: fog_bank, at: [22, 4] }

@@ -1,0 +1,8 @@
+id: ione
+name: Ione
+template: coast:commoner
+disposition: friendly
+topics:
+  parley:
+    label: a parley with the Crew of the Red Gull
+    brief: Ione declares a parley. The Crew of the Red Gull will hear terms, she says, if terms include a toll.

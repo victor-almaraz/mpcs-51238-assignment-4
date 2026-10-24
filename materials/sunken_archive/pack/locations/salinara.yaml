@@ -1,0 +1,47 @@
+id: salinara
+kind: authored
+map:
+  legend:
+    "w": window
+    "f": low_wall
+    "m": salt_marsh
+  rows:
+    - "############################"
+    - "#........#........#........#"
+    - "#........#........#........#"
+    - "#........#........#........#"
+    - "#www.wwwwwwww.wwwwwwww.wwww#"
+    - "#..........................#"
+    - "#..........................#"
+    - "#fff.fffffffffffffff.ffffff#"
+    - "#.mmm.mm.mm.f..............#"
+    - "#mm.mmm.m.m.f..............#"
+    - "#.m.mm.mmm.mf..............#"
+    - "#mm.m..m.mm.f..............#"
+    - "#fffffffffffffffffff.ffffff#"
+  rooms:
+    reed_house: { label: reed house of the salt-reeves, tags: [indoors], area: [[1, 1, 8, 3]] }
+    apothecary: { label: apothecary, tags: [indoors], area: [[10, 1, 8, 3]] }
+    cottage: { label: widow's cottage, tags: [indoors], area: [[19, 1, 8, 3]] }
+    row: { label: Salt Row, tags: [outdoors], area: [[1, 5, 26, 2], [4, 4, 1, 1], [13, 4, 1, 1], [22, 4, 1, 1]] }
+    marsh: { label: fever marsh, tags: [outdoors, marsh], area: [[1, 8, 11, 4], [4, 7, 1, 1]] }
+    quay: { label: Salinara quay, tags: [outdoors, harbor], area: [[13, 8, 14, 4], [20, 7, 1, 1], [20, 12, 1, 1]] }
+  links:
+    x_road: { label: the road to Orvelle, at: [1, 5], to: { location: orvelle, link: x_salinara } }
+    x_boat: { label: Sarantis's boat, at: [20, 12], to: { location: boat_deck, link: x_salinara } }
+  contents:
+    - { id: reed_door, ref: coast:house_door, at: [4, 4] }
+    - { id: apothecary_door, ref: coast:house_door, at: [13, 4] }
+    - { id: cottage_door, ref: coast:house_door, at: [22, 4] }
+    - { id: marsh_gate, ref: coast:gate, at: [4, 7] }
+    - { id: quay_gate, ref: coast:gate, at: [20, 7] }
+    - { id: salinara_gate, ref: coast:harbor_gate, at: [20, 12], lock: { flag: passage } }
+    - { npc: dassos, at: [4, 2] }
+    - { npc: galateia, at: [13, 2] }
+    - { npc: eudoxia, at: [22, 2] }
+    - { id: cottage_chest, ref: coast:sea_chest, at: [26, 1] }
+    - { id: golden_mask, ref: golden_mask, at: [19, 3], hidden: true }
+    - { id: fragment_salinara, ref: chart_fragment, at: [2, 10], hidden: true }
+    - { id: herb_bundle, ref: herb_bundle, at: [9, 9] }
+    - { ref: coast:marsh_adder, at: [7, 11] }
+    - { npc: sarantis, at: [16, 9] }

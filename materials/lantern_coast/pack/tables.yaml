@@ -1,0 +1,22 @@
+room_labels:
+  - { weight: 3, label: flooded hold }
+  - { weight: 2, label: bilge passage }
+  - { weight: 2, label: cargo deck }
+  - { weight: 1, label: orlop }
+  - { weight: 1, label: sail locker }
+  - { weight: 1, label: chain locker }
+  - { weight: 1, label: drowned galley }
+starting_kit:
+  - { weight: 2, ref: knife }
+  - { weight: 2, ref: ration }
+  - { weight: 1, ref: rope_coil }
+encounters_holds:
+  - { weight: 4, ref: drowned, count: 1d2, depth: [1, 99] }
+  - { weight: 2, ref: page_swarm, count: 1, depth: [2, 99] }
+  - { weight: 1, ref: wall_eel, count: 1, depth: [1, 99] }
+hold_loot:
+  - { weight: 3, ref: ration }
+  - { weight: 2, ref: fever_tonic }
+  - { weight: 1, ref: round_shield }
+thief_loot:
+  - { weight: 1, ref: tin_ring }

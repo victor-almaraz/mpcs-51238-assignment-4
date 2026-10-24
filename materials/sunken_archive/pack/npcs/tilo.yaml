@@ -1,0 +1,34 @@
+id: tilo
+name: Tilo Rothe
+template: coast:commoner
+disposition: friendly
+topics:
+  shoes:
+    label: dyed shoes, two florets
+    when: { flag: purse, gte: 8 }
+    brief: Tilo sells a pair of shoes dyed the blue of the sea for two florets, and wraps them twice.
+    effects:
+      - add_flag: { flag: purse, value: -8 }
+      - give_item: { target: actor, ref: coast:dyed_shoes }
+  afraid:
+    label: what he rehearses to the shoes
+    brief: >-
+      Tilo rehearses a proposal of marriage to a row of shoes every morning. The shoes are for
+      Lydia, a net-mender in Vessaro. He has never once said it to her.
+  errand:
+    label: carrying his parcel to Vessaro
+    when: { all: [ { not: { has_item: cobbler_parcel } }, { not: { flag: parcel_delivered } } ] }
+    brief: >-
+      Tilo presses a parcel into your hands, a pair of shoes and a letter he could not send. It is
+      for Lydia at the Quay Four net loft in Vessaro. She will pay the carriage, he says, if she
+      still likes him.
+    effects:
+      - give_item: { target: actor, ref: cobbler_parcel }
+  reply:
+    label: Lydia's reply
+    when: { has_item: lydia_reply }
+    brief: >-
+      Tilo reads Lydia's reply three times and then sits down on his own doorstep. He pays you two
+      florets and cannot stop smiling.
+    effects:
+      - remove_item: { target: actor, ref: lydia_reply }

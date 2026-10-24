@@ -1,0 +1,17 @@
+id: phaidon
+name: Phaidon Lampros
+template: coast:commoner
+disposition: wary
+topics:
+  rent:
+    label: the men demanding his rent
+    brief: >-
+      Phaidon keeps the beacon lit for no one. Two of House Morcante's wharf-hands have come to collect
+      rent on a lighthouse no one owns, and when he refuses again they reach for their cudgels.
+  thanks:
+    label: the rent, settled
+    when: { all: [ { defeated: thug_1 }, { defeated: thug_2 } ] }
+    brief: Phaidon pays you three florets from a tin under the beacon and tells you to keep the spare lamp.
+  lamp:
+    label: his spare lamp
+    brief: Phaidon keeps a spare hand lamp by the stair. Take it, he says. The fog eats lamps.

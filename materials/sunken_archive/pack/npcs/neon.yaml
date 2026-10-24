@@ -1,0 +1,8 @@
+id: neon
+name: Neon
+template: coast:commoner
+disposition: friendly
+topics:
+  sums:
+    label: her sums
+    brief: Neon checks every sum Nikon has checked. They have never disagreed, and they find that suspicious.

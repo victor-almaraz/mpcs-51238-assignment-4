@@ -1,0 +1,42 @@
+id: biblis
+name: Biblis Papas
+template: coast:commoner
+disposition: neutral
+topics:
+  practical:
+    label: something for the road, a floret and a half
+    when: { flag: purse, gte: 6 }
+    brief: Biblis sells you Practical Knots, because you look like someone who will need them.
+    effects:
+      - add_flag: { flag: purse, value: -6 }
+      - give_item: { target: actor, ref: coast:practical_knots }
+  romance:
+    label: something with a heart, a floret and a half
+    when: { flag: purse, gte: 6 }
+    brief: Biblis sells you The Lady and the Blue Sea, a romance, and says you will cry at the lighthouse.
+    effects:
+      - add_flag: { flag: purse, value: -6 }
+      - give_item: { target: actor, ref: coast:lady_and_the_blue_sea }
+  law:
+    label: something dry and useful, a floret and a half
+    when: { flag: purse, gte: 6 }
+    brief: >-
+      Biblis sells you the Royal Tax Collector Manual. It explains how the Concord numbers its writs,
+      in blocks reserved a season ahead.
+    effects:
+      - add_flag: { flag: purse, value: -6 }
+      - give_item: { target: actor, ref: coast:tax_collector_manual }
+  history:
+    label: something true and old, a floret and a half
+    when: { flag: purse, gte: 6 }
+    brief: Biblis sells you Tales from the Battle of Kesser, where the north turned back Verrane.
+    effects:
+      - add_flag: { flag: purse, value: -6 }
+      - give_item: { target: actor, ref: coast:battle_of_kesser_tales }
+  adventure:
+    label: something with swords, a floret and a half
+    when: { flag: purse, gte: 6 }
+    brief: Biblis sells you Five Knights and Seven Kingdoms, and warns you two of the knights are the same knight.
+    effects:
+      - add_flag: { flag: purse, value: -6 }
+      - give_item: { target: actor, ref: coast:five_knights }

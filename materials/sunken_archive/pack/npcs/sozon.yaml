@@ -1,0 +1,22 @@
+id: sozon
+name: Sozon Hesychios
+template: coast:commoner
+disposition: neutral
+topics:
+  path:
+    label: the cliff path
+    brief: Sozon answers with a question. Where does a path go, he asks, when you stop walking it?
+  seeing:
+    label: the Church's doctrine
+    brief: >-
+      Sozon was a reader of the Chapter. The world, he says, is a made thing and flawed, and a spark
+      of the true light hides in every person. To see it is to be illuminated. Did you think the
+      Chapter would let you see it cheaply?
+  stillness:
+    label: why he left the Chapter
+    brief: Why would a reader leave a library, he asks, except to read something that was not written down?
+  walk:
+    label: the old walk
+    brief: >-
+      Have you walked the labyrinth above the town, he asks? Its builders came before the clergy. A
+      bronze disc lies at its center, and the professor would pay to see it.

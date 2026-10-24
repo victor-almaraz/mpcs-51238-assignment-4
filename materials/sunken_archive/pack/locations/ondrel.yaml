@@ -1,0 +1,23 @@
+id: ondrel
+kind: authored
+map:
+  legend:
+    "~": shallows
+  rows:
+    - "####################"
+    - "#~~~...............#"
+    - "#~~................#"
+    - "#..................#"
+    - "#~.................#"
+    - "####################"
+  rooms:
+    harbor: { label: ruined harbor of Ondrel, tags: [outdoors, ruin], area: [[1, 1, 10, 4]] }
+    fort: { label: driftwood fort, tags: [outdoors], area: [[11, 1, 8, 4]] }
+  links:
+    x_deck: { label: back to the boat, at: [1, 3], to: { location: boat_deck, link: x_ondrel } }
+  contents:
+    - { id: longboat, ref: wrecked_longboat, at: [5, 2] }
+    - { ref: coast:giant_crab, at: [8, 4] }
+    - { npc: ione, at: [14, 2] }
+    - { npc: kosmas, at: [15, 3] }
+    - { npc: zafeiria, at: [16, 1] }

@@ -330,6 +330,12 @@ export function compileAdventure(files: PackFiles, settings: readonly SettingBun
           if (!locs.has(v)) out.add(file, p, `unknown location '${v}'`, "plot");
           break;
         case "to":
+          // On item events `to` is the recipient's entity id (engine.md, "Events"); elsewhere a room.
+          if (typeof on.type === "string" && on.type.startsWith("item_")) {
+            deferredIds.push({ id: v, file, path: p });
+            break;
+          }
+        // falls through
         case "from":
         case "room":
           if (loc ? !loc.rooms.has(v) : ![...locs.values()].some((l) => l.rooms.has(v))) out.add(file, p, loc ? `location '${loc.id}' has no room '${v}'` : `no location has a room '${v}'`, "room");

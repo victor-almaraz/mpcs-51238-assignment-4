@@ -1,0 +1,10 @@
+id: kosmas
+name: Kosmas
+template: coast:commoner
+disposition: wary
+topics:
+  toll:
+    label: the toll for the salt lantern, half a floret
+    brief: >-
+      Captain Kosmas of the Crew of the Red Gull demands a toll of half a floret for the salt-crusted
+      lantern in his fort. Pirates, he says, must be paid.

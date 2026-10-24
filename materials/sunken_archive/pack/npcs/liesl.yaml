@@ -1,0 +1,11 @@
+id: liesl
+name: Liesl Brandt
+template: coast:commoner
+disposition: friendly
+topics:
+  map:
+    label: her map of the coast
+    brief: >-
+      Liesl unrolls a map she drew from memory. Every town is a lantern. Roccavela, on its cliff,
+      wears the three-faced head of the Church, and she has drawn four tiny isles below it with a
+      ship lying on its side.

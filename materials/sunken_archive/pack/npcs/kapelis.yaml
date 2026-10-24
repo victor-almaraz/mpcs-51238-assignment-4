@@ -1,0 +1,14 @@
+id: kapelis
+name: Nikandros Kapelis
+template: coast:sailor
+disposition: neutral
+topics:
+  passage:
+    label: passage south
+    when: { has_item: chart_fragment }
+    brief: >-
+      Kapelis ferries scholars to the isles for their measurements. With the fragment he can find the
+      wreck. His boat lies beyond the quay gate, and he gives you a hand lamp.
+    effects:
+      - set_flag: { flag: passage, value: true }
+      - give_item: { target: actor, ref: coast:hand_lamp }

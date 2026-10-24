@@ -1,0 +1,15 @@
+id: sarantis
+name: Old Theo Sarantis
+template: coast:sailor
+disposition: friendly
+topics:
+  passage:
+    label: passage south
+    when: { has_item: chart_fragment }
+    brief: >-
+      Old Theo reads the fragment with his thumb. He has sailed the isles since before the Concord
+      was chartered. His boat lies beyond the quay gate, and he gives you a hand lamp, because the
+      fog does not care who you are.
+    effects:
+      - set_flag: { flag: passage, value: true }
+      - give_item: { target: actor, ref: coast:hand_lamp }

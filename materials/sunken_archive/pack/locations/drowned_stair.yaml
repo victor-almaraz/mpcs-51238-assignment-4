@@ -1,0 +1,21 @@
+id: drowned_stair
+kind: authored
+map:
+  legend:
+    "~": shallows
+  rows:
+    - "##################"
+    - "#......~~~~~~~...#"
+    - "#......~~~~~~~...#"
+    - "#......~~~~~~~...."
+    - "#......~~~~~~~...#"
+    - "##################"
+  rooms:
+    landing: { label: foot of the Drowned Stair, tags: [outdoors, ruin], area: [[1, 1, 6, 4]] }
+    stair: { label: the Drowned Stair, tags: [outdoors, water], light: dim, area: [[7, 1, 10, 4], [17, 3, 1, 1]] }
+  links:
+    x_deck: { label: back to the boat, at: [1, 2], to: { location: boat_deck, link: x_stair } }
+    x_perpetua: { label: the mooring of Perpetua, at: [17, 3], to: { location: perpetua_deck, link: x_stair } }
+  contents:
+    - { id: mooring_gate, ref: coast:harbor_gate, at: [17, 3], lock: { flag: octopus_gone } }
+    - { id: octopus, ref: coast:great_octopus, at: [10, 2] }

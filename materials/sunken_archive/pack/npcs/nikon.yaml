@@ -1,0 +1,8 @@
+id: nikon
+name: Nikon
+template: coast:commoner
+disposition: friendly
+topics:
+  sums:
+    label: his sums
+    brief: Nikon checks every sum his master gives on an abacus. Then Neon checks Nikon's.

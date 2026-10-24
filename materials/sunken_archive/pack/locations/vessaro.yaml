@@ -1,0 +1,39 @@
+id: vessaro
+kind: authored
+map:
+  legend:
+    "w": window
+    "f": low_wall
+  rows:
+    - "##########################"
+    - "#........#.......#.......#"
+    - "#........#.......#.......#"
+    - "#........#.......#.......#"
+    - "#fff.ffffwwwww.wwwwwww.ww#"
+    - "#........................#"
+    - "#........................#"
+    - "#........................#"
+    - "#fffffffffff.ffffffffffff#"
+  rooms:
+    market: { label: Vessaro fish market, tags: [outdoors], area: [[1, 1, 8, 3]] }
+    net_loft: { label: Quay Four net loft, tags: [indoors], area: [[10, 1, 7, 3]] }
+    harbor_office: { label: harbor office, tags: [indoors], area: [[18, 1, 7, 3]] }
+    quay: { label: Vessaro quay, tags: [outdoors, harbor], area: [[1, 5, 24, 3], [4, 4, 1, 1], [14, 4, 1, 1], [22, 4, 1, 1], [12, 8, 1, 1]] }
+  links:
+    x_road: { label: the road to Orvelle, at: [1, 6], to: { location: orvelle, link: x_vessaro } }
+    x_boat: { label: Ostrakis's boat, at: [12, 8], to: { location: boat_deck, link: x_vessaro } }
+  contents:
+    - { id: market_gate, ref: coast:gate, at: [4, 4] }
+    - { id: loft_door, ref: coast:house_door, at: [14, 4] }
+    - { id: office_door, ref: coast:house_door, at: [22, 4] }
+    - { id: vessaro_gate, ref: coast:harbor_gate, at: [12, 8], lock: { flag: passage } }
+    - { npc: gerasimos, at: [3, 2] }
+    - { npc: kassiani, at: [7, 2] }
+    - { ref: coast:thief, room: market }
+    - { npc: dimos, at: [11, 1] }
+    - { npc: lydia, at: [13, 2] }
+    - { npc: vasilis, at: [15, 3] }
+    - { id: fragment_vessaro, ref: chart_fragment, at: [16, 1], hidden: true }
+    - { npc: ostrakis, at: [20, 2] }
+    - { id: harbor_locker, ref: coast:sea_chest, at: [24, 1] }
+    - { npc: vossmer, at: [18, 6] }

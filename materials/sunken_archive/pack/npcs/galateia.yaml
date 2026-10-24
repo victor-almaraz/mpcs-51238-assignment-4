@@ -1,0 +1,31 @@
+id: galateia
+name: Galateia Leukou
+template: coast:commoner
+disposition: neutral
+topics:
+  fever:
+    label: the marsh fever
+    brief: >-
+      Galateia drinks a glass of milk on every hour and distrusts wine. She sells fever tonic for two
+      florets, and pays a floret and a half for a bundle of the marsh herbs she can no longer gather
+      herself.
+  milk:
+    label: a painted milk glass, half a floret
+    when: { flag: purse, gte: 2 }
+    brief: A painted glass for milk, never wine, half a floret.
+    effects:
+      - add_flag: { flag: purse, value: -2 }
+      - give_item: { target: actor, ref: coast:milk_glass }
+  tonic:
+    label: fever tonic, two florets
+    when: { flag: purse, gte: 8 }
+    brief: A stoppered fever tonic for two florets.
+    effects:
+      - add_flag: { flag: purse, value: -8 }
+      - give_item: { target: actor, ref: coast:fever_tonic }
+  herbs:
+    label: the marsh herbs
+    when: { has_item: herb_bundle }
+    brief: Galateia sniffs the bundle, approves, and pays a floret and a half.
+    effects:
+      - remove_item: { target: actor, ref: herb_bundle }

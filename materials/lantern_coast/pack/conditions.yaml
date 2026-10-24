@@ -1,0 +1,13 @@
+fevered:
+  label: fevered
+  duration: 3
+  on_turn_start:
+    - damage: { target: actor, amount: 1, type: poison }
+entangled:
+  label: entangled in kelp
+  duration: 2
+  blocks: [ability]
+chilled:
+  label: chilled
+  duration: 3
+  situation: { advantage: -1 }

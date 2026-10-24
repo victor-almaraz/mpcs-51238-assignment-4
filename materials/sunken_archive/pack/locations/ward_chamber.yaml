@@ -1,0 +1,18 @@
+id: ward_chamber
+kind: authored
+map:
+  rows:
+    - "##########"
+    - "#........#"
+    - "#........#"
+    - "#........#"
+    - "##########"
+  rooms:
+    chamber: { label: ward chamber, tags: [ship, wreck, cold], light: dark, area: [[1, 1, 8, 3]] }
+  links:
+    x_in: { label: back to the holds, at: [1, 2], to: { location: perpetua_holds, link: x_ward } }
+  contents:
+    - { id: open_iron_box, ref: open_iron_box, at: [7, 2] }
+    - { id: ward_drowned_1, ref: coast:drowned, at: [5, 1] }
+    - { id: ward_drowned_2, ref: coast:drowned, at: [5, 3] }
+    - { id: ward_drowned_3, ref: coast:drowned, at: [6, 2] }

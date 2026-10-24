@@ -1,0 +1,29 @@
+id: eudoxia
+name: Eudoxia Lenos
+template: coast:commoner
+disposition: friendly
+topics:
+  meal:
+    label: a meal
+    when: { not: { flag: had_meal } }
+    brief: >-
+      Eudoxia feeds every stranger she meets. She sets out bread, salt fish, and figs, and watches you
+      eat every bite.
+    effects:
+      - set_flag: { flag: had_meal, value: true }
+      - heal: { target: room, amount: 2 }
+  husband:
+    label: her late husband
+    brief: >-
+      Her husband carried salt south along the isles for forty years. His lantern, crusted white,
+      washed up on Ondrel, and the children there keep it in their fort. She would pay three florets
+      to have it on her sill again.
+  marsh:
+    label: the marsh
+    brief: The fever marsh took her husband's brother. She paints his eyes on a stone each Martyr day.
+  lantern:
+    label: her husband's lantern
+    when: { has_item: salt_lantern }
+    brief: Eudoxia sets the lantern on her sill and lights it, and pays you three florets.
+    effects:
+      - remove_item: { target: actor, ref: salt_lantern }

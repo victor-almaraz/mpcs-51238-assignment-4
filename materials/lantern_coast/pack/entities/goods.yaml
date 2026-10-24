@@ -1,0 +1,76 @@
+boarding_axe:
+  kind: item
+  label: boarding axe
+  tags: [weapon]
+  system_stats: { weapon: true, damage: 3 }
+harpoon:
+  kind: item
+  label: harpoon
+  tags: [weapon]
+  system_stats: { weapon: true, damage: 2, ranged: true }
+leather_jerkin:
+  kind: item
+  label: leather jerkin
+  tags: [armor]
+  system_stats: { armor: 3 }
+round_shield:
+  kind: item
+  label: round shield
+  tags: [armor]
+  system_stats: { armor: 2 }
+canvas_satchel:
+  kind: item
+  label: canvas satchel
+  tags: [container]
+  system_stats: { slots: 4 }
+sailor_pack:
+  kind: item
+  label: sailor's pack
+  tags: [container]
+  system_stats: { slots: 8 }
+fever_tonic:
+  kind: item
+  label: fever tonic
+  tags: [medicine]
+  uses: 1
+  use:
+    target: self_or_ally
+    effects:
+      - heal: { target: target, amount: 2 }
+      - remove_condition: { target: target, condition: fevered }
+milk_glass:
+  kind: item
+  label: painted milk glass
+  tags: [decorative]
+tide_table:
+  kind: item
+  label: printed tide table
+  tags: [decorative]
+pocket_astrolabe:
+  kind: item
+  label: pocket astrolabe
+  tags: [decorative]
+dyed_shoes:
+  kind: item
+  label: dyed shoes
+  tags: [decorative]
+practical_knots:
+  kind: item
+  label: Practical Knots
+  tags: [book]
+lady_and_the_blue_sea:
+  kind: item
+  label: The Lady and the Blue Sea
+  tags: [book]
+tax_collector_manual:
+  kind: item
+  label: Royal Tax Collector Manual
+  tags: [book]
+battle_of_kesser_tales:
+  kind: item
+  label: Tales from the Battle of Kesser
+  tags: [book]
+five_knights:
+  kind: item
+  label: Five Knights and Seven Kingdoms
+  tags: [book]

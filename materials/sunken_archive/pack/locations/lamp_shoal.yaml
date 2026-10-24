@@ -1,0 +1,27 @@
+id: lamp_shoal
+kind: authored
+map:
+  legend:
+    "w": window
+    "~": shallows
+  rows:
+    - "####################"
+    - "#~~~~....w.........#"
+    - "#~~~~..............#"
+    - "#~~~~....w.........#"
+    - "####################"
+  rooms:
+    landing: { label: shoal landing, tags: [outdoors, water], area: [[1, 1, 9, 3]] }
+    lighthouse: { label: ruined lighthouse, tags: [indoors, ruin], light: dim, area: [[10, 1, 9, 3]] }
+  links:
+    x_deck: { label: back to the boat, at: [5, 2], to: { location: boat_deck, link: x_lamp_shoal } }
+  contents:
+    - { id: lighthouse_door, ref: coast:house_door, at: [9, 2] }
+    - { ref: coast:jelly_drift, at: [1, 1] }
+    - { ref: coast:carrion_gull, at: [7, 3] }
+    - { npc: phaidon, at: [14, 2] }
+    - { id: beacon, ref: coast:beacon, at: [18, 2] }
+    - { id: lamp_cabinet, ref: lamp_cabinet, at: [10, 1] }
+    - { id: spare_lamp, ref: coast:hand_lamp, at: [11, 3] }
+    - { id: thug_1, ref: coast:company_thug, at: [12, 1] }
+    - { id: thug_2, ref: coast:company_thug, at: [12, 3] }

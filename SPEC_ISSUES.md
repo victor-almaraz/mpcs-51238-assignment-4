@@ -947,3 +947,45 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** The compiler adds `hash` (SHA-256 of the bytes) and `mime` to each file asset in the bundle's `assets`. `materials build` writes the bundle with a top-level `files` object mapping each hash to its `mime`, base64 `data`, and pixel size; `publish_bundle` checks each file against its hash and type, stores it as an Asset with a bundle reference, and stores the bundle without `files`. Files live in the database (at most 1 MB each). `get_asset` serves stored assets with long-lived caching and a content policy that forbids scripts and loads, and is not counted against the per-user rate limit because pages load many images. `game_icons` sources are declared but not shipped: the application vendors no game-icons.net files yet, so clients draw the fallback.
 
 **Proposed resolution.** Define the asset fields of the bundle and the archive `publish_bundle` accepts, or make bundles carry files.
+
+## exemplar-location
+
+| Field | Value |
+|---|---|
+| Document | `briefs/example-adventure.md` |
+| Section | Goal; Deliverables; Documentation updates; Acceptance |
+| Marker | `materials/sunken_archive/README.md` |
+
+**Problem.** The brief places `lantern_coast` and `sunken_archive` in the specification's `spec/examples/` and edits `spec/README.md`, `docs/guides/adventure-authoring.md`, `docs/adventure-packs.md`, and `AGENTS.md` in the same change. This application vendors the specification at a pinned commit and does not change it. The brief also names `sunken_archive` for both the exemplar (1.0.0, `lantern_coast`, Cadmium) and the existing guide adventure (0.1.0, `derelict_station`, Quest), whose snippets `docs/adventure-packs.md` quotes.
+
+**Implemented.** Both packs live in `materials/lantern_coast/pack` and `materials/sunken_archive/pack`, in the brief's file layout, as a proposal for `spec/examples/`. `materials/sunken_archive/README.md` holds the schema and semantic pass report and the walkthroughs. The documentation updates are not made. The guide adventure stays the fixture for the guide's snippets; `pnpm bundles` publishes the exemplar instead of it.
+
+**Proposed resolution.** Copy both pack directories into `spec/examples/`, then make the four documentation updates. Rename the guide adventure, or make the guide build a subset of the exemplar as the brief asks.
+
+## generation-order
+
+| Field | Value |
+|---|---|
+| Document | `docs/generation.md` |
+| Section | Spec ("Doors and locks come from the first setting pack, in campaign material order, whose manifest declares `generation`") |
+| Marker | `components/campaign-materials.tsx` |
+
+**Problem.** A Cadmium campaign also accepts Quest settings, and a new campaign preselects every listed setting. When a Quest setting that declares `generation` (such as `derelict_station`, or `quest_starter`, which supplies abilities) is listed before the adventure's own setting, a generated location takes that setting's doors and lock-and-key pairs. `sunken_archive` then loses its vault door, whose lock and `system_stats` the adventure depends on.
+
+**Implemented.** The campaign material picker lists the adventure's required settings first, so the form submits them first.
+
+**Proposed resolution.** Take `generation` from the adventure's required settings first, in `requires_settings` order, then from the other settings in material order.
+
+## location-order
+
+| Field | Value |
+|---|---|
+| Document | `docs/engine.md`; `docs/data-model.md` |
+| Section | Instance start; Bundle |
+| Marker | `lib/engine/start.ts` |
+
+**Problem.** Instance start places every location's contents, and draws RNG for placements without a cell, in some order of the adventure's locations, which becomes the order of generated entity ids. The specification does not state the order. A bundle's `locations` is a JSON object, whose key order JSON does not preserve: Postgres `jsonb` stores keys shortest first, so a bundle read back from storage lists locations in another order than the compiler wrote, and a replay assigns different ids than the original start.
+
+**Implemented.** Instance start takes locations in ascending id order, which is the order of the files in `locations/`.
+
+**Proposed resolution.** State that instance start processes locations in ascending id order.

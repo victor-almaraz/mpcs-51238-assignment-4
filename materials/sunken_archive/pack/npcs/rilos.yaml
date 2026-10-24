@@ -1,0 +1,25 @@
+id: rilos
+name: Sister Agne Rilos
+template: coast:commoner
+disposition: neutral
+topics:
+  clue:
+    label: what the Chapter saw
+    when: { flag: know_roccavela }
+    brief: >-
+      Sister Agne makes the lantern gesture. The Chapter's lenses watched Perpetua settle among the
+      isles. A scrap of the ship's own chart came ashore, and the professor keeps it among his papers
+      in this house.
+  chapter:
+    label: the Chapter's claim
+    brief: The Chapter claims the writings of the Three Martyrs. A text is meant to be read and seen, she says, not hoarded in iron.
+  martyrs:
+    label: the Three Martyrs
+    brief: >-
+      Isaura saw the maker's work, Kyrillos the spark, Meropi the way out. Each was killed for what
+      they saw. The Church paints them as one head with three faces.
+  elsewhere:
+    label: who else is looking
+    brief: >-
+      The Gull Company sails from Vessaro under a letter of marque, and the Concord keeps an office
+      on the same quay. Vessaro will know more than it says.

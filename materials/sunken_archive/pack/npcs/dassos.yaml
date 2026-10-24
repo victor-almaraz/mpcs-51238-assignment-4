@@ -1,0 +1,29 @@
+id: dassos
+name: Melina Dassos
+template: coast:commoner
+disposition: wary
+topics:
+  clue:
+    label: the reeves' tide books
+    when: { flag: know_salinara }
+    brief: >-
+      Dassos opens the oldest tide book. A page is missing, cut out with a knife, and she knows
+      where it went. A salt-carrier dropped a chart scrap in the fever marsh when the fever took
+      him, and the reeds closed over it.
+  route:
+    label: a safe way through the marsh
+    brief: >-
+      The reeves walk the marsh by the white stakes and breathe through wet linen. Keep to the stakes,
+      she says, and the fever leaves you be.
+    effects:
+      - set_flag: { flag: marsh_route, value: true }
+  reeves:
+    label: the salt-reeves
+    brief: >-
+      The salt-reeves answer to their guild, but the houses own the pans. House Valdessi underwrites
+      the Concord and owns more salt than the guild has ever weighed.
+  elsewhere:
+    label: who else watches the isles
+    brief: >-
+      The scholars of Roccavela keep a camp of instruments on their cliff and watch the isles through
+      lenses. If Perpetua is lying there, they have seen her.

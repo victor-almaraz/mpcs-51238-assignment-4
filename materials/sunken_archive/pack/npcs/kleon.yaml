@@ -1,0 +1,32 @@
+id: kleon
+name: Maestro Kleon Metrios
+template: coast:commoner
+disposition: neutral
+topics:
+  instruments:
+    label: his instruments
+    brief: >-
+      Kleon rechecks every measure. He sells printed tide tables for three florets and pocket
+      astrolabes for a tener, and needs a sealed case carried to the lamplighter on Lamp Shoal.
+  tides:
+    label: the tides
+    brief: Two moons, he says, make the sea a sum no one finishes. A month ahead is honest. A season ahead is a guess or a lie.
+  case:
+    label: the instrument case for Lamp Shoal
+    brief: >-
+      Kleon gives you a sealed instrument case for Phaidon, the lamplighter on Lamp Shoal. Put it in
+      the lamplighter's cabinet, he says, and Phaidon will pay two florets for the carriage.
+  table:
+    label: a printed tide table, three florets
+    when: { flag: purse, gte: 12 }
+    brief: A printed tide table for the isles, three florets.
+    effects:
+      - add_flag: { flag: purse, value: -12 }
+      - give_item: { target: actor, ref: coast:tide_table }
+  astrolabe:
+    label: a pocket astrolabe, one tener
+    when: { flag: purse, gte: 40 }
+    brief: A brass pocket astrolabe, one tener.
+    effects:
+      - add_flag: { flag: purse, value: -40 }
+      - give_item: { target: actor, ref: coast:pocket_astrolabe }

@@ -1,0 +1,23 @@
+id: labyrinth
+kind: authored
+map:
+  rows:
+    - "######################"
+    - "#....#...#.......#...#"
+    - "#....#.#.#.#####.#...#"
+    - "#......#...#...#.....#"
+    - "#....#######.#.#.#...#"
+    - "#....#.......#...#...#"
+    - "######################"
+  rooms:
+    gate: { label: labyrinth gate, tags: [outdoors, ruin], area: [[1, 1, 4, 5]] }
+    maze: { label: the walk, tags: [outdoors, ruin], area: [[5, 1, 12, 5]] }
+    center: { label: center of the labyrinth, tags: [outdoors, ruin], area: [[17, 1, 4, 5]] }
+  links:
+    x_gate: { label: the path down to Roccavela, at: [1, 3], to: { location: roccavela, link: x_labyrinth } }
+  contents:
+    - { id: maze_gate, ref: coast:gate, at: [5, 3] }
+    - { id: center_gate, ref: coast:gate, at: [17, 3] }
+    - { id: fallen_stones, ref: coast:fallen_stones, at: [10, 2] }
+    - { ref: coast:wild_boar, count: 2, room: maze }
+    - { id: moon_disc, ref: moon_disc, at: [19, 3] }

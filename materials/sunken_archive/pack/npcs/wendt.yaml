@@ -1,0 +1,18 @@
+id: wendt
+name: Gisela Wendt
+template: coast:commoner
+disposition: friendly
+topics:
+  song:
+    label: the half-remembered song
+    brief: >-
+      Wendt sings a Chapter hymn about a ship of iron going south past four isles, and stops where
+      she always stops, on "may your lantern glow bright". She learned it, she says, for the scholars
+      of Roccavela, who sing it whole.
+  courier:
+    label: who taught her the song
+    when: { flag: know_salinara }
+    brief: >-
+      At the mention of the salt road she lowers her voice. A courier in Reliquary grey paid her two
+      florets, weeks before the sinking, to sing the song in this tavern every night. The courier
+      never stayed to hear it.

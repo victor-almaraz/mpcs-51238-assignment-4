@@ -1,0 +1,92 @@
+id: side_quests
+title: Errands Along the Coast
+stages: [open, closed]
+initial: open
+triggers:
+  - id: parcel_paid
+    on: { type: talked, npc: lydia, topic: parcel }
+    effects:
+      - add_flag: { flag: purse, value: 8, target: room }
+    once: true
+  - id: reply_paid
+    on: { type: talked, npc: tilo, topic: reply }
+    effects:
+      - add_flag: { flag: purse, value: 8, target: room }
+    once: true
+  - id: lantern_toll
+    on: { type: talked, npc: kosmas, topic: toll }
+    when: { flag: purse, gte: 2 }
+    effects:
+      - add_flag: { flag: purse, value: -2 }
+      - give_item: { target: actor, ref: salt_lantern }
+    narrate: Kosmas bites the coin, as pirates do, and hands over the salt-crusted lantern.
+    once: true
+  - id: lantern_paid
+    on: { type: talked, npc: eudoxia, topic: lantern }
+    effects:
+      - add_flag: { flag: purse, value: 12, target: room }
+    once: true
+  - id: float_taken
+    on: { type: item_taken, ref: net_float }
+    effects:
+      - set_hostile: { target: camp_thug, hostile: true }
+      - set_hostile: { target: bailiff, hostile: true }
+      - start_combat: {}
+    narrate: The bailiff says the float is on House Morcante's claim, and his wharf-hand comes at you with a cudgel.
+    once: true
+  - id: float_paid
+    on: { type: talked, npc: dimos, topic: float }
+    effects:
+      - add_flag: { flag: purse, value: 8, target: room }
+    once: true
+  - id: herbs_paid
+    on: { type: talked, npc: galateia, topic: herbs }
+    effects:
+      - add_flag: { flag: purse, value: 6, target: room }
+    once: true
+  - id: case_given
+    on: { type: talked, npc: kleon, topic: case }
+    effects:
+      - give_item: { target: actor, ref: instrument_case }
+    once: true
+  - id: case_delivered
+    on: { type: item_given, ref: instrument_case, to: lamp_cabinet }
+    effects:
+      - add_flag: { flag: purse, value: 8, target: room }
+    narrate: Phaidon hears the cabinet close and pays the carriage without looking up from his lamps.
+    once: true
+  - id: disc_paid
+    on: { type: talked, npc: orsolakis, topic: disc }
+    effects:
+      - add_flag: { flag: purse, value: 12, target: room }
+    once: true
+  - id: rent_refused
+    on: { type: talked, npc: phaidon, topic: rent }
+    effects:
+      - set_hostile: { target: thug_1, hostile: true }
+      - set_hostile: { target: thug_2, hostile: true }
+      - start_combat: {}
+    once: true
+  - id: rent_paid
+    on: { type: talked, npc: phaidon, topic: thanks }
+    effects:
+      - add_flag: { flag: purse, value: 12, target: room }
+    once: true
+  - id: mask_paid
+    on: { type: talked, npc: aristea, topic: masks }
+    effects:
+      - add_flag: { flag: purse, value: 10, target: room }
+    once: true
+  - id: troupe_travels
+    on: { type: moved, from: plaza }
+    when: { not: { location: orvelle } }
+    effects:
+      - move_entity: { target: aristea, room: salinara.row }
+      - move_entity: { target: wolfram, room: salinara.row }
+      - move_entity: { target: pelagia, room: salinara.row }
+    once: true
+  - id: kassiani_travels
+    on: { type: moved, location: roccavela }
+    effects:
+      - move_entity: { target: kassiani, room: roccavela.quay }
+    once: true

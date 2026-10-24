@@ -1,0 +1,68 @@
+sealed_iron_box_book:
+  kind: fixture
+  label: sealed iron box
+  tags: [iron, sealed]
+  obstructs: [movement]
+  verbs:
+    open:
+      requirement: { all: [ { has_item: coast:prybar }, { has_item: coast:cold_chisel } ] }
+      effects:
+        - give_item: { target: actor, ref: book_of_weeping }
+        - despawn: { target: target }
+sealed_iron_box_folio:
+  kind: fixture
+  label: sealed iron box
+  tags: [iron, sealed]
+  obstructs: [movement]
+  verbs:
+    open:
+      requirement: { all: [ { has_item: coast:prybar }, { has_item: coast:cold_chisel } ] }
+      effects:
+        - give_item: { target: actor, ref: three_martyrs_folio }
+        - despawn: { target: target }
+sealed_iron_box_glass:
+  kind: fixture
+  label: sealed iron box
+  tags: [iron, sealed]
+  obstructs: [movement]
+  verbs:
+    open:
+      requirement: { all: [ { has_item: coast:prybar }, { has_item: coast:cold_chisel } ] }
+      effects:
+        - give_item: { target: actor, ref: divining_glass }
+        - despawn: { target: target }
+sealed_iron_box_stone:
+  kind: fixture
+  label: sealed iron box
+  tags: [iron, sealed]
+  obstructs: [movement]
+  verbs:
+    open:
+      requirement: { all: [ { has_item: coast:prybar }, { has_item: coast:cold_chisel } ] }
+      effects:
+        - give_item: { target: actor, ref: navigation_stone }
+        - despawn: { target: target }
+opened_box:
+  kind: container
+  label: opened iron box
+  tags: [iron]
+  capacity: 4
+  contents: []
+  verbs:
+    seal:
+      requirement: { all: [ { has_item: antique_priest_ring }, { has_item: coast:prybar }, { has_item: coast:cold_chisel } ] }
+      effects:
+        - remove_item: { target: actor, ref: antique_priest_ring }
+open_iron_box:
+  kind: container
+  label: open iron box
+  tags: [iron, cold]
+  capacity: 4
+  contents: [antique_priest_ring]
+  verbs:
+    read:
+      effects: []
+    seal:
+      requirement: { all: [ { has_item: antique_priest_ring }, { has_item: coast:prybar }, { has_item: coast:cold_chisel } ] }
+      effects:
+        - remove_item: { target: actor, ref: antique_priest_ring }

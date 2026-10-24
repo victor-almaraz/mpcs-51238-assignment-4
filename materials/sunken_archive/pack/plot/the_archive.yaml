@@ -1,0 +1,239 @@
+id: the_archive
+title: The Archive
+stages: [outside, aboard, below, resolved]
+initial: outside
+triggers:
+  - id: hint_longboat
+    on: { type: interacted, target: longboat, verb: read }
+    effects:
+      - add_flag: { flag: hints, value: 1 }
+    narrate: >-
+      The longboat's oarlocks carry the Reliquary's stamp. Wedged under a thwart is a Concord charter
+      case, empty, its clasp forced.
+    once: true
+  - id: aboard
+    on: { type: moved, location: perpetua_deck }
+    effects:
+      - set_stage: { arc: the_archive, stage: aboard }
+    narrate: >-
+      Perpetua leans in the shallows like a sleeper. Her iron decks are warm with sun above the water
+      line and cold below it, and every hatch has been torn at from outside.
+    once: true
+  - id: rivals_waiting
+    on: { type: moved, location: perpetua_deck, to: mooring }
+    when: { flag: rival_lead, gte: 4 }
+    effects:
+      - spawn: { ref: coast:pirate, room: mooring, at: [6, 1], id: gull_1 }
+      - spawn: { ref: coast:pirate, room: mooring, at: [6, 4], id: gull_2 }
+      - start_combat: {}
+    narrate: The Gull Company got here first. Two privateers rise from behind the mooring bitts.
+    once: true
+  - id: rivals_more
+    on: { type: moved, location: perpetua_deck, to: mooring }
+    when: { flag: rival_lead, gte: 5 }
+    effects:
+      - spawn: { ref: coast:pirate, room: mooring, at: [7, 2], id: gull_3 }
+      - spawn: { ref: coast:pirate, room: mooring, at: [7, 3], id: gull_4 }
+    narrate: More of them come up the ladder from their longboat.
+    once: true
+  - id: gallery_ambush
+    on: { type: moved, location: perpetua_deck, to: gallery }
+    effects:
+      - spawn: { ref: coast:drowned, room: gallery, at: [18, 1], id: deck_drowned_1 }
+      - spawn: { ref: coast:drowned, room: gallery, at: [18, 4], id: deck_drowned_2 }
+      - start_combat: {}
+    narrate: >-
+      Two drowned sailors stand up out of the shallows of the gallery floor. Their lids are bare, no
+      eyes painted on them. They died unseen, and something below still commands them.
+    once: true
+  - id: winch
+    on: { type: interacted, target: winch, verb: operate }
+    effects:
+      - set_flag: { flag: deck_open, value: true }
+      - open_door: { door: holds_hatch }
+    narrate: The winch groans and the iron hatch to the holds lifts on its chain, breathing out cold air.
+    once: true
+  - id: below
+    on: { type: moved, location: perpetua_holds }
+    effects:
+      - set_stage: { arc: the_archive, stage: below }
+    narrate: >-
+      The holds are dark and half full of sea. Iron boxes stand in the flooded stacks like stones in
+      a field, each stamped with the Ironmasters' mark.
+    once: true
+  - id: keeper_found
+    on: { type: moved, location: perpetua_holds }
+    when: { near: vantane, within: 3 }
+    effects: []
+    narrate: >-
+      A thin woman in a custodian's coat looks out from among the registry shelves and makes the
+      lantern gesture, a cupped hand at the brow, for the crew she lost.
+    once: true
+  - id: opened_book
+    on: { type: interacted, target: box_book, verb: open }
+    effects:
+      - spawn: { ref: opened_box, room: perpetua_holds.box_book }
+    once: true
+  - id: opened_folio
+    on: { type: interacted, target: box_folio, verb: open }
+    effects:
+      - spawn: { ref: opened_box, room: perpetua_holds.box_folio }
+      - add_flag: { flag: hints, value: 1 }
+    narrate: >-
+      The folio's flyleaf lists every relic shipped with it in a registrar's hand. There is no ring
+      on the list.
+    once: true
+  - id: opened_glass
+    on: { type: interacted, target: box_glass, verb: open }
+    effects:
+      - spawn: { ref: opened_box, room: perpetua_holds.box_glass }
+    once: true
+  - id: opened_stone
+    on: { type: interacted, target: box_stone, verb: open }
+    effects:
+      - spawn: { ref: opened_box, room: perpetua_holds.box_stone }
+    once: true
+  - id: ward_watch
+    on: { type: moved, location: ward_chamber }
+    effects: []
+    narrate: >-
+      Three drowned stand in the cold water around an open iron box, facing it, as if keeping watch.
+      They do not turn when you come in.
+    once: true
+  - id: ward_cold
+    on: { type: moved, location: ward_chamber }
+    when: { near: open_iron_box, within: 3 }
+    effects: []
+    narrate: The open box pulls at you like cold water pulls at a swimmer. Something in it wants to be held.
+    once: true
+  - id: hint_pry_marks
+    on: { type: interacted, target: open_iron_box, verb: read }
+    effects:
+      - add_flag: { flag: hints, value: 1 }
+    narrate: >-
+      The box was opened from outside, before the sinking. Fresh pry marks, a Reliquary seal plate
+      bent back, and a Reliquary-pattern cold chisel left beside it.
+    once: true
+  - id: ring_taken
+    on: { type: item_taken, ref: antique_priest_ring }
+    effects:
+      - set_flag: { flag: ring_taken, value: true }
+    narrate: The ring is colder than the water. Somewhere below, the drowned stop moving and turn toward you.
+    once: true
+  - id: ring_sealed
+    on: { type: interacted, verb: seal }
+    effects:
+      - set_flag: { flag: ward_sealed, value: true }
+      - set_hostile: { target: ward_drowned_1, hostile: false }
+      - set_hostile: { target: ward_drowned_2, hostile: false }
+      - set_hostile: { target: ward_drowned_3, hostile: false }
+    narrate: >-
+      You shut the false seal in iron and drive the chisel through the hasp. All through the ship the
+      drowned lie down in the water, as if someone had finally painted their eyes.
+    once: true
+  - id: hint_visitor
+    on: { type: talked, npc: vantane, topic: visitor }
+    effects:
+      - add_flag: { flag: hints, value: 1 }
+    once: true
+
+  # Endings. Each set's variants have mutually exclusive conditions.
+  # Endings. The variants of each ending have mutually exclusive conditions.
+  - id: escaped_sealed_quiet
+    on: { type: moved, location: perpetua_deck, to: mooring }
+    when:
+      all:
+        - { any: [ { has_item: book_of_weeping }, { has_item: three_martyrs_folio }, { has_item: divining_glass }, { has_item: navigation_stone } ] }
+        - { flag: ward_sealed }
+        - { flag: hints, lte: 4 }
+    effects:
+      - set_stage: { arc: the_archive, stage: resolved }
+      - end_campaign: { ending: escaped }
+    narrate: >-
+      You leave a quiet wreck behind you. The artifact is delivered, the writ is closed, and the matter ends, as matters do on this coast.
+    once: true
+  - id: escaped_sealed_known
+    on: { type: moved, location: perpetua_deck, to: mooring }
+    when:
+      all:
+        - { any: [ { has_item: book_of_weeping }, { has_item: three_martyrs_folio }, { has_item: divining_glass }, { has_item: navigation_stone } ] }
+        - { flag: ward_sealed }
+        - { flag: hints, gte: 5 }
+    effects:
+      - set_stage: { arc: the_archive, stage: resolved }
+      - end_campaign: { ending: escaped }
+    narrate: >-
+      Past the reef a second vessel waits, its writs bearing the same out-of-sequence number as yours. You see it before it sees you, and you know now who was meant to raise this cargo.
+    once: true
+  - id: escaped_left_quiet
+    on: { type: moved, location: perpetua_deck, to: mooring }
+    when:
+      all:
+        - { any: [ { has_item: book_of_weeping }, { has_item: three_martyrs_folio }, { has_item: divining_glass }, { has_item: navigation_stone } ] }
+        - { not: { flag: ring_taken } }
+        - { flag: hints, lte: 4 }
+    effects:
+      - set_stage: { arc: the_archive, stage: resolved }
+      - end_campaign: { ending: escaped }
+    narrate: >-
+      You sail with the artifact. Behind you the drowned still walk the holds of Perpetua, and the wreck stays dangerous for the next crew.
+    once: true
+  - id: escaped_left_known
+    on: { type: moved, location: perpetua_deck, to: mooring }
+    when:
+      all:
+        - { any: [ { has_item: book_of_weeping }, { has_item: three_martyrs_folio }, { has_item: divining_glass }, { has_item: navigation_stone } ] }
+        - { not: { flag: ring_taken } }
+        - { flag: hints, gte: 5 }
+    effects:
+      - set_stage: { arc: the_archive, stage: resolved }
+      - end_campaign: { ending: escaped }
+    narrate: >-
+      You sail with the artifact. The next crew will arrive on schedule, as the tide table promised a season ago, and the open box waits for them.
+    once: true
+  - id: escaped_carried_quiet
+    on: { type: moved, location: perpetua_deck, to: mooring }
+    when:
+      all:
+        - { any: [ { has_item: book_of_weeping }, { has_item: three_martyrs_folio }, { has_item: divining_glass }, { has_item: navigation_stone } ] }
+        - { flag: ring_taken }
+        - { not: { flag: ward_sealed } }
+        - { flag: hints, lte: 4 }
+    effects:
+      - set_stage: { arc: the_archive, stage: resolved }
+      - end_campaign: { ending: escaped }
+    narrate: >-
+      You sail with the artifact and the ring. The ring is cold in the pack, and no one aboard knows what it commands.
+    once: true
+  - id: escaped_carried_known
+    on: { type: moved, location: perpetua_deck, to: mooring }
+    when:
+      all:
+        - { any: [ { has_item: book_of_weeping }, { has_item: three_martyrs_folio }, { has_item: divining_glass }, { has_item: navigation_stone } ] }
+        - { flag: ring_taken }
+        - { not: { flag: ward_sealed } }
+        - { flag: hints, gte: 5 }
+    effects:
+      - set_stage: { arc: the_archive, stage: resolved }
+      - end_campaign: { ending: escaped }
+    narrate: >-
+      You sail with the artifact and the ring. Someone on this coast reserved a writ a season early, and that someone is waiting for the ring itself.
+    once: true
+  - id: archive_sealed_quiet
+    on: { type: talked, npc: vantane, topic: seal }
+    when: { flag: hints, lte: 4 }
+    effects:
+      - set_stage: { arc: the_archive, stage: resolved }
+      - end_campaign: { ending: archive_sealed }
+    narrate: >-
+      Vantane walks out of the vault on your arm. Together you close the iron doors and open the sea-cocks, and the lower stacks fill with quiet water. The archive stays beneath the sea, and you leave with nothing but her account.
+    once: true
+  - id: archive_sealed_known
+    on: { type: talked, npc: vantane, topic: seal }
+    when: { flag: hints, gte: 5 }
+    effects:
+      - set_stage: { arc: the_archive, stage: resolved }
+      - end_campaign: { ending: archive_sealed }
+    narrate: >-
+      Vantane walks out of the vault on your arm, and you flood the lower stacks together. On the mooring she writes out her account of the grey visitor and the charter case and gives it to you, the only record there will be.
+    once: true

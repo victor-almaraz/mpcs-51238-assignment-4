@@ -1,0 +1,50 @@
+id: orvelle
+kind: authored
+map:
+  legend:
+    "w": window
+    "f": low_wall
+  rows:
+    - "##############################"
+    - "#........#.........#.........#"
+    - "#........#.........#.........#"
+    - "#........#.........#.........#"
+    - "#wwww.wwwwwwww.wwwwwwwww.wwww#"
+    - "#............................#"
+    - "#............................#"
+    - "#............................#"
+    - "#............................#"
+    - "#fffffffffffff.ffffffffffffff#"
+    - "#............................#"
+    - "#............................#"
+    - "##############################"
+  rooms:
+    guildhall: { label: Concord guildhall, tags: [indoors], area: [[1, 1, 8, 3], [5, 4, 1, 1]] }
+    tavern: { label: tavern of the Iron Road, tags: [indoors], light: dim, area: [[10, 1, 9, 3], [14, 4, 1, 1]] }
+    study: { label: geographer's study, tags: [indoors], area: [[20, 1, 9, 3], [24, 4, 1, 1]] }
+    plaza: { label: Orvelle plaza, tags: [entry, outdoors], area: [[1, 5, 28, 4]] }
+    lane: { label: cobblers' lane, tags: [outdoors], area: [[1, 10, 28, 2], [14, 9, 1, 1]] }
+  links:
+    x_vessaro: { label: the road to Vessaro, at: [28, 5], to: { location: vessaro, link: x_road } }
+    x_salinara: { label: the road to Salinara, at: [28, 6], to: { location: salinara, link: x_road } }
+    x_roccavela: { label: the road to Roccavela, at: [28, 7], to: { location: roccavela, link: x_road } }
+  contents:
+    - { id: guildhall_door, ref: coast:house_door, at: [5, 4] }
+    - { id: tavern_door, ref: coast:house_door, at: [14, 4] }
+    - { id: study_door, ref: coast:house_door, at: [24, 4] }
+    - { id: lane_gate, ref: coast:gate, at: [14, 9] }
+    - { ref: coast:fountain, at: [14, 7] }
+    - { id: plaza_lamp, ref: coast:hand_lamp, at: [13, 7] }
+    - { id: notice_board, ref: coast:notice_board, at: [1, 8] }
+    - { npc: liesl, at: [8, 7] }
+    - { npc: aristea, at: [20, 6] }
+    - { npc: wolfram, at: [21, 6] }
+    - { npc: pelagia, at: [22, 6] }
+    - { id: strongbox, ref: guild_strongbox, at: [1, 1] }
+    - { npc: hallek, at: [4, 2] }
+    - { id: ledger, ref: vrakas_ledger, at: [10, 1] }
+    - { id: back_booth, ref: back_booth, at: [18, 1] }
+    - { npc: wendt, at: [13, 2] }
+    - { npc: krebs, at: [24, 2] }
+    - { npc: tilo, at: [5, 10] }
+    - { npc: osk, at: [22, 11] }

@@ -1,0 +1,25 @@
+id: perpetua_holds
+kind: generated
+generator:
+  algorithm: bsp
+  size: [44, 30]
+  rooms: [9, 12]
+  min_room: 4
+  loop_ratio: 0.1
+population:
+  encounter_table: coast:encounters_holds
+  loot_table: coast:hold_loot
+  room_templates: [coast:registry_vault]
+  density: 0.4
+  ambient: dark
+  lit_rooms: 0.25
+anchors:
+  - { id: box_book, place: { ref: sealed_iron_box_book, id: box_book }, constraints: { min_depth: 1 } }
+  - { id: box_folio, place: { ref: sealed_iron_box_folio, id: box_folio }, constraints: { min_depth: 1 } }
+  - { id: box_glass, place: { ref: sealed_iron_box_glass, id: box_glass }, constraints: { min_depth: 1 } }
+  - { id: box_stone, place: { ref: sealed_iron_box_stone, id: box_stone }, constraints: { min_depth: 1 } }
+  - { id: keeper, place: { npc: vantane }, constraints: { prefer_role: boss }, shared: true }
+links:
+  x_up: { label: the ladder to the deck, role: entry, to: { location: perpetua_deck, link: x_down } }
+  x_ward: { label: the iron door to the ward chamber, role: dead_end, to: { location: ward_chamber, link: x_in } }
+gates_per_location: 1

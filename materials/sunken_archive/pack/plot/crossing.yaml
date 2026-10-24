@@ -1,0 +1,57 @@
+id: crossing
+title: The Crossing
+stages: [docked, underway, moored]
+initial: docked
+triggers:
+  - id: underway
+    on: { type: moved, location: boat_deck }
+    effects:
+      - set_stage: { arc: crossing, stage: underway }
+    narrate: >-
+      The boat pushes off into a fog so thick the bow vanishes. You cannot see your own hands unless
+      you hold a light to them. The captain makes a small offering, a coin into the water, paying the
+      tide.
+    once: true
+  - id: leg
+    on: { type: moved, location: boat_deck, via: x_deck }
+    effects:
+      - add_flag: { flag: leg, value: 1 }
+  - id: gulls
+    on: { type: moved, location: boat_deck, via: x_deck }
+    when: { flag: leg, eq: 2 }
+    effects:
+      - spawn: { ref: coast:carrion_gull, room: bow }
+      - spawn: { ref: coast:carrion_gull, room: bow }
+      - start_combat: {}
+    narrate: Carrion gulls drop out of the fog onto the rail, screaming, and go for your eyes.
+    once: true
+  - id: ondrel
+    on: { type: moved, location: ondrel }
+    effects: []
+    narrate: Ondrel is a harbor of fallen stone where crabs the size of shields guard the shallows.
+    once: true
+  - id: kestrin
+    on: { type: moved, location: kestrin }
+    effects: []
+    narrate: Kestrin is all kelp, a forest under the surface that moves when nothing moves it.
+    once: true
+  - id: lamp_shoal
+    on: { type: moved, location: lamp_shoal }
+    effects: []
+    narrate: A broken lighthouse stands on Lamp Shoal, and somehow its beacon is lit.
+    once: true
+  - id: stair
+    on: { type: moved, location: drowned_stair }
+    effects: []
+    narrate: >-
+      Stone steps descend into the sea and rise again on the far side, where an iron hull leans out of
+      the water. Something vast lies across the drowned steps, its arms slowly tasting the stone.
+    once: true
+  - id: octopus_gone
+    on: { type: died, target: octopus }
+    effects:
+      - set_flag: { flag: octopus_gone, value: true }
+      - open_door: { door: mooring_gate }
+      - set_stage: { arc: crossing, stage: moored }
+    narrate: The great octopus sinks away into the dark water, and the mooring gate swings open on the tide.
+    once: true

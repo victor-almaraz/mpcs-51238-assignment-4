@@ -1,0 +1,20 @@
+book_of_weeping:
+  kind: item
+  label: Book of Weeping
+  tags: [artifact, magic, book]
+three_martyrs_folio:
+  kind: item
+  label: Collected Writings of the Three Martyrs
+  tags: [artifact, religious, folio]
+divining_glass:
+  kind: item
+  label: Divining Glass
+  tags: [artifact, magic]
+navigation_stone:
+  kind: item
+  label: Navigation Stone
+  tags: [artifact, magic]
+antique_priest_ring:
+  kind: item
+  label: Antique Priest Ring
+  tags: [cursed, forged]

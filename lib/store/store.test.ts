@@ -2,9 +2,9 @@
 // state, including across state_restored.
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { canonical, replay, submit, type Bundles, type Commit } from "../engine";
+import { canonical, submit, type Bundles, type Commit } from "../engine";
 import { AdminError, replayInstance, restoreInstance } from "../coordinator/admin";
-import { commitOf } from "../harness/harness";
+import { begin, commitOf, step } from "../harness/harness";
 import { SCENARIOS, author } from "../harness/scenarios";
 import { Rng } from "../rng";
 import { Store, VersionConflict } from "./index";
@@ -28,10 +28,12 @@ async function install(bundles: Bundles, id = "i_1", seed = 7): Promise<void> {
   for (const b of [...bundles.settings, bundles.adventure]) {
     if (!(await store.getBundle(b.kind, b.id, b.version))) await store.putBundle(b, { origin: "operator" });
   }
+  // A configured Cadmium system lists its enabled modules; the stored instance pins them.
+  const modules = [...((bundles.system as { ENABLED?: readonly string[] }).ENABLED ?? [])];
   const materials = [...bundles.settings.map((s, i) => ({ kind: "setting" as const, id: s.id, version: s.version, position: i })), { kind: "adventure" as const, id: bundles.adventure.id, version: bundles.adventure.version, position: bundles.settings.length }];
   if (!(await store.getCampaign("camp_1"))) {
     await store.upsertUser({ id: "user_1", email: "u1@example.org", display_name: "U1", terms_accepted_at: null });
-    await store.createCampaign({ id: "camp_1", title: "Campaign", description: "", author_id: "user_1", system: bundles.system.ID, system_versions: "^1.0", modules: [], materials });
+    await store.createCampaign({ id: "camp_1", title: "Campaign", description: "", author_id: "user_1", system: bundles.system.ID, system_versions: "^1.0", modules, materials });
   }
   await store.createInstance({
     id,
@@ -39,7 +41,7 @@ async function install(bundles: Bundles, id = "i_1", seed = 7): Promise<void> {
     name: `Instance ${id}`,
     system: bundles.system.ID,
     system_version: bundles.system.VERSION,
-    modules: [],
+    modules,
     materials,
     seed,
   });
@@ -50,17 +52,18 @@ async function storeScenario(scenario: (typeof SCENARIOS)[number], id = "i_1"): 
   const session = author(scenario);
   await install(scenario.bundles(), id, scenario.seed);
   const commits = session.log.map(commitOf);
+  // The state after each commit, from one pass over the inputs.
+  const first = session.log[0]!;
+  const again = begin(scenario.bundles(), scenario.seed, "start" in first ? first.start.characters : []);
+  const states = [again.state];
+  for (const line of session.log.slice(1)) {
+    if ("input" in line) step(again, line.input);
+    states.push(again.state);
+  }
   for (const [i, c] of commits.entries()) {
-    const state = i === commits.length - 1 ? session.state : replayState(scenario.bundles(), commits, c.version);
-    await store.commit({ instanceId: id, expectedVersion: c.version - 1, state, events: c.events, input: c.input, status: i === 0 ? "active" : undefined });
+    await store.commit({ instanceId: id, expectedVersion: c.version - 1, state: states[i]!, events: c.events, input: c.input, status: i === 0 ? "active" : undefined });
   }
   return commits;
-}
-
-function replayState(bundles: Bundles, commits: Commit[], to: number) {
-  const r = replay(bundles, commits, to);
-  if (!r.ok) throw new Error(r.reason);
-  return r.state;
 }
 
 describe("commits", () => {
