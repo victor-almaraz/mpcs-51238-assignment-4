@@ -1115,3 +1115,17 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** Cadmium's creation form offers an optional "For campaign" choice among the caller's unarchived Cadmium campaigns, and shows the fields of the modules it enables (the armor pool and the carrying limit, from modules.json) as information. The choice is not submitted and does not change the stored sheet. `/characters/new?system=cadmium&campaign=<id>` preselects it.
 
 **Proposed resolution.** Add an optional campaign, for display only, to the creation flow, and say whether a Quest form should show the modules of a Cadmium campaign that would accept the character.
+
+## design-system
+
+| Field | Value |
+|---|---|
+| Document | `docs/design/README.md`, `foundations.md`, `components.md`, `screens.md`; `design/theme.css` |
+| Section | Margin: Principles; Layout (desk, page, margin); Typography; Margin notes; Screens |
+| Marker | `docs/design/README.md` |
+
+**Problem.** Margin lays every editing and play screen out as one 34rem page column with a 14rem margin of numbered notes beside it, and sets the interface in Libertinus Serif and Sans. In use, the narrow column wastes the window on the play and editor screens, numbered notes make the reader match numbers to lines, and round status hidden in the margin is easy to miss. Comparable tools give each of the margin's jobs its own established place: inline field errors with an error summary, a problems panel with a count in the status bar, a persistent turn tracker, and a selection-driven side pane.
+
+**Implemented.** The application's own pattern library, `docs/design/README.md`, replaces Margin for this application: size classes, hub, detail, form, and workspace layouts, the components in `components/ui/`, and per-screen patterns, with sources. The Graphite colours and contrast table, the Lucide icon vocabulary, and the writing rules stay. The software is set in the system font and the story in self-hosted Libertinus Serif (`app/theme.css`).
+
+**Proposed resolution.** Replace the Margin documents with a pattern library along these lines, or keep Margin for the specification and state that applications may substitute their own design system that meets the same accessibility and contrast requirements.

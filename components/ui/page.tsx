@@ -23,7 +23,7 @@ export function PageHeader({ title, description, crumbs, status, actions }: { ti
             {crumbs.map((c, i) => (
               <li key={c.href} className="flex items-center gap-1">
                 {i > 0 && <span aria-hidden="true">/</span>}
-                <Link href={c.href} className="hover:text-accent hover:underline">
+                <Link href={c.href} className="inline-flex min-h-6 items-center hover:text-accent hover:underline">
                   {c.label}
                 </Link>
               </li>

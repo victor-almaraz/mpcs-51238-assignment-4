@@ -21,6 +21,16 @@
   ::selection {
     background: var(--color-selection);
   }
+  /* Content never widens the page; wide tables scroll inside their own box. */
+  main {
+    min-width: 0;
+    max-width: 100vw;
+    overflow-wrap: break-word;
+  }
+  /* Workspaces (play, the adventure editor) fill the window and have no footer. */
+  main:has(> [data-workspace]) + footer {
+    display: none;
+  }
   .tabular {
     font-variant-numeric: tabular-nums;
   }

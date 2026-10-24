@@ -31,12 +31,13 @@ function counting(): Entropy {
   return { seed: () => 1000 + ++n, id: (prefix) => `${prefix}_demo${++n}`, code: (length) => String(++n).padStart(length, "7") };
 }
 
-const ROOT = process.cwd();
-const pack = (dir: string) => readPackDir(join(ROOT, dir));
+// Each read starts from a fixed folder, so the bundler traces only those folders.
+type Pack = { materials: string } | { example: string };
+const pack = (p: Pack) => ("materials" in p ? readPackDir(join(process.cwd(), "materials", p.materials, "pack")) : readPackDir(join(process.cwd(), "cadmium-spec", "spec", "examples", p.example)));
 
-function setting(dir: string) {
-  const r = compileSetting(pack(dir));
-  if (!r.bundle) throw new Error(`${dir}: ${r.diagnostics.map(formatDiagnostic).join("; ")}`);
+function setting(p: Pack) {
+  const r = compileSetting(pack(p));
+  if (!r.bundle) throw new Error(`${JSON.stringify(p)}: ${r.diagnostics.map(formatDiagnostic).join("; ")}`);
   return r.bundle;
 }
 
@@ -61,10 +62,10 @@ export async function seedDemo(store: Store, now = new Date()): Promise<DemoWorl
   }
 
   // Materials, as an operator publishes them.
-  const coast = setting("materials/lantern_coast/pack");
-  const settings = [setting("cadmium-spec/spec/examples/derelict_station"), setting("cadmium-spec/spec/examples/sunless_crypt"), setting("materials/quest_starter/pack"), coast];
+  const coast = setting({ materials: "lantern_coast" });
+  const settings = [setting({ example: "derelict_station" }), setting({ example: "sunless_crypt" }), setting({ materials: "quest_starter" }), coast];
   for (const b of settings) await store.putBundle(b, { origin: "operator" });
-  const exemplar = compileAdventure(pack("materials/sunken_archive/pack"), [coast]);
+  const exemplar = compileAdventure(pack({ materials: "sunken_archive" }), [coast]);
   if (!exemplar.bundle) throw new Error(exemplar.diagnostics.map(formatDiagnostic).join("; "));
   await store.putBundle(exemplar.bundle, { origin: "operator" });
 
@@ -121,7 +122,7 @@ export async function seedDemo(store: Store, now = new Date()): Promise<DemoWorl
   await joinByLink(store, "user_demo", (await rotateInviteLink(store, "user_ari", theirs.id, e)).invite_link_code!);
 
   // An adventure draft: the exemplar itself, imported as an author would.
-  const files = [...pack("materials/sunken_archive/pack")].map(([name, data]) => ({ name: `sunken_archive/${name}`, data }));
+  const files = [...pack({ materials: "sunken_archive" })].map(([name, data]) => ({ name: `sunken_archive/${name}`, data }));
   const draft = await importDraft(store, "user_demo", zip(files), e).catch((x) => void console.error("draft", (x as Error).message));
 
   return { campaign: campaign.id, game: game.id, lobby: lobby.id, character: wren.id, draft: draft ? draft.draft.id : null, invitation, link };

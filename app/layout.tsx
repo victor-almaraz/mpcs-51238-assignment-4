@@ -113,13 +113,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           </main>
           <footer className="border-t border-rule bg-page">
             <div className="flex flex-wrap gap-x-6 gap-y-2 px-4 py-4 text-caption text-muted sm:px-6">
-              <Link href="/terms" className="hover:text-ink">
+              <Link href="/terms" className="inline-flex min-h-6 items-center hover:text-ink">
                 Terms
               </Link>
-              <Link href="/privacy" className="hover:text-ink">
+              <Link href="/privacy" className="inline-flex min-h-6 items-center hover:text-ink">
                 Privacy
               </Link>
-              <Link href="/attribution" className="hover:text-ink">
+              <Link href="/attribution" className="inline-flex min-h-6 items-center hover:text-ink">
                 Attribution
               </Link>
             </div>

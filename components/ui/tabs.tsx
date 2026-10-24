@@ -23,7 +23,7 @@ export function Tabs({ tabs, initial, label }: { tabs: Tab[]; initial?: string; 
   };
   return (
     <div>
-      <div role="tablist" aria-label={label} className="mb-6 flex gap-1 overflow-x-auto border-b border-rule">
+      <div role="tablist" aria-label={label} className="mb-6 flex gap-1 relative overflow-x-auto border-b border-rule">
         {tabs.map((t, i) => {
           const selected = t.id === current;
           return (
