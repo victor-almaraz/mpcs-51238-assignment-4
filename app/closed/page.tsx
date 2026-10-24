@@ -1,8 +1,9 @@
 // The closed notice after shutdown (app-flow.md, Scheduled jobs: Shutdown).
 import Link from "next/link";
+import { CONTACT } from "@/lib/legal";
 
 export default function Closed() {
-  const contact = process.env.CONTACT_EMAIL;
+  const contact = process.env.CONTACT_EMAIL || CONTACT;
   return (
     <div className="mx-auto max-w-page px-6 py-10">
       <h1 className="font-display text-title">Cadmium has closed</h1>

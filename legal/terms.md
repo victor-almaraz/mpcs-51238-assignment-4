@@ -3,7 +3,7 @@
 **Cadmium**
 Effective date: October 24, 2026
 Operated by: the Cadmium project, a student project for MPCS 51238 Design, Build, Ship at the University of Chicago
-Contact: [EMAIL]
+Contact: cadmium_mpcs@proton.me
 
 These Terms of Service are an agreement between you and the operators of Cadmium ("we", "us"). By creating an account or using Cadmium, you accept these terms and the [Privacy Policy](/privacy). If you do not accept them, do not use Cadmium.
 
@@ -57,7 +57,7 @@ You may not upload or create material that:
 
 Fiction may depict conflict, danger, and dark themes appropriate to a tabletop game. These rules concern real harm, real people, and unlawful or abusive material.
 
-We do not monitor content, including images, in advance. We act on reports: to report content that violates these terms or infringes your rights, contact [EMAIL]. When investigating a report, we may review the content and the related game history. We may remove content, end games, or suspend accounts that violate these terms, without notice. A removed image is replaced by an icon or initial; the character or content it belonged to is otherwise unaffected.
+We do not monitor content, including images, in advance. We act on reports: to report content that violates these terms or infringes your rights, contact cadmium_mpcs@proton.me. When investigating a report, we may review the content and the related game history. We may remove content, end games, or suspend accounts that violate these terms, without notice. A removed image is replaced by an icon or initial; the character or content it belonged to is otherwise unaffected.
 
 Content that appears to be unlawful may be preserved, including after it or the associated account is deleted, and reported to law enforcement or other authorities and to the University of Chicago.
 
@@ -93,4 +93,4 @@ These terms are governed by the laws of the State of Illinois, without regard to
 
 ## 12. Contact
 
-Questions about these terms: [EMAIL].
+Questions about these terms: cadmium_mpcs@proton.me.

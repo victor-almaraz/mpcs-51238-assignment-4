@@ -3,7 +3,7 @@
 **Cadmium**
 Effective date: October 24, 2026
 Operated by: the Cadmium project, a student project for MPCS 51238 Design, Build, Ship at the University of Chicago
-Contact: [EMAIL]
+Contact: cadmium_mpcs@proton.me
 
 This Privacy Policy describes what personal data Cadmium collects, the purposes for which it is used, the service providers that process it, when it is deleted, and how you can access, export, correct, and delete it. "We" means the operators of Cadmium.
 
@@ -86,7 +86,7 @@ Data under an internal hold is kept until the hold is released (section 7).
 
 ### Takedown
 
-Cadmium will be taken down on or after December 2, 2026. From then, sign-in is disabled, and we may delete all stored data at any time without further notice. Until it is deleted, only the operators have access to it, and only to handle a report, a dispute, or a request from an authority, or to respond to a request from you. You may email [EMAIL] to request a copy or the deletion of your data while it exists.
+Cadmium will be taken down on or after December 2, 2026. From then, sign-in is disabled, and we may delete all stored data at any time without further notice. Until it is deleted, only the operators have access to it, and only to handle a report, a dispute, or a request from an authority, or to respond to a request from you. You may email cadmium_mpcs@proton.me to request a copy or the deletion of your data while it exists.
 
 ## 6. Your rights and controls
 
@@ -102,7 +102,7 @@ The following controls are built into Cadmium and available to every user withou
 
 ### Deleting your data
 
-We delete your data when you ask, unless it is under an internal hold (section 7). Ask through **Settings, Your data, Delete account**, or, if you cannot sign in, by emailing [EMAIL] from the address associated with your account.
+We delete your data when you ask, unless it is under an internal hold (section 7). Ask through **Settings, Your data, Delete account**, or, if you cannot sign in, by emailing cadmium_mpcs@proton.me from the address associated with your account.
 
 Account deletion proceeds in stages:
 
@@ -123,7 +123,7 @@ Data under an internal hold is kept until the hold is released, even if you ask 
 
 ### Other requests
 
-To object to or restrict any processing of your data, or for any request not covered by Settings, email [EMAIL] from the address associated with your account. We respond within 30 days, free of charge. If we decline a request, we will explain why, and you may ask us to reconsider. You may also lodge a complaint with a data protection or consumer protection authority.
+To object to or restrict any processing of your data, or for any request not covered by Settings, email cadmium_mpcs@proton.me from the address associated with your account. We respond within 30 days, free of charge. If we decline a request, we will explain why, and you may ask us to reconsider. You may also lodge a complaint with a data protection or consumer protection authority.
 
 ## 7. Internal holds, legal disclosures, and preservation
 
@@ -149,4 +149,4 @@ We may amend this policy. We will publish the amended version with a new effecti
 
 ## 11. Contact
 
-Questions or requests: [EMAIL].
+Questions or requests: cadmium_mpcs@proton.me.

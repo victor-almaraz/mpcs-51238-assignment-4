@@ -72,4 +72,4 @@ export const SYSTEM_DATA: Readonly<Record<string, { data: unknown; modules?: unk
 };
 
 /** `fnv1a64` of legal/terms.md, a NUL, and legal/privacy.md: changes when either document does. */
-export const TERMS_VERSION = "eeb81ab6692d2728";
+export const TERMS_VERSION = "792cf5301e439fa4";
