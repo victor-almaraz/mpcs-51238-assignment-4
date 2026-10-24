@@ -36,18 +36,21 @@ export default async function Play({ params, searchParams }: { params: Promise<{
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   return (
-    <PlayClient
-      instance={instance}
-      view={view}
-      history={history.items}
-      deadline={(await deps.store.deadline(id))?.toISOString() ?? null}
-      author={campaign.author_id === user.id}
-      userId={user.id}
-      names={Object.fromEntries(instance.characters.map((c) => [c.id, c.name]))}
-      endings={endings}
-      realtime={url && key ? { url, key } : null}
-      textInput={deps.parser !== undefined}
-      portraits={portraits}
-    />
+    <>
+      {/* A workspace has no footer (docs/design/README.md, App frame), so it fills the window under the top bar. */}
+      <PlayClient
+        instance={instance}
+        view={view}
+        history={history.items}
+        deadline={(await deps.store.deadline(id))?.toISOString() ?? null}
+        author={campaign.author_id === user.id}
+        userId={user.id}
+        names={Object.fromEntries(instance.characters.map((c) => [c.id, c.name]))}
+        endings={endings}
+        realtime={url && key ? { url, key } : null}
+        textInput={deps.parser !== undefined}
+        portraits={portraits}
+      />
+    </>
   );
 }
