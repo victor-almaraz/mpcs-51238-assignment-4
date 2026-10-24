@@ -3,7 +3,7 @@
 
 import type { SettingBundle } from "../bundle/setting";
 import { FORMAT_VERSION, builtinConditions, builtinTerrain } from "../bundle/setting";
-import { checkAssets } from "./art";
+import { checkAssets, hashAssets, type AssetFile } from "./art";
 import {
   BUILTIN_CONDITIONS,
   applyEntityDefaults,
@@ -29,6 +29,8 @@ export interface CompileResult<B> {
   ok: boolean;
   diagnostics: Diagnostic[];
   bundle?: B;
+  /** The bundle's asset files by SHA-256, for publishing beside it. */
+  files?: Record<string, AssetFile>;
 }
 
 export { qualify };
@@ -179,7 +181,8 @@ export function compileSetting(files: PackFiles): CompileResult<SettingBundle> {
   for (const map of [s.abilities, s.entities]) for (const [key, { file, value }] of map) checkArtKinds(ctx, file, value, [key]);
 
   if (!out.ok) return { ok: false, diagnostics: sortDiagnostics(out.list) };
-  return { ok: true, diagnostics: [], bundle: buildBundle(s, sites, bound!) };
+  const assetFiles = hashAssets(s.assets as Record<string, JsonObject>, pack.assets);
+  return { ok: true, diagnostics: [], bundle: buildBundle(s, sites, bound!), files: assetFiles };
 }
 
 /** Qualifies refs, writes engine defaults, and merges built-in terrain and conditions (spec/README.md, "Bundle"). */

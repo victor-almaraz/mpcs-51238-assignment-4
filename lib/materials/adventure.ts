@@ -4,7 +4,7 @@
 import type { AdventureBundle } from "../bundle/adventure";
 import { FORMAT_VERSION, type SettingBundle } from "../bundle/setting";
 import type { TerrainType } from "../grid";
-import { checkAssets } from "./art";
+import { checkAssets, hashAssets } from "./art";
 import {
   BUILTIN_CONDITIONS,
   applyEntityDefaults,
@@ -575,7 +575,7 @@ export function compileAdventure(files: PackFiles, settings: readonly SettingBun
     entities: Object.fromEntries([...entities].map(([k, e]) => [k, e.value])) as never,
     assets: assets as never,
   };
-  return { ok: true, diagnostics: [], bundle };
+  return { ok: true, diagnostics: [], bundle, files: hashAssets(assets as Record<string, JsonObject>, pack.assets) };
 }
 
 /** Checks `requires_settings` against the supplied bundles; returns the settings in requirement order. */

@@ -29,6 +29,32 @@ export interface ViewEntry {
   contents?: { id: string; label: string }[];
   /** Verbs `interact` accepts, for entities in reach. */
   verbs?: string[];
+  /** Art by kind, when the content declares it (setting-packs.md, Art). */
+  art?: ArtSet;
+}
+
+/** One asset: a stored file by hash, or a game-icons.net icon, with its alt text. */
+export interface Art {
+  kind: "icon" | "portrait" | "tile";
+  alt: string;
+  hash?: string;
+  game_icons?: string;
+}
+
+export type ArtSet = Partial<Record<Art["kind"], Art>>;
+
+/** The art of a list of refs, by kind, from the bundles' asset declarations. */
+export function artOf(bundles: Bundles, refs: readonly string[] | undefined): ArtSet | undefined {
+  if (!refs || refs.length === 0) return undefined;
+  const out: ArtSet = {};
+  for (const ref of refs) {
+    const [ns, key] = ref.split(":") as [string, string];
+    const holder = bundles.adventure.namespace === ns ? bundles.adventure : bundles.settings.find((s) => s.namespace === ns);
+    const a = holder?.assets[key] as { kind: Art["kind"]; alt: string; source: { file?: string; game_icons?: string }; hash?: string } | undefined;
+    if (!a) continue;
+    out[a.kind] = { kind: a.kind, alt: a.alt, ...(a.hash ? { hash: a.hash } : {}), ...(a.source.game_icons ? { game_icons: a.source.game_icons } : {}) };
+  }
+  return Object.keys(out).length ? out : undefined;
 }
 
 export interface View {
@@ -41,7 +67,7 @@ export interface View {
   map: {
     location: string;
     rows: string[];
-    terrain: Record<string, { label: string }>;
+    terrain: Record<string, { label: string; art?: ArtSet }>;
     legend: Record<string, string>;
     rooms: { id: string; label: string; area: [number, number, number, number][] }[];
     links: { id: string; label: string; at: Cell }[];
@@ -53,8 +79,8 @@ export interface View {
   /** What direct controls offer: carried items, abilities, and the NPCs `talk` accepts with their topics. */
   // SPEC_ISSUES.md#view-direct-play: labels and verbs from parser context, so play works without the parser.
   actions: {
-    inventory: { id: string; label: string }[];
-    abilities: { id: string; label: string }[];
+    inventory: { id: string; label: string; art?: ArtSet }[];
+    abilities: { id: string; label: string; art?: ArtSet }[];
     npcs: { id: string; name: string; topics: { id: string; label: string }[] }[];
   };
 }
@@ -115,8 +141,12 @@ export function view(state: State, bundles: Bundles, characterId: string): View 
     const r = loc.rooms[id]!;
     return r.visited || roomCells(loc, id).some(([x, y]) => loc.seen[y]?.[x] === "1");
   };
-  const terrain: Record<string, { label: string }> = {};
-  for (const id of new Set(Object.values(loc.legend))) terrain[id] = { label: c.terrain(id)?.label ?? id };
+  const terrain: View["map"]["terrain"] = {};
+  for (const id of new Set(Object.values(loc.legend))) {
+    const t = c.terrain(id) as { label?: string; art?: string[] } | undefined;
+    const art = artOf(bundles, t?.art);
+    terrain[id] = { label: t?.label ?? id, ...(art ? { art } : {}) };
+  }
 
   // Visible entities.
   const visible: ViewEntry[] = [];
@@ -135,6 +165,8 @@ export function view(state: State, bundles: Bundles, characterId: string): View 
     if (isLit(c, e)) entry.lit = true;
     const capacity = e.kind === "container" ? (c.template(e.ref) as { capacity?: number }).capacity : undefined;
     if (capacity !== undefined && entry.in_reach) entry.contents = (e.contents ?? []).map((i) => ({ id: i, label: labelOf(c, state, i) }));
+    const art = artOf(bundles, e.npc !== undefined ? (c.npc(e.npc) as { art?: string[] } | undefined)?.art ?? (c.template(e.ref) as { art?: string[] }).art : (c.template(e.ref) as { art?: string[] }).art);
+    if (art) entry.art = art;
     if (entry.in_reach && e.kind !== "creature") {
       const t = c.template(e.ref) as { verbs?: Record<string, unknown>; light?: unknown };
       const verbs = Object.keys(t.verbs ?? {});
@@ -214,8 +246,14 @@ export function view(state: State, bundles: Bundles, characterId: string): View 
       .sort()
       .map((id) => ({ id, name: labelOf(c, state, id), room: roomOf(state, id)?.room ?? null, at: state.characters[id]!.at, summary: c.bundles.system.summary(state.characters[id]!.sheet) })),
     actions: {
-      inventory: ch.items.map((id) => ({ id, label: labelOf(c, state, id) })),
-      abilities: ((ch.sheet.abilities as string[] | undefined) ?? []).map((ref) => ({ id: ref, label: c.ability(ref)?.label ?? ref })),
+      inventory: ch.items.map((id) => {
+        const art = artOf(bundles, (c.template(state.entities[id]!.ref) as { art?: string[] }).art);
+        return { id, label: labelOf(c, state, id), ...(art ? { art } : {}) };
+      }),
+      abilities: ((ch.sheet.abilities as string[] | undefined) ?? []).map((ref) => {
+        const art = artOf(bundles, (c.ability(ref) as { art?: string[] } | undefined)?.art);
+        return { id: ref, label: c.ability(ref)?.label ?? ref, ...(art ? { art } : {}) };
+      }),
       npcs: visible
         .filter((v) => state.entities[v.id]?.npc !== undefined && roomOf(state, v.id)?.room === here)
         .map((v) => {

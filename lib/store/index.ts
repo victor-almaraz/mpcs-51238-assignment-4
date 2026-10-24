@@ -790,4 +790,41 @@ export class Store {
   async userDrafts(owner: string): Promise<DraftRecord[]> {
     return this.rpc.call<DraftRecord[]>("cadmium_user_drafts", { p_owner: owner });
   }
+
+  // Assets ---------------------------------------------------------------------------------------
+
+  /** Stores a file by hash, or adds a bundle reference to the record that already holds it. */
+  async putAsset(a: { hash: string; kind: string; mime: string; width?: number; height?: number; alt: string; license?: string; credit?: string; provenance?: string; uploader_id?: string | null }, data: Uint8Array, bundleRef: { bundle_id: string; key: string } | null): Promise<void> {
+    await this.rpc.call("cadmium_put_asset", { p_asset: a, p_data: toBase64(data), p_bundle_ref: bundleRef });
+  }
+
+  async addAssetRef(hash: string, bundleRef: { bundle_id: string; key: string }): Promise<void> {
+    await this.rpc.call("cadmium_add_asset_ref", { p_hash: hash, p_bundle_ref: bundleRef });
+  }
+
+  async getAsset(hash: string): Promise<{ mime: string; data: Uint8Array } | undefined> {
+    const r = await this.rpc.call<{ mime: string; data: string } | null>("cadmium_get_asset", { p_hash: hash });
+    return r ? { mime: r.mime, data: fromBase64(r.data) } : undefined;
+  }
+
+  async packCredits(): Promise<{ hash: string; kind: string; alt: string; license: string; credit: string | null; bundle_refs: { bundle_id: string; key: string }[] }[]> {
+    return this.rpc.call("cadmium_pack_credits", {});
+  }
+
+  async removeAsset(hash: string): Promise<boolean> {
+    return this.rpc.call<boolean>("cadmium_remove_asset", { p_hash: hash });
+  }
+}
+
+function toBase64(data: Uint8Array): string {
+  let s = "";
+  for (let i = 0; i < data.length; i += 0x8000) s += String.fromCharCode(...data.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+function fromBase64(text: string): Uint8Array {
+  const s = atob(text.replace(/\s+/g, ""));
+  const out = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) out[i] = s.charCodeAt(i);
+  return out;
 }

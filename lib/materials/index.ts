@@ -64,3 +64,19 @@ export function compileDraft(draft: unknown, settings: readonly SettingBundle[])
   if (!out.ok) return { ok: false, diagnostics: out.list };
   return compileAdventure(draftFiles(draft as Record<string, unknown>), settings);
 }
+
+/**
+ * A bundle with its asset files, as `materials build` writes it and `publish_bundle` reads it: the
+ * bundle's fields, plus `files` mapping each SHA-256 to its type and base64 bytes.
+ */
+// SPEC_ISSUES.md#asset-delivery
+export function withFiles(bundle: Bundle, files: CompileResult<Bundle>["files"]): Record<string, unknown> {
+  const entries = Object.entries(files ?? {});
+  if (entries.length === 0) return bundle as unknown as Record<string, unknown>;
+  const b64 = (d: Uint8Array) => {
+    let s = "";
+    for (let i = 0; i < d.length; i += 0x8000) s += String.fromCharCode(...d.subarray(i, i + 0x8000));
+    return btoa(s);
+  };
+  return { ...bundle, files: Object.fromEntries(entries.map(([h, f]) => [h, { mime: f.mime, data: b64(f.data), ...(f.width ? { width: f.width, height: f.height } : {}) }])) };
+}

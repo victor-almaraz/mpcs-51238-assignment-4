@@ -4,7 +4,10 @@
 // entities with distance and direction serves keyboard and screen-reader use.
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { View } from "@/lib/engine";
-import { draw, hitAt, plan, type Token } from "@/lib/map/plan";
+import { artHashes, draw, hitAt, plan, type Token } from "@/lib/map/plan";
+
+/** Loaded art, shared across redraws; a failed image stays absent, so its fallback draws. */
+const images = new Map<string, HTMLImageElement>();
 
 function cssColor(token: Token): string {
   return getComputedStyle(document.documentElement).getPropertyValue(`--color-${token}`).trim() || "#888";
@@ -15,6 +18,18 @@ export function MapPanel({ view, onPick }: { view: View; onPick: (id: string, la
   const [zoom, setZoom] = useState(16);
   const [list, setList] = useState(false);
   const p = useMemo(() => plan(view, zoom), [view, zoom]);
+  const [loaded, setLoaded] = useState(0);
+  useEffect(() => {
+    for (const hash of artHashes(p)) {
+      if (images.has(hash)) continue;
+      const img = new Image();
+      img.onload = () => {
+        images.set(hash, img);
+        setLoaded((n) => n + 1);
+      };
+      img.src = `/v1/assets/${hash}`;
+    }
+  }, [p]);
 
   useEffect(() => {
     const c = canvas.current;
@@ -27,8 +42,8 @@ export function MapPanel({ view, onPick }: { view: View; onPick: (id: string, la
     const ctx = c.getContext("2d");
     if (!ctx) return;
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    draw(ctx, p, cssColor, getComputedStyle(document.documentElement).getPropertyValue("--font-ui") || "sans-serif");
-  }, [p]);
+    draw(ctx, p, cssColor, getComputedStyle(document.documentElement).getPropertyValue("--font-ui") || "sans-serif", (h) => images.get(h) ?? null);
+  }, [p, loaded]);
 
   return (
     <div>
@@ -51,7 +66,8 @@ export function MapPanel({ view, onPick }: { view: View; onPick: (id: string, la
           {view.visible.map((e) => (
             <li key={e.id}>
               <button type="button" className="text-left" onClick={() => onPick(e.id, e.label)}>
-                {e.label} · {e.distance} {e.direction}
+                {e.label}
+                {(e.art?.portrait ?? e.art?.icon) && <span className="text-muted"> ({(e.art.portrait ?? e.art.icon)!.alt})</span>} · {e.distance} {e.direction}
                 {e.in_reach ? " · in reach" : ""}
               </button>
             </li>

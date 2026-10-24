@@ -129,6 +129,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
             <option value="character">Character</option>
             <option value="campaign">Campaign</option>
             <option value="instance">Instance</option>
+            <option value="asset">Asset (hash)</option>
           </select>
           <input name="id" required placeholder="Id" className={field} />
           <input name="reason" required placeholder="Reason or note" className={`${field} flex-1`} />

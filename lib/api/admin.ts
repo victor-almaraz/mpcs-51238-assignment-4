@@ -7,6 +7,7 @@ import { loadSettingBundle, type SettingBundle } from "../bundle/setting";
 import { loadAdventureBundle, type AdventureBundle } from "../bundle/adventure";
 import { AdminError, replayInstance as replay, restoreInstance as restore } from "../coordinator/admin";
 import { leaveParty, setStatus } from "../coordinator/instance";
+import { sha256 } from "../export/sha256";
 import { satisfies } from "../materials/semver";
 import type { Store, UserRecord } from "../store";
 import { SYSTEMS } from "../systems";
@@ -38,10 +39,12 @@ const text = (v: unknown, field: string, max = 500): string => {
 export async function publishBundle(store: Store, userId: string | null, input: unknown) {
   const user = await operator(store, userId, "publish_bundle");
   const req = onlyFields(input, ["kind", "bundle"]);
+  // SPEC_ISSUES.md#asset-delivery: the asset files travel beside the bundle, keyed by SHA-256.
+  const { files = {}, ...json } = (req.bundle && typeof req.bundle === "object" ? req.bundle : {}) as { files?: Record<string, { mime: string; data: string; width?: number; height?: number }> };
   let bundle: SettingBundle | AdventureBundle;
   try {
-    if (req.kind === "setting") bundle = loadSettingBundle(req.bundle);
-    else if (req.kind === "adventure") bundle = loadAdventureBundle(req.bundle);
+    if (req.kind === "setting") bundle = loadSettingBundle(json);
+    else if (req.kind === "adventure") bundle = loadAdventureBundle(json);
     else throw new ApiError("invalid_request", "kind must be setting or adventure");
   } catch (e) {
     if (e instanceof ApiError) throw e;
@@ -56,8 +59,29 @@ export async function publishBundle(store: Store, userId: string | null, input: 
       if (!settings.some((s) => s.id === r.id && satisfies(s.version, r.versions))) throw new ApiError("invalid_request", `no published setting ${r.id} satisfies ${r.versions}`);
     }
   }
+  type Declared = { kind: string; alt: string; license?: string; credit?: string; provenance?: string; hash?: string; mime?: string };
+  const declared = Object.entries(bundle.assets).filter(([, a]) => a && "file" in a.source) as [string, Declared][];
+  const incoming: { key: string; asset: Declared & { hash: string; mime: string; width?: number; height?: number }; data: Uint8Array | null }[] = [];
+  for (const [key, a] of declared) {
+    if (!a.hash || !a.mime) throw new ApiError("invalid_request", `asset ${key} has no hash; build the bundle with this version of the compiler`);
+    const f = files[a.hash];
+    if (!f) {
+      // The same file may already be stored for another bundle.
+      if (!(await store.getAsset(a.hash))) throw new ApiError("invalid_request", `the file of asset ${key} is missing`);
+      incoming.push({ key, asset: { ...a, hash: a.hash, mime: a.mime }, data: null });
+      continue;
+    }
+    const data = Uint8Array.from(atob(f.data), (c) => c.charCodeAt(0));
+    if (sha256(data) !== a.hash || f.mime !== a.mime) throw new ApiError("invalid_request", `the file of asset ${key} does not match its hash or type`);
+    incoming.push({ key, asset: { ...a, hash: a.hash, mime: a.mime, ...(f.width ? { width: f.width, height: f.height } : {}) }, data });
+  }
   await store.putBundle(bundle, { origin: "operator", listed: true });
-  await store.logOperation(user.id, "publish_bundle", `${bundle.kind}:${bundle.id}@${bundle.version}`);
+  const ref = `${bundle.kind}:${bundle.id}@${bundle.version}`;
+  for (const { key, asset, data } of incoming) {
+    if (data) await store.putAsset(asset, data, { bundle_id: ref, key });
+    else await store.addAssetRef(asset.hash, { bundle_id: ref, key });
+  }
+  await store.logOperation(user.id, "publish_bundle", ref);
   return { kind: bundle.kind, id: bundle.id, version: bundle.version };
 }
 
@@ -179,4 +203,12 @@ export async function removeCampaignContent(deps: Deps, userId: string | null, i
 export async function operatorLog(store: Store, userId: string | null) {
   await operator(store, userId, "operator_log");
   return store.operatorLog();
+}
+
+/** Removes a reported image: it stops being served, and clients fall back (runbooks/content-reports.md, Images). */
+export async function removeAssetContent(store: Store, userId: string | null, input: unknown) {
+  const user = await operator(store, userId, "remove_content");
+  const req = onlyFields(input, ["hash", "reason"]);
+  if (typeof req.hash !== "string" || !(await store.removeAsset(req.hash))) throw new ApiError("not_found", "no such asset");
+  await store.logOperation(user.id, "remove_asset", `asset:${req.hash}`, text(req.reason, "reason"));
 }

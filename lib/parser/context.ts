@@ -71,8 +71,9 @@ export function parserContext(v: View, x: ContextExtras): ParserContext {
       ...(e.lit ? { lit: true } : {}),
       ...(e.contents ? { contents: e.contents } : {}),
     })),
-    inventory: v.actions.inventory,
-    abilities: v.actions.abilities,
+    // Models never receive art (setting-packs.md, Art): ids and labels only.
+    inventory: v.actions.inventory.map(({ id, label }) => ({ id, label })),
+    abilities: v.actions.abilities.map(({ id, label }) => ({ id, label })),
     npcs: v.actions.npcs.map((n) => {
       const seen = v.visible.find((e) => e.id === n.id);
       return { id: n.id, name: n.name, distance: seen?.distance ?? 0, direction: seen?.direction ?? "here", topics: n.topics };

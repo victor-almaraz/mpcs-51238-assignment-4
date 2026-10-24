@@ -9,7 +9,7 @@ import { basename, dirname, join } from "node:path";
 import { FORMAT_VERSION, loadSettingBundle, type SettingBundle } from "../bundle/setting";
 import { formatDiagnostic } from "./diagnostics";
 import { readPackDir } from "./fs";
-import { compile, compileSetting } from "./index";
+import { compile, compileSetting, withFiles } from "./index";
 
 export const VERSION = "0.1.0";
 
@@ -94,7 +94,12 @@ export function main(argv: readonly string[], io: Io = processIo): number {
       settings.push(compiled.bundle);
     } else {
       try {
-        settings.push(loadSettingBundle(JSON.parse(readFileSync(path, "utf8"))));
+        {
+          // A built bundle may carry its asset files; the compiler needs only the bundle.
+          const { files: _files, ...bundle } = JSON.parse(readFileSync(path, "utf8")) as Record<string, unknown>;
+          void _files;
+          settings.push(loadSettingBundle(bundle));
+        }
       } catch (e) {
         return usage(`'${path}' is not a setting bundle: ${(e as Error).message}`);
       }
@@ -104,7 +109,7 @@ export function main(argv: readonly string[], io: Io = processIo): number {
   for (const d of result.diagnostics) io.stderr(`${json ? JSON.stringify(d) : formatDiagnostic(d)}\n`);
   if (!result.ok || !result.bundle) return 1;
   if (command === "build") {
-    const text = `${JSON.stringify(result.bundle, null, 2)}\n`;
+    const text = `${JSON.stringify(withFiles(result.bundle, result.files), null, 2)}\n`;
     if (output === undefined) io.stdout(text);
     else {
       const tmp = join(dirname(output), `.${basename(output)}.${process.pid}.tmp`);

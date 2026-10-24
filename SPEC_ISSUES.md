@@ -933,3 +933,17 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** `list_systems` no longer reports the two values in `pending_confirmation`. `setbacks` and `spatial` stay: Quest leaves setbacks to the Guide and measures distance in relative bands (in reach, nearby, in range, too far), not cells.
 
 **Proposed resolution.** Remove both from `confirm` and from Values to confirm, citing the Creators Resource pages.
+
+## asset-delivery
+
+| Field | Value |
+|---|---|
+| Document | `spec/README.md`; `docs/data-model.md`; `docs/api.md` |
+| Section | Bundle; Asset ("stored once by content hash"); Administrative operations (`publish_bundle` takes `bundle`, compiled JSON) |
+| Marker | `lib/materials/art.ts`, `lib/materials/index.ts`, `lib/api/admin.ts`, `lib/api/http.ts`, `supabase/migrations/20261023001000_assets.sql` |
+
+**Problem.** Asset files are referenced by path inside the pack, but a compiled bundle is JSON and `publish_bundle` takes only that JSON, so no operation carries the image bytes to the server, and nothing says where an asset's hash appears.
+
+**Implemented.** The compiler adds `hash` (SHA-256 of the bytes) and `mime` to each file asset in the bundle's `assets`. `materials build` writes the bundle with a top-level `files` object mapping each hash to its `mime`, base64 `data`, and pixel size; `publish_bundle` checks each file against its hash and type, stores it as an Asset with a bundle reference, and stores the bundle without `files`. Files live in the database (at most 1 MB each). `get_asset` serves stored assets with long-lived caching and a content policy that forbids scripts and loads, and is not counted against the per-user rate limit because pages load many images. `game_icons` sources are declared but not shipped: the application vendors no game-icons.net files yet, so clients draw the fallback.
+
+**Proposed resolution.** Define the asset fields of the bundle and the archive `publish_bundle` accepts, or make bundles carry files.

@@ -2,6 +2,7 @@
 // list repeats a kind, every asset file exists with an allowed type and within the limits, and
 // every asset has `alt` and any required `credit`.
 
+import { sha256 } from "../export/sha256";
 import type { Segment } from "./diagnostics";
 import type { Diagnostics } from "./pack";
 import type { JsonObject } from "./walk";
@@ -97,4 +98,33 @@ export function checkArtList(
     if (prior) out.add(file, path, `'${ref}' and '${prior}' are both ${kind}s; an art list holds at most one of each kind`, "art");
     seen.set(kind, ref);
   }
+}
+
+/** An asset file as it travels with a built bundle, keyed by its SHA-256. */
+export interface AssetFile {
+  mime: "image/svg+xml" | "image/png" | "image/webp";
+  data: Uint8Array;
+  width?: number;
+  height?: number;
+}
+
+const MIME: Readonly<Record<FileType, AssetFile["mime"]>> = { svg: "image/svg+xml", png: "image/png", webp: "image/webp" };
+
+// SPEC_ISSUES.md#asset-delivery: a bundle names each file asset by content hash; the bytes travel beside it.
+/** Adds `hash` and `mime` to each file asset and returns the files by hash. Run after checkAssets. */
+export function hashAssets(assets: Record<string, JsonObject>, files: ReadonlyMap<string, Uint8Array>): Record<string, AssetFile> {
+  const out: Record<string, AssetFile> = {};
+  for (const asset of Object.values(assets)) {
+    const source = asset.source as JsonObject;
+    if (typeof source.file !== "string") continue;
+    const data = files.get(source.file);
+    if (!data) continue;
+    const type = source.file.slice(source.file.lastIndexOf(".") + 1) as FileType;
+    const hash = sha256(data);
+    const size = type === "svg" ? null : imageSize(type, data);
+    asset.hash = hash;
+    asset.mime = MIME[type];
+    out[hash] = { mime: MIME[type], data, ...(size ? size : {}) };
+  }
+  return out;
 }

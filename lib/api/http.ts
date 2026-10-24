@@ -73,7 +73,7 @@ interface Call {
   raw: Uint8Array;
 }
 
-type Reply = { status: number; body?: unknown; calendar?: string; file?: { type: string; name: string; data: Uint8Array } };
+type Reply = { status: number; body?: unknown; calendar?: string; file?: { type: string; name: string; data: Uint8Array }; image?: { type: string; data: Uint8Array } };
 
 const ok = (body: unknown): Reply => ({ status: 200, body });
 const created = (body: unknown): Reply => ({ status: 201, body });
@@ -145,6 +145,17 @@ const ROUTES: Route[] = [
   ["POST", "/drafts/:draft_id/publish", async (c) => created({ material: await publishDraft(c.deps.store, c.user, { ...c.body, draft_id: c.params.draft_id }) })],
   ["DELETE", "/drafts/:draft_id", async (c) => ok(await deleteDraft(c.deps.store, c.user, c.params.draft_id))],
   ["POST", "/drafts/:draft_id/restore", async (c) => ok({ draft: await restoreDraft(c.deps.store, c.user, c.params.draft_id) })],
+  // Assets: the bytes by hash, immutable (api.md, get_asset).
+  [
+    "GET",
+    "/assets/:hash",
+    async (c) => {
+      await gated(c, "get_asset");
+      const a = /^[0-9a-f]{64}$/.test(c.params.hash!) ? await c.deps.store.getAsset(c.params.hash!) : undefined;
+      if (!a) throw new ApiError("not_found", "no such asset");
+      return { status: 200, image: { type: a.mime, data: a.data } };
+    },
+  ],
   // Characters
   ["POST", "/characters", async (c) => created({ character: await createCharacter(c.deps.store, c.user, c.body) })],
   ["GET", "/characters", async (c) => ok(await listCharacters(c.deps.store, c.user, queryInput(c.query, ["limit"])))],
@@ -255,7 +266,8 @@ export async function handle(request: Request, user: string | null, deps: Deps):
   try {
     const phase = shutdownPhase(process.env.SHUTDOWN_AT, new Date()).phase;
     if (phase === "closed" || phase === "purge") throw new ApiError("unavailable", "Cadmium has closed");
-    if (user) {
+    // SPEC_ISSUES.md#binding-gaps: images are immutable and cached, so they do not count against the limit.
+    if (user && !(request.method === "GET" && path.startsWith("/assets/"))) {
       const wait = await deps.store.rateHit(user, "api", RATE_LIMIT.window_seconds, RATE_LIMIT.limit);
       if (wait > 0) throw new ApiError("rate_limited", "too many requests", { retry_after_ms: wait });
     }
@@ -274,6 +286,13 @@ export async function handle(request: Request, user: string | null, deps: Deps):
       body = parsed as Record<string, unknown>;
     }
     const reply = await route[2]({ deps, user, params, query: url.searchParams, body, headers: request.headers, origin: url.origin, raw });
+    if (reply.image) {
+      // Displayed as images only: SVG cannot run script or load anything (data-model.md, Asset).
+      return new Response(reply.image.data as BodyInit, {
+        status: 200,
+        headers: { "Content-Type": reply.image.type, "Cache-Control": "private, max-age=31536000, immutable", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox", "X-Content-Type-Options": "nosniff" },
+      });
+    }
     if (reply.file) return new Response(reply.file.data as BodyInit, { status: reply.status, headers: { "Content-Type": reply.file.type, "Content-Disposition": `attachment; filename="${reply.file.name}"` } });
     if (reply.calendar !== undefined) return new Response(reply.calendar, { status: reply.status, headers: { "Content-Type": "text/calendar; charset=utf-8" } });
     return json(reply.status, reply.body);

@@ -479,3 +479,20 @@ Open:
 
 - A Cadmium adventure cannot require a Quest setting (adventure-packs.md: every required setting binds the adventure's system); campaigns add Quest settings themselves.
 - Creation forms show no module fields yet; module fields come from the campaign.
+
+### Sprint 22: Pack art — open
+
+Done:
+
+- `lib/export/sha256.ts`: SHA-256 in plain TypeScript, so the compiler hashes the same in the browser and on the server.
+- The compiler adds `hash` and `mime` to each file asset; `materials build` and `pnpm bundles` write the files beside the bundle (`SPEC_ISSUES.md#asset-delivery`).
+- `supabase/migrations/20261023001000_assets.sql`: the Asset record by content hash, with bundle references, credits, removal, and holds. `publish_bundle` checks and stores each file; `GET /v1/assets/{hash}` serves it as an image with immutable caching and a content policy against scripts; an operator can remove an asset from the console, after which clients fall back.
+- Views carry art by kind for visible entities, NPCs, inventory, abilities, and terrain (`lib/engine/view.ts`); parser and narrator contexts carry none.
+- Maps draw terrain tiles under the light overlays and entity portraits or icons inside their footprint, keeping the aspect ratio, falling back to the plain shapes while an image loads or when it is missing; the map's text view lists each image's alt text. Inventory and ability lists show icons with a default mark otherwise. `/attribution` lists the credit of every shipped pack asset.
+- Tests: `lib/api/art.test.ts` (3), `lib/export/sha256.test.ts` (1).
+
+Open:
+
+- game-icons.net icons are not shipped; packs that use `game_icons` sources render the fallback. Shipping them means vendoring the chosen SVGs with their artists' credits.
+- The example packs declare no art; the test pack adds a portrait and an icon.
+- Migration 11 is not yet applied to the remote database.

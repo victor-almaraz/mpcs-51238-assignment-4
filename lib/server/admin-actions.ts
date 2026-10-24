@@ -1,7 +1,7 @@
 "use server";
 // Server actions for the operator console.
 import { revalidatePath } from "next/cache";
-import { endGame, hold, publishBundle, release, removeCampaignContent, removeCharacterContent, restoreInstance, setListed, suspend } from "../api/admin";
+import { endGame, hold, publishBundle, release, removeAssetContent, removeCampaignContent, removeCharacterContent, restoreInstance, setListed, suspend } from "../api/admin";
 import { ApiError } from "../api/errors";
 import { serverDeps } from "./coordinator";
 import { attempt, type FormState } from "./forms";
@@ -51,6 +51,7 @@ export async function reportAction(_: FormState, form: FormData): Promise<FormSt
     if (action === "suspend" || action === "unsuspend") return suspend(deps.store, uid, { user_id: id, suspended: action === "suspend", reason });
     if (action === "remove" && kind === "character") return removeCharacterContent(deps, uid, { character_id: id, reason });
     if (action === "remove" && kind === "campaign") return removeCampaignContent(deps, uid, { campaign_id: id, reason });
+    if (action === "remove" && kind === "asset") return removeAssetContent(deps.store, uid, { hash: id, reason });
     if (action === "end") return endGame(deps, uid, { instance_id: id, reason });
     throw new ApiError("invalid_request", "unknown action");
   });

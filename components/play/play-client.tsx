@@ -15,6 +15,7 @@ import { Sequencer, type HistoryItem } from "@/lib/broadcast/sequencer";
 import { actAction, advanceAction, historyAction, inputAction, refreshAction } from "@/lib/server/play-actions";
 import { ActionBar } from "./action-bar";
 import { MapPanel } from "./map-panel";
+import { ArtIcon } from "@/components/art";
 
 interface LogEntry {
   version: number;
@@ -208,8 +209,8 @@ export function PlayClient(props: PlayProps) {
           <ul>
             {view.actions.inventory.map((i) => (
               <li key={i.id}>
-                <button type="button" className={selected === i.id ? "text-accent" : ""} onClick={() => pick(i.id)}>
-                  {i.label}
+                <button type="button" className={`flex items-center gap-1 ${selected === i.id ? "text-accent" : ""}`} onClick={() => pick(i.id)}>
+                  <ArtIcon art={i.art} /> {i.label}
                 </button>
               </li>
             ))}
@@ -221,8 +222,8 @@ export function PlayClient(props: PlayProps) {
         <ul>
           {view.actions.abilities.map((a) => (
             <li key={a.id}>
-              <button type="button" className={selected === a.id ? "text-accent" : ""} onClick={() => pick(a.id)}>
-                {a.label}
+              <button type="button" className={`flex items-center gap-1 ${selected === a.id ? "text-accent" : ""}`} onClick={() => pick(a.id)}>
+                <ArtIcon art={a.art} /> {a.label}
               </button>
             </li>
           ))}

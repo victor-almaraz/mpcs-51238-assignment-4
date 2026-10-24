@@ -10,7 +10,9 @@ export type Op =
   | { op: "rect"; x: number; y: number; w: number; h: number; fill: Token; alpha?: number }
   | { op: "circle"; x: number; y: number; r: number; fill: Token | null; stroke?: Token; width?: number }
   | { op: "text"; x: number; y: number; text: string; fill: Token; size: number; align?: "left" | "center" }
-  | { op: "line"; x1: number; y1: number; x2: number; y2: number; stroke: Token; width: number };
+  | { op: "line"; x1: number; y1: number; x2: number; y2: number; stroke: Token; width: number }
+  /** Art by hash; until it loads, or when it fails, the fallback ops draw instead (design/components.md, Art). */
+  | { op: "image"; x: number; y: number; w: number; h: number; hash: string; alt: string; fallback: Op[] };
 
 export interface Hit {
   id: string;
@@ -45,6 +47,9 @@ export function plan(view: View, cell = 16, hostile: ReadonlySet<string> = new S
       const terrain = map.legend[ch] ?? "floor";
       const fill: Token = terrain === "wall" ? "ink" : terrain === "floor" ? "page" : "rule";
       ops.push({ op: "rect", x: x * cell, y: y * cell, w: cell, h: cell, fill });
+      // A terrain tile repeats once per cell; overlays draw over it.
+      const tile = map.terrain[terrain]?.art?.tile;
+      if (tile?.hash) ops.push({ op: "image", x: x * cell, y: y * cell, w: cell, h: cell, hash: tile.hash, alt: tile.alt, fallback: [] });
       // Light: 2 bright, 1 dim, 0 dark or unperceived.
       const light = map.light[y]?.[x] ?? "0";
       if (fill !== "ink" && light !== "2") ops.push({ op: "rect", x: x * cell, y: y * cell, w: cell, h: cell, fill: "desk", alpha: light === "1" ? 0.4 : 0.75 });
@@ -76,10 +81,14 @@ export function plan(view: View, cell = 16, hostile: ReadonlySet<string> = new S
         ops.push({ op: "line", x1: px, y1: mid - 3, x2: px, y2: mid + 3, stroke: "ink", width: 1.5 });
         ops.push({ op: "line", x1: px + cell, y1: mid - 3, x2: px + cell, y2: mid + 3, stroke: "ink", width: 1.5 });
       } else ops.push({ op: "rect", x: px, y: mid - 2, w: cell, h: 4, fill: "ink" });
-    } else if (e.kind === "creature") {
-      ops.push({ op: "circle", x: px + (w * cell) / 2, y: py + (h * cell) / 2, r: (Math.min(w, h) * cell) / 2 - 2, fill: "rule", stroke: hostile.has(e.id) ? "danger" : "ink", width: hostile.has(e.id) ? 2 : 1 });
     } else {
-      ops.push({ op: "rect", x: px + 3, y: py + 3, w: w * cell - 6, h: h * cell - 6, fill: "rule" });
+      // Creatures ask for a portrait, objects for an icon; each falls back to the next (design/components.md, Art).
+      const shape: Op =
+        e.kind === "creature"
+          ? { op: "circle", x: px + (w * cell) / 2, y: py + (h * cell) / 2, r: (Math.min(w, h) * cell) / 2 - 2, fill: "rule", stroke: hostile.has(e.id) ? "danger" : "ink", width: hostile.has(e.id) ? 2 : 1 }
+          : { op: "rect", x: px + 3, y: py + 3, w: w * cell - 6, h: h * cell - 6, fill: "rule" };
+      const art = e.kind === "creature" ? (e.art?.portrait ?? e.art?.icon) : e.art?.icon;
+      ops.push(art?.hash ? { op: "image", x: px, y: py, w: w * cell, h: h * cell, hash: art.hash, alt: art.alt, fallback: [shape] } : shape);
     }
     if (e.lit) ops.push({ op: "circle", x: px + w * cell - 3, y: py + 3, r: 2, fill: "warning" });
     hits.push({ id: e.id, label: e.label, kind: e.kind, x: px, y: py, w: w * cell, h: h * cell });
@@ -108,10 +117,36 @@ export function hitAt(p: Plan, x: number, y: number): Hit | undefined {
   return undefined;
 }
 
-/** Paints a plan; `color` resolves a token to a CSS colour. */
-export function draw(ctx: CanvasRenderingContext2D, p: Plan, color: (t: Token) => string, font: string): void {
+/** Every art hash a plan draws, for loading. */
+export function artHashes(p: Plan): string[] {
+  return [...new Set(p.ops.flatMap((o) => (o.op === "image" ? [o.hash] : [])))];
+}
+
+/**
+ * Paints a plan; `color` resolves a token to a CSS colour, `image` returns a loaded image for a hash.
+ * Art keeps its aspect ratio inside its box.
+ */
+export function draw(ctx: CanvasRenderingContext2D, p: Plan, color: (t: Token) => string, font: string, image: (hash: string) => CanvasImageSource | null = () => null): void {
   ctx.clearRect(0, 0, p.width, p.height);
-  for (const o of p.ops) {
+  paint(ctx, p.ops, color, font, image);
+  ctx.globalAlpha = 1;
+}
+
+function paint(ctx: CanvasRenderingContext2D, ops: readonly Op[], color: (t: Token) => string, font: string, image: (hash: string) => CanvasImageSource | null): void {
+  for (const o of ops) {
+    if (o.op === "image") {
+      const img = image(o.hash);
+      if (!img) {
+        paint(ctx, o.fallback, color, font, image);
+        continue;
+      }
+      const iw = (img as HTMLImageElement).naturalWidth || o.w;
+      const ih = (img as HTMLImageElement).naturalHeight || o.h;
+      const scale = Math.min(o.w / iw, o.h / ih);
+      ctx.globalAlpha = 1;
+      ctx.drawImage(img, o.x + (o.w - iw * scale) / 2, o.y + (o.h - ih * scale) / 2, iw * scale, ih * scale);
+      continue;
+    }
     ctx.globalAlpha = o.op === "rect" && o.alpha !== undefined ? o.alpha : 1;
     if (o.op === "rect") {
       ctx.fillStyle = color(o.fill);
@@ -142,5 +177,4 @@ export function draw(ctx: CanvasRenderingContext2D, p: Plan, color: (t: Token) =
       ctx.fillText(o.text, o.x, o.y);
     }
   }
-  ctx.globalAlpha = 1;
 }
