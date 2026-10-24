@@ -19,7 +19,7 @@ export default async function AcceptTerms({ searchParams }: { searchParams: Prom
       <div className="mx-auto max-w-page px-6 py-10">
         <h1 className="font-display text-title">Your account is being deleted</h1>
         <p className="mt-4">
-          You can restore it until {until.toUTCString().slice(0, 16)}. After 90 days it is erased.{" "}
+          You can restore it until {until.toUTCString().slice(0, 16)}. It is erased within 90 days of the deletion.{" "}
           <a href="/v1/me/export.zip" className="text-accent underline">
             Export my data
           </a>

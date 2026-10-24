@@ -13,7 +13,7 @@ export function DeleteAccount({ name }: { name: string }) {
   }, [state.closed, signOut]);
   return (
     <form action={run} className="flex flex-col gap-2">
-      <p>You can restore the account by signing in within 30 days. After 90 days it is erased with everything it owns.</p>
+      <p>You may be able to restore the account by signing in within 30 days. Within 90 days it is erased with everything it owns.</p>
       <label className="flex flex-col gap-1">
         <span className="font-ui text-label">Type your display name, {name}, to confirm</span>
         <input name="confirm" required className="rounded-control border border-border bg-page px-2 py-1" />

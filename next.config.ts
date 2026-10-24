@@ -14,8 +14,8 @@ const config: NextConfig = {
   },
   // Pages that read specification documents at request time ship those files with their functions.
   outputFileTracingIncludes: {
-    "/terms": ["./cadmium-spec/docs/legal/terms.md"],
-    "/privacy": ["./cadmium-spec/docs/legal/privacy.md"],
+    "/terms": ["./legal/terms.md"],
+    "/privacy": ["./legal/privacy.md"],
     "/attribution": ["./cadmium-spec/LICENSES.md", "./cadmium-spec/systems/*/NOTICE", "./materials/*/NOTICE"],
   },
 };

@@ -43,7 +43,7 @@ The server reads these variables, from `.env.local` locally and from the Vercel 
 | `CRON_SECRET` | yes | Authorizes calls to the scheduler at `/api/cron/scheduler` (Vercel Cron sends it as a bearer token) |
 | `CALENDAR_FEED_KEY` | yes | Derives calendar feed secrets; the service key is used when unset |
 | `SHUTDOWN_AT` | no | The end-of-course shutdown time (ISO 8601): a banner from 14 days before, the closed notice from then, the purge 90 days after |
-| `CONTACT_EMAIL` | no | The contact address on the closed notice |
+| `CONTACT_EMAIL` | no | The contact address on the closed notice, and in place of `[EMAIL]` in the Terms and Privacy Policy |
 | `VAPID_PUBLIC_KEY` | no | Offers browser notifications in Settings; sending also needs the private key and the `web-push` package |
 
 `GET /api/health` reports which are set, and whether the database schema is applied, without revealing values.

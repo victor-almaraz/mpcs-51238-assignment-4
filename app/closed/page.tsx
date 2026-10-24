@@ -6,10 +6,10 @@ export default function Closed() {
   return (
     <div className="mx-auto max-w-page px-6 py-10">
       <h1 className="font-display text-title">Cadmium has closed</h1>
-      <p className="mt-4">Sign-in is no longer available. Stored data is kept for 90 days and then deleted.</p>
+      <p className="mt-4">Sign-in is no longer available. Stored data may be deleted at any time.</p>
       {contact && (
         <p className="mt-2">
-          To request a copy of your data, write to <a href={`mailto:${contact}`} className="text-accent underline">{contact}</a>.
+          To request a copy or the deletion of your data, write to <a href={`mailto:${contact}`} className="text-accent underline">{contact}</a>.
         </p>
       )}
       <p className="mt-6 flex gap-4 font-ui text-control">
