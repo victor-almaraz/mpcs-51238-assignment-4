@@ -74,3 +74,17 @@ describe("groqModels", () => {
     expect(await groqModels("k", fetcher)).toEqual(["a-model", "b-model"]);
   });
 });
+
+describe("tunedForReasoning", () => {
+  it("asks GPT-OSS models for low effort with room to reason, and leaves other models alone", async () => {
+    const { tunedForReasoning } = await import("../models/groq");
+    const seen: unknown[] = [];
+    const chat = tunedForReasoning(async (r) => (seen.push(r), { content: "", tool_calls: [], raw: null }));
+    await chat({ model: "openai/gpt-oss-20b", messages: [], max_tokens: 300 }, 10);
+    await chat({ model: "qwen/qwen3-32b", messages: [], max_tokens: 300 }, 10);
+    expect(seen).toEqual([
+      { model: "openai/gpt-oss-20b", messages: [], max_tokens: 1024, reasoning_effort: "low" },
+      { model: "qwen/qwen3-32b", messages: [], max_tokens: 300 },
+    ]);
+  });
+});

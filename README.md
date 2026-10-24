@@ -35,7 +35,8 @@ The server reads these variables, from `.env.local` locally and from the Vercel 
 | `EXPLORATION_ROUND_TIMEOUT` | no | Seconds an exploration round waits before advancing; default 120, 0 disables |
 | `COMBAT_TURN_TIMEOUT` | no | Seconds a combat round or turn waits; default 60, 0 disables |
 | `GROQ_API_KEY` | yes | The parser and narrator; without it, text input is unavailable and narration is template text |
-| `GROQ_PARSER_MODEL`, `GROQ_NARRATOR_MODEL` | no | Groq model ids; default `llama-3.3-70b-versatile` |
+| `GROQ_PARSER_MODEL`, `GROQ_NARRATOR_MODEL` | no | Groq model ids; default `openai/gpt-oss-20b` |
+| `GROQ_REASONING_EFFORT` | no | Reasoning effort for GPT-OSS models: `low` (default), `medium`, or `high` |
 | `PARSER_TIMEOUT`, `NARRATOR_TIMEOUT` | no | Seconds before a model call falls back; defaults 8 and 10 |
 | `PARSER_ENABLED`, `NARRATOR_ENABLED` | no | `0` disables one adapter while keeping the other (runbooks/model-outage.md) |
 | `ACTION_MENU_MODE` | no | `1` sends every character an action menu at each round and turn start |

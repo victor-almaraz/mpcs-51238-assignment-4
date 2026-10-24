@@ -45,6 +45,19 @@ export interface Chat {
 }
 
 const ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
+
+/** The model the parser and narrator use when no model is configured. */
+export const DEFAULT_MODEL = "openai/gpt-oss-20b";
+
+/**
+ * Tunes requests for reasoning models (GPT-OSS on Groq): they reason before answering, and the
+ * reasoning counts against `max_tokens`, so each request asks for `effort` and leaves room for it.
+ * Other models' requests pass unchanged.
+ */
+export function tunedForReasoning(chat: Chat, effort = "low", room = 1024): Chat {
+  return (request, timeoutMs) =>
+    chat(request.model.startsWith("openai/gpt-oss") ? { ...request, reasoning_effort: request.reasoning_effort ?? effort, max_tokens: Math.max(request.max_tokens ?? 0, room) } : request, timeoutMs);
+}
 const MODELS = "https://api.groq.com/openai/v1/models";
 
 /** The ids of the models the key may use, sorted. */

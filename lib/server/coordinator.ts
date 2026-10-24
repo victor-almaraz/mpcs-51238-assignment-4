@@ -2,7 +2,7 @@
 // round timeouts from the environment (architecture.md, Round timeouts: deployment configuration).
 import { after } from "next/server";
 import { supabaseBroadcaster } from "../broadcast";
-import { groqChat } from "../models/groq";
+import { DEFAULT_MODEL, groqChat, tunedForReasoning } from "../models/groq";
 import { modelNarrator } from "../narrator/adapter";
 import { modelParser } from "../parser/adapter";
 import { DEFAULT_TIMEOUTS, type Deps } from "../coordinator/instance";
@@ -21,15 +21,12 @@ let deps: Deps | undefined;
 function models(): Pick<Deps, "parser" | "narrator"> {
   const key = process.env.GROQ_API_KEY;
   if (!key) return {};
-  const chat = groqChat(key);
+  const chat = tunedForReasoning(groqChat(key), process.env.GROQ_REASONING_EFFORT || "low");
   return {
     ...(process.env.PARSER_ENABLED === "0" ? {} : { parser: modelParser(chat, process.env.GROQ_PARSER_MODEL || DEFAULT_MODEL, seconds("PARSER_TIMEOUT", 8) * 1000) }),
     ...(process.env.NARRATOR_ENABLED === "0" ? {} : { narrator: modelNarrator(chat, process.env.GROQ_NARRATOR_MODEL || DEFAULT_MODEL, seconds("NARRATOR_TIMEOUT", 10) * 1000) }),
   };
 }
-
-/** The model used when GROQ_PARSER_MODEL or GROQ_NARRATOR_MODEL is unset. */
-const DEFAULT_MODEL = "llama-3.3-70b-versatile";
 
 export function serverDeps(): Deps {
   deps ??= {

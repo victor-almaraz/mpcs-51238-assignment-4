@@ -9,7 +9,7 @@ import { agentRun, chatPlayer, patient } from "../lib/agent/run";
 import { replay } from "../lib/engine";
 import { commitOf } from "../lib/harness/harness";
 import { SCENARIOS } from "../lib/harness/scenarios";
-import { ModelError, groqChat, groqModels, type Chat } from "../lib/models/groq";
+import { DEFAULT_MODEL, ModelError, groqChat, groqModels, tunedForReasoning } from "../lib/models/groq";
 import { modelParser } from "../lib/parser/adapter";
 
 const key = process.env.GROQ_API_KEY;
@@ -18,13 +18,9 @@ if (!key) {
   process.exit(2);
 }
 const groq = patient(groqChat(key), undefined, undefined, (e, ms) => console.log(`  (${e.message}; retrying in ${ms / 1000} s)`));
-// GPT-OSS models reason before answering, and reasoning counts against max_tokens: ask for little
-// reasoning and leave room for it.
-const reasoning = (model: string) => model.startsWith("openai/gpt-oss");
-const chat: Chat = (request, timeoutMs) =>
-  groq(reasoning(request.model) ? { ...request, reasoning_effort: process.env.GROQ_REASONING_EFFORT || "low", max_tokens: Math.max(request.max_tokens ?? 0, 1024) } : request, timeoutMs);
-const parserModel = process.env.GROQ_PARSER_MODEL || "openai/gpt-oss-20b";
-const playerModel = process.env.GROQ_PLAYER_MODEL || "openai/gpt-oss-20b";
+const chat = tunedForReasoning(groq, process.env.GROQ_REASONING_EFFORT || "low");
+const parserModel = process.env.GROQ_PARSER_MODEL || DEFAULT_MODEL;
+const playerModel = process.env.GROQ_PLAYER_MODEL || DEFAULT_MODEL;
 const parser = modelParser(chat, parserModel, Number(process.env.PARSER_TIMEOUT || 20) * 1000);
 const player = chatPlayer(chat, playerModel);
 
