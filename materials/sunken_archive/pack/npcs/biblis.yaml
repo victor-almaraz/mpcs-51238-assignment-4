@@ -40,3 +40,8 @@ topics:
     effects:
       - add_flag: { flag: purse, value: -6 }
       - give_item: { target: actor, ref: coast:five_knights }
+  printers:
+    label: who prints her books
+    brief: >-
+      Every book on Biblis's shelves came off the presses of House Sorrelli, under Ginevra Sorrelli,
+      which prints the Chapter's books and the Reliquary's copies alike.

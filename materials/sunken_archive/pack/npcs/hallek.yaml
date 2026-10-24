@@ -30,3 +30,16 @@ topics:
       Every wreck in the realm's waters belongs to the Crown. Salvage needs a writ from the
       Concord, and salvage without one is piracy under Crown law. The Tessera Isles lie outside
       every power's waters, so what lies there belongs to whoever holds it.
+  pledge:
+    label: the Crown's pledge
+    brief: >-
+      Hallek lowers his voice. The Crown borrowed 200,000 florets from House Morcante and its
+      partners over three years, and pledged the Reliquary's collection as surety. The Lord
+      Treasurer, Reinhard Falk, arranged it. The voyage south was insured for 120,000 florets through
+      the Concord's underwriters, fourteen months before the loan falls due.
+  concord:
+    label: the Salvors' Concord
+    brief: >-
+      The Concord answers to a Syndic whom the underwriting houses elect, Ruprecht Haller. Its people
+      are clerks like Hallek, wardens, and writ-officers, with offices in Orvelle and Vessaro. It is,
+      he says with some pride, an arm of the Royal Reliquary.

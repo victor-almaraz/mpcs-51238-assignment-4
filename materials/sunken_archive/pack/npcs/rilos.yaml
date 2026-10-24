@@ -12,12 +12,16 @@ topics:
       in this house.
   chapter:
     label: the Chapter's claim
-    brief: The Chapter claims the writings of the Three Martyrs. A text is meant to be read and seen, she says, not hoarded in iron.
+    brief: >-
+      The Chapter claims the writings of the Three Martyrs. A text is meant to be read and seen, she
+      says, not hoarded in iron. The First Reader, Evagrios, heads the Church; the Chapter is the
+      college of its abbots and abbesses, led by Abbess Theodora Kallis, who holds it together.
   martyrs:
     label: the Three Martyrs
     brief: >-
       Isaura saw the maker's work, Kyrillos the spark, Meropi the way out. Each was killed for what
-      they saw. The Church paints them as one head with three faces.
+      they saw. The Church paints them as one head with three faces, and keeps a day for each:
+      Isaura's at the spring equinox, Kyrillos's at midsummer, Meropi's at the autumn equinox.
   elsewhere:
     label: who else is looking
     brief: >-

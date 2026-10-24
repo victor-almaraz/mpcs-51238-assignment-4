@@ -19,7 +19,9 @@ topics:
     label: Vessaro's council
     brief: >-
       Vessaro's Council of Quays does not recognize the Crown's wreck right. It sells letters of
-      marque instead, and calls that law.
+      marque instead, and calls that law. Ten captains and two house delegates sit on it, and the
+      First Quay, Alvise Trevan, presides. South of the Tessera Isles lie the Southern Isles, little
+      city-states under a Verrane protection that is slipping.
   passage:
     label: passage south
     when: { has_item: chart_fragment }

@@ -7,7 +7,7 @@ topics:
     label: the halls of Perpetua
     brief: >-
       Oriel Vantane names the ship's halls as a country. The Long Gallery, the Bright Stacks, the
-      Orlop of Iron Boxes, the Ward. She has been locked in the registry vault for weeks, two days
+      Orlop of Iron Boxes, the Ward. She has been locked in the registry vault for six weeks, two days
       past her last ration, and she counts the halls to keep her mind.
   rising:
     label: how Perpetua sank
@@ -56,6 +56,12 @@ topics:
     brief: >-
       With the false seal shut in iron, Vantane agrees to leave the vault. She asks you to close the
       iron doors behind you and flood the lower stacks, so the archive stays beneath the water.
+  reliquary:
+    label: the Royal Reliquary
+    brief: >-
+      Vantane is a custodian. Above her are registrars, who keep the registry in Verrane, and the Lord
+      Custodian, Hartwig Alder; below her, the couriers in grey. Perpetua sank six weeks ago, she
+      says, and the registry will not yet have noticed.
 secrets:
   forgery: >-
     The ring is a recent forgery. Its three faces follow the Reliquary's registry drawing of the head,
