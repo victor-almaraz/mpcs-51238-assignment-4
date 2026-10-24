@@ -460,10 +460,10 @@ Done:
 - Tests: `lib/materials/plot.test.ts` (2), and an unreachable ending reported before publishing in `lib/api/drafts.test.ts`.
 
 - The playtest trace names the failing part of a matched trigger's `when`, with current values (`lib/engine/why.ts`, [playtest-failed-conditions](SPEC_ISSUES.md#playtest-failed-conditions)).
+- A click on the playtest map moves to what the cell holds: a visible entity or door, else a seen link, else the seen room ([playtest-click-cell](SPEC_ISSUES.md#playtest-click-cell)).
 Open:
 
 - The graph is SVG, not React Flow (`@xyflow/react` needs installing); effects reorder with buttons rather than by drag.
-- Playtest moves to destinations rather than to clicked cells.
 - Not yet checked in a browser.
 
 ### Sprint 21: Modules in play — open
@@ -475,10 +475,10 @@ Done:
 - The sheet view shows the armor pool.
 - No engine change was needed: the modules, currency flags, containers, and item use from earlier sprints compose.
 
+- Cadmium's creation form offers an optional "For campaign" choice and shows the modules that campaign enables (the armor pool, the carrying limit) as information; `create_character` is unchanged ([creation-chosen-campaign](SPEC_ISSUES.md#creation-chosen-campaign)).
 Open:
 
 - A Cadmium adventure cannot require a Quest setting (adventure-packs.md: every required setting binds the adventure's system); campaigns add Quest settings themselves.
-- Creation forms show no module fields yet; module fields come from the campaign.
 
 ### Sprint 22: Pack art — open
 
@@ -524,11 +524,11 @@ Built from the author's campaign draft, supplied separately and not committed.
 - Fixed: the compiler read `to` in a trigger's `on` as a room for every event type. On item events it is the recipient's entity id.
 
 - Path codas for `escaped` and `archive_sealed` keyed on `path`, listed before the endings ([triggers-after-ending](SPEC_ISSUES.md#triggers-after-ending)); a ration given to the keeper (topic `ration`, flag `keeper_fed`) opens her `ring` and `plan` topics.
+- The draft's lore of section 14.10 appears as background in topic text: six new topics and seven extended briefs.
 Open:
 
 - The agent-driven runs are built but not yet run: `pnpm agent:run` (reads `GROQ_API_KEY`, from `.env.local` when present). A Groq player model writes free text from a description of the view and a route guide per ending (`lib/agent/goals.ts`); the Groq parser turns it into a call with the Coordinator's retry and fallback; each run's turns and replayable log go to `agent-runs/`. `lib/agent/run.test.ts` checks the loop with a scripted parser.
 - The balance values in `tools/sim/README.md` wait for the designers' target ranges; the packs keep the draft's values. The proposed Cadmium values are in [armor-tuning](SPEC_ISSUES.md#armor-tuning).
 - The packs are a proposal for the specification's `spec/examples/`; the brief's documentation updates are not made ([exemplar-location](SPEC_ISSUES.md#exemplar-location)).
-- Not implemented from the draft's proposals: the lore names of section 14.10.
 
 Done meanwhile: the play page shows `action_menu` suggestions as chips.

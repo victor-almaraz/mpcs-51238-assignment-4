@@ -1087,3 +1087,31 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** Each edit is checked in the browser after 400 ms on the main thread: lib/materials loads on the first edit in its own chunk, and a check takes about 15 to 40 ms after the first. A save's diagnostics from the server stay the authority.
 
 **Proposed resolution.** Allow main-thread validation where the bundler cannot build a worker, or move it into a worker once Turbopack bundles worker entries.
+
+## playtest-click-cell
+
+| Field | Value |
+|---|---|
+| Document | `docs/app-flow.md`; `docs/engine.md` |
+| Section | Adventure editor, Playtest ("move to a clicked cell"); Space; Action resolution |
+| Marker | `lib/map/click.ts` |
+
+**Problem.** The playtest moves "to a clicked cell", but `move` takes only `to_id` (a room, door, link, or visible entity) or `away_from_id`; no call moves to a cell.
+
+**Implemented.** A click resolves to what the cell holds in the acting character's view: a visible entity or door on it, else a seen link on it, else the seen room containing it. Walls, unseen cells, cells outside every room, and the character's own room make no call and show a note.
+
+**Proposed resolution.** Say "move to what a clicked cell holds, or to a destination", or add a cell argument to `move` in engine.md and tools.md.
+
+## creation-chosen-campaign
+
+| Field | Value |
+|---|---|
+| Document | `docs/app-flow.md`; `docs/api.md` |
+| Section | Rules systems ("for character creation the chosen campaign"); Character creation and editor; `create_character` |
+| Marker | `components/systems/cadmium.tsx` |
+
+**Problem.** Creation shows module fields "when the chosen campaign enables the module", but the creation flow has no campaign step and `create_character` takes only `system`, `name`, and `choices`. Characters get module state when they join an instance. A Quest character may also join a Cadmium campaign and play under its modules, which Quest's form cannot show.
+
+**Implemented.** Cadmium's creation form offers an optional "For campaign" choice among the caller's unarchived Cadmium campaigns, and shows the fields of the modules it enables (the armor pool and the carrying limit, from modules.json) as information. The choice is not submitted and does not change the stored sheet. `/characters/new?system=cadmium&campaign=<id>` preselects it.
+
+**Proposed resolution.** Add an optional campaign, for display only, to the creation flow, and say whether a Quest form should show the modules of a Cadmium campaign that would accept the character.
