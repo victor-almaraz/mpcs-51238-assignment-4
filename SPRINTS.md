@@ -379,11 +379,11 @@ Done:
 - Tests: `lib/scheduler/occurrences.test.ts` (6, Berlin and New York transitions), `lib/api/schedules.test.ts` (7).
 - `SPEC_ISSUES.md`: `session-cancellation`, `session-updates`, `calendar-feed-url`.
 
+- `/notifications` lists recent and upcoming session reminders, derived from schedules by the Scheduler's rules, refreshed by `session_reminder` on the user channel and every minute ([notification-records](SPEC_ISSUES.md#notification-records)). No migration.
 Open:
 
 - Web Push: needs `pnpm add web-push` and a VAPID key pair (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`); the Notifier takes a push function once they exist. Push subscriptions and Settings come with sprint 19.
 - The cron schedule is not configured: Vercel Hobby allows daily cron jobs only, and a more frequent schedule fails the deployment. Every-minute runs need a plan that allows them, or an external scheduler calling `/api/cron/scheduler` with `CRON_SECRET`. Deadlines are also enforced on every request to an instance.
-- `/notifications` (live session reminders) is not built.
 - Migration 7 is not yet applied to the remote database.
 
 ### Sprint 19: Settings, export, deletion — open
@@ -444,11 +444,10 @@ Done:
 - The editor: Overview (title, description, required settings with ranges, players, start, endings), Flags (types, ranges, values, initial values, uses; deleting a flag in use is blocked), Plot (arcs, stages, initial stage; triggers as YAML), Locations (the map editor: Paint, Fill, Rectangle, Room, Place with id and hidden, Link with destination and Add return link, Select, resize; generated locations as YAML), NPCs (name, template, disposition, topics with brief and condition, secrets), Items & creatures (YAML), Edit as YAML for every section, the Problems panel jumping to its section, autosave 2 seconds after the last edit, a backup in IndexedDB, Undo and Redo, snapshots, Export, and Publish.
 - Tests: `lib/api/drafts.test.ts` (6, including a three-room, one-arc adventure published and played to its ending), `lib/materials/draft-io.test.ts` (2).
 
+- Items & creatures is a form: each entity's `system_stats` is edited with the system's `StatsEditor`, generated from its schema (structures included; module fields when the draft enables the module), with YAML for what the form does not cover. Drafts are validated in the browser 400 ms after each edit with the same compiler the server runs, on the main thread rather than in a Web Worker ([editor-validation-thread](SPEC_ISSUES.md#editor-validation-thread)); a save's result still wins ([editor-stats](SPEC_ISSUES.md#editor-stats)). Not yet checked in a browser.
 Open:
 
-- Validation runs on the server when the draft saves, not in a Web Worker on every change.
 - Edit as YAML is a text area: Monaco with `monaco-yaml` needs installing.
-- Items & creatures have no `StatsEditor` form yet.
 - The editor is not yet checked in a browser, and migration 10 is not applied to the remote database.
 
 ### Sprint 17: Adventure editor, graphs and playtest — open
@@ -460,10 +459,11 @@ Done:
 - `components/editor/playtest.tsx`: the engine and rules system in the browser against the draft and its required settings: a party of up to the maximum players, a seed, Start from here with chosen stages and flags, an event palette (move, examine, attack, take, interact verbs, talk with topics, choices, search, wait, advance), a trace of the triggers each action fired and those that matched without firing, flag and stage changes, template narration, a state inspector with every entity including hidden ones and door states, the maps with every entity, and Preview 20 seeds for generated locations.
 - Tests: `lib/materials/plot.test.ts` (2), and an unreachable ending reported before publishing in `lib/api/drafts.test.ts`.
 
+- The playtest trace names the failing part of a matched trigger's `when`, with current values (`lib/engine/why.ts`, [playtest-failed-conditions](SPEC_ISSUES.md#playtest-failed-conditions)).
 Open:
 
 - The graph is SVG, not React Flow (`@xyflow/react` needs installing); effects reorder with buttons rather than by drag.
-- Playtest moves to destinations rather than to clicked cells, and its trace cannot name the failing condition, only that a matched trigger did not fire.
+- Playtest moves to destinations rather than to clicked cells.
 - Not yet checked in a browser.
 
 ### Sprint 21: Modules in play — open
@@ -517,17 +517,18 @@ Open:
 Built from the author's campaign draft, supplied separately and not committed.
 
 - `materials/lantern_coast/pack`: the setting for Cadmium with `armor` and `stash`. It adds the floret currency, sea and shore terrain (with `window` and `low_wall`, which block movement but not sight), people and creatures, goods with `armor` and `slots`, chests with `capacity`, the `vault_door` lock-and-key pair, and the `registry_vault` room template.
-- `materials/sunken_archive/pack`: the adventure, 1.0.0. It has 13 locations (one generated), 33 NPCs, six arcs with 71 triggers, and the endings `escaped` (six variants), `archive_sealed` (two), and `lost`. `materials/sunken_archive/README.md` maps the brief's coverage list to the pack, reports the schema and semantic passes, gives a walkthrough per ending, and lists departures from the draft.
+- `materials/sunken_archive/pack`: the adventure, 1.0.0. It has 13 locations (one generated), 33 NPCs, six arcs with 76 triggers, and the endings `escaped` (six variants), `archive_sealed` (two), and `lost`. `materials/sunken_archive/README.md` maps the brief's coverage list to the pack, reports the schema and semantic passes, gives a walkthrough per ending, and lists departures from the draft.
 - Scripted runs reach every ending: the golden scenarios `exemplar_escaped` (contract path), `exemplar_archive_sealed` (rumor path), and `exemplar_lost`. `lib/harness/exemplar.test.ts` covers room-wide rewards, purchases and affordability, stash capacity, the strongbox lock, the fog bank's lit-lamp lock, `item_given`, `set_hostile`, and NPCs moved between locations, and checks the coverage list against the pack files.
 - `tools/sim` (`pnpm sim`): seeded, replayable Monte Carlo fights of the exemplar's twelve encounters through the engine, sweeping party size, loadout, `armor.max`, and the octopus's hit points; it writes `tools/sim/REPORT.md`. One character finishes about one time in five to two in five, because of the octopus and the gallery ambush; two or more win every required fight. Tests: `tools/sim/sim.test.ts` (4).
 - `pnpm bundles` publishes `lantern_coast` and the exemplar in place of the guide adventure. The campaign material picker lists an adventure's required settings first ([generation-order](SPEC_ISSUES.md#generation-order)).
 - Fixed: the compiler read `to` in a trigger's `on` as a room for every event type. On item events it is the recipient's entity id.
 
+- Path codas for `escaped` and `archive_sealed` keyed on `path`, listed before the endings ([triggers-after-ending](SPEC_ISSUES.md#triggers-after-ending)); a ration given to the keeper (topic `ration`, flag `keeper_fed`) opens her `ring` and `plan` topics.
 Open:
 
 - The agent-driven runs are built but not yet run: `pnpm agent:run` (reads `GROQ_API_KEY`, from `.env.local` when present). A Groq player model writes free text from a description of the view and a route guide per ending (`lib/agent/goals.ts`); the Groq parser turns it into a call with the Coordinator's retry and fallback; each run's turns and replayable log go to `agent-runs/`. `lib/agent/run.test.ts` checks the loop with a scripted parser.
 - The balance values in `tools/sim/README.md` wait for the designers' target ranges; the packs keep the draft's values. The proposed Cadmium values are in [armor-tuning](SPEC_ISSUES.md#armor-tuning).
 - The packs are a proposal for the specification's `spec/examples/`; the brief's documentation updates are not made ([exemplar-location](SPEC_ISSUES.md#exemplar-location)).
-- Not implemented from the draft's proposals: path codas, rations, and the lore names of section 14.10.
+- Not implemented from the draft's proposals: the lore names of section 14.10.
 
 Done meanwhile: the play page shows `action_menu` suggestions as chips.

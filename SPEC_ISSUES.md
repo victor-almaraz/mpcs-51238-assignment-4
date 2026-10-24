@@ -1017,3 +1017,73 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** The application serves and versions its own copies in `legal/terms.md` and `legal/privacy.md`. `TERMS_VERSION` hashes them, so every user accepts the revised text at the next sign-in. `[EMAIL]` is replaced by the deployment's `CONTACT_EMAIL`. The deletion and shutdown code is unchanged: accounts close at once, may be restored for 30 days, and are erased within 90 days; after the takedown, records that are not held are erased 90 days later.
 
 **Proposed resolution.** Treat the legal documents as the operator's, outside the specification, or adopt this revision's retention and hold wording.
+
+## notification-records
+
+| Field | Value |
+|---|---|
+| Document | `docs/app-flow.md`; `docs/api.md`; `docs/data-model.md` |
+| Section | Route map (`/notifications`: "Session reminders", "user stream"); Scheduling |
+| Marker | `lib/api/notifications.ts` |
+
+**Problem.** `/notifications` lists session reminders from the user stream, but no document defines a stored reminder record or an operation that lists past reminders, and the stream carries only live messages, so a page opened after a reminder was sent cannot show it.
+
+**Implemented.** The page derives reminders from scheduled sessions, exceptions, RSVPs, and the user's `reminders.lead_minutes` by the Scheduler's own rules: the last 7 days as Recent and the next 7 as Upcoming. It refreshes on `session_reminder` messages on the user channel and every minute. Derived reminders follow the user's current settings and memberships, not those in effect when each was sent, and have no read state. Notifications is a text link in the top bar, where design/screens.md places an icon button.
+
+**Proposed resolution.** Define a notification record and a `list_notifications` operation if history or read state is wanted; otherwise state that the page derives reminders from schedules.
+
+## triggers-after-ending
+
+| Field | Value |
+|---|---|
+| Document | `docs/adventure-packs.md` |
+| Section | Triggers, Evaluation order |
+| Marker | `lib/engine/triggers.ts` |
+
+**Problem.** The evaluation order does not say what happens once a trigger's `end_campaign` ends the instance: whether later triggers on the same event still fire, and whether effects after `end_campaign` apply. Nor can an item be given to an NPC: `give` takes characters and containers only.
+
+**Implemented.** Evaluation stops when the instance ends: no further trigger is tested on that event or in later passes, and effects after `end_campaign` are skipped. The exemplar's path codas are listed before its endings, so their narration comes first. Giving the keeper a ration is a topic gated on `has_item` that removes it.
+
+**Proposed resolution.** State in Evaluation order that `end_campaign` stops evaluation and skips the remaining effects, and note in the authoring guide how to model giving an item to an NPC.
+
+## editor-stats
+
+| Field | Value |
+|---|---|
+| Document | `docs/app-flow.md` |
+| Section | Rules systems (`StatsEditor` for "creature, item, and ability `system_stats`"); Adventure editor |
+| Marker | `components/systems/stats-editor.tsx` |
+
+**Problem.** Adventure obstacles and doors also carry `system_stats` (the system's structure schema), and drafts define no abilities. "Module fields only when the campaign enables the module" has no campaign in the adventure editor. Validation and playtest need the required settings' bundles in the browser, and nothing says how the editor gets them when `requires_settings` changes.
+
+**Implemented.** The StatsEditor covers creature, item, ability, and structure, and shows module fields when the draft's `system.modules` enables them. The edit page passes the required settings' bundles, and a server action reloads them when `requires_settings` changes. The browser check runs the Content Compiler, which performs the schema, reference, and semantic layers itself.
+
+**Proposed resolution.** List the structure kind, and state that the adventure editor takes modules from the draft's `system.modules`.
+
+## playtest-failed-conditions
+
+| Field | Value |
+|---|---|
+| Document | `docs/app-flow.md` |
+| Section | Adventure editor, Playtest ("the conditions that failed") |
+| Marker | `lib/engine/why.ts` |
+
+**Problem.** No event records why a matched trigger did not fire, so the trace cannot know the failing conditions at the moment of the event.
+
+**Implemented.** The trace re-evaluates each matched trigger's `when`, part by part, against the state after the action, without rolling checks. A value changed later in the same action is reported as it ended, and a `check` is reported only when nothing else failed.
+
+**Proposed resolution.** Accept the approximation for the editor, or have the engine emit an event for a matched trigger whose `when` failed.
+
+## editor-validation-thread
+
+| Field | Value |
+|---|---|
+| Document | `docs/app-flow.md` |
+| Section | Adventure editor ("Validation runs in a Web Worker on every change, debounced"); Server boundaries |
+| Marker | `components/editor/live-validation.ts` |
+
+**Problem.** Next.js 16.4's Turbopack build copies the target of `new Worker(new URL("./validate.worker.ts", import.meta.url))`, with or without options, to `/_next/static/media` as raw TypeScript instead of bundling it, so the browser cannot run the worker.
+
+**Implemented.** Each edit is checked in the browser after 400 ms on the main thread: lib/materials loads on the first edit in its own chunk, and a check takes about 15 to 40 ms after the first. A save's diagnostics from the server stay the authority.
+
+**Proposed resolution.** Allow main-thread validation where the bundler cannot build a worker, or move it into a worker once Turbopack bundles worker entries.
