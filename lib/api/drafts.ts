@@ -6,6 +6,7 @@ import type { SettingBundle } from "../bundle/setting";
 import { zip, unzip } from "../export/zip";
 import { compileDraft, draftFiles } from "../materials";
 import { filesToDraft, toDraftDiagnostics, type DraftDiagnostic } from "../materials/draft-io";
+import { plotWarnings } from "../materials/plot";
 import { compareVersions, parseVersion, satisfies } from "../materials/semver";
 import type { DraftRecord, Store } from "../store";
 import { SYSTEMS } from "../systems";
@@ -55,10 +56,13 @@ export async function requiredSettings(store: Store, draft: Record<string, unkno
   return out;
 }
 
-/** The compiler's diagnostics for a draft document, as draft diagnostics. */
+/**
+ * The compiler's diagnostics for a draft document, as draft diagnostics, then warnings for endings and
+ * stages the plot cannot reach (app-flow.md, Validation: ending reachability).
+ */
 export async function diagnose(store: Store, document: Record<string, unknown>): Promise<DraftDiagnostic[]> {
   const r = compileDraft(document, await requiredSettings(store, document));
-  return toDraftDiagnostics(r.diagnostics);
+  return [...toDraftDiagnostics(r.diagnostics), ...plotWarnings(document)];
 }
 
 export async function createDraft(store: Store, userId: string | null, input: unknown, entropy: Entropy = cryptoEntropy) {

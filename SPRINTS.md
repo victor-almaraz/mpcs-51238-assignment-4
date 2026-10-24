@@ -448,5 +448,20 @@ Open:
 
 - Validation runs on the server when the draft saves, not in a Web Worker on every change.
 - Edit as YAML is a text area: Monaco with `monaco-yaml` needs installing.
-- Items & creatures have no `StatsEditor` form yet; the arc graph, rule cards, and Playtest are sprint 17.
+- Items & creatures have no `StatsEditor` form yet.
 - The editor is not yet checked in a browser, and migration 10 is not applied to the remote database.
+
+### Sprint 17: Adventure editor, graphs and playtest — open
+
+Done:
+
+- `lib/materials/plot.ts`: the plot as a graph. A trigger or topic can act when every stage its condition requires is reachable; stages are reachable from the initial stage through `set_stage` effects of sources that can act; an ending is reachable when such a source ends the campaign with it (`lost` needs no effect). Unreachable endings and stages are warnings in validation, shown in Problems and on the publish page before publishing; errors still block publication.
+- `components/editor/plot.tsx`: one graph per arc (stages as nodes, `set_stage` effects as edges labelled by their trigger, unreachable stages dashed, the initial stage marked, positions saved in `editor.layout` by dragging) and rule cards for the triggers acting in the selected stage: When (talks to, interacts with, picks up, enters, defeats), If (all of, any of, none of, with arc stage, flag, item, room, and defeated conditions; deeper expressions in YAML), Then (ordered effects with Move up and Move down: set stage, set flag, add flag, end the adventure, open a door, reveal a secret, start combat), Narrate, Only once, YAML per card, and a plain-English summary. Every bracket is a picker over ids from the draft and the required settings.
+- `components/editor/playtest.tsx`: the engine and rules system in the browser against the draft and its required settings: a party of up to the maximum players, a seed, Start from here with chosen stages and flags, an event palette (move, examine, attack, take, interact verbs, talk with topics, choices, search, wait, advance), a trace of the triggers each action fired and those that matched without firing, flag and stage changes, template narration, a state inspector with every entity including hidden ones and door states, the maps with every entity, and Preview 20 seeds for generated locations.
+- Tests: `lib/materials/plot.test.ts` (2), and an unreachable ending reported before publishing in `lib/api/drafts.test.ts`.
+
+Open:
+
+- The graph is SVG, not React Flow (`@xyflow/react` needs installing); effects reorder with buttons rather than by drag.
+- Playtest moves to destinations rather than to clicked cells, and its trace cannot name the failing condition, only that a matched trigger did not fire.
+- Not yet checked in a browser.

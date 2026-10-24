@@ -8,8 +8,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { parse, stringify } from "yaml";
 import { copyDraftAction, saveDraftAction } from "@/lib/server/draft-actions";
-import { content, freshId, ID, type Adventure, type Arc, type AuthoredLocation, type Doc, type Flag, type Npc, type Problem, type Refs } from "./doc";
+import { content, freshId, ID, type Adventure, type AuthoredLocation, type Doc, type Flag, type Npc, type Problem, type Refs } from "./doc";
 import { MapEditor } from "./map-editor";
+import { PlotSection } from "./plot";
+import { Playtest } from "./playtest";
+import type { SettingBundle } from "@/lib/bundle/setting";
 
 type Section = "overview" | "flags" | "plot" | "locations" | "npcs" | "entities";
 const SECTIONS: { id: Section; label: string; key: keyof Doc }[] = [
@@ -270,46 +273,6 @@ function NewId({ label, taken, onAdd }: { label: string; taken: string[]; onAdd:
   );
 }
 
-function Plot({ doc, edit }: { doc: Doc; edit: (f: (d: Doc) => void) => void }) {
-  return (
-    <div className="flex flex-col gap-6">
-      <p className="font-ui text-caption text-muted">Arc graphs and rule cards arrive with the next editor release; triggers are edited as YAML meanwhile.</p>
-      {Object.entries(doc.arcs).map(([id, arc]) => (
-        <ArcCard key={id} arc={arc} change={(f) => edit((d) => f(d.arcs[id]!))} remove={() => edit((d) => void delete d.arcs[id])} />
-      ))}
-      <NewId label="Add arc" taken={Object.keys(doc.arcs)} onAdd={(id) => edit((d) => void (d.arcs[id] = { id, title: id.replace(/_/g, " "), stages: ["inactive", "done"], initial: "inactive", triggers: [] }))} />
-    </div>
-  );
-}
-
-function ArcCard({ arc, change, remove }: { arc: Arc; change: (f: (a: Arc) => void) => void; remove: () => void }) {
-  return (
-    <section className="flex flex-col gap-2 rounded-control border border-rule p-3">
-      <div className="flex items-baseline justify-between">
-        <span className="font-mono text-code">{arc.id}</span>
-        <button type="button" className="font-ui text-caption text-danger" onClick={remove}>
-          Delete arc
-        </button>
-      </div>
-      <input aria-label="Arc title" value={arc.title ?? ""} onChange={(e) => change((a) => void (a.title = e.target.value))} className={field} />
-      <label className="flex flex-col gap-1">
-        <span className="font-ui text-label">Stages, in order</span>
-        <input defaultValue={arc.stages.join(", ")} onBlur={(e) => change((a) => void (a.stages = e.target.value.split(/[,\s]+/).filter(Boolean)))} className={`${field} font-mono text-code`} />
-      </label>
-      <label className="flex items-center gap-2">
-        <span className="font-ui text-label">Initial</span>
-        <select value={arc.initial} onChange={(e) => change((a) => void (a.initial = e.target.value))} className={small}>
-          {arc.stages.map((s) => (
-            <option key={s}>{s}</option>
-          ))}
-        </select>
-      </label>
-      <p className="font-ui text-label">Triggers</p>
-      <YamlPanel key={JSON.stringify(arc.triggers)} value={arc.triggers} onApply={(v) => change((a) => void (a.triggers = Array.isArray(v) ? v : []))} />
-    </section>
-  );
-}
-
 function Locations({ doc, refs, edit, focus }: { doc: Doc; refs: Refs; edit: (f: (d: Doc) => void) => void; focus: string | null }) {
   const ids = Object.keys(doc.locations);
   const [current, setCurrent] = useState<string | null>(focus ?? ids[0] ?? null);
@@ -438,6 +401,8 @@ export interface EditorProps {
   document: Doc;
   diagnostics: Problem[];
   refs: Refs;
+  /** The required settings' bundles, for playtesting in the browser. */
+  settings: SettingBundle[];
 }
 
 export function Editor(props: EditorProps) {
@@ -451,6 +416,7 @@ export function Editor(props: EditorProps) {
   const [problems, setProblems] = useState<Problem[]>(props.diagnostics);
   const [status, setStatus] = useState<{ state: "saved" | "pending" | "saving" | "error" | "conflict"; at?: string; message?: string }>({ state: "saved" });
   const [restorable, setRestorable] = useState<Doc | null>(null);
+  const [playtest, setPlaytest] = useState(false);
   const revision = useRef(props.revision);
   const latest = useRef(doc);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -583,7 +549,7 @@ export function Editor(props: EditorProps) {
           ) : section === "flags" ? (
             <Flags doc={doc} edit={edit} />
           ) : section === "plot" ? (
-            <Plot doc={doc} edit={edit} />
+            <PlotSection doc={doc} refs={props.refs} edit={edit} />
           ) : section === "locations" ? (
             <Locations doc={doc} refs={props.refs} edit={edit} focus={focus} />
           ) : section === "npcs" ? (
@@ -634,6 +600,12 @@ export function Editor(props: EditorProps) {
           </div>
         </aside>
       </div>
+      {playtest && (
+        <section className="border-t border-rule px-4 py-4">
+          <h2 className="mb-2 font-display text-heading">Playtest</h2>
+          <Playtest doc={doc} settings={props.settings} />
+        </section>
+      )}
       <footer className="flex flex-wrap items-center gap-4 border-t border-rule px-4 py-2 font-ui text-caption">
         <span className={errors.length ? "text-danger" : ""}>Problems ({errors.length})</span>
         <span>{status.state === "saved" ? (status.at ? `Saved ${new Date(status.at).toLocaleTimeString()}` : "Saved") : status.state === "pending" ? "Unsaved changes" : status.state === "saving" ? "Saving…" : (status.message ?? "Not saved")}</span>
@@ -646,9 +618,9 @@ export function Editor(props: EditorProps) {
         <a href={`/v1/drafts/${props.draftId}/export.zip`} className="text-accent">
           Export
         </a>
-        <span className="text-muted" title="Playtest arrives with the next editor release">
-          Playtest
-        </span>
+        <button type="button" aria-pressed={playtest} onClick={() => setPlaytest(!playtest)} className="text-accent">
+          {playtest ? "Close playtest" : "Playtest"}
+        </button>
         <Link href={`/adventures/${props.draftId}/publish`} aria-disabled={errors.length > 0} title={errors.length ? `Fix ${errors.length} problem${errors.length === 1 ? "" : "s"} to publish` : undefined} className={`ml-auto rounded-control px-3 py-1 text-page ${errors.length ? "pointer-events-none bg-muted" : "bg-accent"}`}>
           Publish
         </Link>

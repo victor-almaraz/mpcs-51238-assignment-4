@@ -38,6 +38,7 @@ export default async function Publish({ params }: { params: Promise<{ draftId: s
   const previous = draft.last_published_version ? ((await store.getBundle("adventure", draft.material_id, draft.last_published_version)) as AdventureBundle | undefined) : undefined;
   const s = suggest(previous, draft.document as Doc);
   const errors = diagnostics.filter((d) => d.severity === "error");
+  const warnings = diagnostics.filter((d) => d.severity === "warning");
   return (
     <div className="mx-auto max-w-page px-6 py-10">
       <Link href={`/adventures/${draftId}/edit`} className="font-ui text-caption text-muted">
@@ -71,6 +72,20 @@ export default async function Publish({ params }: { params: Promise<{ draftId: s
             Publish
           </button>
         </ActionForm>
+      )}
+      {warnings.length > 0 && (
+        <div className="mt-6">
+          <p className="text-warning">
+            {warnings.length} warning{warnings.length === 1 ? "" : "s"}; publishing is allowed.
+          </p>
+          <ul className="mt-2 font-ui text-caption">
+            {warnings.map((d, i) => (
+              <li key={i}>
+                <span className="font-mono">{d.pointer || "/"}</span> {d.message}
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       <p className="mt-6 font-ui text-caption text-muted">A published adventure is usable only in campaigns you create; players reach it by invitation.</p>
     </div>

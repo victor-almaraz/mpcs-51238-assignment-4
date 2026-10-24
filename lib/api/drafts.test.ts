@@ -104,6 +104,16 @@ describe("drafts", () => {
     expect(await store.instanceView(instance.id)).toMatchObject({ status: "ended", ending: "won" });
   });
 
+  it("reports an unreachable ending before publishing, and publishes with the warning", async () => {
+    const d = await fresh();
+    const doc = threeRooms(d.document) as { adventure: { endings: Record<string, { label: string }> } };
+    doc.adventure.endings.secret = { label: "Never" };
+    await saveDraft(store, "user_a", { draft_id: d.id, document: doc, revision: 1 });
+    const diagnostics = await validateDraft(store, "user_a", d.id);
+    expect(diagnostics).toEqual([{ pointer: "/adventure/endings/secret", severity: "warning", code: "ending", message: expect.stringContaining("cannot be reached") }]);
+    expect((await publishDraft(store, "user_a", { draft_id: d.id, version: "1.0.0" })).version).toBe("1.0.0");
+  });
+
   it("refuses to publish while the draft has errors, or under another publisher's id", async () => {
     const d = await fresh();
     expect(await code(publishDraft(store, "user_a", { draft_id: d.id, version: "1.0.0" }))).toBe("invalid_request");
