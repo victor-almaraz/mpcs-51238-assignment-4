@@ -17,6 +17,7 @@
     "golden": "node --import tsx scripts/golden.ts",
     "eval:parser": "node --env-file-if-exists=.env.local --import tsx scripts/eval-parser.ts",
     "bundles": "node --import tsx scripts/bundles.ts",
+    "sim": "node --import tsx tools/sim/cli.ts",
     "agent:run": "node --env-file-if-exists=.env.local --import tsx scripts/agent-run.ts"
   },
   "devEngines": {
