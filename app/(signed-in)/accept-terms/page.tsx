@@ -25,7 +25,7 @@ export default async function AcceptTerms({ searchParams }: { searchParams: Prom
     return (
       <Page width="form">
         <PageHeader title="Your account is being deleted" status={<Badge tone="warning">Closing</Badge>} />
-        <Card className="flex flex-col gap-4 sm:p-6">
+        <Card className="flex flex-col gap-4">
           <p>You can restore it until {until.toUTCString().slice(0, 16)}. It is erased within 90 days of the deletion.</p>
           <ActionForm action={restoreAccountAction} className="flex flex-wrap items-center gap-3">
             <Button type="submit" variant="primary" icon={<RotateCcw {...ICON_DENSE} />}>
@@ -53,7 +53,7 @@ export default async function AcceptTerms({ searchParams }: { searchParams: Prom
   return (
     <Page width="form">
       <PageHeader title={changed ? "The terms have changed" : "Before you play"} description={changed ? "New versions of the Terms of Service and Privacy Policy are in effect." : undefined} />
-      <Card className="flex flex-col gap-5 sm:p-6">
+      <Card className="flex flex-col gap-5">
         <p>Read the Terms of Service and the Privacy Policy. Accept them to continue.</p>
         <ul className="flex flex-col gap-2">
           <li>

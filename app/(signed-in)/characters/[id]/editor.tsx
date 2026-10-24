@@ -5,6 +5,7 @@ import type { FormState } from "@/lib/server/forms";
 import { Button } from "@/components/ui/button";
 import { Field, TextInput, described } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
+import { DangerZone } from "@/components/ui/card";
 import { Section } from "@/components/ui/page";
 
 const QUESTIONS = [
@@ -20,7 +21,7 @@ export function CharacterEditor({ id, name, profile, editable, retirable }: { id
   return (
     <>
       <Section id="details" title="Details">
-        <form action={save} className="flex flex-col gap-4 rounded-card border border-rule bg-page p-4 sm:p-6">
+        <form action={save} className="flex flex-col gap-4 rounded-card border border-rule bg-page p-4">
           <input type="hidden" name="character_id" value={id} />
           {!editable && (
             <p id="character-locked" className="text-caption text-muted">
@@ -48,8 +49,8 @@ export function CharacterEditor({ id, name, profile, editable, retirable }: { id
         </form>
       </Section>
       {retirable && (
-        <Section id="retire" title="Retire">
-          <form action={retire} className="flex flex-col gap-3 rounded-card border border-danger bg-page p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+        <DangerZone id="retire" title="Retire character">
+          <form action={retire} className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <input type="hidden" name="character_id" value={id} />
             <p className="text-muted">A retired character can no longer join games.</p>
             <Button type="submit" variant="danger" disabled={retiring} className="shrink-0">
@@ -61,7 +62,7 @@ export function CharacterEditor({ id, name, profile, editable, retirable }: { id
               </Notice>
             )}
           </form>
-        </Section>
+        </DangerZone>
       )}
     </>
   );

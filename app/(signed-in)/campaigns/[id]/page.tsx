@@ -16,7 +16,7 @@ import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button, ButtonLink } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, Panel } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, TextInput, described } from "@/components/ui/field";
 import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
@@ -94,7 +94,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
       </Section>
       {author && !campaign.archived && (
         <Section id="new-game" title="New game">
-          <Card className="sm:p-6">
+          <Card>
             <ActionForm action={createInstanceAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <input type="hidden" name="campaign_id" value={campaign.id} />
               <Field id="game-name" label="Game name" className="sm:max-w-sm sm:flex-1">
@@ -151,8 +151,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
       <WithAside
         aside={
           <>
-            <Card className="flex flex-col gap-3">
-              <h2 className="text-section font-semibold text-ink">Next session</h2>
+            <Panel title="Next session">
               {upcoming ? (
                 <div className="flex items-center gap-3">
                   <DateTile date={new Date(upcoming.next.starts_at)} timeZone={user.timezone} tone={Date.parse(upcoming.next.starts_at) - now < DAY ? "pigment" : "accent"} />
@@ -169,9 +168,8 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
               ) : (
                 <p className="text-muted">None scheduled.</p>
               )}
-            </Card>
-            <Card className="flex flex-col gap-3">
-              <h2 className="text-section font-semibold text-ink">Campaign</h2>
+            </Panel>
+            <Panel title="Campaign">
               <DescriptionList
                 items={[
                   ["System", `${system.title} ${campaign.system_versions}`],
@@ -182,7 +180,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
                 ]}
               />
               <p className="text-caption text-muted">{system.credit}</p>
-            </Card>
+            </Panel>
             {!campaign.archived && (
               <ButtonLink href={`/characters/new?system=${campaign.system}&campaign=${campaign.id}`} variant="quiet" icon={<UserPlus {...ICON_DENSE} />} className="self-start">
                 New character for this campaign

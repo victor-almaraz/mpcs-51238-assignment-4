@@ -56,7 +56,7 @@ export default async function NewAdventure({ searchParams }: { searchParams: Pro
         </div>
       </ActionForm>
       <Section id="import" title="Import" description="A ZIP of an adventure directory." className="mt-12">
-        <ActionForm action={importDraftAction} className="flex flex-col gap-3 rounded-card border border-rule bg-page p-4 sm:flex-row sm:items-end sm:p-6">
+        <ActionForm action={importDraftAction} className="flex flex-col gap-3 rounded-card border border-rule bg-page p-4 sm:flex-row sm:items-end">
           <Field id="adventure-archive" label="ZIP file" className="sm:flex-1">
             <input
               {...described("adventure-archive")}

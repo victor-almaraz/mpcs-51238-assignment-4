@@ -9,6 +9,31 @@ export function Card({ children, className }: { children: ReactNode; className?:
   return <div className={cx(surface, "p-4", className)}>{children}</div>;
 }
 
+/** A titled card, as in a detail page's aside: the title is a card title (level 3), not a section heading. */
+export function Panel({ title, children, className }: { title: ReactNode; children: ReactNode; className?: string }) {
+  return (
+    <div className={cx(surface, "flex flex-col gap-3 p-4", className)}>
+      <h2 className="text-heading font-semibold text-ink">{title}</h2>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * The destructive action of a page, last on it. The red border is its only emphasis: the title stays
+ * ink, and the one button inside is `danger`.
+ */
+export function DangerZone({ id, title, children }: { id: string; title: ReactNode; children: ReactNode }) {
+  return (
+    <section id={id} aria-labelledby={`${id}-title`} className="flex flex-col gap-3 rounded-card border border-danger bg-page p-4">
+      <h2 id={`${id}-title`} className="text-heading font-semibold text-ink">
+        {title}
+      </h2>
+      {children}
+    </section>
+  );
+}
+
 /**
  * A card whose title is its link; metadata and badges sit under it. Nothing else inside is interactive.
  * `tile` (an ElementTile) leads the card; `icon` is a plain icon for cards without one.

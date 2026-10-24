@@ -79,7 +79,7 @@ export default async function Publish({ params }: { params: Promise<{ draftId: s
             <ActionForm action={publishDraftAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
               <input type="hidden" name="draft_id" value={draftId} />
               <Field id="publish-version" className="sm:max-w-xs" label="Version" hint="Major, minor, and patch, such as 1.2.0.">
-                <TextInput {...described("publish-version", { hint: true })} name="version" required defaultValue={next(draft.last_published_version, s.increment)} pattern="\d+\.\d+\.\d+" className="max-w-40 font-mono text-code" />
+                <TextInput {...described("publish-version", { hint: true })} name="version" required defaultValue={next(draft.last_published_version, s.increment)} pattern="\d+\.\d+\.\d+" className="font-mono text-code" />
               </Field>
               <Button type="submit" variant="primary" icon={<Upload {...ICON_DENSE} />} className="h-10">
                 Publish

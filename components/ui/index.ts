@@ -1,7 +1,7 @@
 // The component library (docs/design/README.md, Components).
 export { Badge, StatusBadge, statusTone, statusWord, type Tone } from "./badge";
 export { Button, ButtonLink, buttonClass, type Variant } from "./button";
-export { Card, CardGrid, CardLink } from "./card";
+export { Card, CardGrid, CardLink, DangerZone, Panel } from "./card";
 export { cx } from "./cx";
 export { EmptyState } from "./empty-state";
 export { Choice, described, Field, FieldGroup, inputClass, Select, TextArea, TextInput } from "./field";

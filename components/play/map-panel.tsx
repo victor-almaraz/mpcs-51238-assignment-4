@@ -43,7 +43,7 @@ function TargetList({ title, entries, selected, onPick }: { title: string; entri
   const id = `map-list-${title.toLowerCase().replaceAll(" ", "-")}`;
   return (
     <section aria-labelledby={id}>
-      <h3 id={id} className="px-2 pb-1 text-caption font-medium text-muted">
+      <h3 id={id} className="px-2 pb-1 text-label font-medium text-muted">
         {title}
       </h3>
       {entries.length === 0 ? (

@@ -9,7 +9,7 @@ import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
 import { systemUi } from "@/components/systems";
 import { CardLink } from "@/components/ui/card";
-import { Page, PageHeader } from "@/components/ui/page";
+import { Page, PageHeader, Section } from "@/components/ui/page";
 
 const crumbs = [{ label: "Characters", href: "/characters" }];
 
@@ -22,23 +22,15 @@ export default async function NewCharacter({ searchParams }: { searchParams: Pro
     return (
       <Page>
         <PageHeader crumbs={crumbs} title="New character" description="Choose a rules system. Role, abilities, and a name come next." />
-        <section aria-labelledby="step-system-title" className="rounded-card border border-rule bg-page p-4 sm:p-6">
-          <h2 id="step-system-title" className="mb-4 flex items-center gap-3 text-section font-semibold text-ink">
-            <span aria-hidden="true" className="inline-flex size-7 items-center justify-center rounded-full border border-border text-label text-muted">
-              1
-            </span>
-            <span>
-              <span className="sr-only">Step 1: </span>System
-            </span>
-          </h2>
-          <ul className="grid gap-3 sm:grid-cols-2">
+        <Section id="step-system" title="System">
+          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {systems.map((s) => (
               <li key={s.id} className="grid">
                 <CardLink href={`/characters/new?system=${s.id}${keep}`} title={s.title} meta={s.credit} />
               </li>
             ))}
           </ul>
-        </section>
+        </Section>
       </Page>
     );
   }

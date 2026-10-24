@@ -168,7 +168,7 @@ export default async function Dashboard() {
               <div className="flex min-w-0 items-start gap-4">
                 <DateTile date={new Date(next.starts_at)} timeZone={user.timezone} size="lg" tone={live || Date.parse(next.starts_at) - now < 86_400_000 ? "pigment" : "accent"} />
                 <div className="min-w-0">
-                  <p className="tabular text-section font-semibold text-ink">{when(next)}</p>
+                  <p className="tabular text-heading font-semibold text-ink">{when(next)}</p>
                   <p className="flex flex-wrap items-center gap-2">
                     <Link href={`/instances/${next.instance.id}/schedule`} className="font-medium text-accent hover:underline">
                       {next.instance.name}
@@ -252,8 +252,10 @@ export default async function Dashboard() {
             ))}
           </CardGrid>
         )}
-        <div className="mt-3 max-w-form">
-          <EnterCode />
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="sm:col-span-2">
+            <EnterCode />
+          </div>
         </div>
       </Section>
 

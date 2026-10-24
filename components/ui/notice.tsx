@@ -16,7 +16,7 @@ export function Notice({ tone = "info", title, children, className, live }: { to
   const t = tones[tone];
   const role = live ? (tone === "danger" ? "alert" : "status") : undefined;
   return (
-    <div role={role} className={cx("flex gap-3 rounded-card border p-3", t.box, className)}>
+    <div role={role} data-notice className={cx("flex gap-3 rounded-card border p-3", t.box, className)}>
       <span className="mt-0.5 shrink-0">{t.icon}</span>
       <div className="min-w-0 text-body">
         {title && <p className="font-semibold">{title}</p>}

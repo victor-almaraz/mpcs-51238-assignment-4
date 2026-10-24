@@ -60,7 +60,7 @@ export function InvitationsPanel({ campaignId, userId, archived, linkCode, origi
         {archived ? (
           <Notice>The campaign is archived.</Notice>
         ) : (
-          <Card className="sm:p-6">
+          <Card>
             <InviteForm campaignId={campaignId} origin={origin} />
           </Card>
         )}

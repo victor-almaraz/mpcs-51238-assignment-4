@@ -394,7 +394,7 @@ export function Locations({ doc, refs, edit, current, select, reveal }: { doc: D
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h3 className="font-mono text-section font-semibold">{current}</h3>
+        <h3 className="font-mono text-heading font-semibold">{current}</h3>
         <Badge dot={false}>{loc.kind === "authored" ? "Authored map" : "Generated"}</Badge>
         <Button variant="danger" size="sm" className="ml-auto" onClick={() => edit((d) => void delete d.locations[current])}>
           Delete location

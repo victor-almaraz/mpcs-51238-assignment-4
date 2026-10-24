@@ -29,7 +29,7 @@ const link = "font-medium text-accent underline";
 function FontsAndIcons() {
   return (
     <section aria-labelledby="fonts-and-icons">
-      <h2 id="fonts-and-icons" className="mt-10 border-t border-rule pt-6 text-section font-semibold text-ink">
+      <h2 id="fonts-and-icons" className="mt-10 border-t border-rule pt-6 font-display text-section font-semibold text-ink">
         Fonts and icons
       </h2>
       <dl className="mt-4 grid gap-4 sm:grid-cols-2">

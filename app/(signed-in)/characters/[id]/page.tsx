@@ -10,7 +10,7 @@ import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
 import { systemUi } from "@/components/systems";
 import { StatusBadge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
+import { Card, Panel } from "@/components/ui/card";
 import { elementSymbol } from "@/components/ui/tile";
 import { Page, PageHeader, Section, WithAside } from "@/components/ui/page";
 import { CharacterEditor } from "./editor";
@@ -37,8 +37,7 @@ export default async function CharacterPage({ params }: { params: Promise<{ id: 
       <PageHeader crumbs={[{ label: "Characters", href: "/characters" }]} title={character.name} status={<StatusBadge status={character.status} />} description={`${system.title} · ${character.summary.health}`} />
       <WithAside
         aside={
-          <Card className="flex flex-col gap-4">
-            <h2 className="text-section font-semibold text-ink">Portrait</h2>
+          <Panel title="Portrait" className="gap-4">
             {portrait && !portrait.removed_at ? (
               // eslint-disable-next-line @next/next/no-img-element -- assets are served by hash with long-lived caching.
               <img src={`/v1/assets/${portrait.hash}`} alt={portrait.alt} width={288} height={288} className="aspect-square w-full max-w-72 rounded-card border border-rule object-cover" />
@@ -48,7 +47,7 @@ export default async function CharacterPage({ params }: { params: Promise<{ id: 
               </span>
             )}
             <PortraitForm id={character.id} has={!!character.portrait} />
-          </Card>
+          </Panel>
         }
       >
         {ui && (

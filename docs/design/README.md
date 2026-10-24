@@ -49,12 +49,12 @@ Light or Dark in Settings.
 
 | Role | Face | Size / line height |
 |---|---|---|
-| Page title | Libertinus Serif, semibold | 34 / 40 px (28 / 34 compact) |
-| Section heading | Libertinus Serif, semibold | 21 / 28 px |
-| Card, panel, and pane heading | System UI, semibold | 18 / 26 px |
-| Card or record title | System UI, semibold | 16 / 24 px |
+| Page title (`display`, `title` compact) | Libertinus Serif, semibold | 34 / 40 px (28 / 34 compact) |
+| Section heading (`section`) | Libertinus Serif, semibold | 21 / 28 px |
+| Workspace centre-pane title (`section`) | System UI, semibold | 21 / 28 px |
+| Card title: cards, panels, field groups, steps, danger zones (`heading`) | System UI, semibold | 16 / 24 px |
 | Body and controls | System UI | 15 / 22 px |
-| Label | System UI, medium | 14 / 20 px |
+| Label; group label inside a card or pane (medium, `muted`) | System UI, medium | 14 / 20 px |
 | Caption and metadata | System UI | 13 / 18 px |
 | Story (narration, room text, briefs) | Libertinus Serif | 17 / 27 px; italic for emphasis |
 | Ids, YAML, code | System monospace | 14 / 20 px |
@@ -62,6 +62,38 @@ Light or Dark in Settings.
 The system stack is `system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`. Libertinus Serif
 (Regular, Italic, Semibold; SIL Open Font License) is served from `/fonts/` with `font-display: swap`.
 Sentence case everywhere. Numbers in trackers, stats, and tables use tabular figures.
+
+### Hierarchy
+
+Two rules order every page: **alignment** (things that belong together share an edge) and
+**weight** (a thing's size, boldness, colour, and border match its rank). The levels of the
+Typography table are the only heading sizes; nothing between them.
+
+**Alignment**
+
+| Rule | Applies as |
+|---|---|
+| One content edge | Breadcrumb, page title, section headings, tab labels, side navigation labels, and card edges start on the content's left edge. Controls with a hover area (tabs, side navigation links) keep their label on the edge: tabs have no side padding, and navigation links take a negative margin equal to their padding. |
+| One card inset | Every card, panel, field group, step, and danger zone has 16 px padding at every size, so the content of stacked cards shares one inner edge. Standalone pages (sign-in, invitations) are the one exception: a single panel at 24 px (32 px from medium). |
+| One right edge | Page actions, section actions, and the aside end on the content's right edge; card actions end on the card's inner edge. |
+| Columns are whole | Anything placed in a card grid spans whole grid columns. A detail page's aside starts level with the first section of the main column. Sections placed side by side keep one-line descriptions, so their cards start on one line. |
+| A button follows its field | A button that acts on one field sits on the field's bottom edge, 12 px after the control; the control fills its field. |
+| Label and value columns | Facts are a `DescriptionList`: terms in one column, values in the next. |
+
+**Weight**
+
+| Rule | Applies as |
+|---|---|
+| Sections head content, cards hold it | A section heading (serif) sits above its cards, never inside one. Inside a card the only heading is a card title (16 px), and under it group labels (14 px, medium, `muted`). |
+| Pages pick one structure | Hub and detail pages are sections of cards, and a detail page's aside is `Panel`s. Form pages (new, edit, settings, publish) are field groups under the page title, with no section headings. |
+| No cards in cards | A choice between things (rules systems, roles) is a grid of cards inside a section, not cards inside a card. |
+| One primary button per view | Every other button is secondary or quiet; destructive buttons are `danger`. |
+| Emphasis is spent once | A thing gets one emphasis, not a stack: a destructive action is a `DangerZone` (red border and a `danger` button; the title stays ink, with no icon); a status is a badge; the current item is accent. Bold is for titles and the one key value of a card (a session's date). |
+| Ink, muted, accent | Titles and values are ink; descriptions, hints, and metadata are muted; accent is only for links, selection, and the current item. |
+
+`pnpm audit:ui` checks four of these on every screen: headings only at the scale's sizes, no serif
+heading inside a card, the 16 px card inset, and the page title, section headings, and tab labels on
+one content edge.
 
 ### Space, shape, depth
 
@@ -124,6 +156,9 @@ All live in `components/ui/`. Each is the only way the application draws that th
 | `PageHeader` | Optional breadcrumb, title, description, status, and actions on the right (under the title on compact) | One `h1` per page |
 | `Section` | Titled region with optional actions | `h2`, labelled `section` |
 | `Card` | `page` surface, `rule` border, 6 px radius, 16 px padding; a whole-card link uses the title as the link | The title is the link text; no nested interactive elements inside a whole-card link |
+| `Panel` | A card with a card title, for a detail page's aside | `h2` at the card-title size |
+| `FieldGroup` | A card of related fields with its legend as the card title, for form pages | `fieldset` and `legend` |
+| `DangerZone` | The page's destructive action, last: red border, ink card title, one sentence, a `danger` button | Labelled `section` |
 | `List` / `ListRow` | Rows with an optional icon, a title, metadata, a status badge, and trailing actions | A `ul`; trailing actions are separate buttons |
 | `ElementTile` / `DateTile` | The identity tile in sizes `sm` (40 px, cards and avatars), `md` (56 px), and `lg` (72 px, the dashboard's next session), tones `accent`, `pigment`, `neutral`; `elementSymbol` derives the symbol from a name | Decorative unless given a `label` |
 | `Badge` | A word with an optional dot or icon: neutral, accent, success, warning, danger, and pigment (Your turn, Live now) | Colour is never the only signal |
@@ -131,7 +166,7 @@ All live in `components/ui/`. Each is the only way the application draws that th
 | `TextInput`, `TextArea`, `Select`, `Checkbox`, `Radio` | 40 px controls (checkboxes 20 px with a 40 px hit area) | Native elements |
 | `ErrorSummary` | A `danger` box at the top of a form listing each error as a link to its field | Receives focus after a failed submit; `role="alert"` |
 | `Notice` | Inline message with icon: info, success, warning, danger | `role="status"` for success, `alert` for errors |
-| `Tabs` | Underlined tabs for sections of one page | APG tabs: arrow keys move, `aria-selected` |
+| `Tabs` | Underlined tabs for sections of one page; labels sit on the content edge, 24 px apart | APG tabs: arrow keys move, `aria-selected` |
 | `EmptyState` | Centred icon, one sentence, and the action that fills the space | |
 | `Sheet` / `Dialog` | Dialog centred; sheets slide from the side (expanded) or the foot (compact) on `raised` | APG modal dialog: focus moves in, stays in, Escape closes, focus returns |
 | `Toast` | Short confirmations (Saved, Copied) at the foot, 4 s | A polite live region |
@@ -200,8 +235,8 @@ A workspace modelled on entity editors with a problems panel.
 
 ### Settings
 
-A form page with sections down one column: Account, Appearance, Reminders, Calendar, Your data, and
-a Danger zone (delete account) set apart with a `danger` border.
+A form page of field groups down one column: Account, Appearance, Reminders, Calendar, Your data,
+and, last, Delete account as a `DangerZone`.
 
 ### Notifications
 

@@ -15,7 +15,7 @@ import { cancelAction, createFeedAction, moveOccurrenceAction, rsvpAction, sched
 import { pageUser } from "@/lib/server/session";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button, buttonClass } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Panel } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Choice, Field, Select, TextArea, TextInput, described, inputClass } from "@/components/ui/field";
 import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
@@ -65,8 +65,7 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
       <WithAside
         aside={
           <>
-            <Card className="flex flex-col gap-3">
-              <h2 className="text-section font-semibold text-ink">Calendar</h2>
+            <Panel title="Calendar">
               <a href={`/v1/instances/${id}/calendar.ics`} className={buttonClass("secondary", "sm", "self-start")}>
                 <CalendarPlus {...ICON_DENSE} />
                 Add to calendar
@@ -89,10 +88,9 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
                   </ActionForm>
                 )}
               </div>
-            </Card>
+            </Panel>
             {author && instance.status !== "ended" && (
-              <Card className="flex flex-col gap-4">
-                <h2 className="text-section font-semibold text-ink">New session</h2>
+              <Panel title="New session" className="gap-4">
                 <ActionForm action={scheduleSessionAction} className="flex flex-col gap-4">
                   <input type="hidden" name="instance_id" value={id} />
                   <Field id="session-title" label="Title" optional>
@@ -136,7 +134,7 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
                     </Button>
                   </div>
                 </ActionForm>
-              </Card>
+              </Panel>
             )}
           </>
         }

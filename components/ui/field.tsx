@@ -69,7 +69,7 @@ export function Choice({ type = "checkbox", label, hint, className, ...rest }: {
 /** A titled group of fields. */
 export function FieldGroup({ legend, description, children, className }: { legend: ReactNode; description?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <fieldset className={cx("flex min-w-0 flex-col gap-4 rounded-card border border-rule bg-page p-4 sm:p-6", className)}>
+    <fieldset className={cx("flex min-w-0 flex-col gap-4 rounded-card border border-rule bg-page p-4", className)}>
       {/* Floated, the legend sits inside the card as its heading instead of on its border. */}
       <legend className="float-left mb-1 w-full text-heading font-semibold text-ink">{legend}</legend>
       {description && <p className="-mt-3 text-caption text-muted">{description}</p>}

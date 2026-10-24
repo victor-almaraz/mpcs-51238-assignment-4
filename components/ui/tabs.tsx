@@ -23,7 +23,7 @@ export function Tabs({ tabs, initial, label }: { tabs: Tab[]; initial?: string; 
   };
   return (
     <div>
-      <div role="tablist" aria-label={label} className="mb-6 flex gap-1 relative overflow-x-auto border-b border-rule">
+      <div role="tablist" aria-label={label} className="relative mb-6 flex gap-6 overflow-x-auto border-b border-rule">
         {tabs.map((t, i) => {
           const selected = t.id === current;
           return (
@@ -39,7 +39,7 @@ export function Tabs({ tabs, initial, label }: { tabs: Tab[]; initial?: string; 
               tabIndex={selected ? 0 : -1}
               onClick={() => setCurrent(t.id)}
               onKeyDown={(e) => onKey(e, i)}
-              className={cx("-mb-px h-10 shrink-0 border-b-2 px-3 text-control font-medium", selected ? "border-accent text-accent" : "border-transparent text-muted hover:text-ink")}
+              className={cx("-mb-px h-10 shrink-0 border-b-2 text-control font-medium", selected ? "border-accent text-accent" : "border-transparent text-muted hover:text-ink")}
             >
               {t.label}
             </button>

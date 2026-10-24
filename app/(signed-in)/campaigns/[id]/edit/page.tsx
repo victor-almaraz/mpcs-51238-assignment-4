@@ -16,7 +16,8 @@ import { Button } from "@/components/ui/button";
 import { Choice, Field, FieldGroup, TextArea, TextInput, described } from "@/components/ui/field";
 import { DescriptionList } from "@/components/ui/list";
 import { Notice } from "@/components/ui/notice";
-import { Page, PageHeader, Section } from "@/components/ui/page";
+import { DangerZone } from "@/components/ui/card";
+import { Page, PageHeader } from "@/components/ui/page";
 import { Tabs } from "@/components/ui/tabs";
 import { InvitationsPanel, MembersPanel } from "../panels";
 
@@ -61,15 +62,17 @@ export default async function EditCampaign({ params, searchParams }: { params: P
         </div>
       </ActionForm>
       {!campaign.archived && (
-        <Section id="danger-zone" title="Archive" className="mt-10 mb-0">
-          <ActionForm action={archiveCampaignAction} className="flex flex-col gap-3 rounded-card border border-danger bg-page p-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-            <input type="hidden" name="campaign_id" value={campaign.id} />
-            <p className="text-muted">An archived campaign accepts no new games, members, or invitations.</p>
-            <Button type="submit" variant="danger" className="shrink-0">
-              Archive campaign
-            </Button>
-          </ActionForm>
-        </Section>
+        <div className="mt-10">
+          <DangerZone id="danger-zone" title="Archive campaign">
+            <ActionForm action={archiveCampaignAction} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <input type="hidden" name="campaign_id" value={campaign.id} />
+              <p className="text-muted">An archived campaign accepts no new games, members, or invitations.</p>
+              <Button type="submit" variant="danger" className="shrink-0">
+                Archive campaign
+              </Button>
+            </ActionForm>
+          </DangerZone>
+        </div>
       )}
     </>
   );

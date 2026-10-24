@@ -5,7 +5,9 @@
 // landmarks; an accessible name on every control, button, link, and image; no duplicate ids; targets of
 // at least 24 x 24 px (WCAG 2.5.8; inline text links excepted); text contrast against its background
 // (4.5:1, or 3:1 for large text); a visible focus indicator on the first focusable elements; no
-// horizontal scrolling; and console errors, page errors, and hydration failures.
+// horizontal scrolling; console errors, page errors, and hydration failures; and the Hierarchy rules
+// (headings only at the type scale's sizes, no serif heading inside a card, a 16 px card inset, and page
+// title, section headings, and tab labels on one content edge).
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { chromium, type Page } from "@playwright/test";
@@ -146,6 +148,32 @@ function pageChecks(): Finding[] {
       seen.add(key);
       add("contrast", `${ratio.toFixed(2)}:1 (needs ${min}) "${text.slice(0, 30)}" ${s.color} on rgb(${bg.join(",")})`);
     }
+  }
+
+  // Hierarchy (docs/design/README.md, Foundations: Hierarchy).
+  const px = (v: string) => Math.round(parseFloat(v));
+  const shown = (el: Element) => visible(el) && el.getBoundingClientRect().width > 1 && !el.closest(".sr-only");
+  const scale = new Set([34, 28, 21, 16, 14]);
+  for (const h of [...document.querySelectorAll("h1, h2, h3, h4, legend")].filter(shown)) {
+    const size = px(getComputedStyle(h).fontSize);
+    if (!scale.has(size)) add("heading-scale", `${size}px ${describe(h)}`);
+    if (h.tagName !== "H1" && /Libertinus/.test(getComputedStyle(h).fontFamily) && h.parentElement?.closest(".rounded-card")) add("serif-in-card", describe(h));
+  }
+  for (const c of [...document.querySelectorAll("main .rounded-card.border, main fieldset.rounded-card")].filter(shown)) {
+    // Standalone panels have their own inset; empty states (dashed), notices, and error summaries are not cards.
+    if (c.closest("[data-standalone], [data-workspace]") || c.matches("img, [aria-hidden=true], .border-dashed, [data-notice], [role=alert]")) continue;
+    const s = getComputedStyle(c);
+    const pad = px(s.paddingLeft);
+    if (pad !== 16 && pad !== 0) add("card-inset", `${pad}px ${describe(c)}`);
+  }
+  const title = document.querySelector("main h1");
+  if (title && !document.querySelector("main [data-workspace]")) {
+    const edge = Math.round(title.getBoundingClientRect().left);
+    // Off the edge means outside it or indented past it; a heading a column away starts a second column.
+    const off = (el: Element, left: number) => (left < edge - 1 || (left > edge + 1 && left < edge + 48)) && add("content-edge", `${Math.round(left)}px, page title at ${edge}px: ${describe(el)}`);
+    for (const h of [...document.querySelectorAll("main section > div > div > h2")].filter(shown)) if (/Libertinus/.test(getComputedStyle(h).fontFamily) && !h.closest("aside, [data-aside]")) off(h, h.getBoundingClientRect().left);
+    const tab = [...document.querySelectorAll("main [role=tablist]")].filter(shown)[0]?.querySelector("[role=tab]");
+    if (tab) off(tab, tab.getBoundingClientRect().left + parseFloat(getComputedStyle(tab).paddingLeft));
   }
 
   // Horizontal overflow.

@@ -54,7 +54,7 @@ export function Markdown({ source, children }: { source: string; children?: Reac
     const h = /^(#{1,4})\s+(.*)$/.exec(line);
     if (h) {
       const level = h[1]!.length;
-      const cls = level === 1 ? "mb-6 text-[24px] leading-[30px] font-semibold tracking-tight text-ink sm:text-title" : level === 2 ? "mt-10 border-t border-rule pt-6 text-section font-semibold text-ink" : "mt-6 text-heading font-semibold text-ink";
+      const cls = level === 1 ? "mb-6 font-display text-title font-semibold text-ink sm:text-display" : level === 2 ? "mt-10 border-t border-rule pt-6 font-display text-section font-semibold text-ink" : "mt-6 text-heading font-semibold text-ink";
       const Tag = (["h1", "h2", "h3", "h4"] as const)[level - 1]!;
       blocks.push(
         <Tag key={k} className={cls}>

@@ -53,7 +53,7 @@ export function MaterialPicker({ materials, modules, chosen, enabled }: { materi
         </Select>
       </Field>
       <fieldset className="flex flex-col">
-        <legend className="mb-1 text-label font-medium text-ink">Settings</legend>
+        <legend className="mb-1 text-label font-medium text-muted">Settings</legend>
         {settings.length === 0 && <p className="text-muted">No settings are installed for this system.</p>}
         {ordered.map((s) => (
           <Choice
@@ -73,7 +73,7 @@ export function MaterialPicker({ materials, modules, chosen, enabled }: { materi
       </fieldset>
       {modules.length > 0 && (
         <fieldset className="flex flex-col">
-          <legend className="mb-1 text-label font-medium text-ink">Modules</legend>
+          <legend className="mb-1 text-label font-medium text-muted">Modules</legend>
           {modules.map((m) => (
             <Choice
               key={m.id}

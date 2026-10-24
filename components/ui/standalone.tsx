@@ -7,11 +7,11 @@ import { cx } from "./cx";
 export function Standalone({ icon, eyebrow, title, description, children, footer, wide }: { icon?: ReactNode; eyebrow?: ReactNode; title: ReactNode; description?: ReactNode; children?: ReactNode; footer?: ReactNode; wide?: boolean }) {
   return (
     <div className="flex justify-center px-4 py-10 sm:px-6 sm:py-16">
-      <div className={cx("flex w-full flex-col gap-5 rounded-card border border-rule bg-page p-6 sm:p-8", wide ? "max-w-form" : "max-w-[28rem]")}>
+      <div data-standalone className={cx("flex w-full flex-col gap-5 rounded-card border border-rule bg-page p-6 sm:p-8", wide ? "max-w-form" : "max-w-[28rem]")}>
         {icon && <span className="flex size-12 items-center justify-center rounded-card bg-accent-soft text-accent">{icon}</span>}
         <div>
           {eyebrow && <p className="mb-1 text-caption font-medium text-muted">{eyebrow}</p>}
-          <h1 className="font-display text-[28px] leading-[34px] font-semibold text-ink">{title}</h1>
+          <h1 className="font-display text-title font-semibold text-ink">{title}</h1>
           {description && <p className="mt-2 text-muted">{description}</p>}
         </div>
         {children}

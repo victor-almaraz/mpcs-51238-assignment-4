@@ -18,7 +18,7 @@ import { serverDeps } from "@/lib/server/coordinator";
 import { serverStore } from "@/lib/server/supabase";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button, ButtonLink, type Variant } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Card, Panel } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, Select, described } from "@/components/ui/field";
 import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
@@ -98,8 +98,7 @@ export default async function Lobby({ params }: { params: Promise<{ id: string }
       <WithAside
         aside={
           <>
-            <Card className="flex flex-col gap-3">
-              <h2 className="text-section font-semibold text-ink">Next session</h2>
+            <Panel title="Next session">
               {next ? (
                 <div className="flex items-center gap-3">
                   <DateTile date={new Date(next.starts_at)} timeZone={user.timezone} tone={Date.parse(next.starts_at) - now < 86_400_000 ? "pigment" : "accent"} />
@@ -116,9 +115,8 @@ export default async function Lobby({ params }: { params: Promise<{ id: string }
                   History
                 </ButtonLink>
               </div>
-            </Card>
-            <Card className="flex flex-col gap-3">
-              <h2 className="text-section font-semibold text-ink">Game</h2>
+            </Panel>
+            <Panel title="Game">
               <DescriptionList
                 items={[
                   ["Campaign", campaign.title],
@@ -127,7 +125,7 @@ export default async function Lobby({ params }: { params: Promise<{ id: string }
                   ["Party", `${instance.characters.length} character${instance.characters.length === 1 ? "" : "s"}`],
                 ]}
               />
-            </Card>
+            </Panel>
           </>
         }
       >
@@ -172,7 +170,7 @@ export default async function Lobby({ params }: { params: Promise<{ id: string }
                 You have no available {system.title} character.
               </EmptyState>
             ) : (
-              <Card className="sm:p-6">
+              <Card>
                 <ActionForm action={addCharacterAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
                   <input type="hidden" name="instance_id" value={instance.id} />
                   <Field id="add-character-select" label="Your character" className="sm:max-w-sm sm:flex-1">

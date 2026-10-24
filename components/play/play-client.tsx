@@ -353,13 +353,13 @@ export function PlayClient(props: PlayProps) {
         ))}
       </dl>
       <section aria-labelledby="inventory-title">
-        <h3 id="inventory-title" className="mb-1 px-2 text-caption font-medium text-muted">
+        <h3 id="inventory-title" className="mb-1 px-2 text-label font-medium text-muted">
           Inventory
         </h3>
         {view.actions.inventory.length === 0 ? <p className="px-2 text-caption text-muted">Empty</p> : <ul className="flex flex-col">{view.actions.inventory.map((i) => pickRow(i.id, i.label, i.art))}</ul>}
       </section>
       <section aria-labelledby="abilities-title">
-        <h3 id="abilities-title" className="mb-1 px-2 text-caption font-medium text-muted">
+        <h3 id="abilities-title" className="mb-1 px-2 text-label font-medium text-muted">
           Abilities
         </h3>
         {view.actions.abilities.length === 0 ? <p className="px-2 text-caption text-muted">None</p> : <ul className="flex flex-col">{view.actions.abilities.map((a) => pickRow(a.id, a.label, a.art))}</ul>}

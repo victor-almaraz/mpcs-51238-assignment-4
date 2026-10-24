@@ -1,5 +1,5 @@
 // Settings (app-flow.md, Settings; docs/design/README.md, Screens: Settings): a form page with
-// Account, Appearance, Reminders, Calendar, Your data, and a separate Danger zone.
+// Account, Appearance, Reminders, Calendar, Your data, and, set apart, Delete account.
 import { UserProfile } from "@clerk/nextjs";
 import { CalendarSync, Download, Monitor, Trash2 } from "lucide-react";
 import { demoMode } from "@/lib/server/demo";
@@ -11,6 +11,7 @@ import { ThemePicker } from "@/components/settings/theme";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Choice, described, Field, FieldGroup, TextInput } from "@/components/ui/field";
 import { ICON_DENSE } from "@/components/ui/icon-button";
+import { DangerZone } from "@/components/ui/card";
 import { Page, PageHeader } from "@/components/ui/page";
 import { listPushSubscriptions } from "@/lib/api/account";
 import { getCalendarFeed } from "@/lib/api/schedules";
@@ -26,7 +27,7 @@ const SECTIONS = [
   ["reminders", "Reminders"],
   ["calendar", "Calendar"],
   ["data", "Your data"],
-  ["danger", "Danger zone"],
+  ["danger", "Delete account"],
 ] as const;
 
 export default async function Settings() {
@@ -46,7 +47,7 @@ export default async function Settings() {
           <ul className="sticky top-[calc(var(--size-topbar)+24px)] flex flex-col gap-1">
             {SECTIONS.map(([id, label]) => (
               <li key={id}>
-                <a href={`#${id}`} className={`flex h-9 items-center rounded-control px-3 text-control hover:bg-page ${id === "danger" ? "text-danger" : "text-ink"}`}>
+                <a href={`#${id}`} className="-mx-3 flex h-9 items-center rounded-control px-3 text-control text-ink hover:bg-page">
                   {label}
                 </a>
               </li>
@@ -165,13 +166,9 @@ export default async function Settings() {
             </FieldGroup>
           </section>
 
-          <section id="danger" aria-labelledby="danger-title" className="rounded-card border border-danger bg-page p-4 sm:p-6">
-            <h2 id="danger-title" className="mb-1 flex items-center gap-2 text-heading font-semibold text-danger">
-              <Trash2 {...ICON_DENSE} />
-              Danger zone
-            </h2>
+          <DangerZone id="danger" title="Delete account">
             <DeleteAccount name={user.display_name} />
-          </section>
+          </DangerZone>
         </div>
       </div>
     </Page>

@@ -38,7 +38,7 @@ export function EnterCode({ id = "code" }: { id?: string }) {
         <KeyRound {...ICON} className="text-muted" />
         Have a code?
       </div>
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
         <Field id={id} label="Invitation or invite link code" hint={hint} className="min-w-0 flex-1">
           <TextInput name="code" required autoComplete="off" spellCheck={false} className="font-mono text-code" {...described(id, { hint })} />
         </Field>

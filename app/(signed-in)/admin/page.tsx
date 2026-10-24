@@ -104,7 +104,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </div>
         </Section>
 
-        <Section id="instances" title="Instances" description="Inspect an instance's state with a recorded reason; restore a paused one to an earlier version.">
+        <Section id="instances" title="Instances" description="Inspect a game's state, or restore a paused one to an earlier version.">
           <Card className="flex flex-col gap-4">
             <form className="flex flex-col gap-4">
               <Field id="inspect" label="Instance id">

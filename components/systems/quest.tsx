@@ -44,9 +44,9 @@ const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 /** A titled, numbered step of the creation page; Change links in the summary lead to its id. */
 export function CreationStep({ n, id, title, done, status, children }: { n: number; id: string; title: string; done: boolean; status?: ReactNode; children: ReactNode }) {
   return (
-    <section id={id} aria-labelledby={`${id}-title`} className="rounded-card border border-rule bg-page p-4 sm:p-6">
+    <section id={id} aria-labelledby={`${id}-title`} className="rounded-card border border-rule bg-page p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
-        <h2 id={`${id}-title`} className="flex items-center gap-3 text-section font-semibold text-ink">
+        <h2 id={`${id}-title`} className="flex items-center gap-3 text-heading font-semibold text-ink">
           <span aria-hidden="true" className={done ? "inline-flex size-7 items-center justify-center rounded-full bg-accent text-page" : "inline-flex size-7 items-center justify-center rounded-full border border-border text-label text-muted"}>
             {done ? <Check {...ICON_DENSE} /> : n}
           </span>
@@ -103,7 +103,7 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
     for (const a of list) groups.set(a.setting, [...(groups.get(a.setting) ?? []), a]);
     return [...groups].map(([setting, items]) => (
       <div key={setting}>
-        <Heading className="mb-1 text-caption font-medium text-muted">{setting}</Heading>
+        <Heading className="mb-1 text-label font-medium text-muted">{setting}</Heading>
         {abilityChoices(items)}
       </div>
     ));
@@ -125,7 +125,7 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
       <WithAside
         aside={
           <div className="flex flex-col gap-4 rounded-card border border-rule bg-page p-4 lg:sticky lg:top-[calc(var(--size-topbar)+24px)]">
-            <h2 className="text-section font-semibold text-ink">Summary</h2>
+            <h2 className="text-heading font-semibold text-ink">Summary</h2>
             <dl className="flex flex-col divide-y divide-rule">
               {rows.map((r) => (
                 <div key={r.label} className="flex items-start justify-between gap-3 py-2 first:pt-0">
@@ -210,7 +210,7 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
               {!role && <p className="text-caption text-muted">Choose a role to see the abilities suggested for it first.</p>}
               {suited.length > 0 && (
                 <div>
-                  <h3 className="mb-1 text-label font-semibold text-ink">Suggested for the {role}</h3>
+                  <h3 className="mb-1 text-label font-medium text-muted">Suggested for the {role}</h3>
                   {abilityChoices(suited)}
                 </div>
               )}

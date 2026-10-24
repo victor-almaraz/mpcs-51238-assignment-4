@@ -392,7 +392,7 @@ export function Editor(props: EditorProps) {
               <Button variant="secondary" size="sm" icon={<Menu {...ICON_DENSE} />} aria-haspopup="dialog" onClick={() => setOutlineOpen(true)} className="lg:hidden">
                 Sections
               </Button>
-              <h2 id="editor-section-title" ref={heading} tabIndex={-1} className="text-[22px] font-semibold leading-7 text-ink focus:outline-none focus-visible:outline-2">
+              <h2 id="editor-section-title" ref={heading} tabIndex={-1} className="text-section font-semibold text-ink focus:outline-none focus-visible:outline-2">
                 {meta.label}
                 {yaml && <span className="font-normal text-muted"> as YAML</span>}
               </h2>

@@ -35,7 +35,7 @@ export function CadmiumCreationForm(props: CreationProps) {
             {campaign && fields.length === 0 && <p className="text-caption text-muted">{campaign.title} enables no modules.</p>}
             {fields.length > 0 && (
               <div className="rounded-card border border-rule bg-desk/50 p-4">
-                <h3 className="mb-3 text-label font-semibold text-ink">What {campaign!.title}&apos;s modules add</h3>
+                <h3 className="mb-3 text-label font-medium text-muted">What {campaign!.title}&apos;s modules add</h3>
                 <dl className="flex flex-col gap-3">
                   {fields.map((f) => (
                     <div key={f.module} className="grid gap-x-4 gap-y-0.5 sm:grid-cols-[8rem_1fr]">
