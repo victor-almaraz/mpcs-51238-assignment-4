@@ -85,20 +85,40 @@ export function zip(files: readonly ZipFile[], now = new Date()): Uint8Array {
   return out;
 }
 
-/** Reads a stored ZIP back into names and contents; for tests. */
-export function unzip(archive: Uint8Array): Map<string, Uint8Array> {
+/**
+ * Reads a ZIP through its central directory: stored entries, and deflated ones through `inflate`
+ * (node:zlib's `inflateRawSync` on the server). Directories are skipped.
+ */
+export function unzip(archive: Uint8Array, inflate?: (data: Uint8Array) => Uint8Array): Map<string, Uint8Array> {
   const view = new DataView(archive.buffer, archive.byteOffset, archive.byteLength);
-  const out = new Map<string, Uint8Array>();
-  let at = 0;
   const dec = new TextDecoder();
-  while (view.getUint32(at, true) === 0x04034b50) {
-    const size = view.getUint32(at + 18, true);
-    const nameLength = view.getUint16(at + 26, true);
-    const extra = view.getUint16(at + 28, true);
-    const name = dec.decode(archive.subarray(at + 30, at + 30 + nameLength));
-    const start = at + 30 + nameLength + extra;
-    out.set(name, archive.subarray(start, start + size));
-    at = start + size;
+  let end = -1;
+  for (let i = archive.length - 22; i >= Math.max(0, archive.length - 22 - 65535); i--) {
+    if (view.getUint32(i, true) === 0x06054b50) {
+      end = i;
+      break;
+    }
+  }
+  if (end < 0) throw new Error("not a ZIP archive");
+  const count = view.getUint16(end + 10, true);
+  let at = view.getUint32(end + 16, true);
+  const out = new Map<string, Uint8Array>();
+  for (let n = 0; n < count; n++) {
+    if (view.getUint32(at, true) !== 0x02014b50) throw new Error("damaged ZIP central directory");
+    const method = view.getUint16(at + 10, true);
+    const size = view.getUint32(at + 20, true);
+    const nameLength = view.getUint16(at + 28, true);
+    const extraLength = view.getUint16(at + 30, true);
+    const commentLength = view.getUint16(at + 32, true);
+    const local = view.getUint32(at + 42, true);
+    const name = dec.decode(archive.subarray(at + 46, at + 46 + nameLength));
+    at += 46 + nameLength + extraLength + commentLength;
+    if (name.endsWith("/")) continue;
+    const start = local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
+    const data = archive.subarray(start, start + size);
+    if (method === 0) out.set(name, data);
+    else if (method === 8 && inflate) out.set(name, inflate(data));
+    else throw new Error(`${name}: unsupported compression method ${method}`);
   }
   return out;
 }

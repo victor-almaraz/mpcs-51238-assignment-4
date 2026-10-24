@@ -2,6 +2,7 @@
 // restore_account, push subscriptions; data-model.md, Deletion; app-flow.md, Settings).
 
 import { zip, type ZipFile } from "../export/zip";
+import { draftFiles } from "../materials";
 import { validZone } from "../scheduler/zone";
 import type { Store } from "../store";
 import { cryptoEntropy, type Entropy } from "./entropy";
@@ -95,7 +96,9 @@ inputs.json         Your inputs in every instance, with the events and narration
 invitations.json    Invitations you created or accepted.
 schedule.json       Your RSVPs and the sessions you created.
 
-drafts/ and assets/ appear once adventure drafts and portrait uploads exist.
+drafts/<id>/        Every adventure draft, as YAML files and as the draft document (draft.json).
+
+assets/ appears once portrait uploads exist.
 The export is generated on request and is not stored.
 `;
 
@@ -128,6 +131,10 @@ export async function exportMyData(store: Store, userId: string | null, now = ne
     { name: "inputs.json", data: json(x.inputs) },
     { name: "invitations.json", data: json(x.invitations) },
     { name: "schedule.json", data: json(x.schedule) },
+    ...(await store.userDrafts(user.id)).flatMap((d) => [
+      { name: `drafts/${safe(d.id)}/draft.json`, data: json(d) },
+      ...[...draftFiles(d.document)].map(([path, text]) => ({ name: `drafts/${safe(d.id)}/${path}`, data: text })),
+    ]),
   ];
   return zip(files, now);
 }

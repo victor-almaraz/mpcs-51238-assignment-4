@@ -1,11 +1,11 @@
 // Dashboard (app-flow.md, "Dashboard"; design/screens.md, Dashboard): titled lists, one line per row.
-// Adventures arrive with the editor (sprint 16).
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
 import { listCampaigns } from "@/lib/api/campaigns";
 import { listCharacters } from "@/lib/api/characters";
 import { listInstances } from "@/lib/api/instances";
 import { listOccurrences } from "@/lib/api/schedules";
+import { listDrafts } from "@/lib/api/drafts";
 import { formatWhen } from "@/components/when";
 import { rsvpAction } from "@/lib/server/schedule-actions";
 import { systemView } from "@/lib/api/systems";
@@ -37,6 +37,7 @@ export default async function Dashboard() {
   const instances = (await Promise.all(campaigns.items.map((c) => listInstances(store, user.id, c.id).then((list) => list.map((i) => ({ ...i, campaign: c.title })))))).flat();
   const active = instances.filter((i) => i.status !== "ended");
   const finished = instances.filter((i) => i.status === "ended");
+  const drafts = await listDrafts(store, user.id, { limit: 20 });
   const where = new Map(instances.map((i) => [i.id, i.name]));
   const authored = campaigns.items.filter((c) => c.author_id === user.id);
   // The next 7 days across all instances (app-flow.md, Dashboard: Upcoming sessions).
@@ -194,6 +195,32 @@ export default async function Dashboard() {
                 </Link>
                 <span className={meta}>
                   {systemView(c.system).title} {String(c.sheet.role)} · {c.instance_id ? `in ${where.get(c.instance_id) ?? "an instance"}` : c.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <section className="mt-8">
+        <Heading title="Adventures" href="/adventures/new" action="New adventure" />
+        {drafts.items.length === 0 ? (
+          <p className="mt-2 text-muted">
+            No adventures yet.{" "}
+            <Link href="/adventures/new" className="text-accent underline">
+              Write an adventure
+            </Link>
+            .
+          </p>
+        ) : (
+          <ul className="mt-2">
+            {drafts.items.map((d) => (
+              <li key={d.id} className={row}>
+                <Link href={`/adventures/${d.id}/edit`} className="text-accent">
+                  {d.title}
+                </Link>
+                <span className={meta}>
+                  {d.problems > 0 ? `${d.problems} problem${d.problems === 1 ? "" : "s"}` : "ready"}
+                  {d.last_published_version ? ` · published ${d.last_published_version}` : ""}
                 </span>
               </li>
             ))}

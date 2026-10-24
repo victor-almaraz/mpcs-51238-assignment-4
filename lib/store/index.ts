@@ -190,6 +190,21 @@ export interface HistoryItem {
   narration: { text: string; source: "model" | "template" } | null;
 }
 
+export interface DraftRecord {
+  id: string;
+  owner_id: string;
+  kind: "adventure";
+  material_id: string;
+  system: string;
+  title: string;
+  document: Record<string, unknown>;
+  revision: number;
+  diagnostics: { pointer: string; severity: "error" | "warning"; code: string; message: string }[];
+  last_published_version: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PushView {
   id: string;
   label: string;
@@ -723,5 +738,56 @@ export class Store {
 
   async shutdownPurge(): Promise<{ users: number; campaigns: number }> {
     return this.rpc.call("cadmium_shutdown_purge", {});
+  }
+
+  // Drafts ---------------------------------------------------------------------------------------
+
+  async createDraft(d: { id: string; owner_id: string; material_id: string; system: string; title: string; document: Record<string, unknown> }): Promise<DraftRecord> {
+    return this.rpc.call<DraftRecord>("cadmium_create_draft", { p_id: d.id, p_owner: d.owner_id, p_material_id: d.material_id, p_system: d.system, p_title: d.title, p_document: d.document });
+  }
+
+  async getDraft(id: string): Promise<DraftRecord | undefined> {
+    return (await this.rpc.call<DraftRecord | null>("cadmium_get_draft", { p_id: id })) ?? undefined;
+  }
+
+  async listDrafts(owner: string, limit: number, after?: string): Promise<Omit<DraftRecord, "document">[]> {
+    return this.rpc.call("cadmium_list_drafts", { p_owner: owner, p_limit: limit, p_after: after ?? null });
+  }
+
+  /** Saves at `revision`; undefined when the revision is stale. */
+  async saveDraft(id: string, revision: number, document: Record<string, unknown>, title: string, diagnostics: DraftRecord["diagnostics"]): Promise<{ revision: number; saved_at: string } | undefined> {
+    return (await this.rpc.call<{ revision: number; saved_at: string } | null>("cadmium_save_draft", { p_id: id, p_revision: revision, p_document: document, p_title: title, p_diagnostics: diagnostics })) ?? undefined;
+  }
+
+  async setDraftDiagnostics(id: string, diagnostics: DraftRecord["diagnostics"]): Promise<void> {
+    await this.rpc.call("cadmium_set_draft_diagnostics", { p_id: id, p_diagnostics: diagnostics });
+  }
+
+  async setDraftPublished(id: string, version: string): Promise<void> {
+    await this.rpc.call("cadmium_set_draft_published", { p_id: id, p_version: version });
+  }
+
+  async deleteDraft(id: string): Promise<void> {
+    await this.rpc.call("cadmium_delete_draft", { p_id: id });
+  }
+
+  async restoreDraft(id: string): Promise<DraftRecord | undefined> {
+    return (await this.rpc.call<DraftRecord | null>("cadmium_restore_draft", { p_id: id })) ?? undefined;
+  }
+
+  async deletedDraft(id: string): Promise<{ id: string; owner_id: string; deleted_at: string } | undefined> {
+    return (await this.rpc.call<{ id: string; owner_id: string; deleted_at: string } | null>("cadmium_deleted_draft", { p_id: id })) ?? undefined;
+  }
+
+  async adventureVersions(id: string): Promise<{ version: string; publisher_id: string | null; origin: string }[]> {
+    return this.rpc.call("cadmium_adventure_versions", { p_id: id });
+  }
+
+  async purgeDrafts(now: Date): Promise<number> {
+    return this.rpc.call<number>("cadmium_purge_drafts", { p_now: now.toISOString() });
+  }
+
+  async userDrafts(owner: string): Promise<DraftRecord[]> {
+    return this.rpc.call<DraftRecord[]>("cadmium_user_drafts", { p_owner: owner });
   }
 }

@@ -41,6 +41,7 @@ import {
 import { acceptInvitation, declineInvitation, invite, listInvitations, previewInvitation, revokeInvitation } from "./invitations";
 import { listMaterials } from "./materials";
 import { addPushSubscription, exportMyData, getPushKey, listPushSubscriptions, removePushSubscription, requestAccountDeletion, restoreAccount, updateMe } from "./account";
+import { createDraft, deleteDraft, exportDraft, getDraft, importDraft, listDrafts, publishDraft, restoreDraft, saveDraft, validateDraft } from "./drafts";
 import { calendarFeed, cancelSession, disableCalendarFeed, exportCalendar, getCalendarFeed, listOccurrences, moveOccurrence, rotateCalendarFeed, rsvp, scheduleSession, updateSession } from "./schedules";
 import { getSystemSchema, listSystems } from "./systems";
 import { acceptTerms, caller, getMe } from "./users";
@@ -68,6 +69,8 @@ interface Call {
   body: Record<string, unknown>;
   headers: Headers;
   origin: string;
+  /** The raw body, for uploads such as import_draft's ZIP. */
+  raw: Uint8Array;
 }
 
 type Reply = { status: number; body?: unknown; calendar?: string; file?: { type: string; name: string; data: Uint8Array } };
@@ -131,6 +134,17 @@ const ROUTES: Route[] = [
   ["GET", "/systems", async (c) => (await gated(c, "list_systems"), ok({ items: listSystems() }))],
   ["GET", "/systems/:system/schemas/:kind", async (c) => (await gated(c, "get_system_schema"), ok(getSystemSchema(c.params.system, c.params.kind, c.query.getAll("modules"))))],
   ["GET", "/materials", async (c) => ok({ items: await listMaterials(c.deps.store, c.user, queryInput(c.query)) })],
+  // Adventure drafts
+  ["POST", "/drafts", async (c) => created({ draft: await createDraft(c.deps.store, c.user, c.body) })],
+  ["POST", "/drafts/import", async (c) => created(await importDraft(c.deps.store, c.user, c.raw))],
+  ["GET", "/drafts", async (c) => ok(await listDrafts(c.deps.store, c.user, queryInput(c.query, ["limit"])))],
+  ["GET", "/drafts/:draft_id", async (c) => ok({ draft: await getDraft(c.deps.store, c.user, c.params.draft_id) })],
+  ["PUT", "/drafts/:draft_id", async (c) => ok(await saveDraft(c.deps.store, c.user, { ...c.body, draft_id: c.params.draft_id }))],
+  ["POST", "/drafts/:draft_id/validate", async (c) => ok({ diagnostics: await validateDraft(c.deps.store, c.user, c.params.draft_id) })],
+  ["GET", "/drafts/:draft_id/export.zip", async (c) => ({ status: 200, file: { type: "application/zip", ...(await exportDraft(c.deps.store, c.user, c.params.draft_id)) } })],
+  ["POST", "/drafts/:draft_id/publish", async (c) => created({ material: await publishDraft(c.deps.store, c.user, { ...c.body, draft_id: c.params.draft_id }) })],
+  ["DELETE", "/drafts/:draft_id", async (c) => ok(await deleteDraft(c.deps.store, c.user, c.params.draft_id))],
+  ["POST", "/drafts/:draft_id/restore", async (c) => ok({ draft: await restoreDraft(c.deps.store, c.user, c.params.draft_id) })],
   // Characters
   ["POST", "/characters", async (c) => created({ character: await createCharacter(c.deps.store, c.user, c.body) })],
   ["GET", "/characters", async (c) => ok(await listCharacters(c.deps.store, c.user, queryInput(c.query, ["limit"])))],
@@ -246,7 +260,9 @@ export async function handle(request: Request, user: string | null, deps: Deps):
       if (wait > 0) throw new ApiError("rate_limited", "too many requests", { retry_after_ms: wait });
     }
     let body: Record<string, unknown> = {};
-    const text = request.method === "GET" ? "" : await request.text();
+    const raw = request.method === "GET" ? new Uint8Array() : new Uint8Array(await request.arrayBuffer());
+    const isJson = !(request.headers.get("content-type") ?? "").startsWith("application/zip");
+    const text = isJson ? new TextDecoder().decode(raw) : "";
     if (text.trim() !== "") {
       let parsed: unknown;
       try {
@@ -257,7 +273,7 @@ export async function handle(request: Request, user: string | null, deps: Deps):
       if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) throw new ApiError("invalid_request", "the body must be a JSON object");
       body = parsed as Record<string, unknown>;
     }
-    const reply = await route[2]({ deps, user, params, query: url.searchParams, body, headers: request.headers, origin: url.origin });
+    const reply = await route[2]({ deps, user, params, query: url.searchParams, body, headers: request.headers, origin: url.origin, raw });
     if (reply.file) return new Response(reply.file.data as BodyInit, { status: reply.status, headers: { "Content-Type": reply.file.type, "Content-Disposition": `attachment; filename="${reply.file.name}"` } });
     if (reply.calendar !== undefined) return new Response(reply.calendar, { status: reply.status, headers: { "Content-Type": "text/calendar; charset=utf-8" } });
     return json(reply.status, reply.body);

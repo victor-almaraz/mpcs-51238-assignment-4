@@ -103,6 +103,7 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `lib/store/` | The store: bundles, instances, atomic commits, events, inputs, narration, as SQL functions called through an `Rpc` (supabase-js in production, PGlite in tests) |
 | `lib/api/` | Operations of api.md: users and the terms gate, systems, materials, characters, campaigns, invitations, instances and play; `http.ts` is the `/v1` binding |
 | `lib/server/` | Server-only configuration, the service-role Supabase client, the session user, and server actions |
+| `components/editor/` | The adventure editor: sections, the map editor, YAML views |
 | `components/` | Shared form components; `systems/` holds creation forms and sheet views registered by rules-system id |
 | `lib/coordinator/` | The Instance Coordinator: serialized commits, round deadlines, messages; the operator operations `replay_instance` and `restore_instance` |
 | `lib/broadcast/` | Realtime broadcast from the server, and browser subscriptions delivered in version order |

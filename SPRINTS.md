@@ -433,3 +433,20 @@ Done:
 Open:
 
 - Abilities with several activation costs use the lowest; most abilities have no mechanical effect beyond their AP and narration.
+
+### Sprint 16: Adventure editor, forms and maps — open
+
+Done:
+
+- `supabase/migrations/20261023000900_drafts.sql`: material drafts with revisions, diagnostics, the last published version, deletion with 30-day restore and erasure after 90 (in the daily purge), and the drafts in the data export (`drafts/<id>/` as YAML files and `draft.json`).
+- `lib/api/drafts.ts`: `create_draft`, `import_draft` (a ZIP with stored or deflated entries, at its root or in one folder), `list_drafts`, `get_draft`, `save_draft` (stale revisions answer `conflict`; the system is fixed, and the id after the first publication), `validate_draft`, `export_draft`, `publish_draft` (no errors; version greater than every published one; the id belongs to its first publisher), `delete_draft`, `restore_draft`. Validation is the shared Content Compiler against the newest listed settings within each required range; diagnostics are `{ pointer, severity, code, message }` with JSON Pointers into the draft (`lib/materials/draft-io.ts`).
+- Pages: `/adventures` (drafts with problem counts and saved times, published versions), `/adventures/new` (id, title, system, required settings, or Import ZIP), `/adventures/[draftId]/edit`, `/adventures/[draftId]/publish` (diagnostics, suggested increment, version), and Adventures on the dashboard.
+- The editor: Overview (title, description, required settings with ranges, players, start, endings), Flags (types, ranges, values, initial values, uses; deleting a flag in use is blocked), Plot (arcs, stages, initial stage; triggers as YAML), Locations (the map editor: Paint, Fill, Rectangle, Room, Place with id and hidden, Link with destination and Add return link, Select, resize; generated locations as YAML), NPCs (name, template, disposition, topics with brief and condition, secrets), Items & creatures (YAML), Edit as YAML for every section, the Problems panel jumping to its section, autosave 2 seconds after the last edit, a backup in IndexedDB, Undo and Redo, snapshots, Export, and Publish.
+- Tests: `lib/api/drafts.test.ts` (6, including a three-room, one-arc adventure published and played to its ending), `lib/materials/draft-io.test.ts` (2).
+
+Open:
+
+- Validation runs on the server when the draft saves, not in a Web Worker on every change.
+- Edit as YAML is a text area: Monaco with `monaco-yaml` needs installing.
+- Items & creatures have no `StatsEditor` form yet; the arc graph, rule cards, and Playtest are sprint 17.
+- The editor is not yet checked in a browser, and migration 10 is not applied to the remote database.
