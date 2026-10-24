@@ -524,7 +524,8 @@ Built from the author's campaign draft, supplied separately and not committed.
 
 Open:
 
-- The agent-driven run needs `GROQ_API_KEY`. `tools/sim` and the balance simulation are not built: the golden runs give their single character 40 hit points.
+- The agent-driven runs are built but not yet run: `pnpm agent:run` (reads `GROQ_API_KEY`, from `.env.local` when present). A Groq player model writes free text from a description of the view and a route guide per ending (`lib/agent/goals.ts`); the Groq parser turns it into a call with the Coordinator's retry and fallback; each run's turns and replayable log go to `agent-runs/`. `lib/agent/run.test.ts` checks the loop with a scripted parser.
+- `tools/sim` and the balance simulation are not built: the golden runs give their single character 40 hit points.
 - The packs are a proposal for the specification's `spec/examples/`; the brief's documentation updates are not made ([exemplar-location](SPEC_ISSUES.md#exemplar-location)).
 - Not implemented from the draft's proposals: path codas, rations, and the lore names of section 14.10.
 

@@ -1,0 +1,64 @@
+// The agent-driven run loop, with a scripted parser and player in place of the models.
+
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { describe, expect, it } from "vitest";
+import { replay } from "../engine";
+import { commitOf } from "../harness/harness";
+import { SCENARIOS } from "../harness/scenarios";
+import { ModelError, type Chat } from "../models/groq";
+import { functionParser } from "../parser/adapter";
+import { GOALS } from "./goals";
+import { agentRun, patient } from "./run";
+
+const golden = (name: string) =>
+  readFileSync(fileURLToPath(new URL(`../harness/golden/${name}.input.jsonl`, import.meta.url)), "utf8")
+    .split("\n")
+    .filter((l) => l.trim() !== "")
+    .map((l) => JSON.parse(l) as { tool?: string; args?: Record<string, unknown> })
+    .filter((l) => l.tool);
+
+describe("agent-driven runs", () => {
+  it("plays to the ending through the parser and replays", async () => {
+    const goal = GOALS.find((g) => g.ending === "lost")!;
+    const scenario = SCENARIOS.find((s) => s.name === goal.scenario)!;
+    const calls = golden(goal.scenario);
+    let i = 0;
+    const prompts: string[] = [];
+    const parser = functionParser((context) => {
+      expect(context.input).toBe(`input ${prompts.length}`);
+      return i < calls.length ? { tool: calls[i]!.tool!, args: calls[i++]!.args! } : { tool: "wait", args: {} };
+    });
+    const r = await agentRun({ bundles: scenario.bundles(), seed: scenario.seed, characters: scenario.characters(), parser, player: async (p) => (prompts.push(p), `input ${prompts.length}`), goal: goal.goal, guide: goal.guide, maxTurns: goal.maxTurns });
+    expect(r.ending).toBe("lost");
+    expect(r.fallbacks).toBe(0);
+    expect(prompts[0]).toContain("Your goal: play recklessly");
+    expect(prompts[0]).toContain("Orvelle plaza");
+    expect(r.turns.some((t) => t.facts.some((f) => f.includes("Gull Company privateers")))).toBe(true);
+    expect(replay(scenario.bundles(), r.session.log.map(commitOf)).ok).toBe(true);
+  });
+
+  it("falls back to improvise when the parser's call is rejected twice", async () => {
+    const goal = GOALS.find((g) => g.ending === "lost")!;
+    const scenario = SCENARIOS.find((s) => s.name === goal.scenario)!;
+    let asked = 0;
+    const parser = functionParser(() => (asked++, { tool: "take", args: { entity_id: "nothing_here" } }));
+    const r = await agentRun({ bundles: scenario.bundles(), seed: scenario.seed, characters: scenario.characters(), parser, player: async () => "grab the moon", goal: goal.goal, guide: goal.guide, maxTurns: 1 });
+    expect(asked).toBe(2);
+    expect(r.turns[0]).toMatchObject({ outcome: "fallback", call: { tool: "improvise" } });
+  });
+
+  it("waits out an unavailable model, then gives up", async () => {
+    let n = 0;
+    const flaky: Chat = async () => {
+      if (n++ < 2) throw new ModelError("unavailable", "Groq answered HTTP 429");
+      return { content: "ok", tool_calls: [], raw: null };
+    };
+    const slept: number[] = [];
+    const chat = patient(flaky, [1, 2, 3], async (ms) => void slept.push(ms));
+    expect((await chat({ model: "m", messages: [] }, 10)).content).toBe("ok");
+    expect(slept).toEqual([1, 2]);
+    const down = patient(async () => Promise.reject(new ModelError("unavailable", "down")), [1], async () => {});
+    await expect(down({ model: "m", messages: [] }, 10)).rejects.toThrow("down");
+  });
+});
