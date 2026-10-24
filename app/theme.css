@@ -1,5 +1,6 @@
-/* Cadmium design tokens (docs/design/README.md, Foundations). The Graphite colours are the
-   specification's (cadmium-spec/design/theme.css); type, shape, and depth follow the pattern library. */
+/* Cadmium design tokens (docs/design/README.md, Foundations). The Graphite neutrals are the
+   specification's (cadmium-spec/design/theme.css); the cadmium orange accent, the crimson danger, the
+   ochre warning, type, shape, and depth follow the pattern library (SPEC_ISSUES.md, design-system). */
 
 @font-face { font-family: "Libertinus Serif"; src: url("/fonts/LibertinusSerif-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: "Libertinus Serif"; src: url("/fonts/LibertinusSerif-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
@@ -11,17 +12,17 @@
   --color-raised: #FFFFFF;
   --color-rule: #DBD9D7;
   --color-ink: #282624;
-  --color-accent: #604792;
-  --color-accent-strong: #4A3079;
-  --color-accent-soft: #F1EEFC;
-  --color-accent-line: #BCAFDF;
-  --color-danger: #A13124;
-  --color-danger-soft: #FDF0EE;
-  --color-warning: #845A0F;
-  --color-warning-soft: #FCF2E5;
+  --color-accent: #B4490F;
+  --color-accent-strong: #8C370A;
+  --color-accent-soft: #FDF0E6;
+  --color-accent-line: #EDB48C;
+  --color-danger: #A8233F;
+  --color-danger-soft: #FCEEF1;
+  --color-warning: #7A5E00;
+  --color-warning-soft: #FAF4DC;
   --color-success: #376F44;
   --color-success-soft: #EDF6EE;
-  --color-selection: #E1D8FC;
+  --color-selection: #FBDCC5;
   --color-border: #878481;
   --color-muted: #6A6761;
   --color-overlay: rgb(20 18 17 / 0.45);
@@ -73,17 +74,17 @@
     --color-rule: #5A5756;
     --color-muted: #C3BDAE;
     --color-ink: #F0EEEA;
-    --color-accent: #C3B2F1;
-    --color-accent-strong: #D6C7FF;
-    --color-accent-soft: #4A435B;
-    --color-accent-line: #7E729F;
-    --color-danger: #F2998A;
-    --color-danger-soft: #563E3A;
-    --color-warning: #E7BC81;
-    --color-warning-soft: #4F4333;
+    --color-accent: #F5A66A;
+    --color-accent-strong: #FFC49A;
+    --color-accent-soft: #55402F;
+    --color-accent-line: #9C6A45;
+    --color-danger: #F59DB5;
+    --color-danger-soft: #573A44;
+    --color-warning: #DDC873;
+    --color-warning-soft: #4A4529;
     --color-success: #96CAA0;
     --color-success-soft: #3A4A3D;
-    --color-selection: #504765;
+    --color-selection: #5E4535;
     --color-border: #888682;
     --color-pigment: #EDB93B;
     --color-pigment-line: #E0B13C;
@@ -99,17 +100,17 @@
   --color-rule: #5A5756;
   --color-muted: #C3BDAE;
   --color-ink: #F0EEEA;
-  --color-accent: #C3B2F1;
-  --color-accent-strong: #D6C7FF;
-  --color-accent-soft: #4A435B;
-  --color-accent-line: #7E729F;
-  --color-danger: #F2998A;
-  --color-danger-soft: #563E3A;
-  --color-warning: #E7BC81;
-  --color-warning-soft: #4F4333;
+  --color-accent: #F5A66A;
+  --color-accent-strong: #FFC49A;
+  --color-accent-soft: #55402F;
+  --color-accent-line: #9C6A45;
+  --color-danger: #F59DB5;
+  --color-danger-soft: #573A44;
+  --color-warning: #DDC873;
+  --color-warning-soft: #4A4529;
   --color-success: #96CAA0;
   --color-success-soft: #3A4A3D;
-  --color-selection: #504765;
+  --color-selection: #5E4535;
   --color-border: #888682;
   --color-pigment: #EDB93B;
   --color-pigment-line: #E0B13C;

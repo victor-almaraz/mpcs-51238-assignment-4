@@ -1,6 +1,6 @@
 // Design and accessibility audit of every demo screen (docs/design/README.md, Accessibility checklist).
 // Start `pnpm demo` first; this drives the installed Google Chrome through Playwright.
-//   pnpm audit:ui [--base http://localhost:3100] [--out screenshots/audit.md]
+//   pnpm audit:ui [--base http://localhost:3100] [--out screenshots/audit.md] [--scheme light|dark]
 // Checks, at 1280 px and 390 px: one h1 and no skipped heading levels; main, header, and nav
 // landmarks; an accessible name on every control, button, link, and image; no duplicate ids; targets of
 // at least 24 x 24 px (WCAG 2.5.8; inline text links excepted); text contrast against its background
@@ -18,6 +18,7 @@ const arg = (name: string, fallback: string) => {
 };
 const base = arg("base", "http://localhost:3100");
 const out = join(process.cwd(), arg("out", "screenshots/audit.md"));
+const scheme = arg("scheme", "light") === "dark" ? "dark" : "light";
 
 interface Finding {
   rule: string;
@@ -209,13 +210,13 @@ const screens = await index.$$eval('main a[href^="/"]', (as) => [...new Map(as.m
 screens.unshift({ label: "Demo index", href: "/" });
 await index.close();
 
-const lines = ["# Design and accessibility audit", "", `Demo mode at ${base}, ${new Date().toISOString().slice(0, 16)} UTC, by \`pnpm audit:ui\`. Each screen is checked at 1280 px and 390 px.`, ""];
+const lines = ["# Design and accessibility audit", "", `Demo mode at ${base}, ${new Date().toISOString().slice(0, 16)} UTC, by \`pnpm audit:ui\`, ${scheme} theme. Each screen is checked at 1280 px and 390 px.`, ""];
 let total = 0;
 const tally = new Map<string, number>();
 for (const s of screens) {
   const rows: string[] = [];
   for (const width of [1280, 390]) {
-    const page = await browser.newPage({ viewport: { width, height: 900 }, colorScheme: "light" });
+    const page = await browser.newPage({ viewport: { width, height: 900 }, colorScheme: scheme });
     // tsx keeps function names with a `__name` helper, which the serialized checks call in the page.
     await page.addInitScript({ content: "window.__name = (f) => f;" });
     const errors: string[] = [];

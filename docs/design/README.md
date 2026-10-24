@@ -15,7 +15,7 @@ same tasks; [Sources](#sources) lists them.
 | Problems appear where they are and in one list | A field or entity shows its own error; a count in the toolbar opens the list of all of them. No numbered footnotes. |
 | Status is always in view | Round, turn, save state, and connection sit in a bar that does not scroll away. |
 | The story is set like a book; the software is not | Narration, room text, briefs, and page and section titles use Libertinus Serif. Controls, data, and card titles use the system font. |
-| Colour means something | The lavender accent marks what can be acted on and the current selection; cadmium yellow marks what is happening now; red marks errors and destructive actions. Every status also has an icon or a word. |
+| Colour means something | The cadmium orange accent marks what can be acted on and the current selection; cadmium yellow marks what is happening now; crimson marks errors and destructive actions. Every status also has an icon or a word. |
 
 ## Foundations
 
@@ -38,10 +38,22 @@ same tasks; [Sources](#sources) lists them.
 
 ### Colour
 
-The Graphite palette stays, with its light and dark values and contrast minimums: `page`, `desk`,
-`raised`, `rule`, `border`, `ink`, `muted`, `accent`, `accent-strong`, `accent-soft`, `accent-line`,
-`danger`, `warning`, `success` and their `-soft` tints, `selection`, and the pigment set `pigment`,
-`pigment-ink`, `pigment-line`, `pigment-soft` (`app/theme.css`; see Identity). Surfaces: `desk` behind workspaces and hub pages; `page` for cards, panels, and
+The Graphite neutrals stay, with their light and dark values and contrast minimums: `page`, `desk`,
+`raised`, `rule`, `border`, `ink`, `muted`. The colours are named for cadmium pigments:
+
+| Token | Light | Dark | Meaning |
+|---|---|---|---|
+| `accent` | `#B4490F` cadmium orange | `#F5A66A` | Links, primary buttons, selection, the current item, focus rings, the logo |
+| `pigment` | `#F2C14E` cadmium yellow | `#EDB93B` | What is happening now (see Identity); a fill behind `pigment-ink` only |
+| `danger` | `#A8233F` crimson | `#F59DB5` | Errors and destructive actions |
+| `warning` | `#7A5E00` ochre | `#DDC873` | Waiting states (lobby, maybe, draft) and warnings |
+| `success` | `#376F44` green | `#96CAA0` | Done, available, published |
+
+Each has `-soft` (a tinted background) and the accent also `-strong` (hover) and `-line` (decorative
+borders); `selection` tints selected rows. Accent and danger text meet 4.5:1 on `page`, `desk`, and
+their `-soft` tint in both themes, and white text meets 4.5:1 on an accent fill. Danger and warning
+sit away from the accent's hue, crimson and ochre, so no status reads as an action (`app/theme.css`).
+Surfaces: `desk` behind workspaces and hub pages; `page` for cards, panels, and
 inputs; `raised` for menus, dialogs, and sheets. The theme follows the system unless the user picks
 Light or Dark in Settings.
 
@@ -268,7 +280,7 @@ Every screen meets WCAG 2.2 AA:
 - Focus is always visible and never hidden behind sticky bars (2.4.11): sticky regions set
   `scroll-padding`.
 - Targets are at least 24 × 24 px (2.5.8); controls here are 32 to 40 px.
-- Colour contrast as in the Graphite token table; status never by colour alone.
+- Colour contrast as in the Colour table, in both themes (`pnpm audit:ui --scheme dark` checks the dark one); status never by colour alone.
 - The game log is `role="log"`; "Your turn" and rejected actions use an alert region.
 - The map is operable without dragging (2.5.7): every map target is also in the list view, and zoom
   has buttons.
