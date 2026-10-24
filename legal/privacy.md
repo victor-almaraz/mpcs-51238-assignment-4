@@ -64,7 +64,7 @@ We disclose data only to the following service providers, and only to operate Ca
 
 These providers process data on our behalf. Their privacy policies describe how they store, secure, and retain data, and where it is located. Several are based in the United States, so your data may be processed there.
 
-We have configured Groq for zero data retention, so it does not retain game inputs after generating a response. [CONFIRM THAT ZERO DATA RETENTION IS ENABLED IN THE GROQ CONSOLE BEFORE PUBLISHING.]
+We have configured Groq for zero data retention, so it does not retain game inputs after generating a response.
 
 If you enable browser notifications, each reminder is delivered through the push service operated by your browser's vendor, such as Google, Mozilla, Apple, or Microsoft. Reminders are end-to-end encrypted, so the push service cannot read their contents; it receives only the address of your browser's subscription. If you subscribe a calendar application to your calendar feed, that application's provider receives the titles and times of your upcoming sessions.
 
