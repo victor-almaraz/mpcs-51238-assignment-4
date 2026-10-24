@@ -1,8 +1,9 @@
 "use client";
 // Quest's creation form and sheet view (app-flow.md, Character creation and editor; design/screens.md,
 // Character creation): sentences with blanks, then abilities as a checklist counted against six.
-import { useActionState, useState } from "react";
+import { useActionState, useState, type ReactNode } from "react";
 import type { AbilityOption } from "@/lib/api/characters";
+import type { CampaignChoice } from "@/lib/systems/creation";
 import { createCharacterAction } from "@/lib/server/actions";
 import type { FormState } from "@/lib/server/forms";
 
@@ -13,9 +14,17 @@ export interface CreationProps {
   roles: string[];
   abilities: AbilityOption[];
   count: number;
+  /** The caller's campaigns of this system, for a system with modules; Quest has none and ignores them. */
+  campaigns?: CampaignChoice[];
+  /** The campaign chosen on arrival, such as from a campaign's page. */
+  campaign?: string;
 }
 
-export function QuestCreationForm({ system, roles, abilities, count }: CreationProps) {
+/**
+ * Quest's form. `children` are a derived system's extra fields, shown after the abilities; they carry
+ * no `name`, so `create_character` receives only Quest's choices.
+ */
+export function QuestCreationForm({ system, roles, abilities, count, children }: CreationProps & { children?: ReactNode }) {
   const [state, action, pending] = useActionState<FormState, FormData>(createCharacterAction, { error: null });
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
@@ -76,6 +85,7 @@ export function QuestCreationForm({ system, roles, abilities, count }: CreationP
           ))}
         </ul>
       </fieldset>
+      {children}
       {state.error && <p className="text-danger">{state.error}</p>}
       <div className="flex items-center gap-3">
         <button type="submit" disabled={missing.length > 0 || pending} className="rounded-control bg-accent px-4 py-2 font-ui text-control text-page disabled:opacity-50">
