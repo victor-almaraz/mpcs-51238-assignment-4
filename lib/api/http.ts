@@ -5,7 +5,8 @@
 import { createHash } from "node:crypto";
 import { shutdownPhase } from "../ops/shutdown";
 
-import { createCharacter, getCharacter, listCharacters, retireCharacter, updateCharacter } from "./characters";
+import { uploadAsset } from "./assets";
+import { createCharacter, deleteCharacter, getCharacter, listCharacters, restoreCharacter, retireCharacter, updateCharacter } from "./characters";
 import {
   archiveCampaign,
   createCampaign,
@@ -161,6 +162,20 @@ const ROUTES: Route[] = [
   ["GET", "/characters", async (c) => ok(await listCharacters(c.deps.store, c.user, queryInput(c.query, ["limit"])))],
   ["GET", "/characters/:character_id", async (c) => ok({ character: await getCharacter(c.deps.store, c.user, c.params.character_id) })],
   ["PATCH", "/characters/:character_id", async (c) => ok({ character: await updateCharacter(c.deps.store, c.user, { ...c.body, character_id: c.params.character_id }) })],
+  ["DELETE", "/characters/:character_id", async (c) => (await deleteCharacter(c.deps.store, c.user, c.params.character_id), none())],
+  ["POST", "/characters/:character_id/restore", async (c) => ok({ character: await restoreCharacter(c.deps.store, c.user, c.params.character_id) })],
+  [
+    "POST",
+    "/assets",
+    async (c) => {
+      // Multipart: a `file` part and the asset's fields.
+      const form = await new Response(c.raw as BodyInit, { headers: { "content-type": c.headers.get("content-type") ?? "" } }).formData().catch(() => null);
+      const file = form?.get("file");
+      if (!form || !(file instanceof Blob)) throw new ApiError("invalid_request", "send multipart/form-data with a file");
+      const fields = Object.fromEntries([...form.entries()].filter(([k, v]) => k !== "file" && typeof v === "string"));
+      return created({ asset: await uploadAsset(c.deps.store, c.user, fields, new Uint8Array(await file.arrayBuffer())) });
+    },
+  ],
   ["POST", "/characters/:character_id/retire", async (c) => ok({ character: await retireCharacter(c.deps.store, c.user, c.params.character_id) })],
   // Campaigns
   ["POST", "/campaigns", async (c) => created({ campaign: await createCampaign(c.deps.store, c.user, c.body) })],
@@ -273,7 +288,7 @@ export async function handle(request: Request, user: string | null, deps: Deps):
     }
     let body: Record<string, unknown> = {};
     const raw = request.method === "GET" ? new Uint8Array() : new Uint8Array(await request.arrayBuffer());
-    const isJson = !(request.headers.get("content-type") ?? "").startsWith("application/zip");
+    const isJson = !/^(application\/zip|multipart\/form-data)/.test(request.headers.get("content-type") ?? "");
     const text = isJson ? new TextDecoder().decode(raw) : "";
     if (text.trim() !== "") {
       let parsed: unknown;

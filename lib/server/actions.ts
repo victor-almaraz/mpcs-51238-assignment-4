@@ -2,6 +2,7 @@
 // Server actions for accounts and characters. Each calls an operation in lib/api through `attempt`.
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { uploadAsset } from "../api/assets";
 import { createCharacter, retireCharacter, updateCharacter } from "../api/characters";
 import { acceptTerms } from "../api/users";
 import { attempt, safeNext, type FormState } from "./forms";
@@ -37,6 +38,30 @@ export async function updateCharacterAction(_: FormState, form: FormData): Promi
 export async function retireCharacterAction(_: FormState, form: FormData): Promise<FormState> {
   const id = form.get("character_id");
   const r = await attempt((uid) => retireCharacter(serverStore(), uid, id));
+  if ("error" in r) return { error: r.error };
+  revalidatePath(`/characters/${String(id)}`);
+  return { error: null };
+}
+
+/** Upload portrait: stores the image, then sets it on the character (app-flow.md, Character editor). */
+export async function uploadPortraitAction(_: FormState, form: FormData): Promise<FormState> {
+  const id = form.get("character_id");
+  const file = form.get("file");
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose an image." };
+  const fields = Object.fromEntries(["alt", "license", "credit", "provenance"].map((k) => [k, form.get(k)]).filter(([, v]) => typeof v === "string" && v !== ""));
+  const data = new Uint8Array(await file.arrayBuffer());
+  const r = await attempt(async (uid) => {
+    const asset = await uploadAsset(serverStore(), uid, { kind: "portrait", ...fields }, data);
+    return updateCharacter(serverStore(), uid, { character_id: id, portrait: asset.hash });
+  });
+  if ("error" in r) return { error: r.error };
+  revalidatePath(`/characters/${String(id)}`);
+  return { error: null };
+}
+
+export async function removePortraitAction(_: FormState, form: FormData): Promise<FormState> {
+  const id = form.get("character_id");
+  const r = await attempt((uid) => updateCharacter(serverStore(), uid, { character_id: id, portrait: null }));
   if ("error" in r) return { error: r.error };
   revalidatePath(`/characters/${String(id)}`);
   return { error: null };

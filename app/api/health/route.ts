@@ -17,6 +17,7 @@ const PROBES: [migration: string, fn: string, args: Record<string, unknown>][] =
   ["20261023000800_operations", "cadmium_is_operator", { p_id: "health" }],
   ["20261023000900_drafts", "cadmium_get_draft", { p_id: "health" }],
   ["20261023001000_assets", "cadmium_get_asset", { p_hash: "health" }],
+  ["20261023001100_portraits", "cadmium_asset_meta", { p_hash: "health" }],
 ];
 
 export async function GET() {

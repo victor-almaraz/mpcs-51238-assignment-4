@@ -814,6 +814,44 @@ export class Store {
   async removeAsset(hash: string): Promise<boolean> {
     return this.rpc.call<boolean>("cadmium_remove_asset", { p_hash: hash });
   }
+
+  // Portraits ------------------------------------------------------------------------------------
+
+  async setPortrait(characterId: string, hash: string | null): Promise<CharacterRecord | undefined> {
+    return (await this.rpc.call<CharacterRecord | null>("cadmium_set_portrait", { p_character: characterId, p_hash: hash })) ?? undefined;
+  }
+
+  async assetMeta(hash: string): Promise<{ hash: string; kind: string; mime: string; alt: string; uploader_id: string | null; removed_at: string | null; license: string; credit: string | null; provenance: string | null; bytes: number; width: number | null; height: number | null } | undefined> {
+    return (await this.rpc.call<never>("cadmium_asset_meta", { p_hash: hash })) ?? undefined;
+  }
+
+  async recordUpload(hash: string, userId: string): Promise<void> {
+    await this.rpc.call("cadmium_record_upload", { p_hash: hash, p_user: userId });
+  }
+
+  async uploadedBy(hash: string, userId: string): Promise<boolean> {
+    return this.rpc.call<boolean>("cadmium_uploaded_by", { p_hash: hash, p_user: userId });
+  }
+
+  async userAssets(userId: string): Promise<(Record<string, unknown> & { hash: string; mime: string; data: string })[]> {
+    return this.rpc.call("cadmium_user_assets", { p_user: userId });
+  }
+
+  async deleteCharacter(id: string): Promise<void> {
+    await this.rpc.call("cadmium_delete_character", { p_id: id });
+  }
+
+  async restoreCharacter(id: string): Promise<CharacterRecord | undefined> {
+    return (await this.rpc.call<CharacterRecord | null>("cadmium_restore_character", { p_id: id })) ?? undefined;
+  }
+
+  async deletedCharacter(id: string): Promise<{ id: string; owner_id: string; deleted_at: string } | undefined> {
+    return (await this.rpc.call<{ id: string; owner_id: string; deleted_at: string } | null>("cadmium_deleted_character", { p_id: id })) ?? undefined;
+  }
+
+  async purgeContent(now: Date): Promise<{ characters: number; assets: number }> {
+    return this.rpc.call("cadmium_purge_content", { p_now: now.toISOString() });
+  }
 }
 
 function toBase64(data: Uint8Array): string {

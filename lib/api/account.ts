@@ -98,7 +98,8 @@ schedule.json       Your RSVPs and the sessions you created.
 
 drafts/<id>/        Every adventure draft, as YAML files and as the draft document (draft.json).
 
-assets/ appears once portrait uploads exist.
+assets/             Every image you uploaded or use as a portrait: the file, and its record as
+                    <hash>.json.
 The export is generated on request and is not stored.
 `;
 
@@ -131,6 +132,10 @@ export async function exportMyData(store: Store, userId: string | null, now = ne
     { name: "inputs.json", data: json(x.inputs) },
     { name: "invitations.json", data: json(x.invitations) },
     { name: "schedule.json", data: json(x.schedule) },
+    ...(await store.userAssets(user.id)).flatMap(({ data, ...record }) => [
+      { name: `assets/${record.hash}.${String(record.mime).split("/")[1] === "svg+xml" ? "svg" : String(record.mime).split("/")[1]}`, data: Uint8Array.from(atob(data.replace(/\s+/g, "")), (ch) => ch.charCodeAt(0)) },
+      { name: `assets/${record.hash}.json`, data: json(record) },
+    ]),
     ...(await store.userDrafts(user.id)).flatMap((d) => [
       { name: `drafts/${safe(d.id)}/draft.json`, data: json(d) },
       ...[...draftFiles(d.document)].map(([path, text]) => ({ name: `drafts/${safe(d.id)}/${path}`, data: text })),

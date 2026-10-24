@@ -13,11 +13,11 @@ function cssColor(token: Token): string {
   return getComputedStyle(document.documentElement).getPropertyValue(`--color-${token}`).trim() || "#888";
 }
 
-export function MapPanel({ view, onPick }: { view: View; onPick: (id: string, label: string) => void }) {
+export function MapPanel({ view, onPick, portraits = {} }: { view: View; onPick: (id: string, label: string) => void; portraits?: Record<string, { hash: string; alt: string }> }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [zoom, setZoom] = useState(16);
   const [list, setList] = useState(false);
-  const p = useMemo(() => plan(view, zoom), [view, zoom]);
+  const p = useMemo(() => plan(view, zoom, new Set(), portraits), [view, zoom, portraits]);
   const [loaded, setLoaded] = useState(0);
   useEffect(() => {
     for (const hash of artHashes(p)) {

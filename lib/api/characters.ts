@@ -25,7 +25,7 @@ function sheetValidator(system: RulesSystem): ValidateFunction {
 /** The character object (api.md, Character) as other members see it: the summary, not the sheet. */
 export function characterSummaryView(c: CharacterRecord) {
   const system = systemOrThrow(c.system);
-  return { id: c.id, owner_id: c.owner_id, name: c.name, system: c.system, system_version: c.system_version, status: c.status, instance_id: c.instance_id, summary: system.summary(c.sheet) };
+  return { id: c.id, owner_id: c.owner_id, name: c.name, system: c.system, system_version: c.system_version, status: c.status, instance_id: c.instance_id, portrait: c.portrait_asset, summary: system.summary(c.sheet) };
 }
 
 /** The character object as its owner sees it, with the sheet. */
@@ -85,8 +85,17 @@ export async function listCharacters(store: Store, userId: string | null, input:
 
 export async function updateCharacter(store: Store, userId: string | null, input: unknown) {
   const user = await caller(store, userId, "update_character");
-  const req = onlyFields(input, ["character_id", "name", "profile"]);
+  const req = onlyFields(input, ["character_id", "name", "profile", "portrait"]);
   const c = await owned(store, user.id, req.character_id);
+  if (req.portrait !== undefined) {
+    // A portrait hash the user uploaded, or null to remove it.
+    if (req.portrait !== null) {
+      const a = typeof req.portrait === "string" ? await store.assetMeta(req.portrait) : undefined;
+      if (!a || a.kind !== "portrait" || a.removed_at || !(await store.uploadedBy(a.hash, user.id))) throw new ApiError("invalid_request", "portrait must be the hash of a portrait you uploaded");
+    }
+    await store.setPortrait(c.id, req.portrait as string | null);
+    if (req.name === undefined && req.profile === undefined) return characterView((await store.getCharacter(c.id))!);
+  }
   // While the character is in an instance, the instance holds the authoritative sheet.
   if (c.status === "in_instance") throw new ApiError("conflict", "the character is in an instance");
   const name = req.name === undefined ? c.name : NAME(req.name);
@@ -121,4 +130,21 @@ export async function abilityOptions(store: Store, systemId: string): Promise<Ab
   return settings.flatMap((s) =>
     Object.entries(s.abilities).map(([key, a]) => ({ ref: `${s.namespace}:${key}`, label: a.label, roles: ((a.system_stats as { roles?: string[] }).roles ?? []).slice(), setting: s.manifest.title })),
   );
+}
+
+export async function deleteCharacter(store: Store, userId: string | null, characterId: unknown) {
+  const user = await caller(store, userId, "delete_character");
+  const c = await owned(store, user.id, characterId);
+  if (c.status === "in_instance") throw new ApiError("conflict", "the character is in an instance");
+  await store.deleteCharacter(c.id);
+}
+
+export async function restoreCharacter(store: Store, userId: string | null, characterId: unknown) {
+  const user = await caller(store, userId, "restore_character");
+  if (typeof characterId !== "string") throw new ApiError("invalid_request", "character_id must be a string");
+  const gone = await store.deletedCharacter(characterId);
+  if (!gone || gone.owner_id !== user.id) throw new ApiError("not_found", "no such deleted character");
+  const c = await store.restoreCharacter(characterId);
+  if (!c) throw new ApiError("conflict", "the character was deleted more than 30 days ago");
+  return characterView(c);
 }

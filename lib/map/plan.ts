@@ -33,7 +33,7 @@ export interface Plan {
 }
 
 /** Draws a view at `cell` pixels per cell. `hostile` names hostile creatures, for their danger ring. */
-export function plan(view: View, cell = 16, hostile: ReadonlySet<string> = new Set()): Plan {
+export function plan(view: View, cell = 16, hostile: ReadonlySet<string> = new Set(), portraits: Readonly<Record<string, { hash: string; alt: string }>> = {}): Plan {
   const { map } = view;
   const rows = map.rows;
   const width = (rows[0]?.length ?? 0) * cell;
@@ -101,8 +101,14 @@ export function plan(view: View, cell = 16, hostile: ReadonlySet<string> = new S
   for (const c of [...others, self]) {
     const [x, y] = c.at;
     const mine = c.id === self.id;
-    ops.push({ op: "circle", x: x * cell + cell / 2, y: y * cell + cell / 2, r: cell / 2 - 1, fill: mine ? "accent" : "page", stroke: "accent", width: 1.5 });
-    ops.push({ op: "text", x: x * cell + cell / 2, y: y * cell + Math.round(cell * 0.72), text: c.name.charAt(0).toUpperCase(), fill: mine ? "page" : "accent", size: Math.round(cell * 0.6), align: "center" });
+    // A character token is its portrait, or its initial in a circle (design/components.md, Art).
+    const token: Op[] = [
+      { op: "circle", x: x * cell + cell / 2, y: y * cell + cell / 2, r: cell / 2 - 1, fill: mine ? "accent" : "page", stroke: "accent", width: 1.5 },
+      { op: "text", x: x * cell + cell / 2, y: y * cell + Math.round(cell * 0.72), text: c.name.charAt(0).toUpperCase(), fill: mine ? "page" : "accent", size: Math.round(cell * 0.6), align: "center" },
+    ];
+    const portrait = portraits[c.id];
+    if (portrait) ops.push({ op: "image", x: x * cell, y: y * cell, w: cell, h: cell, hash: portrait.hash, alt: portrait.alt, fallback: token });
+    else ops.push(...token);
     hits.push({ id: c.id, label: c.name, kind: "character", x: x * cell, y: y * cell, w: cell, h: cell });
   }
   return { width, height, ops, hits };

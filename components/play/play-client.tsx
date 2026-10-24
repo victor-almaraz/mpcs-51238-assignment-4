@@ -36,6 +36,8 @@ export interface PlayProps {
   realtime: { url: string; key: string } | null;
   /** Whether a parser is configured for free-text input. */
   textInput: boolean;
+  /** Character portraits by character id. */
+  portraits: Record<string, { hash: string; alt: string }>;
 }
 
 /** How often to poll history while the Realtime channel is down. */
@@ -265,7 +267,7 @@ export function PlayClient(props: PlayProps) {
     </div>
   );
 
-  const mapPanel = <MapPanel view={view} onPick={(id) => pick(id)} />;
+  const mapPanel = <MapPanel view={view} onPick={(id) => pick(id)} portraits={props.portraits} />;
   const sheetContent: Record<Exclude<Sheet, null>, React.ReactNode> = { map: mapPanel, character: characterPanel, party: partyPanel, round: roundStatus };
 
   const banner =

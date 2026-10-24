@@ -13,5 +13,6 @@ export async function GET(request: Request): Promise<Response> {
   // 90 days after shutdown every record that is not held is erased; the operator then deletes the Clerk application.
   if (shutdownPhase(process.env.SHUTDOWN_AT, new Date()).phase === "purge") return Response.json({ shutdown: await serverStore().shutdownPurge() });
   const accounts = await runPurge(serverStore(), async (id) => void (await clerk.users.deleteUser(id)));
-  return Response.json({ ...accounts, drafts: await serverStore().purgeDrafts(new Date()) });
+  const content = await serverStore().purgeContent(new Date());
+  return Response.json({ ...accounts, drafts: await serverStore().purgeDrafts(new Date()), ...content });
 }

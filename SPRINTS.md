@@ -496,3 +496,18 @@ Open:
 - game-icons.net icons are not shipped; packs that use `game_icons` sources render the fallback. Shipping them means vendoring the chosen SVGs with their artists' credits.
 - The example packs declare no art; the test pack adds a portrait and an icon.
 - Migration 11 is not yet applied to the remote database.
+
+### Sprint 23: Portrait uploads — open
+
+Done:
+
+- `supabase/migrations/20261023001100_portraits.sql`: per-user upload records (an identical file is stored once, and each uploader may use it), portraits on characters, `delete_character` and `restore_character`, the user's images for the export, and the purge of characters deleted more than 90 days ago and of images no record refers to, skipping held ones.
+- `lib/api/assets.ts`: `upload_asset` for portraits, PNG or WebP within 1 MB and 1024 × 1024 px, with alt text and optional licence (`NOASSERTION` when none is given), credit, and provenance; `POST /v1/assets` takes multipart. `update_character` sets a portrait the user uploaded, or removes it with `null`. Portraits are never SVG, so no upload carries markup.
+- The character editor: Upload portrait (with the licence, credit, and provenance fields for images made by someone else or with a generative tool) and Remove portrait; the portrait or the initial on the character page; portrait tokens on the play map, falling back to the initial in a circle.
+- The export holds `assets/<hash>.<ext>` and `assets/<hash>.json` for every image the user uploaded or uses; an operator removes a reported portrait from the console, after which it is not served and clients fall back.
+- Tests: `lib/api/portraits.test.ts` (5).
+
+Open:
+
+- Migrations 10 to 12 are not yet applied to the remote database.
+- The Terms of Service and Privacy Policy already describe portraits; they are offline for revision.

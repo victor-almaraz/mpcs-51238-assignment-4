@@ -27,6 +27,12 @@ export default async function Play({ params, searchParams }: { params: Promise<{
   const adventure = instance.materials.find((m) => m.kind === "adventure")!;
   const bundle = (await deps.store.getBundle("adventure", adventure.id, adventure.version)) as AdventureBundle | undefined;
   const endings = Object.fromEntries(Object.entries(bundle?.manifest.endings ?? {}).map(([k, v]) => [k, v.label]));
+  const portraits: Record<string, { hash: string; alt: string }> = {};
+  for (const c of instance.characters) {
+    const record = await deps.store.getCharacter(c.id);
+    const meta = record?.portrait_asset ? await deps.store.assetMeta(record.portrait_asset) : undefined;
+    if (meta && !meta.removed_at) portraits[c.id] = { hash: meta.hash, alt: meta.alt };
+  }
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   return (
@@ -41,6 +47,7 @@ export default async function Play({ params, searchParams }: { params: Promise<{
       endings={endings}
       realtime={url && key ? { url, key } : null}
       textInput={deps.parser !== undefined}
+      portraits={portraits}
     />
   );
 }
