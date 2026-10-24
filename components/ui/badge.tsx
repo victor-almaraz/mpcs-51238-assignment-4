@@ -30,6 +30,12 @@ export function statusTone(status: string): Tone {
   return "accent";
 }
 
+/** A status word in sentence case: `in_instance` reads "In instance". */
+export function statusWord(status: string): string {
+  const words = status.replaceAll("_", " ");
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
 export function StatusBadge({ status, label }: { status: string; label?: string }) {
-  return <Badge tone={statusTone(status)}>{label ?? status.replaceAll("_", " ")}</Badge>;
+  return <Badge tone={statusTone(status)}>{label ?? statusWord(status)}</Badge>;
 }

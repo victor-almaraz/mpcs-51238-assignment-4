@@ -261,7 +261,7 @@ export function ProblemsPanel({ id, problems, checking, selected, onSelect, onCl
           No problems. The draft is ready to publish.
         </p>
       ) : (
-        <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain py-1" onKeyDown={onKey}>
+        <ul className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain py-1" onKeyDown={onKey}>
           {list.map((p, i) => (
             <li key={i}>
               <button

@@ -368,7 +368,7 @@ export function Playtest({ doc, settings, onShowProblems }: { doc: Doc; settings
                       <span className="font-mono">{id}</span>
                     </summary>
                     {clickable && <p className="mt-1 text-caption text-muted">Click a cell to move {actor} to the entity, door, link, or room on it.</p>}
-                    <pre className="mt-2 overflow-auto font-mono text-[10px] leading-3">
+                    <pre className="relative mt-2 overflow-auto font-mono text-[10px] leading-3">
                       {clickable
                         ? l.rows.map((row, y) => (
                             <span key={y}>
@@ -411,7 +411,7 @@ export function Playtest({ doc, settings, onShowProblems }: { doc: Doc; settings
                   <p className="text-caption">
                     Seed {r.seed}: {r.ok ? "ok" : "failed"}
                   </p>
-                  <pre className="overflow-auto font-mono text-[6px] leading-[6px]">{r.text}</pre>
+                  <pre className="relative overflow-auto font-mono text-[6px] leading-[6px]">{r.text}</pre>
                 </div>
               ))}
             </div>

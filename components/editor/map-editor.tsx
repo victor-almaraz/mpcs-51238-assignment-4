@@ -292,7 +292,7 @@ export function MapEditor({ loc, doc, refs, change, reveal }: { loc: AuthoredLoc
           tabIndex={0}
           role="group"
           aria-label={`Map of ${loc.id}, ${width} by ${rows.length} cells; drawing uses a pointer`}
-          className="max-h-[70dvh] overflow-auto rounded-card border border-rule bg-desk p-2"
+          className="relative max-h-[70dvh] overflow-auto rounded-card border border-rule bg-desk p-2"
           onMouseLeave={() => setHover(null)}
         >
           <div className="inline-grid select-none" style={{ gridTemplateColumns: `repeat(${width}, 16px)` }}>

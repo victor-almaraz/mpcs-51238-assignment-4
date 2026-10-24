@@ -287,7 +287,7 @@ export function Editor(props: EditorProps) {
           ? "The live check failed; showing the last results"
           : live.source === "browser"
             ? "Checked as you edit"
-            : "Checked when saved";
+            : "Checked";
   const title = doc.adventure.title || doc.adventure.id;
   const publishWhy = errors.length ? `Fix ${errors.length} error${errors.length === 1 ? "" : "s"} to publish.` : undefined;
 
@@ -382,7 +382,7 @@ export function Editor(props: EditorProps) {
 
       {/* Panes */}
       <div className="flex min-h-0 flex-1">
-        <nav aria-label="Sections" className="hidden w-64 shrink-0 overflow-y-auto overscroll-contain border-r border-rule bg-page p-2 lg:block">
+        <nav aria-label="Sections" className="relative hidden w-64 shrink-0 overflow-y-auto overscroll-contain border-r border-rule bg-page p-2 lg:block">
           {outline}
         </nav>
 
@@ -419,7 +419,7 @@ export function Editor(props: EditorProps) {
         </section>
 
         {playtest && (
-          <aside id="editor-playtest" aria-labelledby="editor-playtest-title" className="flex w-full shrink-0 flex-col overflow-y-auto overscroll-contain border-l border-rule bg-page sm:w-1/2 lg:w-[28rem] xl:w-[34rem] 2xl:w-[40rem]">
+          <aside id="editor-playtest" aria-labelledby="editor-playtest-title" className="relative flex w-full shrink-0 flex-col overflow-y-auto overscroll-contain border-l border-rule bg-page sm:w-1/2 lg:w-[28rem] xl:w-[34rem] 2xl:w-[40rem]">
             <div className="sticky top-0 z-10 flex h-11 shrink-0 items-center gap-2 border-b border-rule bg-page pl-4 pr-1">
               <h2 id="editor-playtest-title" className="text-heading font-semibold">
                 Playtest

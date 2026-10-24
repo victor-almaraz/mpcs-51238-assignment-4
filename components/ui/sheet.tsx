@@ -34,7 +34,7 @@ export function Sheet({ open, onClose, title, side = "right", children }: { open
           <X size={20} strokeWidth={1.75} absoluteStrokeWidth aria-hidden="true" />
         </button>
       </div>
-      <div className="overflow-y-auto p-4">{children}</div>
+      <div className="relative overflow-y-auto p-4">{children}</div>
     </dialog>
   );
 }

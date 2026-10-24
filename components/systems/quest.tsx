@@ -92,11 +92,24 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
     <ul className="grid grid-cols-2 gap-x-4 xl:grid-cols-3">
       {list.map((a) => (
         <li key={a.ref}>
-          <Choice name="abilities" value={a.ref} checked={chosen.includes(a.ref)} onChange={() => toggle(a.ref)} disabled={!chosen.includes(a.ref) && chosen.length >= count} label={a.label} hint={a.setting} className="has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60" />
+          <Choice name="abilities" value={a.ref} checked={chosen.includes(a.ref)} onChange={() => toggle(a.ref)} disabled={!chosen.includes(a.ref) && chosen.length >= count} label={a.label} className="has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60" />
         </li>
       ))}
     </ul>
   );
+  /** Abilities grouped under the setting that supplies them, instead of a source line on each. */
+  const bySetting = (list: AbilityOption[], Heading: "h3" | "h4") => {
+    const groups = new Map<string, AbilityOption[]>();
+    for (const a of list) groups.set(a.setting, [...(groups.get(a.setting) ?? []), a]);
+    return [...groups].map(([setting, items]) => (
+      <div key={setting}>
+        <Heading className="mb-1 text-caption font-medium text-muted">{setting}</Heading>
+        {abilityChoices(items)}
+      </div>
+    ));
+  };
+  // Until a role is chosen, or while one of them is chosen, the other abilities are open.
+  const othersOpen = !role || others.some((a) => chosen.includes(a.ref));
 
   const rows: SummaryRow[] = [
     { label: "System", value: systemTitle ?? system, href: systemHref },
@@ -194,16 +207,26 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
                   The installed settings offer {abilities.length} abilit{abilities.length === 1 ? "y" : "ies"}; this system needs {count}.
                 </Notice>
               )}
+              {!role && <p className="text-caption text-muted">Choose a role to see the abilities suggested for it first.</p>}
               {suited.length > 0 && (
                 <div>
                   <h3 className="mb-1 text-label font-semibold text-ink">Suggested for the {role}</h3>
                   {abilityChoices(suited)}
                 </div>
               )}
-              <div>
-                {suited.length > 0 && <h3 className="mb-1 text-label font-semibold text-ink">Other abilities</h3>}
-                {abilityChoices(others)}
-              </div>
+              {suited.length > 0 ? (
+                <details open={othersOpen} className="group rounded-card border border-rule">
+                  <summary className="flex min-h-10 cursor-pointer items-center gap-2 px-3 text-label font-semibold text-ink">
+                    <span aria-hidden="true" className="transition-transform group-open:rotate-90">
+                      ›
+                    </span>
+                    Other abilities ({others.length})
+                  </summary>
+                  <div className="flex flex-col gap-3 border-t border-rule px-3 py-3">{bySetting(others, "h4")}</div>
+                </details>
+              ) : (
+                <div className="flex flex-col gap-3">{bySetting(others, "h3")}</div>
+              )}
             </div>
           </CreationStep>
 

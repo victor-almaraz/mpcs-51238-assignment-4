@@ -1,5 +1,5 @@
 // The component library (docs/design/README.md, Components).
-export { Badge, StatusBadge, statusTone, type Tone } from "./badge";
+export { Badge, StatusBadge, statusTone, statusWord, type Tone } from "./badge";
 export { Button, ButtonLink, buttonClass, type Variant } from "./button";
 export { Card, CardGrid, CardLink } from "./card";
 export { cx } from "./cx";

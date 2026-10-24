@@ -133,7 +133,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                 />
                 <details className="rounded-control border border-rule">
                   <summary className="cursor-pointer px-3 py-2 text-label font-medium">Full state</summary>
-                  <pre className="max-h-96 overflow-auto border-t border-rule bg-desk p-3 font-mono text-code">{JSON.stringify(inspected.state, null, 2)}</pre>
+                  <pre className="relative max-h-96 overflow-auto border-t border-rule bg-desk p-3 font-mono text-code">{JSON.stringify(inspected.state, null, 2)}</pre>
                 </details>
                 <ActionForm action={restoreAction} className="flex flex-col gap-4">
                   <input type="hidden" name="instance_id" value={inspected.id} />

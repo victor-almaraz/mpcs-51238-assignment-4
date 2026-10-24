@@ -514,22 +514,12 @@ export function PlayClient(props: PlayProps) {
           <div ref={logBox} role="log" aria-label="Game log" tabIndex={0} className="relative min-h-0 flex-1 overflow-y-auto focus-visible:outline-offset-[-2px]">
             <div className="mx-auto flex max-w-prose flex-col gap-5 px-4 py-6 sm:px-6">
               {log.length === 0 && <p className="font-prose text-prose text-muted italic">The adventure begins.</p>}
-              {log.map((e) => {
-                const mine = e.actor === characterId;
-                return (
-                  <div key={e.version}>
-                    {e.actor && (
-                      <p className={cx("mb-1 flex items-center gap-2 text-caption font-medium", mine ? "text-accent" : "text-muted")}>
-                        <span aria-hidden="true" className={cx("inline-flex size-5 items-center justify-center rounded-full text-[11px] font-semibold", mine ? "bg-accent text-page" : "bg-accent-soft text-accent")}>
-                          {(names[e.actor] ?? e.actor).charAt(0).toUpperCase()}
-                        </span>
-                        {names[e.actor] ?? e.actor}
-                      </p>
-                    )}
-                    <p className="font-prose text-prose text-ink">{e.text}</p>
-                  </div>
-                );
-              })}
+              {/* A commit's narration covers every action resolved in it, so entries carry no actor name; the text names who acted. */}
+              {log.map((e) => (
+                <p key={e.version} className="font-prose text-prose text-ink">
+                  {e.text}
+                </p>
+              ))}
             </div>
           </div>
         </section>

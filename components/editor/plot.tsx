@@ -528,7 +528,7 @@ function ArcEditor({ arc, doc, ix, edit, stage, setStage }: { arc: Arc; doc: Doc
           </EditorField>
         </div>
         <div className="flex flex-col gap-2">
-          <div className="overflow-auto rounded-card border border-rule bg-desk/60">
+          <div className="relative overflow-auto rounded-card border border-rule bg-desk/60">
             <ArcGraph
               arc={arc}
               doc={doc}
