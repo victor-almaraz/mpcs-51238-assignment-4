@@ -1,5 +1,6 @@
-// My adventures (app-flow.md, Route map: /adventures): the user's drafts and published versions.
-import Link from "next/link";
+// My adventures (app-flow.md, Route map: /adventures): the user's drafts and published versions. A hub
+// (docs/design/README.md, Page layouts): drafts as rows that open the editor, then what is published.
+import { BookOpen, FilePen, Plus, Trash2 } from "lucide-react";
 import { ActionForm } from "@/components/action-form";
 import { formatWhen } from "@/components/when";
 import { listDrafts } from "@/lib/api/drafts";
@@ -7,6 +8,12 @@ import { listMaterials } from "@/lib/api/materials";
 import { deleteDraftAction } from "@/lib/server/draft-actions";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
+import { Badge } from "@/components/ui/badge";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
+import { List, ListRow } from "@/components/ui/list";
+import { Page, PageHeader, Section } from "@/components/ui/page";
 
 export default async function Adventures() {
   const user = await pageUser();
@@ -14,61 +21,67 @@ export default async function Adventures() {
   const drafts = await listDrafts(store, user.id, { limit: 100 });
   const published = await listMaterials(store, user.id, { owner: "me", kind: "adventure" });
   return (
-    <div className="mx-auto max-w-page px-6 py-10">
-      <div className="flex items-baseline justify-between">
-        <h1 className="font-display text-title">My adventures</h1>
-        <Link href="/adventures/new" className="font-ui text-control text-accent">
-          New adventure
-        </Link>
-      </div>
-      <section className="mt-8">
-        <h2 className="font-display text-heading">Drafts</h2>
+    <Page>
+      <PageHeader
+        title="My adventures"
+        description="Drafts you are writing and the versions you have published."
+        actions={
+          <ButtonLink href="/adventures/new" variant="primary" icon={<Plus {...ICON_DENSE} />}>
+            New adventure
+          </ButtonLink>
+        }
+      />
+      <Section id="drafts" title="Drafts" description={drafts.items.length > 0 ? `${drafts.items.length} draft${drafts.items.length === 1 ? "" : "s"}` : undefined}>
         {drafts.items.length === 0 ? (
-          <p className="mt-2 text-muted">
-            No drafts.{" "}
-            <Link href="/adventures/new" className="text-accent underline">
-              Write an adventure
-            </Link>
-            .
-          </p>
+          <EmptyState
+            icon={<FilePen {...ICON} />}
+            action={
+              <ButtonLink href="/adventures/new" size="sm">
+                Write an adventure
+              </ButtonLink>
+            }
+          >
+            No drafts.
+          </EmptyState>
         ) : (
-          <ul className="mt-2">
+          <List>
             {drafts.items.map((d) => (
-              <li key={d.id} className="flex items-baseline justify-between border-b border-rule py-1">
-                <span>
-                  <Link href={`/adventures/${d.id}/edit`} className="text-accent">
-                    {d.title}
-                  </Link>
-                  <span className="ml-2 font-ui text-caption text-muted">
-                    {d.problems > 0 ? `${d.problems} problem${d.problems === 1 ? "" : "s"}` : "no problems"} · saved {formatWhen(d.updated_at, user.timezone)}
-                    {d.last_published_version && ` · published ${d.last_published_version}`}
-                  </span>
-                </span>
-                <ActionForm action={deleteDraftAction}>
-                  <input type="hidden" name="draft_id" value={d.id} />
-                  <button type="submit" className="font-ui text-caption text-danger">
-                    Delete
-                  </button>
-                </ActionForm>
-              </li>
+              <ListRow
+                key={d.id}
+                icon={<FilePen {...ICON_DENSE} />}
+                title={d.title}
+                href={`/adventures/${d.id}/edit`}
+                badge={d.problems > 0 ? <Badge tone="warning">{`${d.problems} problem${d.problems === 1 ? "" : "s"}`}</Badge> : <Badge tone="success">No problems</Badge>}
+                meta={
+                  <>
+                    Saved {formatWhen(d.updated_at, user.timezone)}
+                    {d.last_published_version && ` · Published ${d.last_published_version}`}
+                  </>
+                }
+                actions={
+                  <ActionForm action={deleteDraftAction}>
+                    <input type="hidden" name="draft_id" value={d.id} />
+                    <Button type="submit" variant="danger" size="sm" icon={<Trash2 {...ICON_DENSE} />}>
+                      Delete<span className="sr-only"> {d.title}</span>
+                    </Button>
+                  </ActionForm>
+                }
+              />
             ))}
-          </ul>
+          </List>
         )}
-      </section>
-      <section className="mt-8">
-        <h2 className="font-display text-heading">Published</h2>
+      </Section>
+      <Section id="published" title="Published" description="Usable in campaigns you create.">
         {published.length === 0 ? (
-          <p className="mt-2 text-muted">Nothing published yet.</p>
+          <EmptyState icon={<BookOpen {...ICON} />}>Nothing published yet.</EmptyState>
         ) : (
-          <ul className="mt-2">
+          <List>
             {published.map((m) => (
-              <li key={`${m.id}@${m.version}`} className="border-b border-rule py-1">
-                {m.title} <span className="font-ui text-caption text-muted">{m.version}</span>
-              </li>
+              <ListRow key={`${m.id}@${m.version}`} icon={<BookOpen {...ICON_DENSE} />} title={m.title} badge={<Badge tone="accent">{m.version}</Badge>} meta={<span className="font-mono">{m.id}</span>} />
             ))}
-          </ul>
+          </List>
         )}
-      </section>
-    </div>
+      </Section>
+    </Page>
   );
 }

@@ -1,5 +1,5 @@
-// Character creation (app-flow.md, Character creation and editor): choose a system, then fill its form.
-import Link from "next/link";
+// Character creation (app-flow.md, Character creation and editor; docs/design/README.md, Character
+// creation): the System step first; once a system is chosen, its form's steps and summary.
 import { notFound } from "next/navigation";
 import { listCampaigns } from "@/lib/api/campaigns";
 import { abilityOptions } from "@/lib/api/characters";
@@ -8,27 +8,38 @@ import { creationRules, listSystems } from "@/lib/api/systems";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
 import { systemUi } from "@/components/systems";
+import { CardLink } from "@/components/ui/card";
+import { Page, PageHeader } from "@/components/ui/page";
+
+const crumbs = [{ label: "Characters", href: "/characters" }];
 
 export default async function NewCharacter({ searchParams }: { searchParams: Promise<{ system?: string; campaign?: string }> }) {
   const user = await pageUser();
   const { system, campaign } = await searchParams;
   const systems = listSystems();
   if (!system) {
+    const keep = campaign ? `&campaign=${encodeURIComponent(campaign)}` : "";
     return (
-      <div className="mx-auto max-w-page px-6 py-10">
-        <h1 className="font-display text-title">New character</h1>
-        <p className="mt-4">Choose a rules system.</p>
-        <ul className="mt-4 flex flex-col gap-4">
-          {systems.map((s) => (
-            <li key={s.id}>
-              <Link href={`/characters/new?system=${s.id}`} className="font-display text-heading text-accent underline">
-                {s.title}
-              </Link>
-              <p className="font-ui text-caption text-muted">{s.credit}</p>
-            </li>
-          ))}
-        </ul>
-      </div>
+      <Page>
+        <PageHeader crumbs={crumbs} title="New character" description="Choose a rules system. Role, abilities, and a name come next." />
+        <section aria-labelledby="step-system-title" className="rounded-card border border-rule bg-page p-4 sm:p-6">
+          <h2 id="step-system-title" className="mb-4 flex items-center gap-3 text-section font-semibold text-ink">
+            <span aria-hidden="true" className="inline-flex size-7 items-center justify-center rounded-full border border-border text-label text-muted">
+              1
+            </span>
+            <span>
+              <span className="sr-only">Step 1: </span>System
+            </span>
+          </h2>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {systems.map((s) => (
+              <li key={s.id} className="grid">
+                <CardLink href={`/characters/new?system=${s.id}${keep}`} title={s.title} meta={s.credit} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      </Page>
     );
   }
   const chosen = systems.find((s) => s.id === system);
@@ -42,10 +53,19 @@ export default async function NewCharacter({ searchParams }: { searchParams: Pro
     chosen.modules.length > 0 ? listCampaigns(store, user.id, { archived: false, limit: 100 }).then((p) => campaignChoices(p.items, system)) : [],
   ]);
   return (
-    <div className="mx-auto max-w-page px-6 py-10">
-      <h1 className="font-display text-title">New {chosen.title} character</h1>
-      <p className="mt-2 font-ui text-caption text-muted">{chosen.credit}</p>
-      <ui.CreationForm system={system} roles={rules.roles} abilities={abilities} count={rules.starting_abilities} campaigns={campaigns} campaign={campaign} />
-    </div>
+    <Page>
+      <PageHeader crumbs={crumbs} title={`New ${chosen.title} character`} description={`Choose a role, ${rules.starting_abilities} abilities, and a name. You can change any step before you create the character.`} />
+      <ui.CreationForm
+        system={system}
+        roles={rules.roles}
+        abilities={abilities}
+        count={rules.starting_abilities}
+        campaigns={campaigns}
+        campaign={campaign}
+        systemTitle={chosen.title}
+        systemCredit={chosen.credit}
+        systemHref={campaign ? `/characters/new?campaign=${encodeURIComponent(campaign)}` : "/characters/new"}
+      />
+    </Page>
   );
 }
