@@ -167,18 +167,19 @@ export function MapPanel({ view, onPick, portraits = {}, selected = null, headin
               />
             </>
           )}
-          <button
-            type="button"
+          <IconButton
+            label="List view"
+            tone="outline"
+            dense
+            tip="end"
+            icon={<List {...ICON_DENSE} />}
             aria-pressed={list}
             onClick={() => {
               centreNext.current = true;
               setList((l) => !l);
             }}
-            className={cx("ml-1 inline-flex h-8 items-center gap-1.5 rounded-control border px-2.5 text-label font-medium", list ? "border-accent-line bg-accent-soft text-accent" : "border-border bg-page text-ink hover:bg-desk")}
-          >
-            <List {...ICON_DENSE} />
-            List view
-          </button>
+            className="ml-1"
+          />
         </div>
       </div>
       {list ? (

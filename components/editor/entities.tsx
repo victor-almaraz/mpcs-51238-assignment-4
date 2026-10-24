@@ -106,7 +106,7 @@ export function EntitiesSection({ doc, edit }: { doc: Doc; edit: (f: (d: Doc) =>
               <div className="min-w-0">
                 <h3 id={hid} className="flex flex-wrap items-center gap-2 text-heading font-semibold">
                   {t.label || key}
-                  {t.kind && <Badge dot={false}>{t.kind}</Badge>}
+                  {t.kind && <Badge>{t.kind}</Badge>}
                 </h3>
                 <p className="font-mono text-caption text-muted">{key}</p>
               </div>

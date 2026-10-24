@@ -8,6 +8,7 @@ import { buttonClass } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
 import { demoMode } from "@/lib/server/demo";
 import { THEME_SCRIPT } from "@/components/settings/theme-script";
+import { TOOLTIP_SCRIPT } from "@/components/ui/tip";
 import { shutdownPhase } from "@/lib/ops/shutdown";
 import "./globals.css";
 
@@ -71,6 +72,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <script dangerouslySetInnerHTML={{ __html: TOOLTIP_SCRIPT }} />
       </head>
       <body className="flex min-h-dvh flex-col bg-desk font-ui text-body text-ink">
         <Auth>

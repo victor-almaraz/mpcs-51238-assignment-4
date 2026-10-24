@@ -1,4 +1,4 @@
-// Status badges: a word, with a dot, never colour alone (docs/design/README.md, Components).
+// Status badges: a word on a tint, never colour alone (docs/design/README.md, Components).
 import type { ReactNode } from "react";
 import { cx } from "./cx";
 
@@ -14,7 +14,7 @@ const tones: Record<Tone, string> = {
   pigment: "bg-pigment text-pigment-ink",
 };
 
-export function Badge({ tone = "neutral", children, dot = true }: { tone?: Tone; children: ReactNode; dot?: boolean }) {
+export function Badge({ tone = "neutral", children, dot = false }: { tone?: Tone; children: ReactNode; dot?: boolean }) {
   return (
     <span className={cx("inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-0.5 text-caption font-medium", tones[tone])}>
       {dot && <span aria-hidden="true" className="size-1.5 rounded-full bg-current" />}

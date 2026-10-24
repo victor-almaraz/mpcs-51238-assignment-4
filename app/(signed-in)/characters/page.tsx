@@ -12,10 +12,10 @@ import { listCharacters } from "@/lib/api/characters";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
 
-const GROUPS: { id: string; title: string; description: string; has: (c: CharacterItem) => boolean }[] = [
-  { id: "available", title: "Available", description: "Free to join a game.", has: (c) => c.status === "available" },
-  { id: "in-games", title: "In games", description: "Playing in a game now.", has: (c) => c.status === "in_instance" },
-  { id: "retired", title: "Retired and fallen", description: "No longer able to join a game.", has: (c) => c.status === "retired" || c.status === "dead" },
+const GROUPS: { id: string; title: string; has: (c: CharacterItem) => boolean }[] = [
+  { id: "available", title: "Available", has: (c) => c.status === "available" },
+  { id: "in-games", title: "In games", has: (c) => c.status === "in_instance" },
+  { id: "retired", title: "Retired and fallen", has: (c) => c.status === "retired" || c.status === "dead" },
 ];
 
 export default async function Characters() {
@@ -31,7 +31,7 @@ export default async function Characters() {
 
   return (
     <Page>
-      <PageHeader title="Characters" description="The characters you have made, in every rules system." actions={characters.items.length > 0 ? newCharacter : undefined} />
+      <PageHeader title="Characters" actions={characters.items.length > 0 ? newCharacter : undefined} />
       {characters.items.length === 0 ? (
         <EmptyState icon={<Users {...ICON} />} action={newCharacter}>
           No characters yet. Make one to bring to a campaign&rsquo;s games.
@@ -41,7 +41,7 @@ export default async function Characters() {
           const list = characters.items.filter(g.has);
           if (list.length === 0) return null;
           return (
-            <Section key={g.id} id={g.id} title={`${g.title} (${list.length})`} description={g.description}>
+            <Section key={g.id} id={g.id} title={`${g.title} (${list.length})`}>
               <CardGrid>
                 {list.map((c) => (
                   <CharacterCard key={c.id} character={c} where={where} />

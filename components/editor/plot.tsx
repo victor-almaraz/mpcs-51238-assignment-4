@@ -3,7 +3,7 @@
 // selected arc's graph with stages as nodes and `set_stage` effects as edges, and the triggers that act
 // in the selected stage as rule cards: When, If, Then, Narrate, Only once, with a plain-English summary.
 // Stages are chosen by clicking a node, by keyboard on a node, or from the stage list.
-import { ArrowDown, ArrowUp, Braces, Plus, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Braces, Plus, Trash2, X } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 import { parse, stringify } from "yaml";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { cx } from "@/components/ui/cx";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Select, TextInput } from "@/components/ui/field";
-import { ICON_DENSE, IconButton } from "@/components/ui/icon-button";
+import { ICON, ICON_DENSE, IconButton } from "@/components/ui/icon-button";
 import { Notice } from "@/components/ui/notice";
 import { plotGraph } from "@/lib/materials/plot";
 import { denseArea, denseInput, denseSelect, NewId, Panel, RemoveButton } from "./controls";
@@ -319,7 +319,7 @@ function RuleCard({ t, pointer, set, remove, doc, ix }: { t: Trigger; pointer: s
         <h4 id={`${id}-title`} className="font-mono text-code font-semibold">
           {t.id}
         </h4>
-        {t.once && <Badge dot={false}>Only once</Badge>}
+        {t.once && <Badge>Only once</Badge>}
         <span className="ml-auto flex items-center gap-1">
           <Button variant="quiet" size="sm" aria-pressed={yaml} icon={<Braces {...ICON_DENSE} />} onClick={() => setYaml(!yaml)}>
             {yaml ? "Edit as card" : "Edit as YAML"}
@@ -504,9 +504,7 @@ function ArcEditor({ arc, doc, ix, edit, stage, setStage }: { arc: Arc; doc: Doc
             {arc.title || arc.id}
           </h3>
           <span className="font-mono text-caption text-muted">{arc.id}</span>
-          <Button variant="danger" size="sm" className="ml-auto" onClick={() => edit((d) => void delete d.arcs[arc.id])}>
-            Delete arc
-          </Button>
+          <IconButton tone="danger" tip="end" className="ml-auto" label={`Delete ${arc.title || arc.id}`} icon={<Trash2 {...ICON} />} onClick={() => edit((d) => void delete d.arcs[arc.id])} />
         </div>
         <InlineProblems problems={top} />
         <div className="grid gap-4 @3xl:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,0.8fr)]">

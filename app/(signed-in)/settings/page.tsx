@@ -10,7 +10,7 @@ import { EnablePush } from "@/components/settings/push";
 import { ThemePicker } from "@/components/settings/theme";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Choice, described, Field, FieldGroup, TextInput } from "@/components/ui/field";
-import { ICON_DENSE } from "@/components/ui/icon-button";
+import { ICON_DENSE, IconButton } from "@/components/ui/icon-button";
 import { DangerZone } from "@/components/ui/card";
 import { Page, PageHeader } from "@/components/ui/page";
 import { listPushSubscriptions } from "@/lib/api/account";
@@ -41,7 +41,7 @@ export default async function Settings() {
 
   return (
     <Page>
-      <PageHeader title="Settings" description="Your profile, how Cadmium looks, reminders, and your data." />
+      <PageHeader title="Settings" />
       <div className="grid gap-8 lg:grid-cols-[12rem_minmax(0,40rem)]">
         <nav aria-label="Settings sections" className="hidden lg:block">
           <ul className="sticky top-[calc(var(--size-topbar)+24px)] flex flex-col gap-1">
@@ -111,9 +111,7 @@ export default async function Settings() {
                         </span>
                         <ActionForm action={removePushAction}>
                           <input type="hidden" name="subscription_id" value={b.id} />
-                          <Button type="submit" variant="danger" size="sm" aria-label={`Remove ${b.label || "browser"}`}>
-                            Remove
-                          </Button>
+                          <IconButton type="submit" tone="danger" dense tip="end" label={`Remove ${b.label || "browser"}`} icon={<Trash2 {...ICON_DENSE} />} />
                         </ActionForm>
                       </li>
                     ))}

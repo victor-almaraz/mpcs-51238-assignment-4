@@ -1,14 +1,14 @@
 // The hub pages' shared parts (docs/design/README.md, Page layouts: Hub): the user's games across
 // their campaigns, the code form that opens an invitation or invite link, and the cards for
 // characters, campaigns, and adventures. Used by /dashboard, /characters, and /campaigns.
-import { BookOpen, Castle, KeyRound, UserRound } from "lucide-react";
+import { KeyRound } from "lucide-react";
 import { ActionForm } from "@/components/action-form";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardLink } from "@/components/ui/card";
 import { ElementTile, elementSymbol } from "@/components/ui/tile";
 import { described, Field, TextInput } from "@/components/ui/field";
-import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
+import { ICON } from "@/components/ui/icon-button";
 import type { listCampaigns } from "@/lib/api/campaigns";
 import type { listCharacters } from "@/lib/api/characters";
 import type { listDrafts } from "@/lib/api/drafts";
@@ -58,7 +58,7 @@ export function CampaignCard({ campaign: c, userId }: { campaign: CampaignItem; 
       href={`/campaigns/${c.id}`}
       title={c.title}
       tile={<ElementTile symbol={elementSymbol(c.title)} tone="neutral" size="sm" />}
-      badge={<Badge tone={runs ? "accent" : "neutral"}>{runs ? "You run" : "You play"}</Badge>}
+      badge={runs ? <Badge tone="accent">You run</Badge> : undefined}
       meta={`${plural(c.instance_ids.length, "game")} · ${plural(players, "player")}`}
     >
       {c.description && <p className="line-clamp-2 text-caption text-muted">{c.description}</p>}
@@ -73,11 +73,9 @@ export function CharacterCard({ character: c, where }: { character: CharacterIte
       href={`/characters/${c.id}`}
       title={c.name}
       tile={<ElementTile symbol={elementSymbol(c.name)} tone={c.status === "available" || c.status === "in_instance" ? "accent" : "neutral"} size="sm" />}
-      badge={<StatusBadge status={c.status} />}
+      badge={game ? <Badge tone="warning">In {game}</Badge> : c.status === "available" ? undefined : <StatusBadge status={c.status} />}
       meta={`${systemView(c.system).title} ${String(c.sheet.role)}`}
-    >
-      {game && <p className="text-caption text-muted">In {game}</p>}
-    </CardLink>
+    />
   );
 }
 
@@ -87,7 +85,7 @@ export function DraftCard({ draft: d }: { draft: DraftItem }) {
       href={`/adventures/${d.id}/edit`}
       title={d.title}
       tile={<ElementTile symbol={elementSymbol(d.title)} tone="neutral" size="sm" />}
-      badge={d.problems > 0 ? <Badge tone="danger">{plural(d.problems, "problem")}</Badge> : <Badge tone="success">Ready</Badge>}
+      badge={d.problems > 0 ? <Badge tone="danger">{plural(d.problems, "problem")}</Badge> : undefined}
       meta={d.last_published_version ? `Published ${d.last_published_version}` : "Not published"}
     />
   );

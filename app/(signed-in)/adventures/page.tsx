@@ -9,9 +9,9 @@ import { deleteDraftAction } from "@/lib/server/draft-actions";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
 import { Badge } from "@/components/ui/badge";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { ButtonLink } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
+import { ICON, ICON_DENSE, IconButton } from "@/components/ui/icon-button";
 import { List, ListRow } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 
@@ -61,9 +61,7 @@ export default async function Adventures() {
                 actions={
                   <ActionForm action={deleteDraftAction}>
                     <input type="hidden" name="draft_id" value={d.id} />
-                    <Button type="submit" variant="danger" size="sm" icon={<Trash2 {...ICON_DENSE} />}>
-                      Delete<span className="sr-only"> {d.title}</span>
-                    </Button>
+                    <IconButton type="submit" tone="danger" tip="end" label={`Delete ${d.title}`} icon={<Trash2 {...ICON} />} />
                   </ActionForm>
                 }
               />

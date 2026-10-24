@@ -2,6 +2,7 @@
 // Dialogs and sheets on the native <dialog> element (WAI-ARIA APG modal dialog): showModal moves focus
 // in and keeps it there, Escape closes, and focus returns to the opener.
 import { X } from "lucide-react";
+import { ICON, IconButton } from "./icon-button";
 import { useEffect, useRef, type ReactNode } from "react";
 import { cx } from "./cx";
 
@@ -30,9 +31,7 @@ export function Sheet({ open, onClose, title, side = "right", children }: { open
     >
       <div className="flex items-center justify-between border-b border-rule px-4 py-3">
         <h2 className="text-heading font-semibold">{title}</h2>
-        <button type="button" onClick={onClose} aria-label="Close" title="Close" className="inline-flex size-9 items-center justify-center rounded-control hover:bg-desk">
-          <X size={20} strokeWidth={1.75} absoluteStrokeWidth aria-hidden="true" />
-        </button>
+        <IconButton label="Close" icon={<X {...ICON} />} tip="end" onClick={onClose} />
       </div>
       <div className="relative overflow-y-auto p-4">{children}</div>
     </dialog>

@@ -1,22 +1,42 @@
-// An icon-only button: always named, with a tooltip of the same words (docs/design/README.md).
+// An icon-only button: always named, with a tooltip of the same words (docs/design/README.md, Icons).
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import { cx } from "./cx";
+import { Tip, type TipAlign, type TipSide } from "./tip";
 
-const base = "inline-flex shrink-0 items-center justify-center rounded-control text-ink hover:bg-desk aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent";
+const base = "relative inline-flex shrink-0 items-center justify-center rounded-control aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent disabled:cursor-not-allowed disabled:text-muted";
+const tones = {
+  ink: "text-ink hover:bg-desk",
+  danger: "text-danger hover:bg-danger-soft",
+  // Outlined, to stand with secondary buttons in a toolbar; pressed toggles fill with the accent tint.
+  outline: "border border-border text-ink hover:bg-desk aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-accent",
+} as const;
+export type IconTone = keyof typeof tones;
 
-export function IconButton({ label, icon, dense, className, type = "button", ...rest }: { label: string; icon: ReactNode; dense?: boolean; className?: string } & Omit<ComponentProps<"button">, "children" | "className">) {
+interface TipProps {
+  label: string;
+  icon: ReactNode;
+  dense?: boolean;
+  tone?: IconTone;
+  tip?: TipAlign;
+  tipSide?: TipSide;
+  className?: string;
+}
+
+export function IconButton({ label, icon, dense, tone = "ink", tip, tipSide, className, type = "button", ...rest }: TipProps & Omit<ComponentProps<"button">, "children" | "className">) {
   return (
-    <button type={type} aria-label={label} title={label} className={cx(base, dense ? "size-8" : "size-9", className)} {...rest}>
+    <button type={type} aria-label={label} className={cx(base, tones[tone], dense ? "size-8" : "size-9", className)} {...rest}>
       {icon}
+      <Tip label={label} align={tip} side={tipSide} />
     </button>
   );
 }
 
-export function IconLink({ label, icon, href, className, ...rest }: { label: string; icon: ReactNode; href: string; className?: string } & Omit<ComponentProps<"a">, "children" | "className" | "href">) {
+export function IconLink({ label, icon, href, dense, tone = "ink", tip, tipSide, className, ...rest }: TipProps & { href: string } & Omit<ComponentProps<"a">, "children" | "className" | "href">) {
   return (
-    <Link href={href} aria-label={label} title={label} className={cx(base, "size-9", className)} {...rest}>
+    <Link href={href} aria-label={label} className={cx(base, tones[tone], dense ? "size-8" : "size-9", className)} {...rest}>
       {icon}
+      <Tip label={label} align={tip} side={tipSide} />
     </Link>
   );
 }

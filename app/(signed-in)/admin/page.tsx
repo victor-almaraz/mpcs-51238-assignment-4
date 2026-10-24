@@ -36,7 +36,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
 
   return (
     <Page>
-      <PageHeader title="Operator console" description="Materials, instance inspection and recovery, content reports, and the operator log." status={<Badge tone="danger">Operator</Badge>} />
+      <PageHeader title="Operator console" status={<Badge tone="danger">Operator</Badge>} />
       <div className="grid grid-cols-1 gap-x-8 lg:grid-cols-2 [&>*]:min-w-0">
         <Section id="materials" title="Materials" description="Publish a compiled setting or adventure bundle, and list or unlist versions." className="lg:col-span-2">
           <Card className="flex flex-col gap-4">

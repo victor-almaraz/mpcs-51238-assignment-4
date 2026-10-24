@@ -9,7 +9,7 @@ import { Badge, StatusBadge } from "@/components/ui/badge";
 import { ButtonLink, buttonClass } from "@/components/ui/button";
 import { Card, CardGrid } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
+import { ICON, ICON_DENSE, IconLink } from "@/components/ui/icon-button";
 import { List, ListRow } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { cx } from "@/components/ui/cx";
@@ -85,12 +85,19 @@ function GameCard({ game: i, userId }: { game: GameItem; userId: string }) {
                 {i.name}
               </Link>
             </h3>
-            <p className="text-caption text-muted">{i.campaign}</p>
+            <p className="text-caption text-muted">
+              {i.campaign}
+              {mine.length > 0 && (
+                <>
+                  {" · "}
+                  <span className="whitespace-nowrap">as {mine.join(", ")}</span>
+                </>
+              )}
+            </p>
           </div>
         </div>
         <StatusBadge status={i.status} />
       </div>
-      <p className="text-caption text-muted">{mine.length > 0 ? `Playing ${mine.join(", ")}` : "No character of yours"}</p>
       <div className="mt-auto">
         <ButtonLink href={action.href} size="sm" icon={action.icon} aria-label={`${action.label}: ${i.name}`}>
           {action.label}
@@ -175,7 +182,11 @@ export default async function Dashboard() {
                     </Link>
                     <span className="text-caption text-muted">{next.instance.campaign}</span>
                     {next.status === "moved" && <Badge tone="warning">Moved</Badge>}
-                    {live && <Badge tone="pigment">Live now</Badge>}
+                    {live && (
+                      <Badge tone="pigment" dot>
+                        Live now
+                      </Badge>
+                    )}
                   </p>
                 </div>
               </div>
@@ -237,9 +248,7 @@ export default async function Dashboard() {
         actions={
           <>
             {campaigns.items.length > SHOWN && <SectionAll href="/campaigns" label={`All ${campaigns.items.length}`} />}
-            <ButtonLink href="/campaigns/new" size="sm" icon={<Plus {...ICON_DENSE} />}>
-              New campaign
-            </ButtonLink>
+            <IconLink href="/campaigns/new" tone="outline" tip="end" label="New campaign" icon={<Plus {...ICON} />} />
           </>
         }
       >
@@ -266,9 +275,7 @@ export default async function Dashboard() {
           <>
             {characters.items.length > SHOWN && <SectionAll href="/characters" label={`All ${characters.items.length}`} />}
             {characters.items.length > 0 && (
-              <ButtonLink href="/characters/new" size="sm" icon={<Plus {...ICON_DENSE} />}>
-                New character
-              </ButtonLink>
+              <IconLink href="/characters/new" tone="outline" tip="end" label="New character" icon={<Plus {...ICON} />} />
             )}
           </>
         }
@@ -277,9 +284,7 @@ export default async function Dashboard() {
           <EmptyState
             icon={<Users {...ICON} />}
             action={
-              <ButtonLink href="/characters/new" size="sm" icon={<Plus {...ICON_DENSE} />}>
-                New character
-              </ButtonLink>
+              <IconLink href="/characters/new" tone="outline" tip="end" label="New character" icon={<Plus {...ICON} />} />
             }
           >
             No characters yet.
@@ -300,9 +305,7 @@ export default async function Dashboard() {
           <>
             {drafts.items.length > 0 && <SectionAll href="/adventures" label="All adventures" />}
             {drafts.items.length > 0 && (
-              <ButtonLink href="/adventures/new" size="sm" icon={<Plus {...ICON_DENSE} />}>
-                New adventure
-              </ButtonLink>
+              <IconLink href="/adventures/new" tone="outline" tip="end" label="New adventure" icon={<Plus {...ICON} />} />
             )}
           </>
         }
@@ -311,9 +314,7 @@ export default async function Dashboard() {
           <EmptyState
             icon={<BookOpen {...ICON} />}
             action={
-              <ButtonLink href="/adventures/new" size="sm" icon={<Plus {...ICON_DENSE} />}>
-                New adventure
-              </ButtonLink>
+              <IconLink href="/adventures/new" tone="outline" tip="end" label="New adventure" icon={<Plus {...ICON} />} />
             }
           >
             No adventures yet. Write one for your campaigns.

@@ -81,11 +81,6 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
                       {next && ` · Next session ${formatWhen(next.starts_at, user.timezone)}`}
                     </>
                   }
-                  actions={
-                    <ButtonLink href={`/instances/${i.id}`} size="sm">
-                      Open<span className="sr-only"> {i.name}</span>
-                    </ButtonLink>
-                  }
                 />
               );
             })}

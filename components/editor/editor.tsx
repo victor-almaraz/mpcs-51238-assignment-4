@@ -14,6 +14,7 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { cx } from "@/components/ui/cx";
 import { TextInput } from "@/components/ui/field";
 import { ICON, ICON_DENSE, IconButton } from "@/components/ui/icon-button";
+import { Tip } from "@/components/ui/tip";
 import { Sheet } from "@/components/ui/sheet";
 import { content, type Doc, type Problem, type Refs } from "./doc";
 import { EntitiesSection } from "./entities";
@@ -362,16 +363,14 @@ export function Editor(props: EditorProps) {
           <span className="hidden sm:contents">
             <Divider />
           </span>
-          <Button variant="secondary" aria-pressed={yaml} icon={<Braces {...ICON_DENSE} className="hidden sm:block" />} onClick={() => setYaml(!yaml)} className="aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-accent">
-            <span className="sm:hidden">YAML</span>
-            <span className="hidden sm:inline">Edit as YAML</span>
-          </Button>
+          <IconButton label="Edit as YAML" tone="outline" icon={<Braces {...ICON} />} aria-pressed={yaml} onClick={() => setYaml(!yaml)} />
           <Button variant="secondary" aria-pressed={playtest} aria-controls={playtest ? "editor-playtest" : undefined} icon={<Play {...ICON_DENSE} className="hidden sm:block" />} onClick={() => setPlaytest(!playtest)} className="aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-accent">
             Playtest
           </Button>
           <IconButton label="Snapshots" icon={<History {...ICON} />} aria-haspopup="dialog" onClick={() => setSnapshotsOpen(true)} />
-          <a href={`/v1/drafts/${props.draftId}/export.zip`} aria-label="Export as a zip of YAML files" title="Export as a zip of YAML files" className="inline-flex size-9 shrink-0 items-center justify-center rounded-control text-ink hover:bg-desk">
+          <a href={`/v1/drafts/${props.draftId}/export.zip`} aria-label="Export as a ZIP of YAML files" className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-control text-ink hover:bg-desk">
             <Download {...ICON} />
+            <Tip label="Export as a ZIP of YAML files" />
           </a>
           <span className="hidden items-center gap-1 sm:flex">
             <Divider />

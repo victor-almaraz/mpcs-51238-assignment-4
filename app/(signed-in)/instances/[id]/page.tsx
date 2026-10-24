@@ -2,7 +2,7 @@
 // controls shown only when the status allows them, and the next session. A detail page
 // (docs/design/README.md, Game lobby): the party in the main column, the next session and the
 // game's facts in the aside.
-import { CalendarClock, History, Pause, Play, Square, Users } from "lucide-react";
+import { CalendarClock, History, Pause, Play, Square, UserMinus, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { ActionForm } from "@/components/action-form";
 import { getCampaign } from "@/lib/api/campaigns";
@@ -21,7 +21,7 @@ import { Button, ButtonLink, type Variant } from "@/components/ui/button";
 import { Card, Panel } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, Select, described } from "@/components/ui/field";
-import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
+import { ICON, ICON_DENSE, IconButton } from "@/components/ui/icon-button";
 import { DescriptionList, List, ListRow } from "@/components/ui/list";
 import { Page, PageHeader, Section, WithAside } from "@/components/ui/page";
 import { DateTile } from "@/components/ui/tile";
@@ -146,9 +146,7 @@ export default async function Lobby({ params }: { params: Promise<{ id: string }
                       <ActionForm action={removeCharacterAction}>
                         <input type="hidden" name="instance_id" value={instance.id} />
                         <input type="hidden" name="character_id" value={c.id} />
-                        <Button type="submit" variant="danger" size="sm">
-                          Remove<span className="sr-only"> {c.name}</span>
-                        </Button>
+                        <IconButton type="submit" tone="danger" tip="end" label={`Remove ${c.name}`} icon={<UserMinus {...ICON} />} />
                       </ActionForm>
                     )
                   }

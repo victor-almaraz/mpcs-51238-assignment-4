@@ -152,7 +152,7 @@ function Fields({ fields, open, value, onChange, name, pointer }: { fields: Stat
             <div className="flex min-w-0 flex-col gap-1">
               <div className="flex min-h-8 flex-wrap items-center gap-2">
                 <Input f={f} value={v[f.key]} name={name} pointer={p} control={control} set={(x) => onChange(withField(value, f.key, x))} />
-                {f.module && <Badge dot={false}>{f.module} module</Badge>}
+                {f.module && <Badge>{f.module} module</Badge>}
               </div>
               {f.description && <span className="text-caption text-muted">{f.description}</span>}
               <InlineProblems id={`${control.id}-problems`} problems={problems} />

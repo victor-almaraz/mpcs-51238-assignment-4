@@ -5,7 +5,7 @@ import { Bell, BookOpen, Castle, LayoutDashboard, Menu, Settings, Users } from "
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
-import { ICON, ICON_DENSE } from "./ui/icon-button";
+import { ICON, ICON_DENSE, IconButton, IconLink } from "./ui/icon-button";
 import { Sheet } from "./ui/sheet";
 import { cx } from "./ui/cx";
 
@@ -37,11 +37,7 @@ export function MainNav() {
 
 export function UtilityLinks() {
   const path = usePathname();
-  const link = (href: string, label: string, icon: ReactNode) => (
-    <Link href={href} aria-label={label} title={label} aria-current={path === href ? "page" : undefined} className="inline-flex size-9 items-center justify-center rounded-control text-ink hover:bg-desk aria-[current=page]:bg-accent-soft aria-[current=page]:text-accent">
-      {icon}
-    </Link>
-  );
+  const link = (href: string, label: string, icon: ReactNode) => <IconLink href={href} label={label} icon={icon} aria-current={path === href ? "page" : undefined} />;
   return (
     <>
       {link("/notifications", "Notifications", <Bell {...ICON} />)}
@@ -55,9 +51,7 @@ export function MobileMenu() {
   const path = usePathname();
   return (
     <div className="md:hidden">
-      <button type="button" onClick={() => setOpen(true)} aria-label="Menu" title="Menu" aria-haspopup="dialog" className="inline-flex size-9 items-center justify-center rounded-control hover:bg-desk">
-        <Menu {...ICON} />
-      </button>
+      <IconButton label="Menu" icon={<Menu {...ICON} />} tip="end" onClick={() => setOpen(true)} aria-haspopup="dialog" />
       <Sheet open={open} onClose={() => setOpen(false)} title="Menu">
         <nav aria-label="Main">
           <ul className="flex flex-col gap-1">

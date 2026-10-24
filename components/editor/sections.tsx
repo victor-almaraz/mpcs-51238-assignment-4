@@ -2,7 +2,7 @@
 // The editor's form sections (app-flow.md, Adventure editor: Sections): Overview, Flags, Locations,
 // NPCs, and the YAML view every section also has. Plot is plot.tsx; Items & creatures is entities.tsx.
 // Every field marks the draft value it edits with `data-pointer` and shows its own problems.
-import { MapPinned, Plus } from "lucide-react";
+import { MapPinned, Plus, Trash2 } from "lucide-react";
 import { Fragment, useState } from "react";
 import { parse, stringify } from "yaml";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cx } from "@/components/ui/cx";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Choice, FieldGroup, Select, TextArea, TextInput } from "@/components/ui/field";
-import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
+import { ICON, ICON_DENSE, IconButton } from "@/components/ui/icon-button";
 import { Notice } from "@/components/ui/notice";
 import { denseInput, denseSelect, NewId, Panel, RemoveButton } from "./controls";
 import { freshId, type Adventure, type AuthoredLocation, type Doc, type Flag, type Npc, type Problem, type Refs } from "./doc";
@@ -110,7 +110,7 @@ export function Overview({ doc, refs, edit, general }: { doc: Doc; refs: Refs; e
               {a.system.id} {a.system.versions}
             </span>
             {(a.system.modules ?? []).map((m) => (
-              <Badge key={m} dot={false}>
+              <Badge key={m}>
                 {m} module
               </Badge>
             ))}
@@ -395,10 +395,8 @@ export function Locations({ doc, refs, edit, current, select, reveal }: { doc: D
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-3">
         <h3 className="font-mono text-heading font-semibold">{current}</h3>
-        <Badge dot={false}>{loc.kind === "authored" ? "Authored map" : "Generated"}</Badge>
-        <Button variant="danger" size="sm" className="ml-auto" onClick={() => edit((d) => void delete d.locations[current])}>
-          Delete location
-        </Button>
+        <Badge>{loc.kind === "authored" ? "Authored map" : "Generated"}</Badge>
+        <IconButton tone="danger" tip="end" className="ml-auto" label="Delete location" icon={<Trash2 {...ICON} />} onClick={() => edit((d) => void delete d.locations[current])} />
       </div>
       {loc.kind === "authored" && top.length > 0 && (
         <Panel pointer={`${pointer}/map`} aria-label={`Problems with ${current}`}>
@@ -447,9 +445,7 @@ function NpcCard({ n, creatures, edit }: { n: Npc; creatures: Refs["templates"];
           </h3>
           <p className="font-mono text-caption text-muted">{n.id}</p>
         </div>
-        <Button variant="danger" size="sm" onClick={() => edit((d) => void delete d.npcs[n.id])}>
-          Delete NPC
-        </Button>
+        <IconButton tone="danger" tip="end" label={`Delete ${n.name || n.id}`} icon={<Trash2 {...ICON} />} onClick={() => edit((d) => void delete d.npcs[n.id])} />
       </div>
       <InlineProblems problems={top} />
       <div className="grid gap-4 @2xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">

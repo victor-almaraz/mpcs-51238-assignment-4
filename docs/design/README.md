@@ -75,6 +75,20 @@ The system stack is `system-ui, -apple-system, "Segoe UI", Roboto, sans-serif`. 
 (Regular, Italic, Semibold; SIL Open Font License) is served from `/fonts/` with `font-display: swap`.
 Sentence case everywhere. Numbers in trackers, stats, and tables use tabular figures.
 
+Three weights: regular for body text, values, and controls' content; medium for labels, buttons,
+tabs, navigation, and badges; semibold for titles and a card's one key value. No bold.
+
+**Fewer words.** Text is there only when it tells the reader something the layout does not:
+
+| Rule | Applies as |
+|---|---|
+| A description adds to its heading | No page or section description that restates the title or lists what the page shows. A description stays when it sets a scope (Sessions in the next 7 days) or a constraint (Read-only; it changes in play). |
+| The default state has no badge | Available characters, campaigns the viewer plays in, and adventures without problems carry no badge; only a state that differs (You run, In Thursday table, 2 problems, Retired) does. |
+| A state is said once | Either a badge or a metadata line, not both: an in-game character's badge names the game. |
+| A linked title is the way in | A row or card whose title is a link has no Open button. |
+| A card has three lines at most | Title, one metadata line, and one line of description or action. |
+| Badges are a word on a tint | No dot, except a live state (Live now). |
+
 ### Hierarchy
 
 Two rules order every page: **alignment** (things that belong together share an edge) and
@@ -121,9 +135,27 @@ one content edge.
 ### Icons
 
 Lucide through `lucide-react`, 20 px (16 px in dense rows), stroke 1.75 with `absoluteStrokeWidth`,
-in `currentColor`. An icon-only button always has an accessible name and a tooltip. The icon vocabulary
+in `currentColor`. The icon vocabulary
 of `cadmium-spec/docs/design/foundations.md` (Icons, Vocabulary) stands: one concept, one icon. The
 product mark is the cadmium tile, Cd, drawn as a Lucide-style icon (`components/ui/logo.tsx`).
+
+**Icon or word.** An action is an icon-only button with a tooltip when its icon is conventional and
+the action is one of:
+
+- repeated on every row (remove, delete, revoke: `UserMinus`, `Trash2`, `Ban`, in `danger`);
+- a toolbar control or toggle (undo, redo, Edit as YAML, List view, snapshots, export, zoom);
+- a secondary create action in a section header on the dashboard (`Plus`, outlined);
+- an app-frame destination (notifications, settings, menu, close).
+
+An action keeps its words when it is the view's primary action, when it submits a form, when two
+destructive actions sit together (Cancel this one, Cancel the series), or when no icon names it
+without doubt (Advance, Playtest, Continue). Metadata stays in words.
+
+**Tooltips** (`components/ui/tip.tsx`) show the control's accessible name, on hover and on keyboard
+focus, under the control (aligned to its end at the right edge of a bar). The pointer can move onto a
+tooltip, and Escape hides it (WCAG 1.4.13). Touch screens show tooltips on focus only. Non-interactive
+status (the round's mode and resolution, the time left) carries an icon with a `title` and a visually
+hidden word.
 
 ### Identity
 
@@ -164,7 +196,7 @@ All live in `components/ui/`. Each is the only way the application draws that th
 | Component | Pattern | Accessibility |
 |---|---|---|
 | `Button` | Variants `primary` (filled accent; one per view), `secondary` (outline), `quiet` (text), `danger` (outline red; filled only in a confirm dialog). Sizes `md` (36 px) and `sm` (32 px). Optional leading icon | A real `<button>` or `<a>`; disabled buttons say why in adjacent text |
-| `IconButton` | 36 px square (32 px dense), icon only | `aria-label` and a tooltip with the same words |
+| `IconButton` / `IconLink` | 36 px square (32 px dense), icon only; tones `ink`, `danger`, and `outline` (toolbar toggles, with `aria-pressed`) | `aria-label` and a tooltip with the same words |
 | `PageHeader` | Optional breadcrumb, title, description, status, and actions on the right (under the title on compact) | One `h1` per page |
 | `Section` | Titled region with optional actions | `h2`, labelled `section` |
 | `Card` | `page` surface, `rule` border, 6 px radius, 16 px padding; a whole-card link uses the title as the link | The title is the link text; no nested interactive elements inside a whole-card link |
@@ -173,7 +205,7 @@ All live in `components/ui/`. Each is the only way the application draws that th
 | `DangerZone` | The page's destructive action, last: red border, ink card title, one sentence, a `danger` button | Labelled `section` |
 | `List` / `ListRow` | Rows with an optional icon, a title, metadata, a status badge, and trailing actions | A `ul`; trailing actions are separate buttons |
 | `ElementTile` / `DateTile` | The identity tile in sizes `sm` (40 px, cards and avatars), `md` (56 px), and `lg` (72 px, the dashboard's next session), tones `accent`, `pigment`, `neutral`; `elementSymbol` derives the symbol from a name | Decorative unless given a `label` |
-| `Badge` | A word with an optional dot or icon: neutral, accent, success, warning, danger, and pigment (Your turn, Live now) | Colour is never the only signal |
+| `Badge` | A word on a tint, with an optional icon (a dot only for a live state): neutral, accent, success, warning, danger, and pigment (Your turn, Live now) | Colour is never the only signal |
 | `Field` | Label above the control, hint under the label, error under the control with an icon | `label` bound to the control; hint and error joined by `aria-describedby`; `aria-invalid` on error |
 | `TextInput`, `TextArea`, `Select`, `Checkbox`, `Radio` | 40 px controls (checkboxes 20 px with a 40 px hit area) | Native elements |
 | `ErrorSummary` | A `danger` box at the top of a form listing each error as a link to its field | Receives focus after a failed submit; `role="alert"` |

@@ -9,7 +9,7 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, CircleAlert, Compass, Hourglass, Map as MapIcon, Play, ScrollText, Send, SkipForward, Swords, Timer, User, Users, WifiOff, X } from "lucide-react";
+import { Check, CircleAlert, Compass, Hourglass, ListOrdered, Map as MapIcon, Play, ScrollText, Send, SkipForward, Swords, Timer, User, Users, WifiOff, X } from "lucide-react";
 import { useClerkSession } from "@/components/clerk";
 import type { InstanceView } from "@/lib/store";
 import type { View } from "@/lib/engine";
@@ -20,7 +20,7 @@ import { actAction, advanceAction, historyAction, inputAction, refreshAction } f
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/field";
-import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
+import { ICON, ICON_DENSE, IconButton } from "@/components/ui/icon-button";
 import { Notice } from "@/components/ui/notice";
 import { ElementTile, elementSymbol } from "@/components/ui/tile";
 import { cx } from "@/components/ui/cx";
@@ -68,18 +68,17 @@ function subscribeClock(tick: () => void) {
 const clockNow = () => Math.floor(Date.now() / 1000);
 const clockServer = () => null;
 
+const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
 function Countdown({ deadline }: { deadline: string | null }) {
   const now = useSyncExternalStore(subscribeClock, clockNow, clockServer);
   if (!deadline) return null;
   const left = now === null ? null : Math.max(0, Math.round(new Date(deadline).getTime() / 1000 - now));
   return (
-    <span className={cx("tabular inline-flex items-center gap-1.5 text-label", left !== null && left <= 30 ? "text-warning" : "text-ink")}>
+    <span title="Time left in the round" className={cx("tabular inline-flex items-center gap-1.5 text-label", left !== null && left <= 30 ? "text-warning" : "text-ink")}>
       <Timer {...ICON_DENSE} />
       <span className="sr-only">Time left: </span>
       {left === null ? "–:––" : `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`}
-      <span aria-hidden="true" className="text-muted">
-        left
-      </span>
     </span>
   );
 }
@@ -264,11 +263,12 @@ export function PlayClient(props: PlayProps) {
       <span aria-hidden="true" className="h-5 w-px shrink-0 bg-rule max-lg:hidden" />
       <span className="tabular shrink-0 text-label font-semibold text-ink">Round {view.round.number}</span>
       <span className="flex shrink-0 items-center gap-2 max-sm:order-3">
-        <span className={cx("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium", view.mode === "combat" ? "bg-danger-soft text-danger" : "bg-desk text-muted")}>
+        <span title={`${sentence(view.mode)}; ${view.round.resolution === "sequential" ? "one at a time" : "everyone acts at once"}`} className={cx("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium", view.mode === "combat" ? "bg-danger-soft text-danger" : "bg-desk text-muted")}>
           {view.mode === "combat" ? <Swords {...ICON_DENSE} /> : <Compass {...ICON_DENSE} />}
-          {view.mode}
+          {sentence(view.mode)}
+          {view.round.resolution === "sequential" ? <ListOrdered {...ICON_DENSE} /> : <Users {...ICON_DENSE} />}
+          <span className="sr-only">, {view.round.resolution === "sequential" ? "one at a time" : "everyone acts at once"}</span>
         </span>
-        <span className="text-caption text-muted max-lg:sr-only">{view.round.resolution}</span>
       </span>
       <span aria-hidden="true" className="h-5 w-px shrink-0 bg-rule max-sm:hidden" />
       <ul aria-label="Turn order" className="flex shrink-0 items-center gap-1.5 max-sm:order-2">
@@ -337,7 +337,7 @@ export function PlayClient(props: PlayProps) {
             {myName}
           </h2>
         </div>
-        <StatusBadge status={s.status} />
+        {s.status !== "active" && <StatusBadge status={s.status} />}
       </div>
       <dl className="grid grid-cols-[repeat(auto-fill,minmax(6rem,1fr))] gap-2">
         <div className="col-span-full flex flex-col gap-1.5 rounded-card border border-rule p-3">
@@ -445,9 +445,7 @@ export function PlayClient(props: PlayProps) {
           <div className="flex items-start gap-2 rounded-card border border-danger bg-danger-soft py-1.5 pr-1 pl-3 text-body text-ink">
             <CircleAlert {...ICON_DENSE} className="mt-[3px] shrink-0 text-danger" />
             <p className="min-w-0 flex-1 py-0.5">{error}</p>
-            <button type="button" aria-label="Dismiss" title="Dismiss" onClick={() => setError(null)} className="inline-flex size-7 shrink-0 items-center justify-center rounded-control text-muted hover:bg-page hover:text-ink">
-              <X {...ICON_DENSE} />
-            </button>
+            <IconButton label="Dismiss" icon={<X {...ICON_DENSE} />} dense tip="end" onClick={() => setError(null)} className="text-muted hover:bg-page hover:text-ink" />
           </div>
         )}
       </div>

@@ -1,7 +1,7 @@
 // Campaign panels shared by the campaign page and the campaign editor (app-flow.md, Campaign editor:
 // Members, Invitations; docs/design/README.md, Campaign): members with Remove for the author, and
 // invitations (create, pending with Revoke, the invite link with Copy, Rotate, Disable).
-import { Link2, Link2Off, RefreshCw, UserMinus } from "lucide-react";
+import { Ban, Link2, Link2Off, RefreshCw, UserMinus } from "lucide-react";
 import type { ReactNode } from "react";
 import { ActionForm } from "@/components/action-form";
 import { CopyButton, InviteForm } from "@/components/invite-form";
@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ICON_DENSE } from "@/components/ui/icon-button";
+import { ICON, ICON_DENSE, IconButton } from "@/components/ui/icon-button";
 import { List, ListRow } from "@/components/ui/list";
 import { Notice } from "@/components/ui/notice";
 import { Section } from "@/components/ui/page";
@@ -32,16 +32,14 @@ export function MembersPanel({ campaignId, members, author }: { campaignId: stri
           <ListRow
             key={m.user_id}
             title={m.display_name}
-            badge={<Badge tone={m.role === "author" ? "accent" : "neutral"}>{m.role}</Badge>}
+            badge={m.role === "author" ? <Badge tone="accent">Author</Badge> : undefined}
             actions={
               author &&
               m.role === "player" && (
                 <ActionForm action={removeMemberAction}>
                   <input type="hidden" name="campaign_id" value={campaignId} />
                   <input type="hidden" name="user_id" value={m.user_id} />
-                  <Button type="submit" variant="danger" size="sm" icon={<UserMinus {...ICON_DENSE} />}>
-                    Remove<span className="sr-only"> {m.display_name}</span>
-                  </Button>
+                  <IconButton type="submit" tone="danger" tip="end" label={`Remove ${m.display_name}`} icon={<UserMinus {...ICON} />} />
                 </ActionForm>
               )
             }
@@ -118,15 +116,13 @@ async function PendingInvitations({ campaignId, userId }: { campaignId: string; 
         <ListRow
           key={i.id}
           title={i.note || "No note"}
-          badge={<Badge tone="warning">pending</Badge>}
+          badge={<Badge tone="warning">Pending</Badge>}
           meta={`By ${i.inviter.display_name}, expires ${new Date(i.expires_at).toUTCString().slice(5, 16)}`}
           actions={
             <ActionForm action={revokeInvitationAction}>
               <input type="hidden" name="campaign_id" value={campaignId} />
               <input type="hidden" name="invitation_id" value={i.id} />
-              <Button type="submit" variant="danger" size="sm">
-                Revoke<span className="sr-only"> {i.note || "invitation"}</span>
-              </Button>
+              <IconButton type="submit" tone="danger" tip="end" label={`Revoke ${i.note ? `the invitation “${i.note}”` : "this invitation"}`} icon={<Ban {...ICON} />} />
             </ActionForm>
           }
         />
