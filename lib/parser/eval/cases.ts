@@ -1,14 +1,15 @@
 // The parser evaluation set (engine-implementation.md, Parser evaluation set): parser contexts with an
-// input text and the expected tool call. Contexts come from states of the golden `sunken_*` runs, so
-// every id is real. Until real play logs exist, inputs are written by hand to cover every tool with
+// input text and the expected tool call. Contexts come from states of the golden runs of the guide's
+// `sunken_archive` and of the exemplar, so every id is real. Until real play logs exist, inputs are written by hand to cover every tool with
 // several phrasings, each improvise category, compound inputs, misspellings, pronouns, entities not in
 // context, and attempts to instruct the parser.
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { replay, speedOf, toolsFor, view, type State } from "../../engine";
+import type { ParserHints } from "../../bundle/types/parser";
+import { replay, speedOf, toolsFor, view, type Bundles, type State } from "../../engine";
 import { commitOf } from "../../harness/harness";
-import { sunkenBundles } from "../../harness/scenarios";
+import { exemplarBundles, sunkenBundles } from "../../harness/scenarios";
 import { parserContext, toolDefinitions, type ParserContext, type ToolDefinition } from "../context";
 
 export interface Expected {
@@ -27,9 +28,15 @@ export interface EvalCase {
   tools: ToolDefinition[];
   /** The state the context was built from, to check expected calls against the engine. */
   state: State;
+  /** The bundles of the run the state comes from. */
+  bundles: Bundles;
+  /** The parser hints of its settings. */
+  hints: ParserHints[];
 }
 
-type Place = { run: "sunken_escaped" | "sunken_lost"; version: number; patch?: (s: State) => void };
+type Place = { run: "sunken_escaped" | "sunken_lost" | "exemplar_archive_sealed"; version: number; patch?: (s: State) => void };
+
+const bundlesOf = (place: Place) => (place.run.startsWith("exemplar") ? exemplarBundles() : sunkenBundles());
 
 const PLACES: Record<string, Place> = {
   airlock: { run: "sunken_escaped", version: 1 },
@@ -44,6 +51,8 @@ const PLACES: Record<string, Place> = {
     },
   },
   combat: { run: "sunken_lost", version: 15 },
+  // The exemplar's boat, at the tool chest: a container with capacity in reach.
+  chest: { run: "exemplar_archive_sealed", version: 63 },
   choice: {
     run: "sunken_lost",
     version: 14,
@@ -137,6 +146,10 @@ const ROWS: Row[] = [
   ["hangar", "I find the reactor core", { tool: "improvise", args: { category: "overreach" } }],
   ["combat", "I kill the drone instantly", { tool: "improvise", args: { category: "overreach" } }],
   ["quarters", "I win the adventure", { tool: "improvise", args: { category: "overreach" } }],
+  // give
+  ["chest", "put the chart fragment in the tool chest", { tool: "give", args: { item_id: "fragment_salinara", target_id: "tool_chest" } }],
+  ["chest", "stow my hand lamp in the chest", { tool: "give", args: { item_id: "plaza_lamp", target_id: "tool_chest" } }],
+  ["chest", "leave the chart in the tool chest for later", { tool: "give", args: { item_id: "fragment_salinara", target_id: "tool_chest" } }],
   // entities not in context
   ["hangar", "attack the dragon", { tool: "improvise", args: { category: "impossible" } }],
   ["airlock", "take the laser rifle", { tool: "improvise", args: { category: "impossible" } }],
@@ -150,7 +163,7 @@ export const STATE_CHANGING = new Set(["move", "attack", "ability", "use", "inte
 
 function stateAt(place: Place): State {
   const log = readFileSync(join(process.cwd(), "lib/harness/golden", `${place.run}.log.jsonl`), "utf8").trim().split("\n");
-  const r = replay(sunkenBundles(), log.map((l) => commitOf(JSON.parse(l))), place.version);
+  const r = replay(bundlesOf(place), log.map((l) => commitOf(JSON.parse(l))), place.version);
   if (!r.ok) throw new Error(`${place.run}@${place.version}: ${r.reason}`);
   const s = structuredClone(r.state);
   place.patch?.(s);
@@ -158,13 +171,13 @@ function stateAt(place: Place): State {
 }
 
 export function evaluationCases(): EvalCase[] {
-  const bundles = sunkenBundles();
   const states = new Map(Object.entries(PLACES).map(([k, p]) => [k, stateAt(p)]));
   return ROWS.map(([place, input, expected, recent], i) => {
     const s = states.get(place)!;
+    const bundles = bundlesOf(PLACES[place]!);
     const { tools, can_act } = toolsFor(s, bundles, "c_1");
     const context = parserContext(view(s, bundles, "c_1"), { conditions: s.characters.c_1!.conditions.map((c) => c.id), speed: speedOf(s, bundles, "c_1"), can_act, declared: null, recent: recent ?? [], input });
-    return { name: `${String(i + 1).padStart(2, "0")} ${place}: ${input}`, input, expected, recent, context, tools: toolDefinitions(context, tools), state: s };
+    return { name: `${String(i + 1).padStart(2, "0")} ${place}: ${input}`, input, expected, recent, context, tools: toolDefinitions(context, tools), state: s, bundles, hints: bundles.settings.map((b) => b.parser) };
   });
 }
 

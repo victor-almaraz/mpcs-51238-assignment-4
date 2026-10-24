@@ -4,7 +4,6 @@
 import { DEFAULT_MODEL, groqChat, tunedForReasoning } from "../lib/models/groq";
 import { modelParser } from "../lib/parser/adapter";
 import { evaluate } from "../lib/parser/eval/cases";
-import { sunkenBundles } from "../lib/harness/scenarios";
 
 const key = process.env.GROQ_API_KEY;
 if (!key) {
@@ -13,9 +12,8 @@ if (!key) {
 }
 const model = process.env.GROQ_PARSER_MODEL || DEFAULT_MODEL;
 const parser = modelParser(tunedForReasoning(groqChat(key), process.env.GROQ_REASONING_EFFORT || "low"), model, Number(process.env.PARSER_TIMEOUT || 8) * 1000);
-const hints = sunkenBundles().settings.map((s) => s.parser);
 const report = await evaluate(async (c) => {
-  const r = await parser.parse(c.context, c.tools, hints);
+  const r = await parser.parse(c.context, c.tools, c.hints);
   return r.ok ? r.call : null;
 });
 for (const f of report.failures) console.log(`miss  ${f.name}\n      expected ${JSON.stringify(f.expected)}\n      got      ${JSON.stringify(f.got)}`);

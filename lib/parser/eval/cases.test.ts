@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { submit } from "../../engine";
-import { sunkenBundles } from "../../harness/scenarios";
 import { Rng } from "../../rng";
 import { evaluate, evaluationCases } from "./cases";
 
@@ -9,7 +8,7 @@ const cases = evaluationCases();
 describe("parser evaluation set", () => {
   it("covers every tool and every improvise category", () => {
     const tools = new Set(cases.map((c) => c.expected.tool));
-    for (const t of ["move", "attack", "ability", "use", "interact", "examine", "search", "take", "drop", "talk", "rest", "wait", "choose", "improvise"]) expect(tools).toContain(t);
+    for (const t of ["move", "attack", "ability", "use", "interact", "examine", "search", "take", "drop", "give", "talk", "rest", "wait", "choose", "improvise"]) expect(tools).toContain(t);
     const categories = new Set(cases.filter((c) => c.expected.tool === "improvise").map((c) => c.expected.args!.category));
     expect([...categories].sort()).toEqual(["flavor", "impossible", "meta", "overreach", "unclear", "unsupported"]);
   });
@@ -26,7 +25,7 @@ describe("parser evaluation set", () => {
     }
     const args: Record<string, unknown> = { ...(c.expected.args ?? {}) };
     if (c.expected.tool === "talk") args.utterance = "Hello.";
-    const r = submit(c.state, sunkenBundles(), "c_1", { tool: c.expected.tool, args }, new Rng(11n, c.state.rng_counter));
+    const r = submit(c.state, c.bundles, "c_1", { tool: c.expected.tool, args }, new Rng(11n, c.state.rng_counter));
     expect(r.ok ? "ok" : r.error.code).toMatch(/^(ok|not_reachable|requirement_unmet)$/);
   });
 
