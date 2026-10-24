@@ -137,7 +137,66 @@ triggers:
       - add_flag: { flag: hints, value: 1 }
     once: true
 
-  # Endings. Each set's variants have mutually exclusive conditions.
+  # Path codas. Each fires on the same event as an ending and adds to it. They are listed before
+  # the endings because no trigger is tested once end_campaign has ended the instance. Each `when`
+  # repeats its ending's condition, so a coda fires only with an ending.
+  - id: coda_escaped_paid
+    on: { type: moved, location: perpetua_deck, to: mooring }
+    when:
+      all:
+        - { any: [ { has_item: book_of_weeping }, { has_item: three_martyrs_folio }, { has_item: divining_glass }, { has_item: navigation_stone } ] }
+        - { flag: path, eq: contract }
+        - { not: { flag: ward_sealed } }
+    effects: []
+    narrate: >-
+      In Orvelle the Concord's clerk weighs what you carried up, counts your fee onto the table in
+      florets, and closes the writ. He asks nothing about the wreck. Later, it is the asking nothing
+      that you remember.
+    once: true
+  - id: coda_escaped_refused
+    on: { type: moved, location: perpetua_deck, to: mooring }
+    when:
+      all:
+        - { any: [ { has_item: book_of_weeping }, { has_item: three_martyrs_folio }, { has_item: divining_glass }, { has_item: navigation_stone } ] }
+        - { flag: path, eq: contract }
+        - { flag: ward_sealed }
+    effects: []
+    narrate: >-
+      In Orvelle the Concord's clerk reads your writ back to you, slowly. It binds you to hand over
+      everything you raise, and you shut something in iron and left it there. He keeps the artifact
+      and pays you nothing. You go out into the plaza poorer, and lighter.
+    once: true
+  - id: coda_escaped_rumor
+    on: { type: moved, location: perpetua_deck, to: mooring }
+    when:
+      all:
+        - { any: [ { has_item: book_of_weeping }, { has_item: three_martyrs_folio }, { has_item: divining_glass }, { has_item: navigation_stone } ] }
+        - { flag: path, eq: rumor }
+    effects: []
+    narrate: >-
+      No writ covered this voyage. By the next tide your names are posted on the Orvelle quay as
+      wreckers under Crown law, and no Crown court will hear you. No one holds a claim on you either.
+      You are outlawed, and free.
+    once: true
+  - id: coda_sealed_refused
+    on: { type: talked, npc: vantane, topic: seal }
+    when: { flag: path, eq: contract }
+    effects: []
+    narrate: >-
+      The Concord refuses you payment. Your writ bound you to hand over everything you raised, and
+      you raised nothing but the keeper and her account. The clerk tears the writ along its fold,
+      and you find you do not mind.
+    once: true
+  - id: coda_sealed_rumor
+    on: { type: talked, npc: vantane, topic: seal }
+    when: { flag: path, eq: rumor }
+    effects: []
+    narrate: >-
+      You sailed without a writ, so the Crown names you wreckers and outlaws you on every quay of the
+      coast. Vantane laughs at that, the first time you hear her laugh. You have nothing anyone can
+      claim, and you are free.
+    once: true
+
   # Endings. The variants of each ending have mutually exclusive conditions.
   - id: escaped_sealed_quiet
     on: { type: moved, location: perpetua_deck, to: mooring }

@@ -21,16 +21,26 @@ topics:
       The boxes are hard to open and hard to move. Custodians believe that iron holds an artifact's
       influence in. Opening one is bringing it to light, she says, and it takes a prybar and a cold
       chisel together.
+  ration:
+    label: a ship's biscuit from your pack
+    when: { has_item: coast:ration }
+    brief: >-
+      Vantane takes the biscuit in both hands and eats it slowly, crumb by crumb, as if it might be
+      the last. When she looks up she has stopped counting the halls, and she talks to you the way
+      she once talked to her crew.
+    effects:
+      - remove_item: { target: actor, ref: coast:ration }
+      - set_flag: { flag: keeper_fed, value: true }
   ring:
     label: the ring in the open box
-    when: { flag: clues, gte: 2 }
+    when: { any: [ { flag: clues, gte: 2 }, { flag: keeper_fed } ] }
     brief: She calls the ring in the ward chamber a false seal, and asks what you have heard of it.
     effects:
       - set_flag: { flag: ward_known, value: true }
       - reveal: { secret: vantane.forgery }
   plan:
     label: why Perpetua sank where she did
-    when: { flag: clues, gte: 3 }
+    when: { any: [ { flag: clues, gte: 3 }, { flag: keeper_fed } ] }
     brief: She has studied the registry drawings for weeks and asks you what the chart and the ledger said.
     effects:
       - reveal: { secret: vantane.plan }

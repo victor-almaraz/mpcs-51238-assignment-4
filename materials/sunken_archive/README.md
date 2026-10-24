@@ -13,7 +13,7 @@ the culprit to someone with access to both the Reliquary and the Salvors' Concor
 | Requires | [`lantern_coast ^1.0`](../lantern_coast/README.md) |
 | Players | 1 to 4 |
 | Endings | `escaped`, `archive_sealed`, `lost` |
-| Size | 13 locations (12 authored, 1 generated), 33 NPCs, 6 arcs, 71 triggers |
+| Size | 13 locations (12 authored, 1 generated), 33 NPCs, 6 arcs, 76 triggers |
 
 The packs follow the brief's layout. They live in this application as a proposal for the
 specification's `spec/examples/`; see [SPEC_ISSUES.md](../../SPEC_ISSUES.md#exemplar-location).
@@ -61,8 +61,8 @@ doorway.
 | Door lock combining `has_item` and `illumination` | `fog_bank` (four placements on `boat_deck`) |
 | Door with `lock` and `system_stats` | `coast:vault_door`, hp 20 |
 | Hidden entity revealed by `search` | The chart fragments in Vessaro, Salinara, and Roccavela; Roccavela's is also revealed by Orsolakis's `trade` |
-| Topic gated by `when`, secret released by `reveal`, topic with effects | Vantane's `ring`, `plan`, `visitor`; her three secrets; Hallek's `contract`, every shop topic |
-| `bool`, `int`, `enum` flags read by requirements | `passage` (quay gates), `clues` (keeper's topics), `path` (Hallek's `contract`) |
+| Topic gated by `when`, secret released by `reveal`, topic with effects | Vantane's `ring`, `plan`, `visitor`, `ration`; her three secrets; Hallek's `contract`, every shop topic |
+| `bool`, `int`, `enum` flags read by requirements | `passage` (quay gates), `clues` and `keeper_fed` (keeper's topics), `path` (Hallek's `contract`, the codas) |
 | Currency, character-scoped flag, income with `target: room`, purchase, affordability | `coast:floret`; `purse`; the contract advance and every errand reward; the shops' topics and their `gte` |
 | Containers with `capacity`, one with a `lock` | `guild_strongbox` (opens for a writ holder), sea chests, `tool_chest`, `lamp_cabinet`, the iron boxes |
 | `armor` and `stash` items | `leather_jerkin`, `round_shield`; `canvas_satchel`, `sailor_pack` |
@@ -72,7 +72,7 @@ doorway.
 | `near` or `illumination` in `when` | `ward_cold`, `keeper_found` |
 | Qualified rooms, including a generated alias, in effects | `opened_book` and the other box triggers spawn into `perpetua_holds.box_*`; `troupe_travels`, `kassiani_travels` |
 | Ambush: `spawn` with `at`, then `start_combat` | `gallery_ambush`, `rivals_waiting` |
-| Two endings besides `lost`, reachable through triggers | `escaped` (six variants), `archive_sealed` (two variants) |
+| Two endings besides `lost`, reachable through triggers | `escaped` (six variants), `archive_sealed` (two variants), each with a path coda |
 | Narration in `narrate`, `brief`, and secrets, at most 500 characters | Every trigger narration, topic, and secret; checked by `lib/harness/exemplar.test.ts` |
 
 ## Validation
@@ -110,7 +110,7 @@ their inputs and logs are in `lib/harness/golden/exemplar_*.jsonl`.
 2. Take the road to Vessaro (`troupe_travels`, `arrive`). Talk to Ostrakis about the `clue` (`clue`). Search the net loft and take the fragment (`fragment`). Buy and don a leather jerkin from Gerasimos. Talk to Ostrakis about `passage` (`passage`).
 3. Open the quay gate and board (`underway`). Open the fog bank to the Drowned Stair with the lit lamp (`stair`). Kill the great octopus (`octopus_gone`).
 4. Board Perpetua (`aboard`). Operate the winch in the chart room (`winch`). Enter the gallery and defeat the two drowned (`gallery_ambush`). Go down the hatch (`below`).
-5. Find `box_book` and open it with both tools (`opened_book`). Climb back and walk to the mooring holding the Book of Weeping (`escaped_left_quiet`).
+5. Find `box_book` and open it with both tools (`opened_book`). Climb back and walk to the mooring holding the Book of Weeping (`coda_escaped_paid`, `escaped_left_quiet`).
 
 **`archive_sealed`, rumor path (152 inputs).**
 
@@ -119,7 +119,7 @@ their inputs and logs are in `lib/harness/golden/exemplar_*.jsonl`.
 3. Board (`underway`), take the prybar and cold chisel from the tool chest, part the fog (`stair`), and kill the octopus (`octopus_gone`).
 4. Board Perpetua (`aboard`), operate the winch (`winch`), defeat the gallery ambush (`gallery_ambush`), and go below (`below`).
 5. Find the iron door to the ward chamber (`ward_watch`, `ward_cold`). Read the open box (`hint_pry_marks`), take the ring (`ring_taken`), and seal it in the box (`ring_sealed`; the drowned lie down).
-6. Take the vault key, open the vault door, and talk to Vantane (`keeper_found`) about `rising`, `ring`, `plan`, `visitor` (`hint_visitor`), and `seal` (`archive_sealed_known`).
+6. Take the vault key, open the vault door, and talk to Vantane (`keeper_found`) about `rising`, `ring`, `plan`, `visitor` (`hint_visitor`), and `seal` (`coda_sealed_rumor`, `archive_sealed_known`).
 
 **`lost` (10 inputs).** Listen at the back booth (`entry_rumor`) and take the road to Vessaro without its lead (`behind_vessaro`). The Gull crew attacks on the quay (`gull_crew`) and the character falls.
 
@@ -132,7 +132,9 @@ their inputs and logs are in `lib/harness/golden/exemplar_*.jsonl`.
 | Hidden `wall_eel` in flooded rooms | Left to the holds' encounter table; a hidden hostile creature fights unseen |
 | The ward's drowned attack | They keep watch until attacked. `interact` and `take` are not available in combat, so the ring could not be sealed during a fight. Sealing sets them non-hostile, as the narration says |
 | Ending variants (14.1) | Implemented as eight triggers with exclusive `when`; the ring state uses the added flag `ring_taken` |
-| Path codas (14.2), rations, lore names (14.10) | Not implemented |
+| Path codas (14.2) | Five narrate-only triggers keyed on `path`, on the same events as the endings and with their conditions. The engine tests no trigger after `end_campaign`, so they are listed before the endings and their narration comes first. On the contract path with an artifact the Concord pays (`coda_escaped_paid`) unless the ring was sealed in iron (`coda_escaped_refused`): the writ binds the party to hand over everything raised, and the sealed ring is the one thing raised and kept back. Sealing the archive on the contract path is refused payment (`coda_sealed_refused`); the rumor path is outlawed and free after either ending (`coda_escaped_rumor`, `coda_sealed_rumor`) |
+| Giving a ration to the keeper | `give` hands items only to characters and containers, so Vantane's `ration` topic, available while the actor holds `coast:ration`, removes it and sets `keeper_fed`. The flag opens `ring` and `plan` without their `clues`; `visitor` keeps its gates. A ration is in the starting kit for some characters and in the holds' loot |
+| Lore names (14.10) | Not implemented |
 | Lamplighter's reward on both thugs' `died` | `died` has no actor, so `target: room` cannot apply; Phaidon's `thanks` topic, gated on both `defeated`, pays instead |
 | Shop goods as narrative topics | Each good is its own topic with a price in its label and `brief` |
 

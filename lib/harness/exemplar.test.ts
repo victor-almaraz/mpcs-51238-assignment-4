@@ -120,6 +120,58 @@ describe("exemplar mechanics", () => {
     act(s, "c_1", "move", { to_id: "kapelis" });
     expect(s.state.entities.kassiani!.location).toBe("roccavela");
   });
+
+  // An item put straight into a character's hands, standing in for the route that raises it.
+  const grant = (s: Session, id: string, ref: string) => {
+    s.state.entities[`granted_${ref.replace(":", "_")}`] = { ref, kind: "item", conditions: [], carrier: id } as never;
+    s.state.characters[id]!.items.push(`granted_${ref.replace(":", "_")}`);
+  };
+
+  // Beside the keeper, with a lit lamp to see her by in the dark holds.
+  const atKeeper = (s: Session) => {
+    act(s, "c_1", "move", { to_id: "plaza_lamp" });
+    act(s, "c_1", "take", { entity_id: "plaza_lamp" });
+    const keeper = s.state.entities.vantane!;
+    place(s, "c_1", keeper.location!, [keeper.at![0] + 1, keeper.at![1]]);
+  };
+
+  it.each([
+    ["escaped", "contract", false, "coda_escaped_paid"],
+    ["escaped", "contract", true, "coda_escaped_refused"],
+    ["escaped", "rumor", false, "coda_escaped_rumor"],
+    ["archive_sealed", "contract", true, "coda_sealed_refused"],
+    ["archive_sealed", "rumor", true, "coda_sealed_rumor"],
+  ] as const)("ends %s on the %s path, ward sealed %s, with %s", (ending, path, sealed, coda) => {
+    const s = party(1);
+    Object.assign(s.state.flags, { path, ward_sealed: sealed, ring_taken: sealed });
+    let events;
+    if (ending === "escaped") {
+      grant(s, "c_1", "sunken_archive:book_of_weeping");
+      place(s, "c_1", "perpetua_deck", [9, 2]);
+      if (!s.state.entities.chart_door!.open) act(s, "c_1", "interact", { target_id: "chart_door", verb: "open" });
+      events = act(s, "c_1", "move", { to_id: "mooring" });
+    } else {
+      atKeeper(s);
+      events = talk(s, "c_1", "vantane", "seal");
+    }
+    const fired = events.filter((e) => e.type === "trigger_fired").map((e) => e.trigger as string);
+    expect(fired.filter((t) => t.startsWith("coda_"))).toEqual([coda]);
+    expect(s.state.ended).toEqual({ ending });
+  });
+
+  it("trades a ration for the keeper's account of the ring", () => {
+    const s = party(1);
+    atKeeper(s);
+    expect(s.state.flags.clues).toBe(0);
+    expect(rejection(s, "c_1", "talk", { npc_id: "vantane", topic_id: "ring", utterance: "The ring." })).toBe("requirement_unmet");
+    if (!holding(s, "c_1", "coast:ration")) grant(s, "c_1", "coast:ration");
+    talk(s, "c_1", "vantane", "ration");
+    expect([holding(s, "c_1", "coast:ration"), s.state.flags.keeper_fed]).toEqual([undefined, true]);
+    talk(s, "c_1", "vantane", "ring");
+    talk(s, "c_1", "vantane", "plan");
+    expect(s.state.flags.ward_known).toBe(true);
+    expect(rejection(s, "c_1", "talk", { npc_id: "vantane", topic_id: "visitor", utterance: "The visitor." })).toBe("requirement_unmet");
+  });
 });
 
 // The brief's required coverage, checked against the pack sources.

@@ -12,6 +12,7 @@ deck_open:        { type: bool, initial: false }
 ward_known:       { type: bool, initial: false }
 ward_sealed:      { type: bool, initial: false }
 ring_taken:       { type: bool, initial: false }
+keeper_fed:       { type: bool, initial: false }
 hints:            { type: int, min: 0, max: 8, initial: 0 }
 purse:            { type: int, min: 0, max: 400, initial: 12, scope: character, currency: coast:floret }
 had_meal:         { type: bool, initial: false }
