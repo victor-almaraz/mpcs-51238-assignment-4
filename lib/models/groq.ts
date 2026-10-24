@@ -56,17 +56,21 @@ function retryAfter(header: string | null, body: string): number | undefined {
   return Number.isFinite(seconds) ? Math.ceil(seconds * 1000) : undefined;
 }
 
-/** The model the parser and narrator use when no model is configured. */
-export const DEFAULT_MODEL = "openai/gpt-oss-20b";
+/** The model the parser and narrator use when no model is configured: Qwen 3.8 27B, asked for no reasoning. */
+export const DEFAULT_MODEL = "qwen/qwen3.8-27b";
 
 /**
- * Tunes requests for reasoning models (GPT-OSS on Groq): they reason before answering, and the
- * reasoning counts against `max_tokens`, so each request asks for `effort` and leaves room for it.
- * Other models' requests pass unchanged.
+ * Tunes requests for Groq's reasoning models. GPT-OSS always reasons (`low` is its least effort), and
+ * the reasoning counts against `max_tokens`, so each request asks for `effort` and leaves room for it.
+ * Qwen can skip reasoning, so its requests ask for `qwenEffort`, `none` by default. Other models'
+ * requests pass unchanged.
  */
-export function tunedForReasoning(chat: Chat, effort = "low", room = 512): Chat {
-  return (request, timeoutMs) =>
-    chat(request.model.startsWith("openai/gpt-oss") ? { ...request, reasoning_effort: request.reasoning_effort ?? effort, max_tokens: Math.max(request.max_tokens ?? 0, room) } : request, timeoutMs);
+export function tunedForReasoning(chat: Chat, effort = "low", room = 512, qwenEffort = "none"): Chat {
+  return (request, timeoutMs) => {
+    if (request.model.startsWith("openai/gpt-oss")) return chat({ ...request, reasoning_effort: request.reasoning_effort ?? effort, max_tokens: Math.max(request.max_tokens ?? 0, room) }, timeoutMs);
+    if (request.model.startsWith("qwen/")) return chat({ ...request, reasoning_effort: request.reasoning_effort ?? qwenEffort }, timeoutMs);
+    return chat(request, timeoutMs);
+  };
 }
 const MODELS = "https://api.groq.com/openai/v1/models";
 
