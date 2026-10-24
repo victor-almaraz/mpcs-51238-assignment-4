@@ -465,3 +465,17 @@ Open:
 - The graph is SVG, not React Flow (`@xyflow/react` needs installing); effects reorder with buttons rather than by drag.
 - Playtest moves to destinations rather than to clicked cells, and its trace cannot name the failing condition, only that a matched trigger did not fire.
 - Not yet checked in a browser.
+
+### Sprint 21: Modules in play — open
+
+Done:
+
+- `lib/api/modules.test.ts`: a Cadmium campaign with `armor` and `stash`, built from a setting with a currency, a chest with capacity, a stash item, a sword, and plate armor, and an adventure with a character-scoped purse, a job board, and a smith's topic. A character earns 10 copper at the board (a trigger on the `work` interaction), buys the plate for 6 (the topic's `add_flag` and `give_item`), sees the purse as coins, carries the backpack, stores the sword in the chest with `give`, and dons the plate with `use`: the pool reaches 4 of 6, the plate is consumed, a `resource_changed` trigger ends the adventure, and the sheet is written back with its armor.
+- The campaign is rejected with `system_mismatch` without the modules its materials require, and accepts Quest Quick Start beside a Cadmium adventure for abilities.
+- The sheet view shows the armor pool.
+- No engine change was needed: the modules, currency flags, containers, and item use from earlier sprints compose.
+
+Open:
+
+- A Cadmium adventure cannot require a Quest setting (adventure-packs.md: every required setting binds the adventure's system); campaigns add Quest settings themselves.
+- Creation forms show no module fields yet; module fields come from the campaign.

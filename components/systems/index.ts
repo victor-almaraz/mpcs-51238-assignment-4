@@ -1,5 +1,6 @@
 // UI components registered by system id (app-flow.md, Character creation and editor). Cadmium's
-// components extend Quest's; without a campaign, creation shows no module fields.
+// components extend Quest's: the sheet view shows the armor pool when the armor module filled it;
+// without a campaign, creation shows no module fields.
 import { QuestCreationForm, QuestSheetView } from "./quest";
 
 export const SYSTEM_UI = {

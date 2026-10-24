@@ -88,7 +88,7 @@ export function QuestCreationForm({ system, roles, abilities, count }: CreationP
 }
 
 export function QuestSheetView({ sheet, labels }: { sheet: Record<string, unknown>; labels: Record<string, string> }) {
-  const s = sheet as { role: string; hp: { value: number; max: number }; ap: number; abilities: string[]; inventory: { ref: string }[]; status: string };
+  const s = sheet as { role: string; hp: { value: number; max: number }; ap: number; abilities: string[]; inventory: { ref: string }[]; status: string; armor?: { value: number; max: number } };
   return (
     <dl className="mt-4 grid grid-cols-[8rem_1fr] gap-x-4 gap-y-1">
       <dt className="font-ui text-label text-muted">Role</dt>
@@ -99,6 +99,14 @@ export function QuestSheetView({ sheet, labels }: { sheet: Record<string, unknow
       </dd>
       <dt className="font-ui text-label text-muted">AP</dt>
       <dd>{s.ap}</dd>
+      {s.armor && (
+        <>
+          <dt className="font-ui text-label text-muted">Armor</dt>
+          <dd>
+            {s.armor.value}/{s.armor.max}
+          </dd>
+        </>
+      )}
       <dt className="font-ui text-label text-muted">Status</dt>
       <dd>{s.status.replace("_", " ")}</dd>
       <dt className="font-ui text-label text-muted">Abilities</dt>
