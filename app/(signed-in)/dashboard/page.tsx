@@ -1,32 +1,101 @@
-// Dashboard (app-flow.md, "Dashboard"; design/screens.md, Dashboard): titled lists, one line per row.
+// Dashboard (app-flow.md, "Dashboard"; docs/design/README.md, Screens: Dashboard): a hub. Needs you,
+// the next session with RSVP, your games, then campaigns, characters, and adventures.
 import Link from "next/link";
+import { ArrowRight, BookOpen, CalendarClock, CalendarDays, Castle, Check, CircleAlert, Gamepad2, History, Play, Plus, Users } from "lucide-react";
 import { ActionForm } from "@/components/action-form";
+import { CampaignCard, CharacterCard, DraftCard, EnterCode, gamesOf, plural, statusLabel, type GameItem } from "@/components/dashboard/hub";
+import { Badge, StatusBadge } from "@/components/ui/badge";
+import { ButtonLink, buttonClass } from "@/components/ui/button";
+import { Card, CardGrid } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
+import { List, ListRow } from "@/components/ui/list";
+import { Page, PageHeader, Section } from "@/components/ui/page";
+import { cx } from "@/components/ui/cx";
+import { formatWhen } from "@/components/when";
 import { listCampaigns } from "@/lib/api/campaigns";
 import { listCharacters } from "@/lib/api/characters";
-import { listInstances } from "@/lib/api/instances";
 import { listOccurrences } from "@/lib/api/schedules";
 import { listDrafts } from "@/lib/api/drafts";
-import { formatWhen } from "@/components/when";
 import { rsvpAction } from "@/lib/server/schedule-actions";
-import { systemView } from "@/lib/api/systems";
-import { enterCodeAction } from "@/lib/server/campaign-actions";
 import { requestTime } from "@/lib/server/pages";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
 
-const row = "border-b border-rule py-1";
-const meta = "ml-2 font-ui text-caption text-muted";
+/** How many cards each grid shows here; the hub pages list the rest. */
+const SHOWN = 6;
+const RESPONSES = ["yes", "maybe", "no"] as const;
+type Response = (typeof RESPONSES)[number];
+const RSVP = "inline-flex h-8 min-w-16 items-center justify-center gap-1.5 rounded-control border px-3 text-label font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-55";
 
-function Heading({ title, href, action }: { title: string; href?: string; action?: string }) {
+interface Upcoming {
+  session_id: string;
+  occurrence_start: string;
+  starts_at: string;
+  ends_at: string;
+  status: string;
+  instance: GameItem;
+  mine: Response | undefined;
+}
+
+/** Yes, Maybe, No for one occurrence; the current answer is pressed and ticked. */
+function Rsvp({ o, label }: { o: Upcoming; label: string }) {
   return (
-    <div className="flex items-baseline justify-between">
-      <h2 className="font-display text-heading">{title}</h2>
-      {href && (
-        <Link href={href} className="font-ui text-control text-accent">
-          {action}
-        </Link>
-      )}
+    <div role="group" aria-label={label} className="flex flex-wrap items-start gap-1">
+      {RESPONSES.map((r) => {
+        const pressed = o.mine === r;
+        return (
+          <ActionForm key={r} action={rsvpAction}>
+            <input type="hidden" name="instance_id" value={o.instance.id} />
+            <input type="hidden" name="session_id" value={o.session_id} />
+            <input type="hidden" name="occurrence_start" value={o.occurrence_start} />
+            <input type="hidden" name="response" value={r} />
+            <button type="submit" aria-pressed={pressed} className={cx(RSVP, pressed ? "border-accent bg-accent-soft text-accent" : "border-border bg-page text-ink hover:bg-desk")}>
+              {pressed && <Check {...ICON_DENSE} />}
+              {r[0]!.toUpperCase() + r.slice(1)}
+            </button>
+          </ActionForm>
+        );
+      })}
     </div>
+  );
+}
+
+function SectionAll({ href, label }: { href: string; label: string }) {
+  return (
+    <Link href={href} className={buttonClass("quiet", "sm")}>
+      {label}
+      <ArrowRight {...ICON_DENSE} />
+    </Link>
+  );
+}
+
+function GameCard({ game: i, userId }: { game: GameItem; userId: string }) {
+  const mine = i.characters.filter((c) => c.user_id === userId).map((c) => c.name);
+  const action = i.status === "active" ? { href: `/instances/${i.id}/play`, label: "Continue", icon: <Play {...ICON_DENSE} /> } : { href: `/instances/${i.id}`, label: i.status === "lobby" ? "Open lobby" : "Open", icon: <ArrowRight {...ICON_DENSE} /> };
+  return (
+    <Card className="flex flex-col gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <Gamepad2 {...ICON_DENSE} className="mt-1 shrink-0 text-muted" />
+          <div className="min-w-0">
+            <h3 className="text-heading font-semibold text-ink">
+              <Link href={`/instances/${i.id}`} className="hover:text-accent hover:underline">
+                {i.name}
+              </Link>
+            </h3>
+            <p className="text-caption text-muted">{i.campaign}</p>
+          </div>
+        </div>
+        <StatusBadge status={i.status} label={statusLabel(i.status)} />
+      </div>
+      <p className="text-caption text-muted">{mine.length > 0 ? `Playing ${mine.join(", ")}` : "No character of yours"}</p>
+      <div className="mt-auto">
+        <ButtonLink href={action.href} size="sm" icon={action.icon} aria-label={`${action.label}: ${i.name}`}>
+          {action.label}
+        </ButtonLink>
+      </div>
+    </Card>
   );
 }
 
@@ -34,199 +103,228 @@ export default async function Dashboard() {
   const user = await pageUser();
   const store = serverStore();
   const [characters, campaigns] = await Promise.all([listCharacters(store, user.id, { limit: 100 }), listCampaigns(store, user.id, { archived: false, limit: 100 })]);
-  const instances = (await Promise.all(campaigns.items.map((c) => listInstances(store, user.id, c.id).then((list) => list.map((i) => ({ ...i, campaign: c.title })))))).flat();
+  const instances = await gamesOf(store, user.id, campaigns.items);
   const active = instances.filter((i) => i.status !== "ended");
   const finished = instances.filter((i) => i.status === "ended");
   const drafts = await listDrafts(store, user.id, { limit: 20 });
   const where = new Map(instances.map((i) => [i.id, i.name]));
-  const authored = campaigns.items.filter((c) => c.author_id === user.id);
   // The next 7 days across all instances (app-flow.md, Dashboard: Upcoming sessions).
   const now = requestTime();
   const window = { from: new Date(now).toISOString(), to: new Date(now + 7 * 86_400_000).toISOString() };
   const sessions = await Promise.all(active.map((i) => listOccurrences(store, user.id, { instance_id: i.id, ...window }).then((list) => list.map((o) => ({ ...o, instance: i })))));
-  const upcoming = sessions.flat().filter((o) => o.status !== "cancelled").sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at));
-  const joined = campaigns.items.filter((c) => c.author_id !== user.id);
+  const upcoming: Upcoming[] = sessions
+    .flat()
+    .filter((o) => o.status !== "cancelled")
+    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
+    .map((o) => ({ ...o, mine: RESPONSES.find((r) => o.rsvps[r].includes(user.id)) }));
+  const [next, ...later] = upcoming;
+  const live = next && next.instance.status === "active" && Date.parse(next.starts_at) <= now && now < Date.parse(next.ends_at);
+  const unanswered = upcoming.filter((o) => !o.mine);
+  const troubled = drafts.items.filter((d) => d.problems > 0);
+  const when = (o: Upcoming) => formatWhen(o.starts_at, user.timezone);
 
   return (
-    <div className="mx-auto max-w-page px-6 py-10">
-      <h1 className="font-display text-title">{user.display_name}&rsquo;s dashboard</h1>
+    <Page>
+      <PageHeader title="Dashboard" description={`Welcome back, ${user.display_name}. Times are in ${user.timezone}.`} />
 
-      <section className="mt-8">
-        <Heading title="Upcoming sessions" />
-        {upcoming.length === 0 ? (
-          <p className="mt-2 text-muted">No sessions in the next 7 days.</p>
-        ) : (
-          <ul className="mt-2">
-            {upcoming.map((o) => {
-              const mine = (["yes", "no", "maybe"] as const).find((r) => o.rsvps[r].includes(user.id));
-              return (
-                <li key={`${o.session_id}:${o.occurrence_start}`} className={`${row} flex flex-wrap items-baseline justify-between gap-2`}>
-                  <span>
-                    {formatWhen(o.starts_at, user.timezone)}{" "}
-                    <Link href={`/instances/${o.instance.id}/schedule`} className="text-accent">
-                      {o.instance.name}
-                    </Link>
-                    <span className={meta}>
-                      {o.instance.campaign}
-                      {o.status === "moved" ? " · moved" : ""}
-                    </span>
-                  </span>
-                  <span className="flex gap-3">
-                    {(["yes", "maybe", "no"] as const).map((r) => (
-                      <ActionForm key={r} action={rsvpAction}>
-                        <input type="hidden" name="instance_id" value={o.instance.id} />
-                        <input type="hidden" name="session_id" value={o.session_id} />
-                        <input type="hidden" name="occurrence_start" value={o.occurrence_start} />
-                        <input type="hidden" name="response" value={r} />
-                        <button type="submit" aria-pressed={mine === r} className={`font-ui text-caption ${mine === r ? "text-accent underline" : "text-accent"}`}>
-                          {r[0]!.toUpperCase() + r.slice(1)}
-                        </button>
-                      </ActionForm>
-                    ))}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
-      <section className="mt-8">
-        <Heading title="Active instances" />
-        {active.length === 0 ? (
-          <p className="mt-2 text-muted">No instances in progress.</p>
-        ) : (
-          <ul className="mt-2">
-            {active.map((i) => {
-              const mine = i.characters.filter((c) => c.user_id === user.id).map((c) => c.name);
-              return (
-                <li key={i.id} className={row}>
-                  <Link href={`/instances/${i.id}`} className="text-accent">
-                    {i.name}
-                  </Link>
-                  <span className={meta}>
-                    {i.campaign} · {i.status}
-                    {mine.length > 0 && ` · ${mine.join(", ")}`}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </section>
-
-      {finished.length > 0 && (
-        <section className="mt-8">
-          <Heading title="Finished" />
-          <ul className="mt-2">
-            {finished.map((i) => (
-              <li key={i.id} className={row}>
-                <Link href={`/instances/${i.id}/history`} className="text-accent">
-                  {i.name}
-                </Link>
-                <span className={meta}>{i.campaign}</span>
-              </li>
+      {(unanswered.length > 0 || troubled.length > 0) && (
+        <Section id="needs-you" title="Needs you">
+          <List className="border-accent-line">
+            {unanswered.map((o) => (
+              <ListRow
+                key={`rsvp:${o.session_id}:${o.occurrence_start}`}
+                icon={<CalendarClock {...ICON_DENSE} />}
+                title={`RSVP for ${o.instance.name}`}
+                href={`/instances/${o.instance.id}/schedule`}
+                meta={`${when(o)} · ${o.instance.campaign}`}
+                actions={<Rsvp o={o} label={`RSVP for ${o.instance.name}, ${when(o)}`} />}
+              />
             ))}
-          </ul>
-        </section>
+            {troubled.map((d) => (
+              <ListRow
+                key={`draft:${d.id}`}
+                icon={<CircleAlert {...ICON_DENSE} className="text-danger" />}
+                title={d.title}
+                href={`/adventures/${d.id}/edit`}
+                meta={`Adventure draft with ${plural(d.problems, "problem")}`}
+                actions={
+                  <ButtonLink href={`/adventures/${d.id}/edit`} size="sm" aria-label={`Fix problems in ${d.title}`}>
+                    Fix problems
+                  </ButtonLink>
+                }
+              />
+            ))}
+          </List>
+        </Section>
       )}
 
-      <section className="mt-8">
-        <Heading title="Campaigns" href="/campaigns/new" action="New campaign" />
-        {campaigns.items.length === 0 && (
-          <p className="mt-2 text-muted">
-            No campaigns yet.{" "}
-            <Link href="/campaigns/new" className="text-accent underline">
-              Create a campaign
-            </Link>
-            , or enter a code you were given.
-          </p>
-        )}
-        {[
-          { title: "You run", list: authored },
-          { title: "You play", list: joined },
-        ].map(
-          (group) =>
-            group.list.length > 0 && (
-              <div key={group.title} className="mt-3">
-                <h3 className="font-ui text-label">{group.title}</h3>
-                <ul>
-                  {group.list.map((c) => (
-                    <li key={c.id} className={row}>
-                      <Link href={`/campaigns/${c.id}`} className="text-accent">
-                        {c.title}
-                      </Link>
-                      <span className={meta}>
-                        {c.instance_ids.length} instance{c.instance_ids.length === 1 ? "" : "s"} · {c.members.length - 1} player{c.members.length === 2 ? "" : "s"}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
+      <Section id="next-session" title="Next session" description="Sessions in the next 7 days.">
+        {!next ? (
+          <EmptyState icon={<CalendarDays {...ICON} />}>No sessions in the next 7 days. A game&rsquo;s schedule page is where sessions are planned.</EmptyState>
+        ) : (
+          <div className="flex flex-col gap-3">
+            <Card className="flex flex-col gap-4 border-accent-line sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-start gap-4">
+                <span className="flex size-12 shrink-0 items-center justify-center rounded-card bg-accent-soft text-accent">
+                  <CalendarClock {...ICON} />
+                </span>
+                <div className="min-w-0">
+                  <p className="tabular text-section font-semibold text-ink">{when(next)}</p>
+                  <p className="flex flex-wrap items-center gap-2">
+                    <Link href={`/instances/${next.instance.id}/schedule`} className="font-medium text-accent hover:underline">
+                      {next.instance.name}
+                    </Link>
+                    <span className="text-caption text-muted">{next.instance.campaign}</span>
+                    {next.status === "moved" && <Badge tone="warning">Moved</Badge>}
+                    {live && <Badge tone="success">Live now</Badge>}
+                  </p>
+                </div>
               </div>
-            ),
+              <div className="flex flex-col gap-2 sm:items-end">
+                <span className="text-caption text-muted">{next.mine ? "Your answer" : "Will you come?"}</span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Rsvp o={next} label={`RSVP for ${next.instance.name}, ${when(next)}`} />
+                  {live && (
+                    <ButtonLink href={`/instances/${next.instance.id}/play`} variant="primary" size="sm" icon={<Play {...ICON_DENSE} />}>
+                      Join
+                    </ButtonLink>
+                  )}
+                </div>
+              </div>
+            </Card>
+            {later.length > 0 && (
+              <List>
+                {later.map((o) => (
+                  <ListRow
+                    key={`${o.session_id}:${o.occurrence_start}`}
+                    title={o.instance.name}
+                    href={`/instances/${o.instance.id}/schedule`}
+                    meta={`${when(o)} · ${o.instance.campaign}`}
+                    badge={o.status === "moved" ? <Badge tone="warning">Moved</Badge> : undefined}
+                    actions={<Rsvp o={o} label={`RSVP for ${o.instance.name}, ${when(o)}`} />}
+                  />
+                ))}
+              </List>
+            )}
+          </div>
         )}
-        <ActionForm action={enterCodeAction} className="mt-4 flex items-end gap-2">
-          <label className="flex flex-col gap-1">
-            <span className="font-ui text-label">Invitation or invite link code</span>
-            <input name="code" required className="rounded-control border border-border bg-page px-2 py-1 font-mono text-code" />
-          </label>
-          <button type="submit" className="rounded-control border border-border px-4 py-2 font-ui text-control">
-            Open
-          </button>
-        </ActionForm>
-      </section>
+      </Section>
 
-      <section className="mt-8">
-        <Heading title="Characters" href={characters.items.length > 0 ? "/characters/new" : undefined} action="New character" />
+      <Section id="games" title="Your games">
+        {active.length === 0 ? (
+          <EmptyState icon={<Gamepad2 {...ICON} />}>No games in progress. Games start from a campaign&rsquo;s page.</EmptyState>
+        ) : (
+          <CardGrid>
+            {active.map((i) => (
+              <GameCard key={i.id} game={i} userId={user.id} />
+            ))}
+          </CardGrid>
+        )}
+        {finished.length > 0 && (
+          <div className="mt-6">
+            <h3 className="mb-2 text-label font-medium text-muted">Finished</h3>
+            <List>
+              {finished.map((i) => (
+                <ListRow key={i.id} icon={<History {...ICON_DENSE} />} title={i.name} href={`/instances/${i.id}/history`} meta={i.campaign} badge={<StatusBadge status="ended" label="Ended" />} />
+              ))}
+            </List>
+          </div>
+        )}
+      </Section>
+
+      <Section
+        id="campaigns"
+        title="Campaigns"
+        actions={
+          <>
+            {campaigns.items.length > SHOWN && <SectionAll href="/campaigns" label={`All ${campaigns.items.length}`} />}
+            <ButtonLink href="/campaigns/new" size="sm" icon={<Plus {...ICON_DENSE} />}>
+              New campaign
+            </ButtonLink>
+          </>
+        }
+      >
+        {campaigns.items.length === 0 ? (
+          <EmptyState icon={<Castle {...ICON} />}>No campaigns yet. Create a campaign, or enter a code you were given.</EmptyState>
+        ) : (
+          <CardGrid>
+            {campaigns.items.slice(0, SHOWN).map((c) => (
+              <CampaignCard key={c.id} campaign={c} userId={user.id} />
+            ))}
+          </CardGrid>
+        )}
+        <div className="mt-3 max-w-form">
+          <EnterCode />
+        </div>
+      </Section>
+
+      <Section
+        id="characters"
+        title="Characters"
+        actions={
+          <>
+            {characters.items.length > SHOWN && <SectionAll href="/characters" label={`All ${characters.items.length}`} />}
+            {characters.items.length > 0 && (
+              <ButtonLink href="/characters/new" size="sm" icon={<Plus {...ICON_DENSE} />}>
+                New character
+              </ButtonLink>
+            )}
+          </>
+        }
+      >
         {characters.items.length === 0 ? (
-          <p className="mt-2 text-muted">
-            No characters yet.{" "}
-            <Link href="/characters/new" className="text-accent underline">
-              Create a character
-            </Link>
-            .
-          </p>
+          <EmptyState
+            icon={<Users {...ICON} />}
+            action={
+              <ButtonLink href="/characters/new" size="sm" icon={<Plus {...ICON_DENSE} />}>
+                New character
+              </ButtonLink>
+            }
+          >
+            No characters yet.
+          </EmptyState>
         ) : (
-          <ul className="mt-2">
-            {characters.items.map((c) => (
-              <li key={c.id} className={row}>
-                <Link href={`/characters/${c.id}`} className="text-accent">
-                  {c.name}
-                </Link>
-                <span className={meta}>
-                  {systemView(c.system).title} {String(c.sheet.role)} · {c.instance_id ? `in ${where.get(c.instance_id) ?? "an instance"}` : c.status}
-                </span>
-              </li>
+          <CardGrid>
+            {characters.items.slice(0, SHOWN).map((c) => (
+              <CharacterCard key={c.id} character={c} where={where} />
             ))}
-          </ul>
+          </CardGrid>
         )}
-      </section>
-      <section className="mt-8">
-        <Heading title="Adventures" href="/adventures/new" action="New adventure" />
+      </Section>
+
+      <Section
+        id="adventures"
+        title="Adventures"
+        actions={
+          <>
+            {drafts.items.length > 0 && <SectionAll href="/adventures" label="All adventures" />}
+            {drafts.items.length > 0 && (
+              <ButtonLink href="/adventures/new" size="sm" icon={<Plus {...ICON_DENSE} />}>
+                New adventure
+              </ButtonLink>
+            )}
+          </>
+        }
+      >
         {drafts.items.length === 0 ? (
-          <p className="mt-2 text-muted">
-            No adventures yet.{" "}
-            <Link href="/adventures/new" className="text-accent underline">
-              Write an adventure
-            </Link>
-            .
-          </p>
+          <EmptyState
+            icon={<BookOpen {...ICON} />}
+            action={
+              <ButtonLink href="/adventures/new" size="sm" icon={<Plus {...ICON_DENSE} />}>
+                New adventure
+              </ButtonLink>
+            }
+          >
+            No adventures yet. Write one for your campaigns.
+          </EmptyState>
         ) : (
-          <ul className="mt-2">
-            {drafts.items.map((d) => (
-              <li key={d.id} className={row}>
-                <Link href={`/adventures/${d.id}/edit`} className="text-accent">
-                  {d.title}
-                </Link>
-                <span className={meta}>
-                  {d.problems > 0 ? `${d.problems} problem${d.problems === 1 ? "" : "s"}` : "ready"}
-                  {d.last_published_version ? ` · published ${d.last_published_version}` : ""}
-                </span>
-              </li>
+          <CardGrid>
+            {drafts.items.slice(0, SHOWN).map((d) => (
+              <DraftCard key={d.id} draft={d} />
             ))}
-          </ul>
+          </CardGrid>
         )}
-      </section>
-    </div>
+      </Section>
+    </Page>
   );
 }

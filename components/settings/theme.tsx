@@ -2,8 +2,8 @@
 // Theme: System, Light, or Dark (design/foundations.md: the theme follows the system setting unless the
 // user picks one), kept in browser storage as the Privacy Policy states.
 import { useSyncExternalStore } from "react";
+import { Choice } from "@/components/ui/field";
 import { THEME_KEY } from "./theme-script";
-
 
 const listeners = new Set<() => void>();
 const subscribe = (f: () => void) => {
@@ -24,17 +24,20 @@ function applyTheme(t: string): void {
   for (const f of listeners) f();
 }
 
+const THEMES: { id: string; label: string; hint: string }[] = [
+  { id: "system", label: "System", hint: "Follows your device's light or dark setting." },
+  { id: "light", label: "Light", hint: "Always light." },
+  { id: "dark", label: "Dark", hint: "Always dark." },
+];
+
 export function ThemePicker() {
   const theme = useSyncExternalStore(subscribe, stored, () => "system");
   const choose = applyTheme;
   return (
-    <fieldset className="flex gap-4">
-      <legend className="sr-only">Theme</legend>
-      {["system", "light", "dark"].map((t) => (
-        <label key={t} className="flex items-baseline gap-2">
-          <input type="radio" name="theme" value={t} checked={theme === t} onChange={() => choose(t)} />
-          {t[0]!.toUpperCase() + t.slice(1)}
-        </label>
+    <fieldset className="flex flex-col gap-1">
+      <legend className="mb-1 text-label font-medium text-ink">Theme</legend>
+      {THEMES.map((t) => (
+        <Choice key={t.id} type="radio" name="theme" value={t.id} checked={theme === t.id} onChange={() => choose(t.id)} label={t.label} hint={t.hint} />
       ))}
     </fieldset>
   );

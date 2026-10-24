@@ -1,6 +1,9 @@
 // Join by link (app-flow.md, Route map: campaign title and author; Join).
-import Link from "next/link";
+import { Check, Link2, LogIn } from "lucide-react";
 import { ActionForm } from "@/components/action-form";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
+import { Standalone } from "@/components/ui/standalone";
 import { previewInviteLink } from "@/lib/api/campaigns";
 import { joinByLinkAction } from "@/lib/server/campaign-actions";
 import { orNotFound } from "@/lib/server/pages";
@@ -12,23 +15,21 @@ export default async function Join({ params }: { params: Promise<{ code: string 
   const link = await orNotFound(previewInviteLink(serverStore(), decodeURIComponent(code)));
   const step = await nextStep(`/join/${code}`);
   return (
-    <div className="mx-auto max-w-page px-6 py-10">
-      <h1 className="font-display text-title">{link.campaign_title}</h1>
-      <p className="mt-2">A campaign by {link.author_display_name}.</p>
+    <Standalone icon={<Link2 {...ICON} />} eyebrow="Invite link" title={link.campaign_title} description={`A campaign by ${link.author_display_name}.`} footer="Joining makes you a player in this campaign.">
       {step ? (
-        <p className="mt-6">
-          <Link href={step.href} className="rounded-control bg-accent px-4 py-2 font-ui text-control text-page">
+        <div>
+          <ButtonLink href={step.href} variant="primary" icon={<LogIn {...ICON_DENSE} />}>
             {step.label}
-          </Link>
-        </p>
+          </ButtonLink>
+        </div>
       ) : (
-        <ActionForm action={joinByLinkAction} className="mt-6">
+        <ActionForm action={joinByLinkAction}>
           <input type="hidden" name="code" value={decodeURIComponent(code)} />
-          <button type="submit" className="rounded-control bg-accent px-4 py-2 font-ui text-control text-page">
+          <Button type="submit" variant="primary" icon={<Check {...ICON_DENSE} />}>
             Join
-          </button>
+          </Button>
         </ActionForm>
       )}
-    </div>
+    </Standalone>
   );
 }

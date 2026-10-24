@@ -1,7 +1,10 @@
 "use client";
 // Browser notifications on this browser (app-flow.md, Settings: Reminders): registers the service
 // worker and a Web Push subscription with the deployment's VAPID public key.
+import { BellRing } from "lucide-react";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { ICON_DENSE } from "@/components/ui/icon-button";
 import { addPushAction } from "@/lib/server/account-actions";
 
 function keyBytes(base64url: string): Uint8Array<ArrayBuffer> {
@@ -24,11 +27,13 @@ export function EnablePush({ publicKey }: { publicKey: string }) {
     setState(r.error ?? "Notifications are on for this browser.");
   };
   return (
-    <div>
-      <button type="button" onClick={() => void enable()} className="rounded-control border border-border px-3 py-1 font-ui text-control">
-        Browser notifications
-      </button>
-      {state && <p className="mt-1 font-ui text-caption text-muted">{state}</p>}
+    <div className="flex flex-col items-start gap-1.5">
+      <Button onClick={() => void enable()} size="sm" icon={<BellRing {...ICON_DENSE} />}>
+        Turn on for this browser
+      </Button>
+      <p aria-live="polite" className="text-caption text-muted">
+        {state}
+      </p>
     </div>
   );
 }
