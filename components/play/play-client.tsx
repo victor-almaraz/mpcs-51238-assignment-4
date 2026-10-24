@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSession } from "@clerk/nextjs";
+import { useClerkSession } from "@/components/clerk";
 import type { InstanceView } from "@/lib/store";
 import type { View } from "@/lib/engine";
 import type { Message } from "@/lib/broadcast";
@@ -66,7 +66,7 @@ type Sheet = "map" | "character" | "party" | "round" | null;
 
 export function PlayClient(props: PlayProps) {
   const router = useRouter();
-  const { session } = useSession();
+  const { session } = useClerkSession();
   const [view, setView] = useState(props.view);
   const [status, setStatus] = useState(props.instance.status);
   const [ending, setEnding] = useState<string | null>(props.instance.ending);

@@ -1,12 +1,12 @@
 "use client";
 // Delete account (app-flow.md, Settings: Your data): asks for the display name, then signs out.
 import { useActionState, useEffect } from "react";
-import { useClerk } from "@clerk/nextjs";
+import { useClerkSignOut } from "@/components/clerk";
 import { deleteAccountAction } from "@/lib/server/account-actions";
 import type { FormState } from "@/lib/server/forms";
 
 export function DeleteAccount({ name }: { name: string }) {
-  const { signOut } = useClerk();
+  const { signOut } = useClerkSignOut();
   const [state, run, pending] = useActionState<FormState & { closed?: boolean }, FormData>(deleteAccountAction, { error: null });
   useEffect(() => {
     if (state.closed) void signOut({ redirectUrl: "/" });

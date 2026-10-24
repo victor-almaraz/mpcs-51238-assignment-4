@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "demo": "CADMIUM_DEMO=1 NEXT_PUBLIC_CADMIUM_DEMO=1 next dev --port 3100",
+    "screens": "node --import tsx scripts/screens.ts",
     "build": "next build",
     "start": "next start",
     "gen": "node --import tsx scripts/gen-bundle.ts",

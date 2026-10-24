@@ -1,5 +1,6 @@
 // Settings (app-flow.md, Settings): Account, Appearance, Reminders, Calendar, Your data.
 import { UserProfile } from "@clerk/nextjs";
+import { demoMode } from "@/lib/server/demo";
 import { ActionForm } from "@/components/action-form";
 import { CopyButton } from "@/components/invite-form";
 import { DeleteAccount } from "@/components/settings/delete-account";
@@ -53,7 +54,7 @@ export default async function Settings() {
             </button>
           </div>
         </ActionForm>
-        <UserProfile routing="hash" />
+        {demoMode() ? <p className="font-ui text-caption text-muted">Email, password, and sign-in methods are managed by Clerk here.</p> : <UserProfile routing="hash" />}
       </Section>
 
       <Section title="Appearance">

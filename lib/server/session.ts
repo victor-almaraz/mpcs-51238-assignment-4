@@ -1,14 +1,15 @@
 // The signed-in user, with a User record guaranteed to exist: the Clerk webhook normally creates it, and
 // this creates it on first request if the webhook has not arrived yet.
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { identityOf, type ClerkUser } from "../api/identity";
 import { termsCurrent } from "../api/users";
 import type { UserRecord } from "../store";
+import { signedInId } from "./auth";
 import { serverStore } from "./supabase";
 
 export async function sessionUser(): Promise<UserRecord | undefined> {
-  const { userId } = await auth();
+  const userId = await signedInId();
   if (!userId) return undefined;
   const store = serverStore();
   const existing = await store.getUser(userId);

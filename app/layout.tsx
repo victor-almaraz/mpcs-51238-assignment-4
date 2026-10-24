@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { ClerkProvider, Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
+import { demoMode } from "@/lib/server/demo";
 import { THEME_SCRIPT } from "@/components/settings/theme-script";
 import { shutdownPhase } from "@/lib/ops/shutdown";
 import "./globals.css";
@@ -26,6 +27,16 @@ function ShutdownBanner() {
   );
 }
 
+/** Clerk around the page, except in demo mode, where no Clerk script loads. */
+function Auth({ children }: { children: ReactNode }) {
+  if (demoMode()) return <>{children}</>;
+  return (
+    <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up" telemetry={false}>
+      {children}
+    </ClerkProvider>
+  );
+}
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
@@ -33,22 +44,33 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
       </head>
       <body className="flex min-h-screen flex-col bg-page font-prose text-prose text-ink">
-        <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up" telemetry={false}>
+        <Auth>
           <header className="flex items-center justify-between border-b border-rule px-6 py-3 font-ui text-control">
             <Link href="/" className="font-display text-heading">
               Cadmium
             </Link>
             <nav className="flex items-center gap-4">
-              <Show when="signed-out">
-                <SignInButton />
-                <SignUpButton />
-              </Show>
-              <Show when="signed-in">
-                <Link href="/dashboard">Dashboard</Link>
-                <Link href="/notifications">Notifications</Link>
-                <Link href="/settings">Settings</Link>
-                <UserButton />
-              </Show>
+              {demoMode() ? (
+                <>
+                  <Link href="/dashboard">Dashboard</Link>
+                  <Link href="/notifications">Notifications</Link>
+                  <Link href="/settings">Settings</Link>
+                  <span className="rounded-full border border-rule px-2 font-ui text-caption text-muted">Demo</span>
+                </>
+              ) : (
+                <>
+                  <Show when="signed-out">
+                    <SignInButton />
+                    <SignUpButton />
+                  </Show>
+                  <Show when="signed-in">
+                    <Link href="/dashboard">Dashboard</Link>
+                    <Link href="/notifications">Notifications</Link>
+                    <Link href="/settings">Settings</Link>
+                    <UserButton />
+                  </Show>
+                </>
+              )}
             </nav>
           </header>
           <ShutdownBanner />
@@ -58,7 +80,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             <Link href="/privacy">Privacy</Link>
             <Link href="/attribution">Attribution</Link>
           </footer>
-        </ClerkProvider>
+        </Auth>
       </body>
     </html>
   );

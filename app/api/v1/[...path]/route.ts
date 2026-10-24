@@ -1,12 +1,11 @@
 // The /v1 HTTP binding (api.md, HTTP and WebSocket binding); next.config.ts rewrites /v1/* here.
 // Clerk authenticates the bearer token (a Clerk session token) or the session cookie.
-import { auth } from "@clerk/nextjs/server";
+import { signedInId } from "@/lib/server/auth";
 import { handle } from "@/lib/api/http";
 import { serverDeps } from "@/lib/server/coordinator";
 
 async function serve(request: Request): Promise<Response> {
-  const { userId } = await auth();
-  return handle(request, userId, serverDeps());
+  return handle(request, await signedInId(), serverDeps());
 }
 
 export const GET = serve;

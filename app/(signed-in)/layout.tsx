@@ -2,8 +2,9 @@
 // signed-out users go to /sign-in?redirect_url=<route>, and Clerk returns them there after sign-in.
 import type { ReactNode } from "react";
 import { auth } from "@clerk/nextjs/server";
+import { demoMode } from "@/lib/server/demo";
 
 export default async function SignedInLayout({ children }: { children: ReactNode }) {
-  await auth.protect();
+  if (!demoMode()) await auth.protect();
   return children;
 }

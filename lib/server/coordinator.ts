@@ -1,11 +1,12 @@
 // The Instance Coordinator's dependencies on the server: the store, Supabase Realtime, the clock, and
 // round timeouts from the environment (architecture.md, Round timeouts: deployment configuration).
 import { after } from "next/server";
-import { supabaseBroadcaster } from "../broadcast";
+import { MemoryBroadcaster, supabaseBroadcaster } from "../broadcast";
 import { DEFAULT_MODEL, groqChat, tunedForReasoning } from "../models/groq";
 import { modelNarrator } from "../narrator/adapter";
 import { modelParser } from "../parser/adapter";
 import { DEFAULT_TIMEOUTS, type Deps } from "../coordinator/instance";
+import { demoMode } from "./demo";
 import { setting } from "./env";
 import { serverStore } from "./supabase";
 
@@ -20,7 +21,7 @@ let deps: Deps | undefined;
 /** Model adapters when GROQ_API_KEY is set (architecture.md, Model adapters); disabled otherwise. */
 function models(): Pick<Deps, "parser" | "narrator"> {
   const key = process.env.GROQ_API_KEY;
-  if (!key) return {};
+  if (!key || demoMode()) return {};
   const chat = tunedForReasoning(groqChat(key), process.env.GROQ_REASONING_EFFORT || "low");
   return {
     ...(process.env.PARSER_ENABLED === "0" ? {} : { parser: modelParser(chat, process.env.GROQ_PARSER_MODEL || DEFAULT_MODEL, seconds("PARSER_TIMEOUT", 8) * 1000) }),
@@ -35,7 +36,7 @@ export function serverDeps(): Deps {
     defer: (task) => after(task),
     actionMenuMode: process.env.ACTION_MENU_MODE === "1",
     store: serverStore(),
-    broadcast: supabaseBroadcaster(setting("supabaseUrl"), setting("supabaseServiceRoleKey")),
+    broadcast: demoMode() ? new MemoryBroadcaster() : supabaseBroadcaster(setting("supabaseUrl"), setting("supabaseServiceRoleKey")),
     now: () => new Date(),
     timeouts: {
       exploration: seconds("EXPLORATION_ROUND_TIMEOUT", DEFAULT_TIMEOUTS.exploration),

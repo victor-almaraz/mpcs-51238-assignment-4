@@ -3,6 +3,8 @@
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { Store, type Rpc } from "../store";
+import { demoMode } from "./demo";
+import { demoRpc } from "./demo-store";
 import { setting } from "./env";
 
 let client: SupabaseClient | undefined;
@@ -29,6 +31,6 @@ export function supabaseRpc(supabase: SupabaseClient): Rpc {
 let store: Store | undefined;
 
 export function serverStore(): Store {
-  store ??= new Store(supabaseRpc(serviceClient()));
+  store ??= new Store(demoMode() ? demoRpc() : supabaseRpc(serviceClient()));
   return store;
 }

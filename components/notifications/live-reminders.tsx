@@ -4,7 +4,7 @@
 // channel that is down or not configured and moves reminders from Upcoming to Recent as they fall due.
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "@clerk/nextjs";
+import { useClerkSession } from "@/components/clerk";
 import { realtimeClient, subscribeUser } from "@/lib/broadcast/client";
 
 /** How often to re-render the list without a message. */
@@ -12,7 +12,7 @@ const REFRESH_MS = 60_000;
 
 export function LiveReminders({ userId, realtime }: { userId: string; realtime: { url: string; key: string } | null }) {
   const router = useRouter();
-  const { session } = useSession();
+  const { session } = useClerkSession();
   const [fresh, setFresh] = useState(0);
 
   useEffect(() => {
