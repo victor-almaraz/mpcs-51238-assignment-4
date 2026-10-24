@@ -18,8 +18,8 @@ if (!key) {
   process.exit(2);
 }
 const chat = patient(groqChat(key));
-const parserModel = process.env.GROQ_PARSER_MODEL || "llama-3.3-70b-versatile";
-const playerModel = process.env.GROQ_PLAYER_MODEL || "llama-3.3-70b-versatile";
+const parserModel = process.env.GROQ_PARSER_MODEL || "llama-3.1-8b-instant";
+const playerModel = process.env.GROQ_PLAYER_MODEL || "llama-3.1-8b-instant";
 const parser = modelParser(chat, parserModel, Number(process.env.PARSER_TIMEOUT || 8) * 1000);
 const player = chatPlayer(chat, playerModel);
 
