@@ -818,7 +818,7 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 
 **Problem.** Direct controls need what parser context carries and the view lacks: the verbs `interact` accepts, the labels of carried items and abilities, and the NPCs `talk` accepts with their available topics. Without them a client can show the map but cannot offer the actions that play an adventure.
 
-**Implemented.** Visible entities in reach carry `verbs`, and the view adds `actions` with `inventory` and `abilities` as `{ id, label }` and `npcs` with their topics whose `when` holds, as in parser context. Nothing hidden is added: no locks, flags, stages, secrets, or topic briefs.
+**Implemented.** Visible entities in reach carry `verbs`, and the view adds `actions` with `inventory` and `abilities` as `{ id, label }` and `npcs` with their topics whose `when` holds, as in parser context. Visible hostile creatures carry `hostile: true`, which the map needs for the `danger` ring that design/components.md asks for. Nothing hidden is added: no locks, flags, stages, secrets, or topic briefs.
 
 **Proposed resolution.** Add these fields to the View object.
 
@@ -989,3 +989,17 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** Instance start takes locations in ascending id order, which is the order of the files in `locations/`.
 
 **Proposed resolution.** State that instance start processes locations in ascending id order.
+
+## armor-tuning
+
+| Field | Value |
+|---|---|
+| Document | `systems/cadmium/modules.json`; `docs/systems/cadmium.md` |
+| Section | `tune` (`armor.max`, `armor.bypass_types`); Module `armor` |
+| Marker | `tools/sim/README.md` |
+
+**Problem.** The two `tune` values wait for simulation. Quest's `attack` passes no damage type to `harm`, so `bypass_types` never applies to combat, which the module's description does not say.
+
+**Implemented.** `pnpm sim` (`tools/sim`) runs the exemplar's encounters through the engine for party sizes 1 to 4, four loadouts, and `armor.max` from 3 to 8. With the exemplar's items (at most 5 armor points), results at 6 and 8 are identical and worse at 4 and 3.
+
+**Proposed resolution.** Keep `armor.max` at 6 and `bypass_types` at `[]`, remove both from `tune`, and state under Module `armor` that `bypass_types` applies only to typed effect damage, since rules-system attacks are untyped.

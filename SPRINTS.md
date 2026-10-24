@@ -338,11 +338,11 @@ Done:
 - Tests: `sunken_escaped` and `sunken_lost` played to their endings through `submit_action` alone; template narration; map plan.
 - `SPEC_ISSUES.md`: `view-direct-play`.
 
+- Hostile creatures carry `hostile: true` in the view, and the map rings them in `danger` ([view-direct-play](SPEC_ISSUES.md#view-direct-play)).
 Open:
 
 - Playwright journeys in `pnpm check` need Playwright and its browsers installed (`pnpm add -D @playwright/test`, then `pnpm exec playwright install chromium`).
 - Icon buttons use text labels until `lucide-react` is installed.
-- Hostile creatures have no danger ring yet: the view does not mark hostility.
 - The page is not yet checked in a browser: signed-in pages need migrations 3 to 5 in the remote database.
 
 ### Sprint 15: Parser and narrator — open
@@ -359,11 +359,11 @@ Done:
 - Evaluation set: `lib/parser/eval/cases.ts`, 63 cases over states of the golden `sunken_*` runs covering every tool but `give`, each improvise category, compound inputs, misspellings, pronouns, unknown entities, and injection attempts; `pnpm eval:parser` runs it against Groq.
 - Tests: `lib/api/input.test.ts` (8), `lib/parser/adapter.test.ts` (5), `lib/parser/eval/cases.test.ts` (48).
 
+- The evaluation set covers `give` with three cases at the exemplar's tool chest; each case carries the parser hints of its own adventure's settings.
 Open:
 
 - The exit criterion (90% exact match, no overreach to a state-changing tool) is unmeasured until `GROQ_API_KEY` is available; then run `pnpm eval:parser` with the key in the environment. Enable Zero Data Retention in the Groq console before launch.
 - The evaluation set is hand-written; the guide asks for cases from real play logs, which the input log now records.
-- `give` has no case: the golden runs never place a container with capacity in reach.
 - Migration 6 is not yet applied to the remote database.
 
 ### Sprint 18: Schedules and reminders — open
@@ -519,13 +519,14 @@ Built from the author's campaign draft, supplied separately and not committed.
 - `materials/lantern_coast/pack`: the setting for Cadmium with `armor` and `stash`. It adds the floret currency, sea and shore terrain (with `window` and `low_wall`, which block movement but not sight), people and creatures, goods with `armor` and `slots`, chests with `capacity`, the `vault_door` lock-and-key pair, and the `registry_vault` room template.
 - `materials/sunken_archive/pack`: the adventure, 1.0.0. It has 13 locations (one generated), 33 NPCs, six arcs with 71 triggers, and the endings `escaped` (six variants), `archive_sealed` (two), and `lost`. `materials/sunken_archive/README.md` maps the brief's coverage list to the pack, reports the schema and semantic passes, gives a walkthrough per ending, and lists departures from the draft.
 - Scripted runs reach every ending: the golden scenarios `exemplar_escaped` (contract path), `exemplar_archive_sealed` (rumor path), and `exemplar_lost`. `lib/harness/exemplar.test.ts` covers room-wide rewards, purchases and affordability, stash capacity, the strongbox lock, the fog bank's lit-lamp lock, `item_given`, `set_hostile`, and NPCs moved between locations, and checks the coverage list against the pack files.
+- `tools/sim` (`pnpm sim`): seeded, replayable Monte Carlo fights of the exemplar's twelve encounters through the engine, sweeping party size, loadout, `armor.max`, and the octopus's hit points; it writes `tools/sim/REPORT.md`. One character finishes about one time in five to two in five, because of the octopus and the gallery ambush; two or more win every required fight. Tests: `tools/sim/sim.test.ts` (4).
 - `pnpm bundles` publishes `lantern_coast` and the exemplar in place of the guide adventure. The campaign material picker lists an adventure's required settings first ([generation-order](SPEC_ISSUES.md#generation-order)).
 - Fixed: the compiler read `to` in a trigger's `on` as a room for every event type. On item events it is the recipient's entity id.
 
 Open:
 
 - The agent-driven runs are built but not yet run: `pnpm agent:run` (reads `GROQ_API_KEY`, from `.env.local` when present). A Groq player model writes free text from a description of the view and a route guide per ending (`lib/agent/goals.ts`); the Groq parser turns it into a call with the Coordinator's retry and fallback; each run's turns and replayable log go to `agent-runs/`. `lib/agent/run.test.ts` checks the loop with a scripted parser.
-- `tools/sim` and the balance simulation are not built: the golden runs give their single character 40 hit points.
+- The balance values in `tools/sim/README.md` wait for the designers' target ranges; the packs keep the draft's values. The proposed Cadmium values are in [armor-tuning](SPEC_ISSUES.md#armor-tuning).
 - The packs are a proposal for the specification's `spec/examples/`; the brief's documentation updates are not made ([exemplar-location](SPEC_ISSUES.md#exemplar-location)).
 - Not implemented from the draft's proposals: path codas, rations, and the lore names of section 14.10.
 
