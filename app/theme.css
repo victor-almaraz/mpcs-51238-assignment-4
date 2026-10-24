@@ -1,0 +1,104 @@
+/* Cadmium design tokens (docs/design/README.md, Foundations). The Graphite colours are the
+   specification's (cadmium-spec/design/theme.css); type, shape, and depth follow the pattern library. */
+
+@font-face { font-family: "Libertinus Serif"; src: url("/fonts/LibertinusSerif-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Libertinus Serif"; src: url("/fonts/LibertinusSerif-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Libertinus Serif"; src: url("/fonts/LibertinusSerif-Semibold.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+
+@theme {
+  --color-page: #FFFFFF;
+  --color-desk: #EEECEA;
+  --color-raised: #FFFFFF;
+  --color-rule: #DBD9D7;
+  --color-ink: #282624;
+  --color-accent: #604792;
+  --color-accent-strong: #4A3079;
+  --color-accent-soft: #F1EEFC;
+  --color-accent-line: #BCAFDF;
+  --color-danger: #A13124;
+  --color-danger-soft: #FDF0EE;
+  --color-warning: #845A0F;
+  --color-warning-soft: #FCF2E5;
+  --color-success: #376F44;
+  --color-success-soft: #EDF6EE;
+  --color-selection: #E1D8FC;
+  --color-border: #878481;
+  --color-muted: #6A6761;
+  --color-overlay: rgb(20 18 17 / 0.45);
+
+  /* The software in the system font; the story in Libertinus Serif. */
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: var(--font-ui);
+  --font-prose: "Libertinus Serif", Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --text-display: 34px;   --text-display--line-height: 40px;
+  --text-title: 28px;     --text-title--line-height: 34px;
+  --text-section: 18px;   --text-section--line-height: 26px;
+  --text-heading: 16px;   --text-heading--line-height: 24px;
+  --text-body: 15px;      --text-body--line-height: 22px;
+  --text-prose: 17px;     --text-prose--line-height: 27px;
+  --text-prose-sm: 15px;  --text-prose-sm--line-height: 23px;
+  --text-control: 15px;   --text-control--line-height: 22px;
+  --text-label: 14px;     --text-label--line-height: 20px;
+  --text-caption: 13px;   --text-caption--line-height: 18px;
+  --text-code: 14px;      --text-code--line-height: 20px;
+
+  --spacing: 4px;
+  --radius-control: 4px;
+  --radius-card: 6px;
+  --shadow-raised: 0 8px 24px rgb(20 18 17 / 0.14), 0 1px 3px rgb(20 18 17 / 0.08);
+
+  --container-page: 72rem;
+  --container-form: 40rem;
+  --container-prose: 42rem;
+  --size-topbar: 56px;
+  --size-target: 36px;
+  --duration-open: 120ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-page: #3B3937;
+    --color-desk: #2A2827;
+    --color-raised: #494746;
+    --color-rule: #5A5756;
+    --color-muted: #C3BDAE;
+    --color-ink: #F0EEEA;
+    --color-accent: #C3B2F1;
+    --color-accent-strong: #D6C7FF;
+    --color-accent-soft: #4A435B;
+    --color-accent-line: #7E729F;
+    --color-danger: #F2998A;
+    --color-danger-soft: #563E3A;
+    --color-warning: #E7BC81;
+    --color-warning-soft: #4F4333;
+    --color-success: #96CAA0;
+    --color-success-soft: #3A4A3D;
+    --color-selection: #504765;
+    --color-border: #888682;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-page: #3B3937;
+  --color-desk: #2A2827;
+  --color-raised: #494746;
+  --color-rule: #5A5756;
+  --color-muted: #C3BDAE;
+  --color-ink: #F0EEEA;
+  --color-accent: #C3B2F1;
+  --color-accent-strong: #D6C7FF;
+  --color-accent-soft: #4A435B;
+  --color-accent-line: #7E729F;
+  --color-danger: #F2998A;
+  --color-danger-soft: #563E3A;
+  --color-warning: #E7BC81;
+  --color-warning-soft: #4F4333;
+  --color-success: #96CAA0;
+  --color-success-soft: #3A4A3D;
+  --color-selection: #504765;
+  --color-border: #888682;
+  color-scheme: dark;
+}
