@@ -169,3 +169,14 @@ describe("exemplar coverage", () => {
     for (const t of [...texts, ...secrets]) expect(t.length).toBeLessThanOrEqual(500);
   });
 });
+
+describe("exemplar view", () => {
+  it("marks hostile creatures, and only those", () => {
+    const s = party(1);
+    place(s, "c_1", "lamp_shoal", [11, 2]);
+    const hostile = (id: string) => (step(s, { view: "c_1" }) as { view: { visible: { id: string; hostile?: true }[] } }).view.visible.find((e) => e.id === id)?.hostile;
+    expect([hostile("thug_1"), hostile("phaidon")]).toEqual([undefined, undefined]);
+    talk(s, "c_1", "phaidon", "rent");
+    expect(hostile("thug_1")).toBe(true);
+  });
+});

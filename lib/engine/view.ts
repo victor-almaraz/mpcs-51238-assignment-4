@@ -6,7 +6,7 @@ import type { Summary } from "../systems";
 import { content, type Content } from "./content";
 import { Ctx } from "./ctx";
 import { applyEffects } from "./effects";
-import { inAttackReach, inTouch } from "./movement";
+import { inAttackReach, inTouch, isHostile } from "./movement";
 import { holds, roomOf } from "./requirements";
 import type { Bundles, LightLevel, State } from "./types";
 import { Perception, bodyOf, isLit, placement, roomCells, type Body } from "./world";
@@ -31,6 +31,8 @@ export interface ViewEntry {
   verbs?: string[];
   /** Art by kind, when the content declares it (setting-packs.md, Art). */
   art?: ArtSet;
+  /** Set on hostile creatures, which the map rings in `danger` (design/components.md, Map). */
+  hostile?: true;
 }
 
 /** One asset: a stored file by hash, or a game-icons.net icon, with its alt text. */
@@ -158,6 +160,7 @@ export function view(state: State, bundles: Bundles, characterId: string): View 
     if (e.kind === "creature") {
       const { range } = c.bundles.system.reach(ctx.combatant(characterId), null);
       entry.in_reach = inAttackReach(ctx, body, id, range);
+      if (isHostile(ctx, id)) entry.hostile = true;
     } else entry.in_reach = inTouch(ctx, characterId, id);
     if (e.kind === "door") entry.open = e.open === true;
     const level = perception.level(ch.location, p.at);

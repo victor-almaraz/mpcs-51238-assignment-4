@@ -17,7 +17,7 @@ export function MapPanel({ view, onPick, portraits = {} }: { view: View; onPick:
   const canvas = useRef<HTMLCanvasElement>(null);
   const [zoom, setZoom] = useState(16);
   const [list, setList] = useState(false);
-  const p = useMemo(() => plan(view, zoom, new Set(), portraits), [view, zoom, portraits]);
+  const p = useMemo(() => plan(view, zoom, new Set(view.visible.filter((e) => e.hostile).map((e) => e.id)), portraits), [view, zoom, portraits]);
   const [loaded, setLoaded] = useState(0);
   useEffect(() => {
     for (const hash of artHashes(p)) {
