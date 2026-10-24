@@ -11,7 +11,7 @@ export function Standalone({ icon, eyebrow, title, description, children, footer
         {icon && <span className="flex size-12 items-center justify-center rounded-card bg-accent-soft text-accent">{icon}</span>}
         <div>
           {eyebrow && <p className="mb-1 text-caption font-medium text-muted">{eyebrow}</p>}
-          <h1 className="text-[24px] leading-[30px] font-semibold tracking-tight text-ink">{title}</h1>
+          <h1 className="font-display text-[28px] leading-[34px] font-semibold text-ink">{title}</h1>
           {description && <p className="mt-2 text-muted">{description}</p>}
         </div>
         {children}

@@ -34,7 +34,7 @@ export function PageHeader({ title, description, crumbs, status, actions }: { ti
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-[24px] leading-[30px] font-semibold tracking-tight text-ink sm:text-title">{title}</h1>
+            <h1 className="font-display text-[28px] leading-[34px] font-semibold text-ink sm:text-[34px] sm:leading-[40px]">{title}</h1>
             {status}
           </div>
           {description && <p className="mt-1 max-w-prose text-muted">{description}</p>}
@@ -51,7 +51,7 @@ export function Section({ title, description, actions, children, className, id }
     <section aria-labelledby={headingId} id={id} className={cx("mb-10", className)}>
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
-          <h2 id={headingId} className="text-section font-semibold text-ink">
+          <h2 id={headingId} className="font-display text-[21px] leading-[28px] font-semibold text-ink">
             {title}
           </h2>
           {description && <p className="text-caption text-muted">{description}</p>}

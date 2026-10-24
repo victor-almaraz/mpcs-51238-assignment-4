@@ -9,23 +9,29 @@ export function Card({ children, className }: { children: ReactNode; className?:
   return <div className={cx(surface, "p-4", className)}>{children}</div>;
 }
 
-/** A card whose title is its link; metadata and badges sit under it. Nothing else inside is interactive. */
-export function CardLink({ href, title, meta, badge, icon, children }: { href: string; title: ReactNode; meta?: ReactNode; badge?: ReactNode; icon?: ReactNode; children?: ReactNode }) {
+/**
+ * A card whose title is its link; metadata and badges sit under it. Nothing else inside is interactive.
+ * `tile` (an ElementTile) leads the card; `icon` is a plain icon for cards without one.
+ */
+export function CardLink({ href, title, meta, badge, icon, tile, children }: { href: string; title: ReactNode; meta?: ReactNode; badge?: ReactNode; icon?: ReactNode; tile?: ReactNode; children?: ReactNode }) {
   return (
-    <div className={cx(surface, "group relative flex flex-col gap-2 p-4 transition-colors hover:border-accent-line hover:bg-accent-soft/40")}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          {icon && <span className="mt-0.5 text-muted">{icon}</span>}
-          <h3 className="min-w-0 text-heading font-semibold text-ink">
-            <Link href={href} className="after:absolute after:inset-0 after:content-[''] group-hover:text-accent">
-              {title}
-            </Link>
-          </h3>
+    <div className={cx(surface, "group relative flex gap-4 p-4 transition-colors hover:border-accent-line hover:bg-accent-soft/40")}>
+      {tile}
+      <div className="flex min-w-0 flex-1 flex-col gap-2">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-start gap-3">
+            {icon && !tile && <span className="mt-0.5 text-muted">{icon}</span>}
+            <h3 className="min-w-0 text-heading font-semibold text-ink">
+              <Link href={href} className="after:absolute after:inset-0 after:content-[''] group-hover:text-accent">
+                {title}
+              </Link>
+            </h3>
+          </div>
+          {badge}
         </div>
-        {badge}
+        {meta && <div className="text-caption text-muted">{meta}</div>}
+        {children}
       </div>
-      {meta && <div className="text-caption text-muted">{meta}</div>}
-      {children}
     </div>
   );
 }

@@ -24,6 +24,7 @@ import { Field, Select, described } from "@/components/ui/field";
 import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
 import { DescriptionList, List, ListRow } from "@/components/ui/list";
 import { Page, PageHeader, Section, WithAside } from "@/components/ui/page";
+import { DateTile } from "@/components/ui/tile";
 
 const CONTROLS: Record<string, { control: string; label: string; danger?: boolean }[]> = {
   lobby: [{ control: "start", label: "Start" }],
@@ -100,10 +101,10 @@ export default async function Lobby({ params }: { params: Promise<{ id: string }
             <Card className="flex flex-col gap-3">
               <h2 className="text-section font-semibold text-ink">Next session</h2>
               {next ? (
-                <p className="flex items-center gap-2 text-heading font-semibold text-ink">
-                  <CalendarClock {...ICON} className="text-muted" />
-                  {formatWhen(next.starts_at, user.timezone)}
-                </p>
+                <div className="flex items-center gap-3">
+                  <DateTile date={new Date(next.starts_at)} timeZone={user.timezone} tone={Date.parse(next.starts_at) - now < 86_400_000 ? "pigment" : "accent"} />
+                  <p className="text-heading font-semibold text-ink">{formatWhen(next.starts_at, user.timezone)}</p>
+                </div>
               ) : (
                 <p className="text-muted">None scheduled.</p>
               )}
@@ -140,7 +141,7 @@ export default async function Lobby({ params }: { params: Promise<{ id: string }
                   key={c.id}
                   title={c.name}
                   meta={names.get(c.user_id) ?? ""}
-                  badge={c.user_id === user.id ? <Badge tone="accent">yours</Badge> : undefined}
+                  badge={c.user_id === user.id ? <Badge tone="accent">Yours</Badge> : undefined}
                   actions={
                     open &&
                     (c.user_id === user.id || author) && (

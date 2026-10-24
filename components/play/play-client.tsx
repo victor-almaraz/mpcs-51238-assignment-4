@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/field";
 import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
 import { Notice } from "@/components/ui/notice";
+import { ElementTile, elementSymbol } from "@/components/ui/tile";
 import { cx } from "@/components/ui/cx";
 import { ArtIcon } from "@/components/art";
 import { QuickActions, TargetActions } from "./action-bar";
@@ -89,17 +90,14 @@ type Left = "character" | "party";
 type Mark = "current" | "declared" | "waiting" | null;
 
 const MARKS: Record<Exclude<Mark, null>, { word: string; icon: ReactNode; className: string }> = {
-  current: { word: "current turn", icon: <Play {...ICON_DENSE} />, className: "border-accent bg-accent-soft text-accent" },
+  current: { word: "current turn", icon: <Play {...ICON_DENSE} />, className: "border-pigment-line bg-pigment text-pigment-ink" },
   declared: { word: "declared", icon: <Check {...ICON_DENSE} />, className: "border-rule bg-desk text-muted" },
   waiting: { word: "waiting", icon: <Hourglass {...ICON_DENSE} />, className: "border-border bg-page text-ink" },
 };
 
+/** A character as an element tile: its symbol, in the accent for the viewer's own character. */
 function Avatar({ name, mine }: { name: string; mine?: boolean }) {
-  return (
-    <span aria-hidden="true" className={cx("inline-flex size-8 shrink-0 items-center justify-center rounded-full text-label font-semibold", mine ? "bg-accent text-page" : "bg-accent-soft text-accent")}>
-      {name.charAt(0).toUpperCase()}
-    </span>
-  );
+  return <ElementTile symbol={elementSymbol(name)} tone={mine ? "accent" : "neutral"} size="sm" />;
 }
 
 /** A health string such as "7/10 HP" as a fraction, for its bar. */
@@ -288,7 +286,7 @@ export function PlayClient(props: PlayProps) {
         })}
       </ul>
       <span className="flex shrink-0 items-center gap-3 max-sm:order-1 sm:ml-auto sm:pl-2">
-        {yourTurn && <Badge tone="accent">Your turn</Badge>}
+        {yourTurn && <Badge tone="pigment">Your turn</Badge>}
         {reconnecting && (
           <span className="inline-flex items-center gap-1.5 text-label text-warning">
             <WifiOff {...ICON_DENSE} />

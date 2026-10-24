@@ -3,7 +3,6 @@
 // Non-operators get the 404 page.
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
-import { statusLabel } from "@/components/dashboard/hub";
 import { Gavel, RotateCcw, ScrollText, Search, Upload } from "lucide-react";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -126,7 +125,7 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
                 <DescriptionList
                   items={[
                     ["Name", inspected.name],
-                    ["Status", <StatusBadge key="s" status={inspected.status} label={statusLabel(inspected.status)} />],
+                    ["Status", <StatusBadge key="s" status={inspected.status} />],
                     ["Version", <span key="v" className="tabular">{inspected.version}</span>],
                     ["Replay", replayed && "matches_stored" in replayed ? (replayed.matches_stored ? "Matches the stored state" : `Diverges at ${replayed.diverges_at}`) : JSON.stringify(replayed)],
                   ]}

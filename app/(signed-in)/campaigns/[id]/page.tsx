@@ -2,7 +2,7 @@
 // lobby: Create instance lives here, author only). A detail page (docs/design/README.md, Campaign):
 // tabs Overview, Members, Invitations (author only), and Materials; the aside holds the system,
 // modules, adventure, and the next session.
-import { CalendarClock, Gamepad2, Pencil, UserPlus } from "lucide-react";
+import { Gamepad2, Pencil, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
 import { formatWhen } from "@/components/when";
@@ -23,6 +23,7 @@ import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
 import { DescriptionList, List, ListRow } from "@/components/ui/list";
 import { Page, PageHeader, Section, WithAside } from "@/components/ui/page";
 import { Tabs } from "@/components/ui/tabs";
+import { DateTile } from "@/components/ui/tile";
 import { InvitationsPanel, MembersPanel } from "./panels";
 
 const DAY = 86_400_000;
@@ -153,18 +154,18 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
             <Card className="flex flex-col gap-3">
               <h2 className="text-section font-semibold text-ink">Next session</h2>
               {upcoming ? (
-                <>
-                  <p className="flex items-center gap-2 text-heading font-semibold text-ink">
-                    <CalendarClock {...ICON} className="text-muted" />
-                    {formatWhen(upcoming.next.starts_at, user.timezone)}
-                  </p>
-                  <p className="text-caption text-muted">
-                    {upcoming.instance.name} ·{" "}
-                    <Link href={`/instances/${upcoming.instance.id}/schedule`} className="text-accent underline">
-                      Schedule
-                    </Link>
-                  </p>
-                </>
+                <div className="flex items-center gap-3">
+                  <DateTile date={new Date(upcoming.next.starts_at)} timeZone={user.timezone} tone={Date.parse(upcoming.next.starts_at) - now < DAY ? "pigment" : "accent"} />
+                  <div className="min-w-0">
+                    <p className="text-heading font-semibold text-ink">{formatWhen(upcoming.next.starts_at, user.timezone)}</p>
+                    <p className="text-caption text-muted">
+                      {upcoming.instance.name} ·{" "}
+                      <Link href={`/instances/${upcoming.instance.id}/schedule`} className="text-accent underline">
+                        Schedule
+                      </Link>
+                    </p>
+                  </div>
+                </div>
               ) : (
                 <p className="text-muted">None scheduled.</p>
               )}

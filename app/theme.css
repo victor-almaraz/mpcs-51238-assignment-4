@@ -26,9 +26,17 @@
   --color-muted: #6A6761;
   --color-overlay: rgb(20 18 17 / 0.45);
 
+  /* Cadmium yellow, the pigment: a fill behind dark text that marks what is happening now (your turn,
+     a live or imminent session). Text on it is always --color-pigment-ink. */
+  --color-pigment: #F2C14E;
+  --color-pigment-ink: #282624;
+  --color-pigment-line: #A87A06;
+  --color-pigment-soft: #FCF3D7;
+
   /* The software in the system font; the story in Libertinus Serif. */
   --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-display: var(--font-ui);
+  /* Page and section titles in the book serif, the product's voice; everything else in the system font. */
+  --font-display: "Libertinus Serif", Georgia, serif;
   --font-prose: "Libertinus Serif", Georgia, serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
@@ -77,6 +85,9 @@
     --color-success-soft: #3A4A3D;
     --color-selection: #504765;
     --color-border: #888682;
+    --color-pigment: #EDB93B;
+    --color-pigment-line: #E0B13C;
+    --color-pigment-soft: #4A4126;
     color-scheme: dark;
   }
 }
@@ -100,5 +111,8 @@
   --color-success-soft: #3A4A3D;
   --color-selection: #504765;
   --color-border: #888682;
+  --color-pigment: #EDB93B;
+  --color-pigment-line: #E0B13C;
+  --color-pigment-soft: #4A4126;
   color-scheme: dark;
 }

@@ -11,6 +11,7 @@ import { serverStore } from "@/lib/server/supabase";
 import { systemUi } from "@/components/systems";
 import { StatusBadge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { elementSymbol } from "@/components/ui/tile";
 import { Page, PageHeader, Section, WithAside } from "@/components/ui/page";
 import { CharacterEditor } from "./editor";
 import { PortraitForm } from "./portrait";
@@ -43,7 +44,7 @@ export default async function CharacterPage({ params }: { params: Promise<{ id: 
               <img src={`/v1/assets/${portrait.hash}`} alt={portrait.alt} width={288} height={288} className="aspect-square w-full max-w-72 rounded-card border border-rule object-cover" />
             ) : (
               <span aria-hidden="true" className="flex size-32 items-center justify-center rounded-card border border-dashed border-rule bg-desk text-display font-semibold text-muted">
-                {character.name.charAt(0).toUpperCase()}
+                {elementSymbol(character.name)}
               </span>
             )}
             <PortraitForm id={character.id} has={!!character.portrait} />

@@ -6,6 +6,7 @@ import { ActionForm } from "@/components/action-form";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { CardLink } from "@/components/ui/card";
+import { ElementTile, elementSymbol } from "@/components/ui/tile";
 import { described, Field, TextInput } from "@/components/ui/field";
 import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
 import type { listCampaigns } from "@/lib/api/campaigns";
@@ -20,12 +21,6 @@ export type CampaignItem = Awaited<ReturnType<typeof listCampaigns>>["items"][nu
 export type CharacterItem = Awaited<ReturnType<typeof listCharacters>>["items"][number];
 export type DraftItem = Awaited<ReturnType<typeof listDrafts>>["items"][number];
 export type GameItem = Awaited<ReturnType<typeof listInstances>>[number] & { campaign: string };
-
-/** A status word in sentence case, for a badge. */
-export const statusLabel = (status: string) => {
-  const words = status === "in_instance" ? "in a game" : status.replaceAll("_", " ");
-  return words[0]!.toUpperCase() + words.slice(1);
-};
 
 export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
@@ -62,7 +57,7 @@ export function CampaignCard({ campaign: c, userId }: { campaign: CampaignItem; 
     <CardLink
       href={`/campaigns/${c.id}`}
       title={c.title}
-      icon={<Castle {...ICON_DENSE} />}
+      tile={<ElementTile symbol={elementSymbol(c.title)} tone="neutral" size="sm" />}
       badge={<Badge tone={runs ? "accent" : "neutral"}>{runs ? "You run" : "You play"}</Badge>}
       meta={`${plural(c.instance_ids.length, "game")} · ${plural(players, "player")}`}
     >
@@ -77,8 +72,8 @@ export function CharacterCard({ character: c, where }: { character: CharacterIte
     <CardLink
       href={`/characters/${c.id}`}
       title={c.name}
-      icon={<UserRound {...ICON_DENSE} />}
-      badge={<StatusBadge status={c.status} label={statusLabel(c.status)} />}
+      tile={<ElementTile symbol={elementSymbol(c.name)} tone={c.status === "available" || c.status === "in_instance" ? "accent" : "neutral"} size="sm" />}
+      badge={<StatusBadge status={c.status} />}
       meta={`${systemView(c.system).title} ${String(c.sheet.role)}`}
     >
       {game && <p className="text-caption text-muted">In {game}</p>}
@@ -91,7 +86,7 @@ export function DraftCard({ draft: d }: { draft: DraftItem }) {
     <CardLink
       href={`/adventures/${d.id}/edit`}
       title={d.title}
-      icon={<BookOpen {...ICON_DENSE} />}
+      tile={<ElementTile symbol={elementSymbol(d.title)} tone="neutral" size="sm" />}
       badge={d.problems > 0 ? <Badge tone="danger">{plural(d.problems, "problem")}</Badge> : <Badge tone="success">Ready</Badge>}
       meta={d.last_published_version ? `Published ${d.last_published_version}` : "Not published"}
     />

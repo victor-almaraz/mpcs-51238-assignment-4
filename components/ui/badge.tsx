@@ -2,7 +2,7 @@
 import type { ReactNode } from "react";
 import { cx } from "./cx";
 
-export type Tone = "neutral" | "accent" | "success" | "warning" | "danger";
+export type Tone = "neutral" | "accent" | "success" | "warning" | "danger" | "pigment";
 
 const tones: Record<Tone, string> = {
   neutral: "bg-desk text-muted",
@@ -10,6 +10,8 @@ const tones: Record<Tone, string> = {
   success: "bg-success-soft text-success",
   warning: "bg-warning-soft text-warning",
   danger: "bg-danger-soft text-danger",
+  /** Now: your turn, live, due. Cadmium yellow behind dark text. */
+  pigment: "bg-pigment text-pigment-ink",
 };
 
 export function Badge({ tone = "neutral", children, dot = true }: { tone?: Tone; children: ReactNode; dot?: boolean }) {
@@ -30,9 +32,9 @@ export function statusTone(status: string): Tone {
   return "accent";
 }
 
-/** A status word in sentence case: `in_instance` reads "In instance". */
+/** A status word in sentence case: `in_instance` reads "In a game". */
 export function statusWord(status: string): string {
-  const words = status.replaceAll("_", " ");
+  const words = status === "in_instance" ? "in a game" : status.replaceAll("_", " ");
   return words.charAt(0).toUpperCase() + words.slice(1);
 }
 

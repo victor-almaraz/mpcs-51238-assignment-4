@@ -1,9 +1,10 @@
 // Dashboard (app-flow.md, "Dashboard"; docs/design/README.md, Screens: Dashboard): a hub. Needs you,
 // the next session with RSVP, your games, then campaigns, characters, and adventures.
 import Link from "next/link";
+import { DateTile, ElementTile, elementSymbol } from "@/components/ui/tile";
 import { ArrowRight, BookOpen, CalendarClock, CalendarDays, Castle, Check, CircleAlert, Gamepad2, History, Play, Plus, Users } from "lucide-react";
 import { ActionForm } from "@/components/action-form";
-import { CampaignCard, CharacterCard, DraftCard, EnterCode, gamesOf, plural, statusLabel, type GameItem } from "@/components/dashboard/hub";
+import { CampaignCard, CharacterCard, DraftCard, EnterCode, gamesOf, plural, type GameItem } from "@/components/dashboard/hub";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { ButtonLink, buttonClass } from "@/components/ui/button";
 import { Card, CardGrid } from "@/components/ui/card";
@@ -77,7 +78,7 @@ function GameCard({ game: i, userId }: { game: GameItem; userId: string }) {
     <Card className="flex flex-col gap-3">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <Gamepad2 {...ICON_DENSE} className="mt-1 shrink-0 text-muted" />
+          <ElementTile symbol={elementSymbol(i.name)} tone={i.status === "active" ? "pigment" : i.status === "lobby" ? "accent" : "neutral"} size="sm" />
           <div className="min-w-0">
             <h3 className="text-heading font-semibold text-ink">
               <Link href={`/instances/${i.id}`} className="hover:text-accent hover:underline">
@@ -87,7 +88,7 @@ function GameCard({ game: i, userId }: { game: GameItem; userId: string }) {
             <p className="text-caption text-muted">{i.campaign}</p>
           </div>
         </div>
-        <StatusBadge status={i.status} label={statusLabel(i.status)} />
+        <StatusBadge status={i.status} />
       </div>
       <p className="text-caption text-muted">{mine.length > 0 ? `Playing ${mine.join(", ")}` : "No character of yours"}</p>
       <div className="mt-auto">
@@ -165,9 +166,7 @@ export default async function Dashboard() {
           <div className="flex flex-col gap-3">
             <Card className="flex flex-col gap-4 border-accent-line sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 items-start gap-4">
-                <span className="flex size-12 shrink-0 items-center justify-center rounded-card bg-accent-soft text-accent">
-                  <CalendarClock {...ICON} />
-                </span>
+                <DateTile date={new Date(next.starts_at)} timeZone={user.timezone} size="lg" tone={live || Date.parse(next.starts_at) - now < 86_400_000 ? "pigment" : "accent"} />
                 <div className="min-w-0">
                   <p className="tabular text-section font-semibold text-ink">{when(next)}</p>
                   <p className="flex flex-wrap items-center gap-2">
@@ -176,7 +175,7 @@ export default async function Dashboard() {
                     </Link>
                     <span className="text-caption text-muted">{next.instance.campaign}</span>
                     {next.status === "moved" && <Badge tone="warning">Moved</Badge>}
-                    {live && <Badge tone="success">Live now</Badge>}
+                    {live && <Badge tone="pigment">Live now</Badge>}
                   </p>
                 </div>
               </div>

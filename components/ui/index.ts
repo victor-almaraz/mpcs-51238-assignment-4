@@ -8,5 +8,6 @@ export { Choice, described, Field, FieldGroup, inputClass, Select, TextArea, Tex
 export { ICON, ICON_DENSE, IconButton, IconLink } from "./icon-button";
 export { DescriptionList, List, ListRow } from "./list";
 export { Logo, LogoMark } from "./logo";
+export { DateTile, ElementTile, elementSymbol, type TileTone } from "./tile";
 export { ErrorSummary, Notice } from "./notice";
 export { Page, PageHeader, Section, WithAside, type Crumb } from "./page";

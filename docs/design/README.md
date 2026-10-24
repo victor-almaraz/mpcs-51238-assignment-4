@@ -14,8 +14,8 @@ same tasks; [Sources](#sources) lists them.
 | Lists lead to details | Hub pages list things; each row or card opens a detail page that holds that thing's actions. |
 | Problems appear where they are and in one list | A field or entity shows its own error; a count in the toolbar opens the list of all of them. No numbered footnotes. |
 | Status is always in view | Round, turn, save state, and connection sit in a bar that does not scroll away. |
-| The story is set like a book; the software is not | Narration, room text, and briefs use Libertinus Serif. Everything else uses the system font. |
-| Colour means something | The lavender accent marks what can be acted on and the current selection; red marks errors and destructive actions. Every status also has an icon or a word. |
+| The story is set like a book; the software is not | Narration, room text, briefs, and page and section titles use Libertinus Serif. Controls, data, and card titles use the system font. |
+| Colour means something | The lavender accent marks what can be acted on and the current selection; cadmium yellow marks what is happening now; red marks errors and destructive actions. Every status also has an icon or a word. |
 
 ## Foundations
 
@@ -40,8 +40,8 @@ same tasks; [Sources](#sources) lists them.
 
 The Graphite palette stays, with its light and dark values and contrast minimums: `page`, `desk`,
 `raised`, `rule`, `border`, `ink`, `muted`, `accent`, `accent-strong`, `accent-soft`, `accent-line`,
-`danger`, `warning`, `success` and their `-soft` tints, and `selection`
-(`app/theme.css`). Surfaces: `desk` behind workspaces and hub pages; `page` for cards, panels, and
+`danger`, `warning`, `success` and their `-soft` tints, `selection`, and the pigment set `pigment`,
+`pigment-ink`, `pigment-line`, `pigment-soft` (`app/theme.css`; see Identity). Surfaces: `desk` behind workspaces and hub pages; `page` for cards, panels, and
 inputs; `raised` for menus, dialogs, and sheets. The theme follows the system unless the user picks
 Light or Dark in Settings.
 
@@ -49,8 +49,9 @@ Light or Dark in Settings.
 
 | Role | Face | Size / line height |
 |---|---|---|
-| Page title | System UI, semibold | 28 / 34 px (24 / 30 compact) |
-| Section heading | System UI, semibold | 18 / 26 px |
+| Page title | Libertinus Serif, semibold | 34 / 40 px (28 / 34 compact) |
+| Section heading | Libertinus Serif, semibold | 21 / 28 px |
+| Card, panel, and pane heading | System UI, semibold | 18 / 26 px |
 | Card or record title | System UI, semibold | 16 / 24 px |
 | Body and controls | System UI | 15 / 22 px |
 | Label | System UI, medium | 14 / 20 px |
@@ -79,6 +80,20 @@ Lucide through `lucide-react`, 20 px (16 px in dense rows), stroke 1.75 with `ab
 in `currentColor`. An icon-only button always has an accessible name and a tooltip. The icon vocabulary
 of `cadmium-spec/docs/design/foundations.md` (Icons, Vocabulary) stands: one concept, one icon. The
 product mark is the cadmium tile, Cd, drawn as a Lucide-style icon (`components/ui/logo.tsx`).
+
+### Identity
+
+Three devices give the interface its character. Each has one meaning and is used only for it.
+
+| Device | Rule |
+|---|---|
+| Element tile | A hint of the logo's periodic-table tile marks things in the game world on hub cards: characters, campaigns, games, and adventures. A small bordered square (40 px) holds a two-letter symbol written as chemical symbols are (Wren Halloway is Wh, The Sunken Archive is Sa; leading articles are skipped). It carries no other labels. Party members in play use the same square as their avatar. A session date uses a date tile: the month in the corner, the day as the symbol, the weekday under it. Detail-page headers and list rows have no tile. Tiles are decorative (`aria-hidden`); the name beside them is the text. |
+| Pigment | Cadmium yellow (`pigment` fill, `pigment-line` border) marks what is happening now: the viewer's turn, the current actor in the turn tracker, an active game, a live session, and a session within 24 hours. Text on it is always `pigment-ink` (9:1 in light, 8.3:1 in dark). It is a fill, never a text colour, so it does not compete with `warning` and `danger`. At most a few pigment marks show on one screen. |
+| Serif titles | Page titles (`h1`) and section headings (`h2`) are set in Libertinus Serif, the story face; everything inside a card, panel, or pane stays in the system font. |
+
+Tile tones: `pigment` for now (an active game, a session within 24 hours), `accent` for what is the
+viewer's or open to them (their characters, a game in its lobby, an upcoming date), and `neutral`
+otherwise.
 
 ## App frame
 
@@ -109,8 +124,9 @@ All live in `components/ui/`. Each is the only way the application draws that th
 | `PageHeader` | Optional breadcrumb, title, description, status, and actions on the right (under the title on compact) | One `h1` per page |
 | `Section` | Titled region with optional actions | `h2`, labelled `section` |
 | `Card` | `page` surface, `rule` border, 6 px radius, 16 px padding; a whole-card link uses the title as the link | The title is the link text; no nested interactive elements inside a whole-card link |
-| `List` / `ListRow` | Rows with a title, metadata, a status badge, and trailing actions | A `ul`; trailing actions are separate buttons |
-| `Badge` | A word with an optional dot or icon: neutral, accent, success, warning, danger | Colour is never the only signal |
+| `List` / `ListRow` | Rows with an optional icon, a title, metadata, a status badge, and trailing actions | A `ul`; trailing actions are separate buttons |
+| `ElementTile` / `DateTile` | The identity tile in sizes `sm` (40 px, cards and avatars), `md` (56 px), and `lg` (72 px, the dashboard's next session), tones `accent`, `pigment`, `neutral`; `elementSymbol` derives the symbol from a name | Decorative unless given a `label` |
+| `Badge` | A word with an optional dot or icon: neutral, accent, success, warning, danger, and pigment (Your turn, Live now) | Colour is never the only signal |
 | `Field` | Label above the control, hint under the label, error under the control with an icon | `label` bound to the control; hint and error joined by `aria-describedby`; `aria-invalid` on error |
 | `TextInput`, `TextArea`, `Select`, `Checkbox`, `Radio` | 40 px controls (checkboxes 20 px with a 40 px hit area) | Native elements |
 | `ErrorSummary` | A `danger` box at the top of a form listing each error as a link to its field | Receives focus after a failed submit; `role="alert"` |
@@ -160,7 +176,7 @@ A workspace for the turn-based game.
 | Region | Expanded | Medium and compact |
 |---|---|---|
 | Turn tracker | A bar across the top: round number, mode (exploration or combat), resolution, each party member with acted, waiting, or current marks, time left, and Advance | The same bar, one line, scrolling sideways if needed |
-| Log | Centre pane: `role="log"`; narration in Libertinus Serif; each player action as a small header with the character's name; system events (combat starts, damage) as compact rows with icons | The default pane |
+| Log | Centre pane: `role="log"`; narration in Libertinus Serif; system events (combat starts, damage) as compact rows with icons | The default pane |
 | Composer | Pinned under the log: a pending choice as buttons, up to three suggested actions as chips, the text input with Send, and quick actions (Look, Search, Wait, Rest) | Pinned at the foot above the tab bar |
 | Map | Right pane, as large as it fits: zoom and centre controls, List view toggle; clicking a room, door, or thing selects it and offers its actions; selection is also possible from the list view | A pane in the tab bar |
 | Character and party | Left pane with tabs: Character (HP, AP, armor, conditions, inventory with Use and Drop, abilities with Use) and Party | Panes in the tab bar |
