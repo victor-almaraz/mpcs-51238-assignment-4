@@ -51,7 +51,7 @@ describe("agent-driven runs", () => {
   it("waits out an unavailable model, then gives up", async () => {
     let n = 0;
     const flaky: Chat = async () => {
-      if (n++ < 2) throw new ModelError("unavailable", "Groq answered HTTP 429");
+      if (n++ < 2) throw new ModelError("unavailable", "Groq answered HTTP 429", 429);
       return { content: "ok", tool_calls: [], raw: null };
     };
     const slept: number[] = [];
@@ -60,5 +60,9 @@ describe("agent-driven runs", () => {
     expect(slept).toEqual([1, 2]);
     const down = patient(async () => Promise.reject(new ModelError("unavailable", "down")), [1], async () => {});
     await expect(down({ model: "m", messages: [] }, 10)).rejects.toThrow("down");
+    let tries = 0;
+    const rejected = patient(async () => (tries++, Promise.reject(new ModelError("unavailable", "Groq answered HTTP 400: model not found", 400))), [1, 2], async () => {});
+    await expect(rejected({ model: "m", messages: [] }, 10)).rejects.toThrow("HTTP 400");
+    expect(tries).toBe(1);
   });
 });

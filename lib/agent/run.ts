@@ -128,10 +128,14 @@ export async function agentRun(o: RunOptions): Promise<RunResult> {
 
     let call: Call | null = null;
     let error: EngineError | null = null;
+    let failure: string | undefined;
     for (let attempt = 1; attempt <= 2 && !call; attempt++) {
       const r = await o.parser.parse(attempt === 1 ? context : { ...context, error: error! }, definitions, hints);
       if (!r.ok) {
-        if (r.reason !== "invalid_call") break;
+        if (r.reason !== "invalid_call") {
+          failure = `parser ${r.reason}: ${r.detail}`;
+          break;
+        }
         error = { code: "invalid_call", detail: r.detail };
       } else {
         const t = trial(r.call);
@@ -154,7 +158,7 @@ export async function agentRun(o: RunOptions): Promise<RunResult> {
     if (out.events && session.state.round.declarations?.[ACTOR] && !session.state.ended) events.push(...(((step(session, { advance: true }) as { events?: GameEvent[] }).events) ?? []));
     const facts = factsOf(events, said, brief, secret);
     recent.push(...facts);
-    const turn: Turn = { turn: n, input, call, outcome: out.error ? "rejected" : outcome, ...(out.error ? { error: out.error.detail } : error && outcome === "fallback" ? { error: error.detail } : {}), facts };
+    const turn: Turn = { turn: n, input, call, outcome: out.error ? "rejected" : outcome, ...(out.error ? { error: out.error.detail } : outcome === "fallback" && (error || failure) ? { error: error?.detail ?? failure } : {}), facts };
     turns.push(turn);
     o.onTurn?.(turn);
   }
@@ -169,14 +173,24 @@ export function chatPlayer(chat: Chat, model: string, timeoutMs = 20000): Player
   };
 }
 
-/** Retries an unavailable model (such as a rate limit) with doubling waits. */
-export function patient(chat: Chat, waits: readonly number[] = [4000, 8000, 16000, 32000, 60000], sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))): Chat {
+/**
+ * Retries a model call that may recover (a timeout, a rate limit, or a server error) with doubling
+ * waits, reporting each wait. Other errors, such as an unknown model or a rejected key, fail at once.
+ */
+export function patient(
+  chat: Chat,
+  waits: readonly number[] = [4000, 8000, 16000, 32000, 60000],
+  sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms)),
+  onRetry: (error: ModelError, waitMs: number) => void = () => {},
+): Chat {
+  const recoverable = (e: ModelError) => e.kind === "timeout" || e.status === undefined || e.status === 429 || e.status >= 500;
   return async (request, timeoutMs) => {
     for (let i = 0; ; i++) {
       try {
         return await chat(request, timeoutMs);
       } catch (e) {
-        if (!(e instanceof ModelError) || e.kind === "malformed" || i >= waits.length) throw e;
+        if (!(e instanceof ModelError) || e.kind === "malformed" || !recoverable(e) || i >= waits.length) throw e;
+        onRetry(e, waits[i]!);
         await sleep(waits[i]!);
       }
     }

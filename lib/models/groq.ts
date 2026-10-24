@@ -31,6 +31,8 @@ export class ModelError extends Error {
   constructor(
     readonly kind: "timeout" | "unavailable" | "malformed",
     message: string,
+    /** The HTTP status when Groq answered with an error. */
+    readonly status?: number,
   ) {
     super(message);
   }
@@ -65,7 +67,11 @@ export function groqChat(apiKey: string, fetcher: typeof fetch = fetch): Chat {
     } finally {
       clearTimeout(timer);
     }
-    if (!response.ok) throw new ModelError("unavailable", `Groq answered HTTP ${response.status}`);
+    if (!response.ok) {
+      // Groq's error body names the cause, such as an unknown model or a rate limit; it holds no secrets.
+      const detail = await response.text().then((t) => t.slice(0, 300), () => "");
+      throw new ModelError("unavailable", `Groq answered HTTP ${response.status}${detail ? `: ${detail}` : ""}`, response.status);
+    }
     const body = (await response.json()) as { choices?: { message?: { content?: string | null; tool_calls?: { function?: { name?: string; arguments?: string } }[] } }[] };
     const message = body.choices?.[0]?.message;
     if (!message) throw new ModelError("malformed", "the response has no message");
