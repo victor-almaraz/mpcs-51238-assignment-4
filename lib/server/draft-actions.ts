@@ -2,7 +2,8 @@
 // Server actions for the adventure editor and its pages.
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createDraft, deleteDraft, getDraft, importDraft, publishDraft, saveDraft, validateDraft } from "../api/drafts";
+import type { SettingBundle } from "../bundle/setting";
+import { createDraft, deleteDraft, getDraft, importDraft, publishDraft, requiredSettings, saveDraft, validateDraft } from "../api/drafts";
 import { attempt, type FormState } from "./forms";
 import { serverStore } from "./supabase";
 
@@ -50,6 +51,19 @@ export async function copyDraftAction(input: { document: Record<string, unknown>
     return d;
   });
   return "error" in r ? { error: r.error } : { error: null, id: r.ok.id };
+}
+
+/**
+ * The bundles that satisfy `requires`, for the editor's in-browser validation and playtest after the
+ * author changes the required settings; null when the caller does not own the draft.
+ */
+export async function requiredSettingsAction(draftId: string, requires: unknown): Promise<SettingBundle[] | null> {
+  if (!Array.isArray(requires)) return null;
+  const r = await attempt(async (uid) => {
+    await getDraft(serverStore(), uid, draftId);
+    return requiredSettings(serverStore(), { adventure: { requires_settings: requires } });
+  });
+  return "ok" in r ? r.ok : null;
 }
 
 export async function validateDraftAction(draftId: string) {

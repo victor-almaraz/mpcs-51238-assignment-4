@@ -2,13 +2,16 @@
 // The adventure editor (app-flow.md, Adventure editor): sections, a workspace per section, every
 // section also as YAML, the Problems panel, and a status bar with save state, Undo, Redo, Snapshot,
 // Export, and Publish. Saves 2 seconds after the last edit with the draft revision; a local backup in
-// IndexedDB keeps unsaved changes across reloads.
+// IndexedDB keeps unsaved changes across reloads. Every edit is also validated in the browser after
+// 400 ms (live-validation.ts); a save's diagnostics from the server replace the browser's.
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { parse, stringify } from "yaml";
-import { copyDraftAction, saveDraftAction } from "@/lib/server/draft-actions";
+import { copyDraftAction, requiredSettingsAction, saveDraftAction } from "@/lib/server/draft-actions";
 import { content, freshId, ID, type Adventure, type AuthoredLocation, type Doc, type Flag, type Npc, type Problem, type Refs } from "./doc";
+import { EntitiesSection } from "./entities";
+import { useLiveValidation } from "./live-validation";
 import { MapEditor } from "./map-editor";
 import { PlotSection } from "./plot";
 import { Playtest } from "./playtest";
@@ -413,13 +416,21 @@ export function Editor(props: EditorProps) {
   const [section, setSection] = useState<Section>("overview");
   const [yaml, setYaml] = useState(false);
   const [focus, setFocus] = useState<string | null>(null);
-  const [problems, setProblems] = useState<Problem[]>(props.diagnostics);
+  // The required settings' bundles for validation and playtest; reloaded when requires_settings changes.
+  const [settings, setSettings] = useState<SettingBundle[]>(props.settings);
+  const [loadingSettings, setLoadingSettings] = useState(false);
+  const live = useLiveValidation(props.diagnostics, loadingSettings ? null : settings);
+  const problems = live.problems;
   const [status, setStatus] = useState<{ state: "saved" | "pending" | "saving" | "error" | "conflict"; at?: string; message?: string }>({ state: "saved" });
   const [restorable, setRestorable] = useState<Doc | null>(null);
   const [playtest, setPlaytest] = useState(false);
   const revision = useRef(props.revision);
   const latest = useRef(doc);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Increases with every change of the document, so results apply only to the edit they checked. */
+  const seq = useRef(0);
+  const requires = useRef(JSON.stringify(props.document.adventure.requires_settings));
+  const settingsRequest = useRef(0);
 
   // Offer unsaved changes from the local backup, when it is newer than the server's copy.
   useEffect(() => {
@@ -428,28 +439,51 @@ export function Editor(props: EditorProps) {
     });
   }, [props.draftId, props.revision, props.document]);
 
+  const { check, fromServer } = live;
   const save = useCallback(async () => {
     setStatus({ state: "saving" });
+    const at = seq.current;
     const r = await saveDraftAction({ draft_id: props.draftId, document: latest.current as unknown as Record<string, unknown>, revision: revision.current });
     if (r.error) return setStatus({ state: r.conflict ? "conflict" : "error", message: r.error });
     revision.current = r.revision!;
-    setProblems(r.diagnostics ?? []);
+    fromServer(r.diagnostics ?? [], at);
     setStatus({ state: "saved", at: r.saved_at });
     void backup.drop(props.draftId);
-  }, [props.draftId]);
+  }, [props.draftId, fromServer]);
+
+  /** A new current document: validated in the browser now, saved 2 seconds after the last change. */
+  const changed = useCallback(
+    (next: Doc) => {
+      setDoc(next);
+      latest.current = next;
+      seq.current += 1;
+      const key = JSON.stringify(next.adventure?.requires_settings);
+      if (key !== requires.current) {
+        requires.current = key;
+        const n = ++settingsRequest.current;
+        setLoadingSettings(true);
+        void requiredSettingsAction(props.draftId, next.adventure?.requires_settings).then((s) => {
+          if (n !== settingsRequest.current) return;
+          if (s) setSettings(s);
+          setLoadingSettings(false);
+        });
+      }
+      check(next as unknown as Record<string, unknown>, seq.current);
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => void save(), 2000);
+    },
+    [props.draftId, check, save],
+  );
 
   const commit = useCallback(
     (next: Doc, from: Doc) => {
       setPast((p) => [...p.slice(-99), from]);
       setFuture([]);
-      setDoc(next);
-      latest.current = next;
       setStatus({ state: "pending" });
       void backup.put(props.draftId, { revision: revision.current, doc: next });
-      if (timer.current) clearTimeout(timer.current);
-      timer.current = setTimeout(() => void save(), 2000);
+      changed(next);
     },
-    [props.draftId, save],
+    [props.draftId, changed],
   );
 
   const edit = useCallback(
@@ -467,20 +501,14 @@ export function Editor(props: EditorProps) {
     if (!prev) return;
     setPast(past.slice(0, -1));
     setFuture([latest.current, ...future]);
-    setDoc(prev);
-    latest.current = prev;
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => void save(), 2000);
+    changed(prev);
   };
   const redo = () => {
     const next = future[0];
     if (!next) return;
     setFuture(future.slice(1));
     setPast([...past, latest.current]);
-    setDoc(next);
-    latest.current = next;
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => void save(), 2000);
+    changed(next);
   };
 
   const jump = (p: Problem) => {
@@ -555,15 +583,23 @@ export function Editor(props: EditorProps) {
           ) : section === "npcs" ? (
             <Npcs doc={doc} refs={props.refs} edit={edit} />
           ) : (
-            <div className="flex flex-col gap-2">
-              <p className="font-ui text-caption text-muted">Adventure-specific items and creatures, keyed by id, as in entities/*.yaml. Placed on maps as {doc.adventure.id}:id.</p>
-              <YamlPanel key={`entities:${past.length}`} value={doc.entities} onApply={(v) => edit((d) => void (d.entities = (v ?? {}) as Record<string, unknown>))} />
-            </div>
+            <EntitiesSection doc={doc} edit={edit} problems={problems} />
           )}
         </main>
         <aside className="flex flex-col gap-4 font-ui text-caption">
           <div>
             <p className="font-ui text-label">Problems ({errors.length})</p>
+            <p className="text-muted">
+              {live.state === "checking" || loadingSettings
+                ? "Checking…"
+                : live.state === "off"
+                  ? "Checked when saved."
+                  : live.state === "failed"
+                    ? "The live check failed; showing the last results."
+                    : live.source === "browser"
+                      ? "Checked as you edit."
+                      : "Checked when saved."}
+            </p>
             {problems.length === 0 && <p className="text-muted">None.</p>}
             <ul className="mt-1 flex max-h-96 flex-col gap-1 overflow-auto">
               {problems.map((p, i) => (
@@ -603,7 +639,7 @@ export function Editor(props: EditorProps) {
       {playtest && (
         <section className="border-t border-rule px-4 py-4">
           <h2 className="mb-2 font-display text-heading">Playtest</h2>
-          <Playtest doc={doc} settings={props.settings} />
+          <Playtest doc={doc} settings={settings} />
         </section>
       )}
       <footer className="flex flex-wrap items-center gap-4 border-t border-rule px-4 py-2 font-ui text-caption">

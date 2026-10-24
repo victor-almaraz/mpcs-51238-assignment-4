@@ -2,12 +2,14 @@
 // Playtest (app-flow.md, Adventure editor: Playtest): the engine and rules system run in the browser
 // against the draft and its required settings, with no models. An event palette fires actions as a
 // chosen character; a state inspector shows flags, stages, inventories, and every entity, hidden ones
-// included; a trace lists the triggers each action matched and fired; Start from here sets stages and
+// included; a trace lists the triggers each action matched and fired, and for a matched trigger that
+// did not fire, the parts of its `when` that failed (lib/engine/why.ts); Start from here sets stages and
 // flags; a party selector plays up to the adventure's maximum; Preview 20 seeds draws generated maps.
 import { useMemo, useState } from "react";
 import type { AdventureBundle, GeneratedLocation } from "@/lib/bundle/adventure";
 import type { SettingBundle } from "@/lib/bundle/setting";
 import { advance, labelsFor, startInstance, submit, view, type Bundles, type GameEvent, type State } from "@/lib/engine";
+import { whyHeld } from "@/lib/engine/why";
 import { generate } from "@/lib/generator";
 import { compileDraft } from "@/lib/materials";
 import { templateNarration } from "@/lib/narrator/template";
@@ -22,8 +24,8 @@ interface TraceEntry {
   ok: boolean;
   error?: string;
   fired: string[];
-  /** Triggers whose event matched but which did not fire: a condition failed, or `once` had fired. */
-  held: string[];
+  /** Triggers whose event matched but which did not fire, with why: the failed conditions, or `once`. */
+  held: { id: string; why: string[] }[];
   changes: string[];
   narration: string | null;
 }
@@ -85,7 +87,13 @@ export function Playtest({ doc, settings }: { doc: Doc; settings: SettingBundle[
     const r = call === "advance" ? advance(state, bundles, rng) : submit(state, bundles, actor, call, rng);
     if (!r.ok) return setTrace((t) => [...t, { actor, label, ok: false, error: `${r.error.code}: ${r.error.detail}`, fired: [], held: [], changes: [], narration: null }]);
     const fired = r.events.filter((e) => e.type === "trigger_fired").map((e) => String((e as { trigger?: string }).trigger));
-    const held = adventure.arcs.flatMap((a) => a.triggers).filter((t) => !fired.includes(t.id) && r.events.some((e) => matches(t.on as Record<string, unknown>, e))).map((t) => t.id);
+    const held = adventure.arcs.flatMap((a) =>
+      a.triggers.flatMap((t) => {
+        if (fired.includes(t.id)) return [];
+        const event = r.events.find((e) => matches(t.on as Record<string, unknown>, e));
+        return event ? [{ id: t.id, why: whyHeld(t, event, state, r.state, bundles) }] : [];
+      }),
+    );
     const changes = r.events.filter((e) => e.type === "flag_set" || e.type === "stage_set" || e.type === "instance_ended").map((e) => JSON.stringify(e));
     setState(r.state);
     setTrace((t) => [...t, { actor, label, ok: true, fired, held, changes, narration: templateNarration(r.events, labelsFor([r.state, state], bundles)) }]);
@@ -216,7 +224,12 @@ export function Playtest({ doc, settings }: { doc: Doc; settings: SettingBundle[
                     {t.error && ` — ${t.error}`}
                   </span>
                   {t.fired.length > 0 && <div className="text-accent">fired: {t.fired.join(", ")}</div>}
-                  {t.held.length > 0 && <div className="text-warning">matched, did not fire: {t.held.join(", ")}</div>}
+                  {t.held.map((h) => (
+                    <div key={h.id} className="text-warning">
+                      matched, did not fire: <span className="font-mono">{h.id}</span>
+                      {h.why.length > 0 && ` — ${h.why.join("; ")}`}
+                    </div>
+                  ))}
                   {t.changes.map((c, j) => (
                     <div key={j} className="font-mono text-muted">
                       {c}

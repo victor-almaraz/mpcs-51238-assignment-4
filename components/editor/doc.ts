@@ -11,7 +11,7 @@ export interface Adventure {
   version: string;
   title: string;
   description?: string;
-  system: { id: string; versions: string };
+  system: { id: string; versions: string; modules?: string[] };
   requires_settings: { id: string; versions: string }[];
   players: [number, number];
   start: { location: string; room: string; effects: unknown[] };
