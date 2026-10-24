@@ -1,6 +1,6 @@
 // Campaign creation (app-flow.md, Route map: title; system, defaulting to Cadmium, with its credit
-// line; module checkboxes preselected from the materials' required modules; materials).
-import Link from "next/link";
+// line; module checkboxes preselected from the materials' required modules; materials). A form page
+// (docs/design/README.md, Page layouts).
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { MaterialPicker } from "@/components/campaign-materials";
@@ -10,8 +10,10 @@ import { createCampaignAction } from "@/lib/server/campaign-actions";
 import { defaultRange } from "@/lib/server/pages";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
-
-const field = "rounded-control border border-border bg-page px-2 py-1 font-prose text-prose";
+import { Button } from "@/components/ui/button";
+import { Field, FieldGroup, TextArea, TextInput, described } from "@/components/ui/field";
+import { Page, PageHeader } from "@/components/ui/page";
+import { SystemSwitch } from "@/components/ui/system-switch";
 
 export default async function NewCampaign({ searchParams }: { searchParams: Promise<{ system?: string }> }) {
   const user = await pageUser();
@@ -21,37 +23,31 @@ export default async function NewCampaign({ searchParams }: { searchParams: Prom
   if (!system) notFound();
   const materials = await listMaterials(serverStore(), user.id, { system: system.id });
   return (
-    <div className="mx-auto max-w-page px-6 py-10">
-      <h1 className="font-display text-title">New campaign</h1>
-      <nav className="mt-4 flex gap-4 font-ui text-control">
-        {systems.map((s) => (
-          <Link key={s.id} href={`/campaigns/new?system=${s.id}`} aria-current={s.id === system.id ? "page" : undefined} className={s.id === system.id ? "border-b-2 border-accent" : "text-muted"}>
-            {s.title}
-          </Link>
-        ))}
-      </nav>
-      <p className="mt-2 font-ui text-caption text-muted">{system.credit}</p>
-      <ActionForm action={createCampaignAction} className="mt-6 flex flex-col gap-4">
+    <Page width="form">
+      <PageHeader crumbs={[{ label: "Campaigns", href: "/campaigns" }]} title="New campaign" description="A campaign holds the adventure, its players, and the games you run from it." />
+      <SystemSwitch systems={systems} current={system.id} base="/campaigns/new?system=" />
+      <ActionForm action={createCampaignAction} className="mt-6 flex flex-col gap-6">
         <input type="hidden" name="system" value={system.id} />
-        <label className="flex flex-col gap-1">
-          <span className="font-ui text-label">Title</span>
-          <input name="title" required maxLength={80} className={field} />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="font-ui text-label">Description</span>
-          <textarea name="description" maxLength={2000} rows={3} className={field} />
-        </label>
-        <label className="flex flex-col gap-1">
-          <span className="font-ui text-label">System versions</span>
-          <input name="system_versions" required defaultValue={defaultRange(system.version)} className={`${field} w-32`} />
-        </label>
-        <MaterialPicker materials={materials} modules={system.modules} chosen={[]} enabled={[]} />
+        <FieldGroup legend="Details">
+          <Field id="campaign-title" label="Title">
+            <TextInput {...described("campaign-title")} name="title" required maxLength={80} />
+          </Field>
+          <Field id="campaign-description" label="Description" optional>
+            <TextArea {...described("campaign-description")} name="description" maxLength={2000} rows={3} />
+          </Field>
+          <Field id="campaign-versions" label="System versions" hint={`The ${system.title} versions the campaign accepts, as a range such as ${defaultRange(system.version)}.`}>
+            <TextInput {...described("campaign-versions", { hint: true })} name="system_versions" required defaultValue={defaultRange(system.version)} className="max-w-40 font-mono" />
+          </Field>
+        </FieldGroup>
+        <FieldGroup legend="Materials">
+          <MaterialPicker materials={materials} modules={system.modules} chosen={[]} enabled={[]} />
+        </FieldGroup>
         <div>
-          <button type="submit" className="rounded-control bg-accent px-4 py-2 font-ui text-control text-page">
+          <Button type="submit" variant="primary">
             Create campaign
-          </button>
+          </Button>
         </div>
       </ActionForm>
-    </div>
+    </Page>
   );
 }

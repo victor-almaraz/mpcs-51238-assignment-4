@@ -1,23 +1,40 @@
 // The closed notice after shutdown (app-flow.md, Scheduled jobs: Shutdown).
 import Link from "next/link";
+import { DoorClosed } from "lucide-react";
+import { ICON } from "@/components/ui/icon-button";
+import { Standalone } from "@/components/ui/standalone";
 import { CONTACT } from "@/lib/legal";
 
 export default function Closed() {
   const contact = process.env.CONTACT_EMAIL || CONTACT;
   return (
-    <div className="mx-auto max-w-page px-6 py-10">
-      <h1 className="font-display text-title">Cadmium has closed</h1>
-      <p className="mt-4">Sign-in is no longer available. Stored data may be deleted at any time.</p>
+    <Standalone
+      icon={<DoorClosed {...ICON} />}
+      title="Cadmium has closed"
+      description="Sign-in is no longer available. Stored data may be deleted at any time."
+      footer={
+        <nav aria-label="Legal" className="flex flex-wrap gap-x-6 gap-y-2">
+          <Link href="/terms" className="hover:text-ink hover:underline">
+            Terms
+          </Link>
+          <Link href="/privacy" className="hover:text-ink hover:underline">
+            Privacy
+          </Link>
+          <Link href="/attribution" className="hover:text-ink hover:underline">
+            Attribution
+          </Link>
+        </nav>
+      }
+    >
       {contact && (
-        <p className="mt-2">
-          To request a copy or the deletion of your data, write to <a href={`mailto:${contact}`} className="text-accent underline">{contact}</a>.
+        <p>
+          To request a copy or the deletion of your data, write to{" "}
+          <a href={`mailto:${contact}`} className="font-medium text-accent underline">
+            {contact}
+          </a>
+          .
         </p>
       )}
-      <p className="mt-6 flex gap-4 font-ui text-control">
-        <Link href="/terms">Terms</Link>
-        <Link href="/privacy">Privacy</Link>
-        <Link href="/attribution">Attribution</Link>
-      </p>
-    </div>
+    </Standalone>
   );
 }

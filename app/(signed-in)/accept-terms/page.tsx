@@ -1,10 +1,17 @@
 // The terms gate (api.md, Conventions; app-flow.md, Route map): until the user accepts the current
 // Terms of Service and Privacy Policy, signed-in pages send them here.
 import Link from "next/link";
+import { Check, Download, FileText, RotateCcw, ShieldCheck } from "lucide-react";
 import { redirect } from "next/navigation";
 import { TERMS_VERSION } from "@/lib/api/terms";
 import { termsCurrent } from "@/lib/api/users";
 import { ActionForm } from "@/components/action-form";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonClass } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { ICON_DENSE } from "@/components/ui/icon-button";
+import { Notice } from "@/components/ui/notice";
+import { Page, PageHeader } from "@/components/ui/page";
 import { acceptTermsAction } from "@/lib/server/actions";
 import { restoreAccountAction } from "@/lib/server/account-actions";
 import { safeNext } from "@/lib/server/forms";
@@ -16,52 +23,60 @@ export default async function AcceptTerms({ searchParams }: { searchParams: Prom
   if (user?.status === "closing") {
     const until = new Date(Date.parse(user.deletion_requested_at!) + 30 * 86_400_000);
     return (
-      <div className="mx-auto max-w-page px-6 py-10">
-        <h1 className="font-display text-title">Your account is being deleted</h1>
-        <p className="mt-4">
-          You can restore it until {until.toUTCString().slice(0, 16)}. It is erased within 90 days of the deletion.{" "}
-          <a href="/v1/me/export.zip" className="text-accent underline">
-            Export my data
-          </a>
-        </p>
-        <ActionForm action={restoreAccountAction} className="mt-6">
-          <button type="submit" className="rounded-control bg-accent px-4 py-2 font-ui text-control text-page">
-            Restore my account
-          </button>
-        </ActionForm>
-      </div>
+      <Page width="form">
+        <PageHeader title="Your account is being deleted" status={<Badge tone="warning">Closing</Badge>} />
+        <Card className="flex flex-col gap-4">
+          <p>You can restore it until {until.toUTCString().slice(0, 16)}. It is erased within 90 days of the deletion.</p>
+          <ActionForm action={restoreAccountAction} className="flex flex-wrap items-center gap-3">
+            <Button type="submit" variant="primary" icon={<RotateCcw {...ICON_DENSE} />}>
+              Restore my account
+            </Button>
+            <a href="/v1/me/export.zip" className={buttonClass("secondary")}>
+              <Download {...ICON_DENSE} />
+              Export my data
+            </a>
+          </ActionForm>
+        </Card>
+      </Page>
     );
   }
   if (!user || user.status !== "active") {
     return (
-      <div className="mx-auto max-w-page px-6 py-10">
-        <h1 className="font-display text-title">Account closed</h1>
-        <p className="mt-4">This account has been deleted.</p>
-      </div>
+      <Page width="form">
+        <PageHeader title="Account closed" />
+        <Notice tone="warning">This account has been deleted.</Notice>
+      </Page>
     );
   }
   if (termsCurrent(user)) redirect(next);
+  const changed = Boolean(user.terms_accepted_at);
   return (
-    <div className="mx-auto max-w-page px-6 py-10">
-      <h1 className="font-display text-title">{user.terms_accepted_at ? "The terms have changed" : "Before you play"}</h1>
-      <p className="mt-4">
-        Read the{" "}
-        <Link href="/terms" className="text-accent underline">
-          Terms of Service
-        </Link>{" "}
-        and the{" "}
-        <Link href="/privacy" className="text-accent underline">
-          Privacy Policy
-        </Link>
-        . Accept them to continue.
-      </p>
-      <form action={acceptTermsAction} className="mt-6">
-        <input type="hidden" name="version" value={TERMS_VERSION} />
-        <input type="hidden" name="next" value={next} />
-        <button type="submit" className="rounded-control bg-accent px-4 py-2 font-ui text-control text-page">
-          Accept and continue
-        </button>
-      </form>
-    </div>
+    <Page width="form">
+      <PageHeader title={changed ? "The terms have changed" : "Before you play"} description={changed ? "New versions of the Terms of Service and Privacy Policy are in effect." : undefined} />
+      <Card className="flex flex-col gap-5">
+        <p>Read the Terms of Service and the Privacy Policy. Accept them to continue.</p>
+        <ul className="flex flex-col gap-2">
+          <li>
+            <Link href="/terms" className="inline-flex items-center gap-2 font-medium text-accent underline">
+              <FileText {...ICON_DENSE} />
+              Terms of Service
+            </Link>
+          </li>
+          <li>
+            <Link href="/privacy" className="inline-flex items-center gap-2 font-medium text-accent underline">
+              <ShieldCheck {...ICON_DENSE} />
+              Privacy Policy
+            </Link>
+          </li>
+        </ul>
+        <form action={acceptTermsAction} className="border-t border-rule pt-5">
+          <input type="hidden" name="version" value={TERMS_VERSION} />
+          <input type="hidden" name="next" value={next} />
+          <Button type="submit" variant="primary" icon={<Check {...ICON_DENSE} />}>
+            Accept and continue
+          </Button>
+        </form>
+      </Card>
+    </Page>
   );
 }

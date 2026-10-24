@@ -6,6 +6,7 @@
     "dev": "next dev",
     "demo": "CADMIUM_DEMO=1 NEXT_PUBLIC_CADMIUM_DEMO=1 next dev --port 3100",
     "screens": "node --import tsx scripts/screens.ts",
+    "audit:ui": "node --import tsx scripts/audit-ui.ts",
     "build": "next build",
     "start": "next start",
     "gen": "node --import tsx scripts/gen-bundle.ts",

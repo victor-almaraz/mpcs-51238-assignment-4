@@ -79,8 +79,14 @@ Clerk keeps the `users` table current through a webhook endpoint at `https://<ho
 | `pnpm materials check DIR` | The Content Compiler's `check` subcommand |
 | `pnpm harness play ...` | The engine's command-line harness; see `lib/harness/cli.ts` |
 | `pnpm golden` | Rewrite the golden scenario files after an intended behaviour change |
-| `pnpm bundles` | Build the bundles to publish on a fresh deployment (example settings, Quest Quick Start, the guide adventure) into `bundles/` |
-| `pnpm eval:parser` | Run the parser evaluation set against the Groq model; needs `GROQ_API_KEY` in the environment; exits 1 below 90% exact match or on an overreach violation |
+| `pnpm bundles` | Build the bundles to publish on a fresh deployment (example settings, Quest Quick Start, Lantern Coast, the exemplar Sunken Archive) into `bundles/` |
+| `pnpm eval:parser` | Run the parser evaluation set against the Groq model; needs `GROQ_API_KEY` (read from `.env.local` when present); exits 1 below 90% exact match or on an overreach violation |
+| `pnpm agent:run` | Play the exemplar to each ending with a Groq player model and the parser; logs go to `agent-runs/` |
+| `pnpm sim` | The balance simulation of the exemplar's fights; writes `tools/sim/REPORT.md` |
+| `pnpm demo` | `next dev` on port 3100 in demo mode: signed in as a fixture user against an in-memory database, without Clerk, Realtime, or Groq; `/` lists every screen |
+| `pnpm screens` | Screenshot every demo screen, wide and narrow, into `screenshots/` with the installed Chrome (run `pnpm demo` first) |
+| `pnpm audit:ui` | Design and accessibility audit of every demo screen at 1280 and 390 px into `screenshots/audit.md` (run `pnpm demo` first) |
+| `pnpm db:fresh` | Write `supabase/fresh.sql`: delete every Cadmium table and function and apply every migration, in one transaction |
 
 The Content Compiler's command line follows [`spec/README.md`](cadmium-spec/spec/README.md#compiler-interface). pnpm prints the script line on stdout, so run `build` directly when its output is piped:
 
@@ -104,8 +110,10 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `lib/store/` | The store: bundles, instances, atomic commits, events, inputs, narration, as SQL functions called through an `Rpc` (supabase-js in production, PGlite in tests) |
 | `lib/api/` | Operations of api.md: users and the terms gate, systems, materials, characters, campaigns, invitations, instances and play; `http.ts` is the `/v1` binding |
 | `lib/server/` | Server-only configuration, the service-role Supabase client, the session user, and server actions |
+| `docs/design/` | The application's pattern library, which replaces the specification's Margin design |
+| `components/ui/` | The shared interface components of the pattern library |
 | `components/editor/` | The adventure editor: sections, the map editor, YAML views |
-| `components/` | Shared form components; `systems/` holds creation forms and sheet views registered by rules-system id |
+| `components/` | Feature components; `systems/` holds creation forms, sheet views, and stats editors registered by rules-system id |
 | `lib/coordinator/` | The Instance Coordinator: serialized commits, round deadlines, messages; the operator operations `replay_instance` and `restore_instance` |
 | `lib/broadcast/` | Realtime broadcast from the server, and browser subscriptions delivered in version order |
 | `lib/map/` | Play maps as drawing operations with click targets, and their canvas painter |
@@ -121,7 +129,9 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `lib/bundle/` | Schema registry and generated types; generated files are never edited by hand |
 | `lib/materials/` | Content Compiler: pack reading, schema explanations, rules-system, cross-reference, map, and art checks, bundles, and the `materials` command line |
 | `scripts/` | Build-time scripts, such as type generation |
-| `materials/` | Material packs shipped with the application: `quest_starter`, the Quest Quick Start abilities (CC BY 4.0) |
+| `materials/` | Material packs shipped with the application: `quest_starter` (the Quest Quick Start abilities, CC BY 4.0), `lantern_coast`, and the exemplar `sunken_archive` |
+| `tools/sim/` | The balance simulation |
+| `public/fonts/` | Libertinus Serif (SIL Open Font License, `OFL.txt`) for story text |
 | `tests/` | Tests that span modules, such as specification validation |
 
 Modules under `lib/` follow the boundaries in [`engine-implementation.md`](cadmium-spec/docs/guides/engine-implementation.md#module-boundaries). `rng`, `grid`, `generator`, and `engine` perform no I/O.

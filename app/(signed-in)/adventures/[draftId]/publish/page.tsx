@@ -1,6 +1,6 @@
 // Publish (app-flow.md, Adventure editor: Publishing): a version, the diagnostics, and the changes
 // since the last published version with the suggested increment (runbooks/content-publishing.md).
-import Link from "next/link";
+import { Upload } from "lucide-react";
 import { ActionForm } from "@/components/action-form";
 import { getDraft, validateDraft } from "@/lib/api/drafts";
 import { publishDraftAction } from "@/lib/server/draft-actions";
@@ -8,6 +8,12 @@ import { orNotFound } from "@/lib/server/pages";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
 import type { AdventureBundle } from "@/lib/bundle/adventure";
+import { Badge } from "@/components/ui/badge";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { Field, FieldGroup, TextInput, described } from "@/components/ui/field";
+import { ICON_DENSE } from "@/components/ui/icon-button";
+import { Notice } from "@/components/ui/notice";
+import { Page, PageHeader } from "@/components/ui/page";
 
 type Doc = { adventure?: { endings?: Record<string, unknown> }; arcs?: object; locations?: object; npcs?: object; entities?: object; flags?: object };
 
@@ -39,55 +45,55 @@ export default async function Publish({ params }: { params: Promise<{ draftId: s
   const s = suggest(previous, draft.document as Doc);
   const errors = diagnostics.filter((d) => d.severity === "error");
   const warnings = diagnostics.filter((d) => d.severity === "warning");
+  const problems = (list: typeof diagnostics) => (
+    <ul className="mt-2 flex flex-col gap-1 text-caption">
+      {list.map((d, i) => (
+        <li key={i} className="flex flex-wrap gap-x-2">
+          <span className="font-mono text-muted">{d.pointer || "/"}</span>
+          <span>{d.message}</span>
+        </li>
+      ))}
+    </ul>
+  );
   return (
-    <div className="mx-auto max-w-page px-6 py-10">
-      <Link href={`/adventures/${draftId}/edit`} className="font-ui text-caption text-muted">
-        {draft.title}
-      </Link>
-      <h1 className="font-display text-title">Publish</h1>
-      <p className="mt-2">
-        {draft.last_published_version ? `Last published: ${draft.last_published_version}.` : "Not published yet."} Suggested: a {s.increment} version ({s.why}).
-      </p>
-      {errors.length > 0 ? (
-        <div className="mt-4">
-          <p className="text-danger">
-            Fix {errors.length} problem{errors.length === 1 ? "" : "s"} to publish.
-          </p>
-          <ul className="mt-2 font-ui text-caption">
-            {errors.slice(0, 20).map((d, i) => (
-              <li key={i}>
-                <span className="font-mono">{d.pointer || "/"}</span> {d.message}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : (
-        <ActionForm action={publishDraftAction} className="mt-6 flex items-end gap-2">
-          <input type="hidden" name="draft_id" value={draftId} />
-          <label className="flex flex-col gap-1">
-            <span className="font-ui text-label">Version</span>
-            <input name="version" required defaultValue={next(draft.last_published_version, s.increment)} pattern="\d+\.\d+\.\d+" className="w-32 rounded-control border border-border bg-page px-2 py-1 font-mono text-code" />
-          </label>
-          <button type="submit" className="rounded-control bg-accent px-4 py-2 font-ui text-control text-page">
-            Publish
-          </button>
-        </ActionForm>
-      )}
-      {warnings.length > 0 && (
-        <div className="mt-6">
-          <p className="text-warning">
-            {warnings.length} warning{warnings.length === 1 ? "" : "s"}; publishing is allowed.
-          </p>
-          <ul className="mt-2 font-ui text-caption">
-            {warnings.map((d, i) => (
-              <li key={i}>
-                <span className="font-mono">{d.pointer || "/"}</span> {d.message}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      <p className="mt-6 font-ui text-caption text-muted">A published adventure is usable only in campaigns you create; players reach it by invitation.</p>
-    </div>
+    <Page width="form">
+      <PageHeader
+        crumbs={[
+          { label: "Adventures", href: "/adventures" },
+          { label: draft.title, href: `/adventures/${draftId}/edit` },
+        ]}
+        title="Publish"
+        status={draft.last_published_version ? <Badge tone="success">{`Published ${draft.last_published_version}`}</Badge> : <Badge>Not published</Badge>}
+        description={`${draft.last_published_version ? `Last published: ${draft.last_published_version}.` : "Not published yet."} Suggested: a ${s.increment} version (${s.why}).`}
+      />
+      <div className="flex flex-col gap-6">
+        {errors.length > 0 ? (
+          <Notice tone="danger" title={`Fix ${errors.length} problem${errors.length === 1 ? "" : "s"} to publish.`}>
+            {problems(errors.slice(0, 20))}
+            <ButtonLink href={`/adventures/${draftId}/edit`} size="sm" className="mt-3">
+              Open the editor
+            </ButtonLink>
+          </Notice>
+        ) : (
+          <FieldGroup legend="New version">
+            <ActionForm action={publishDraftAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+              <input type="hidden" name="draft_id" value={draftId} />
+              <Field id="publish-version" className="sm:max-w-xs" label="Version" hint="Major, minor, and patch, such as 1.2.0.">
+                <TextInput {...described("publish-version", { hint: true })} name="version" required defaultValue={next(draft.last_published_version, s.increment)} pattern="\d+\.\d+\.\d+" className="font-mono text-code" />
+              </Field>
+              <Button type="submit" variant="primary" icon={<Upload {...ICON_DENSE} />} className="h-10">
+                Publish
+              </Button>
+            </ActionForm>
+          </FieldGroup>
+        )}
+        {warnings.length > 0 && (
+          <Notice tone="warning" title={`${warnings.length} warning${warnings.length === 1 ? "" : "s"}; publishing is allowed.`}>
+            {problems(warnings)}
+          </Notice>
+        )}
+        <p className="text-caption text-muted">A published adventure is usable only in campaigns you create; players reach it by invitation.</p>
+      </div>
+    </Page>
   );
 }

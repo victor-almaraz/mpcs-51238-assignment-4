@@ -1,36 +1,31 @@
 "use client";
-// The adventure editor (app-flow.md, Adventure editor): sections, a workspace per section, every
-// section also as YAML, the Problems panel, and a status bar with save state, Undo, Redo, Snapshot,
-// Export, and Publish. Saves 2 seconds after the last edit with the draft revision; a local backup in
-// IndexedDB keeps unsaved changes across reloads. Every edit is also validated in the browser after
-// 400 ms (live-validation.ts); a save's diagnostics from the server replace the browser's.
-import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
+// The adventure editor (app-flow.md, Adventure editor; docs/design/README.md, Adventure editor): a
+// workspace with a toolbar (title, save state, Undo, Redo, Edit as YAML, Playtest, Snapshots, Export,
+// Publish), the outline of sections on the left (a menu on compact screens), the selected section's
+// editor in the centre, Playtest as a pane beside it, the Problems panel at the foot, and a status bar
+// whose problem count toggles the panel. Saves 2 seconds after the last edit with the draft revision; a
+// local backup in IndexedDB keeps unsaved changes across reloads. Every edit is also validated in the
+// browser after 400 ms (live-validation.ts); a save's diagnostics from the server replace the browser's.
+import { Braces, ChevronDown, ChevronUp, CircleAlert, CircleCheck, CircleDot, Download, FileText, Flag, History, LoaderCircle, Map as MapIcon, Menu, Package, Play, Redo2, TriangleAlert, Undo2, Users, Workflow, X } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { parse, stringify } from "yaml";
 import { copyDraftAction, requiredSettingsAction, saveDraftAction } from "@/lib/server/draft-actions";
-import { content, freshId, ID, type Adventure, type AuthoredLocation, type Doc, type Flag, type Npc, type Problem, type Refs } from "./doc";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { cx } from "@/components/ui/cx";
+import { TextInput } from "@/components/ui/field";
+import { ICON, ICON_DENSE, IconButton } from "@/components/ui/icon-button";
+import { Tip } from "@/components/ui/tip";
+import { Sheet } from "@/components/ui/sheet";
+import { content, type Doc, type Problem, type Refs } from "./doc";
 import { EntitiesSection } from "./entities";
 import { useLiveValidation } from "./live-validation";
-import { MapEditor } from "./map-editor";
 import { PlotSection } from "./plot";
 import { Playtest } from "./playtest";
+import { counts, focusPointer, inside, isError, ProblemBadge, ProblemsPanel, ProblemsProvider, sectionOf, SECTIONS, segments, useRemembered, type Section } from "./problems";
+import { Flags, Locations, Npcs, Overview, YamlPanel, type Reveal } from "./sections";
 import type { SettingBundle } from "@/lib/bundle/setting";
 
-type Section = "overview" | "flags" | "plot" | "locations" | "npcs" | "entities";
-const SECTIONS: { id: Section; label: string; key: keyof Doc }[] = [
-  { id: "overview", label: "Overview", key: "adventure" },
-  { id: "flags", label: "Flags", key: "flags" },
-  { id: "plot", label: "Plot", key: "arcs" },
-  { id: "locations", label: "Locations", key: "locations" },
-  { id: "npcs", label: "NPCs", key: "npcs" },
-  { id: "entities", label: "Items & creatures", key: "entities" },
-];
-const SECTION_OF: Record<string, Section> = { adventure: "overview", flags: "flags", arcs: "plot", locations: "locations", npcs: "npcs", entities: "entities" };
-
-const field = "rounded-control border border-border bg-page px-2 py-1";
-const small = "rounded-control border border-border bg-page px-1 font-ui text-caption";
-const quiet = "font-ui text-caption text-accent";
+const PROBLEMS_ID = "editor-problems";
 
 // Local backup -------------------------------------------------------------------------------------
 
@@ -49,352 +44,77 @@ function idb<T>(run: (store: IDBObjectStore) => IDBRequest<T>, mode: IDBTransact
 }
 const backup = { put: (id: string, v: unknown) => idb((s) => s.put(v, id), "readwrite"), get: (id: string) => idb<{ revision: number; doc: Doc }>((s) => s.get(id), "readonly"), drop: (id: string) => idb((s) => s.delete(id), "readwrite") };
 
-// YAML panel ---------------------------------------------------------------------------------------
+// Outline ------------------------------------------------------------------------------------------
 
-function YamlPanel({ value, onApply }: { value: unknown; onApply: (v: unknown) => void }) {
-  const [text, setText] = useState(() => stringify(value, { version: "1.2" }));
-  const [error, setError] = useState<string | null>(null);
+const SECTION_ICONS: Record<Section, ReactNode> = {
+  overview: <FileText {...ICON_DENSE} />,
+  flags: <Flag {...ICON_DENSE} />,
+  plot: <Workflow {...ICON_DENSE} />,
+  locations: <MapIcon {...ICON_DENSE} />,
+  npcs: <Users {...ICON_DENSE} />,
+  entities: <Package {...ICON_DENSE} />,
+};
+
+const row = "flex w-full items-center gap-2 rounded-control text-left hover:bg-desk aria-[current=true]:bg-accent-soft aria-[current=true]:text-accent";
+
+function Outline({ doc, problems, section, location, arc, open }: { doc: Doc; problems: Problem[]; section: Section; location: string | null; arc: string | null; open: (s: Section, sub?: string) => void }) {
   return (
-    <div className="flex flex-col gap-2">
-      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={24} spellCheck={false} className={`${field} font-mono text-code`} />
-      {error && <p className="font-ui text-caption text-danger">{error}</p>}
-      <div>
-        <button
-          type="button"
-          className="rounded-control border border-border px-3 py-1 font-ui text-control"
-          onClick={() => {
-            try {
-              onApply(parse(text, { version: "1.2" }) ?? {});
-              setError(null);
-            } catch (e) {
-              setError((e as Error).message);
-            }
-          }}
-        >
-          Apply YAML
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// Sections -----------------------------------------------------------------------------------------
-
-function Overview({ doc, refs, edit }: { doc: Doc; refs: Refs; edit: (f: (d: Doc) => void) => void }) {
-  const a = doc.adventure;
-  const locations = Object.keys(doc.locations);
-  const start = doc.locations[a.start.location];
-  const rooms = start && start.kind === "authored" ? Object.keys((start as AuthoredLocation).map.rooms) : [];
-  const set = (f: (a: Adventure) => void) => edit((d) => f(d.adventure));
-  return (
-    <div className="flex flex-col gap-4">
-      <label className="flex flex-col gap-1">
-        <span className="font-ui text-label">Title</span>
-        <input value={a.title} maxLength={80} onChange={(e) => set((x) => void (x.title = e.target.value))} className={field} />
-      </label>
-      <label className="flex flex-col gap-1">
-        <span className="font-ui text-label">Description</span>
-        <textarea value={a.description ?? ""} maxLength={2000} rows={3} onChange={(e) => set((x) => void (e.target.value ? (x.description = e.target.value) : delete x.description))} className={field} />
-      </label>
-      <p className="font-ui text-label">
-        System: {a.system.id} {a.system.versions} <span className="text-muted">(fixed after creation)</span>
-      </p>
-      <fieldset className="flex flex-col gap-1">
-        <legend className="font-ui text-label">Required settings</legend>
-        {refs.settings.map((s) => {
-          const r = a.requires_settings.find((x) => x.id === s.id);
-          return (
-            <div key={s.id} className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={!!r}
-                onChange={(e) =>
-                  set((x) => {
-                    const [major, minor] = s.version.split(".");
-                    x.requires_settings = e.target.checked ? [...x.requires_settings, { id: s.id, versions: `^${major}.${minor}` }] : x.requires_settings.filter((q) => q.id !== s.id);
-                  })
-                }
-              />
-              <span>{s.title}</span>
-              {r && <input aria-label={`${s.id} versions`} value={r.versions} onChange={(e) => set((x) => void (x.requires_settings.find((q) => q.id === s.id)!.versions = e.target.value))} className={`${small} w-20 font-mono`} />}
-            </div>
-          );
-        })}
-      </fieldset>
-      <div className="flex items-center gap-2">
-        <span className="font-ui text-label">Players</span>
-        <input type="number" min={1} max={a.players[1]} value={a.players[0]} onChange={(e) => set((x) => void (x.players[0] = Number(e.target.value)))} className={`${small} w-14`} />
-        to
-        <input type="number" min={a.players[0]} max={8} value={a.players[1]} onChange={(e) => set((x) => void (x.players[1] = Number(e.target.value)))} className={`${small} w-14`} />
-      </div>
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-ui text-label">Start</span>
-        <select aria-label="Start location" value={a.start.location} onChange={(e) => set((x) => void (x.start = { ...x.start, location: e.target.value, room: "" }))} className={small}>
-          <option value="">location</option>
-          {locations.map((l) => (
-            <option key={l} value={l}>
-              {l}
-            </option>
-          ))}
-        </select>
-        <select aria-label="Start room" value={a.start.room} onChange={(e) => set((x) => void (x.start.room = e.target.value))} className={small}>
-          <option value="">room</option>
-          {rooms.map((r) => (
-            <option key={r} value={r}>
-              {r}
-            </option>
-          ))}
-        </select>
-      </div>
-      <div>
-        <p className="font-ui text-label">Endings</p>
-        <div className="mt-1 flex flex-wrap gap-2">
-          {Object.entries(a.endings).map(([id, e]) => (
-            <div key={id} className="flex items-center gap-1 rounded-control border border-rule p-2">
-              <span className="font-mono text-code">{id}</span>
-              <input aria-label={`${id} label`} value={e.label} onChange={(ev) => set((x) => void (x.endings[id]!.label = ev.target.value))} className={`${small} w-44`} />
-              <button type="button" className="font-ui text-caption text-danger" onClick={() => set((x) => void delete x.endings[id])}>
-                Remove
-              </button>
-            </div>
-          ))}
-          <button type="button" className={quiet} onClick={() => set((x) => void (x.endings[freshId(Object.keys(x.endings).length ? "ending" : "lost", Object.keys(x.endings))] = { label: "New ending" }))}>
-            Add ending
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function usesOf(doc: Doc, flag: string): number {
-  const text = JSON.stringify([doc.arcs, doc.npcs, doc.locations, doc.adventure.start]);
-  return (text.match(new RegExp(`"flag":"${flag}"`, "g")) ?? []).length;
-}
-
-function Flags({ doc, edit }: { doc: Doc; edit: (f: (d: Doc) => void) => void }) {
-  const [blocked, setBlocked] = useState<string | null>(null);
-  return (
-    <div className="flex flex-col gap-2">
-      <table className="font-ui text-caption">
-        <thead>
-          <tr className="text-left text-muted">
-            <th className="pr-2">Name</th>
-            <th className="pr-2">Type</th>
-            <th className="pr-2">Range or values</th>
-            <th className="pr-2">Initial</th>
-            <th className="pr-2">Used by</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {Object.entries(doc.flags).map(([id, f]) => (
-            <tr key={id} className="border-b border-rule">
-              <td className="py-1 pr-2 font-mono">{id}</td>
-              <td className="pr-2">
-                <select
-                  aria-label={`${id} type`}
-                  value={f.type}
-                  onChange={(e) =>
-                    edit((d) => {
-                      const t = e.target.value as Flag["type"];
-                      d.flags[id] = t === "bool" ? { type: t, initial: false } : t === "int" ? { type: t, min: 0, max: 10, initial: 0 } : { type: t, values: ["a", "b"], initial: "a" };
-                    })
-                  }
-                  className={small}
-                >
-                  <option value="bool">bool</option>
-                  <option value="int">int</option>
-                  <option value="enum">enum</option>
-                </select>
-              </td>
-              <td className="pr-2">
-                {f.type === "int" && (
-                  <span className="flex gap-1">
-                    <input aria-label="min" type="number" value={f.min ?? 0} onChange={(e) => edit((d) => void (d.flags[id]!.min = Number(e.target.value)))} className={`${small} w-14`} />
-                    <input aria-label="max" type="number" value={f.max ?? 0} onChange={(e) => edit((d) => void (d.flags[id]!.max = Number(e.target.value)))} className={`${small} w-14`} />
-                  </span>
-                )}
-                {f.type === "enum" && <input aria-label="values" defaultValue={(f.values ?? []).join(", ")} onBlur={(e) => edit((d) => void (d.flags[id]!.values = e.target.value.split(/[,\s]+/).filter(Boolean)))} className={`${small} w-40`} />}
-              </td>
-              <td className="pr-2">
-                {f.type === "bool" ? (
-                  <input type="checkbox" checked={f.initial === true} onChange={(e) => edit((d) => void (d.flags[id]!.initial = e.target.checked))} />
-                ) : f.type === "int" ? (
-                  <input type="number" value={Number(f.initial)} onChange={(e) => edit((d) => void (d.flags[id]!.initial = Number(e.target.value)))} className={`${small} w-14`} />
-                ) : (
-                  <select value={String(f.initial)} onChange={(e) => edit((d) => void (d.flags[id]!.initial = e.target.value))} className={small}>
-                    {(f.values ?? []).map((v) => (
-                      <option key={v}>{v}</option>
-                    ))}
-                  </select>
-                )}
-              </td>
-              <td className="pr-2">{usesOf(doc, id)}</td>
-              <td>
-                <button
-                  type="button"
-                  className="text-danger"
-                  onClick={() => {
-                    const n = usesOf(doc, id);
-                    if (n > 0) return setBlocked(`${id} is used ${n} time${n === 1 ? "" : "s"}; remove those uses first.`);
-                    edit((d) => void delete d.flags[id]);
-                  }}
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {blocked && <p className="font-ui text-caption text-danger">{blocked}</p>}
-      <NewId label="Add flag" taken={Object.keys(doc.flags)} onAdd={(id) => edit((d) => void (d.flags[id] = { type: "bool", initial: false }))} />
-    </div>
-  );
-}
-
-function NewId({ label, taken, onAdd }: { label: string; taken: string[]; onAdd: (id: string) => void }) {
-  const [id, setId] = useState("");
-  const ok = ID.test(id) && !taken.includes(id);
-  return (
-    <form
-      className="flex items-center gap-2"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (ok) {
-          onAdd(id);
-          setId("");
-        }
-      }}
-    >
-      <input aria-label="New id" value={id} placeholder="new_id" onChange={(e) => setId(e.target.value)} className={`${small} w-40 font-mono`} />
-      <button type="submit" disabled={!ok} className={`${quiet} disabled:text-muted`}>
-        {label}
-      </button>
-    </form>
-  );
-}
-
-function Locations({ doc, refs, edit, focus }: { doc: Doc; refs: Refs; edit: (f: (d: Doc) => void) => void; focus: string | null }) {
-  const ids = Object.keys(doc.locations);
-  const [current, setCurrent] = useState<string | null>(focus ?? ids[0] ?? null);
-  const loc = current ? doc.locations[current] : undefined;
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-3 font-ui text-control">
-        {ids.map((id) => (
-          <button key={id} type="button" aria-pressed={id === current} onClick={() => setCurrent(id)} className={id === current ? "border-b-2 border-accent" : "text-muted"}>
-            {id}
-          </button>
-        ))}
-        <NewId
-          label="Add authored location"
-          taken={ids}
-          onAdd={(id) => {
-            edit((d) => void (d.locations[id] = { id, kind: "authored", map: { rows: ["##########", "#........#", "#........#", "#........#", "##########"], rooms: {} } }));
-            setCurrent(id);
-          }}
-        />
-      </div>
-      {loc?.kind === "authored" && (
-        <MapEditor
-          loc={loc as AuthoredLocation}
-          doc={doc}
-          refs={refs}
-          change={(f) =>
-            edit((d) => {
-              f(d.locations[current!] as AuthoredLocation, d);
-            })
-          }
-        />
-      )}
-      {loc && loc.kind !== "authored" && <YamlPanel key={current} value={loc} onApply={(v) => edit((d) => void (d.locations[current!] = v as never))} />}
-      {loc && (
-        <button type="button" className="self-start font-ui text-caption text-danger" onClick={() => edit((d) => void delete d.locations[current!])}>
-          Delete location
-        </button>
-      )}
-    </div>
-  );
-}
-
-function Npcs({ doc, refs, edit }: { doc: Doc; refs: Refs; edit: (f: (d: Doc) => void) => void }) {
-  const creatures = refs.templates.filter((t) => t.kind === "creature");
-  const set = (id: string, f: (n: Npc) => void) => edit((d) => f(d.npcs[id]!));
-  return (
-    <div className="flex flex-col gap-6">
-      {Object.values(doc.npcs).map((n) => (
-        <section key={n.id} className="flex flex-col gap-2 rounded-control border border-rule p-3">
-          <div className="flex items-baseline justify-between">
-            <span className="font-mono text-code">{n.id}</span>
-            <button type="button" className="font-ui text-caption text-danger" onClick={() => edit((d) => void delete d.npcs[n.id])}>
-              Delete NPC
+    <ul className="flex flex-col gap-0.5">
+      {SECTIONS.map((s) => {
+        const mine = problems.filter((p) => sectionOf(p.pointer) === s.id);
+        const subs = s.id === "plot" ? Object.values(doc.arcs).map((a) => ({ id: a.id, label: a.title || a.id, pointer: `/arcs/${a.id}` })) : s.id === "locations" ? Object.keys(doc.locations).map((id) => ({ id, label: id, pointer: `/locations/${id}` })) : [];
+        const sub = s.id === "plot" ? arc : s.id === "locations" ? location : null;
+        const here = section === s.id;
+        return (
+          <li key={s.id}>
+            <button type="button" aria-current={here && subs.length === 0 ? "true" : undefined} onClick={() => open(s.id)} className={cx(row, "h-9 px-3 text-control", here && "font-semibold text-ink")}>
+              <span className={cx("shrink-0", here ? "text-accent" : "text-muted")}>{SECTION_ICONS[s.id]}</span>
+              <span className="min-w-0 flex-1 truncate">{s.label}</span>
+              <ProblemBadge problems={mine} />
+              {s.id !== "overview" && (
+                <span className="w-5 shrink-0 text-right text-caption font-normal text-muted tabular">
+                  {Object.keys(doc[s.key]).length}
+                  <span className="sr-only"> {Object.keys(doc[s.key]).length === 1 ? "entry" : "entries"}</span>
+                </span>
+              )}
             </button>
-          </div>
-          <input aria-label="Name" value={n.name} onChange={(e) => set(n.id, (x) => void (x.name = e.target.value))} className={field} />
-          <div className="flex gap-2">
-            <select aria-label="Template" value={n.template} onChange={(e) => set(n.id, (x) => void (x.template = e.target.value))} className={small}>
-              <option value="">template</option>
-              {creatures.map((t) => (
-                <option key={t.ref} value={t.ref}>
-                  {t.label}
-                </option>
-              ))}
-            </select>
-            <select aria-label="Disposition" value={n.disposition ?? ""} onChange={(e) => set(n.id, (x) => void (e.target.value ? (x.disposition = e.target.value as Npc["disposition"]) : delete x.disposition))} className={small}>
-              <option value="">disposition</option>
-              {["friendly", "neutral", "wary", "hostile"].map((v) => (
-                <option key={v}>{v}</option>
-              ))}
-            </select>
-          </div>
-          <p className="font-ui text-label">Topics</p>
-          {Object.entries(n.topics ?? {}).map(([tid, t]) => (
-            <div key={tid} className="flex flex-col gap-1 rounded-control border border-rule p-2">
-              <span className="font-mono text-code">{tid}</span>
-              <input aria-label="Topic label" value={t.label} onChange={(e) => set(n.id, (x) => void (x.topics![tid]!.label = e.target.value))} className={small} />
-              <textarea aria-label="Brief" value={t.brief} rows={2} onChange={(e) => set(n.id, (x) => void (x.topics![tid]!.brief = e.target.value))} className={small} placeholder="What the narrator may say about it" />
-              <input
-                aria-label="When (YAML)"
-                defaultValue={t.when === undefined ? "" : stringify(t.when, { version: "1.2" }).trim()}
-                placeholder="when, as YAML, such as { flag: met_archivist }"
-                onBlur={(e) =>
-                  set(n.id, (x) => {
-                    try {
-                      const v = e.target.value.trim() ? parse(e.target.value, { version: "1.2" }) : undefined;
-                      if (v === undefined) delete x.topics![tid]!.when;
-                      else x.topics![tid]!.when = v;
-                    } catch {
-                      /* kept as before; the YAML view reports the error */
-                    }
-                  })
-                }
-                className={`${small} font-mono`}
-              />
-              <button type="button" className="self-start font-ui text-caption text-danger" onClick={() => set(n.id, (x) => void delete x.topics![tid])}>
-                Remove topic
-              </button>
-            </div>
-          ))}
-          <NewId label="Add topic" taken={Object.keys(n.topics ?? {})} onAdd={(tid) => set(n.id, (x) => void (x.topics = { ...(x.topics ?? {}), [tid]: { label: tid.replace(/_/g, " "), brief: "" } }))} />
-          <p className="font-ui text-label">Secrets</p>
-          {Object.entries(n.secrets ?? {}).map(([sid, text]) => (
-            <div key={sid} className="flex items-center gap-2">
-              <span className="font-mono text-code">{sid}</span>
-              <input aria-label={`${sid} secret`} value={text} onChange={(e) => set(n.id, (x) => void (x.secrets![sid] = e.target.value))} className={`${small} flex-1`} />
-              <button type="button" className="font-ui text-caption text-danger" onClick={() => set(n.id, (x) => void delete x.secrets![sid])}>
-                Remove
-              </button>
-            </div>
-          ))}
-          <NewId label="Add secret" taken={Object.keys(n.secrets ?? {})} onAdd={(sid) => set(n.id, (x) => void (x.secrets = { ...(x.secrets ?? {}), [sid]: "" }))} />
-        </section>
-      ))}
-      <NewId label="Add NPC" taken={Object.keys(doc.npcs)} onAdd={(id) => edit((d) => void (d.npcs[id] = { id, name: id.replace(/_/g, " "), template: creatures[0]?.ref ?? "" }))} />
-    </div>
+            {subs.length > 0 && (
+              <ul className="mb-1 flex flex-col gap-0.5">
+                {subs.map((x) => (
+                  <li key={x.id}>
+                    <button type="button" aria-current={here && sub === x.id ? "true" : undefined} onClick={() => open(s.id, x.id)} className={cx(row, "h-8 pl-9 pr-3 text-label")}>
+                      <span className={cx("min-w-0 flex-1 truncate", s.id === "locations" && "font-mono text-code")}>{x.label}</span>
+                      <ProblemBadge problems={problems.filter((p) => inside(p.pointer, x.pointer))} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
+
+// Toolbar pieces -----------------------------------------------------------------------------------
+
+type Status = { state: "saved" | "pending" | "saving" | "error" | "conflict"; at?: string; message?: string };
+
+function SaveState({ status }: { status: Status }) {
+  const s = status.state;
+  const icon =
+    s === "saved" ? <CircleCheck {...ICON_DENSE} className="text-success" /> : s === "pending" ? <CircleDot {...ICON_DENSE} /> : s === "saving" ? <LoaderCircle {...ICON_DENSE} className="animate-spin" /> : <CircleAlert {...ICON_DENSE} />;
+  const text = s === "saved" ? (status.at ? `Saved ${new Date(status.at).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` : "Saved") : s === "pending" ? "Unsaved changes" : s === "saving" ? "Saving…" : (status.message ?? "Not saved");
+  return (
+    <p role="status" title={text} className={cx("flex min-w-0 items-center gap-1.5 text-caption", s === "error" || s === "conflict" ? "text-danger" : "text-muted")}>
+      <span className="shrink-0">{icon}</span>
+      <span className="truncate">{text}</span>
+    </p>
+  );
+}
+
+const Divider = () => <span aria-hidden="true" className="mx-1 h-5 w-px shrink-0 bg-rule" />;
 
 // Editor -------------------------------------------------------------------------------------------
 
@@ -414,14 +134,21 @@ export function Editor(props: EditorProps) {
   const [past, setPast] = useState<Doc[]>([]);
   const [future, setFuture] = useState<Doc[]>([]);
   const [section, setSection] = useState<Section>("overview");
+  const [location, setLocation] = useState<string | null>(null);
+  const [arc, setArc] = useState<string | null>(null);
   const [yaml, setYaml] = useState(false);
-  const [focus, setFocus] = useState<string | null>(null);
+  const [reveal, setReveal] = useState<Reveal>(null);
+  const [picked, setPicked] = useState<Problem | null>(null);
+  const [outlineOpen, setOutlineOpen] = useState(false);
+  const [snapshotsOpen, setSnapshotsOpen] = useState(false);
+  const [snapshotName, setSnapshotName] = useState("");
+  const [problemsOpen, setProblemsOpen] = useRemembered("cadmium-editor-problems-open", false);
   // The required settings' bundles for validation and playtest; reloaded when requires_settings changes.
   const [settings, setSettings] = useState<SettingBundle[]>(props.settings);
   const [loadingSettings, setLoadingSettings] = useState(false);
   const live = useLiveValidation(props.diagnostics, loadingSettings ? null : settings);
   const problems = live.problems;
-  const [status, setStatus] = useState<{ state: "saved" | "pending" | "saving" | "error" | "conflict"; at?: string; message?: string }>({ state: "saved" });
+  const [status, setStatus] = useState<Status>({ state: "saved" });
   const [restorable, setRestorable] = useState<Doc | null>(null);
   const [playtest, setPlaytest] = useState(false);
   const revision = useRef(props.revision);
@@ -431,6 +158,8 @@ export function Editor(props: EditorProps) {
   const seq = useRef(0);
   const requires = useRef(JSON.stringify(props.document.adventure.requires_settings));
   const settingsRequest = useRef(0);
+  const pane = useRef<HTMLDivElement>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
 
   // Offer unsaved changes from the local backup, when it is newer than the server's copy.
   useEffect(() => {
@@ -511,38 +240,101 @@ export function Editor(props: EditorProps) {
     changed(next);
   };
 
-  const jump = (p: Problem) => {
-    const [, top, id] = p.pointer.split("/");
-    setSection(SECTION_OF[top ?? "adventure"] ?? "overview");
+  /** Opens a section, and for Plot arcs and Locations one of its arcs or locations. */
+  const open = (s: Section, sub?: string) => {
+    setSection(s);
     setYaml(false);
-    if (top === "locations" && id) setFocus(id);
+    if (s === "locations" && sub) setLocation(sub);
+    if (s === "plot" && sub) setArc(sub);
+    setOutlineOpen(false);
+  };
+  const navigate = (s: Section, sub?: string) => {
+    setReveal(null);
+    open(s, sub);
+    // On compact screens Playtest replaces the editor; choosing a section shows the editor again.
+    if (window.matchMedia("(max-width: 639px)").matches) setPlaytest(false);
   };
 
-  const errors = problems.filter((p) => p.severity === "error");
-  const key = SECTIONS.find((s) => s.id === section)!.key;
+  /** A problem from the panel: open its section and focus its field. */
+  const jump = (p: Problem) => {
+    const [top, id] = segments(p.pointer);
+    open(sectionOf(p.pointer), top === "locations" || top === "arcs" ? id : undefined);
+    if (window.matchMedia("(max-width: 639px)").matches) setPlaytest(false);
+    setReveal((r) => ({ pointer: p.pointer, n: (r?.n ?? 0) + 1 }));
+    setPicked(p);
+  };
+  useEffect(() => {
+    if (!reveal) return;
+    const f = requestAnimationFrame(() => {
+      const root = pane.current;
+      if (root && !focusPointer(root, reveal.pointer)) heading.current?.focus();
+    });
+    return () => cancelAnimationFrame(f);
+  }, [reveal]);
+
+  const errors = problems.filter(isError);
+  const warnings = problems.length - errors.length;
+  const meta = SECTIONS.find((s) => s.id === section)!;
+  const key = meta.key;
+  const currentLocation = location && doc.locations[location] ? location : (Object.keys(doc.locations)[0] ?? null);
+  const currentArc = arc && doc.arcs[arc] ? arc : (Object.keys(doc.arcs)[0] ?? null);
+  const general = problems.filter((p) => sectionOf(p.pointer) === "overview" && !inside(p.pointer, "/adventure"));
+  const checking =
+    live.state === "checking" || loadingSettings
+      ? "Checking…"
+      : live.state === "off"
+        ? "Checked when saved"
+        : live.state === "failed"
+          ? "The live check failed; showing the last results"
+          : live.source === "browser"
+            ? "Checked as you edit"
+            : "Checked";
+  const title = doc.adventure.title || doc.adventure.id;
+  const publishWhy = errors.length ? `Fix ${errors.length} error${errors.length === 1 ? "" : "s"} to publish.` : undefined;
+
+  /** Publish, disabled with its reason while the draft has errors; in the title row on compact screens. */
+  const publish = (where: string) =>
+    publishWhy ? (
+      <>
+        <Button variant="primary" disabled aria-describedby={`editor-publish-why-${where}`} title={publishWhy}>
+          Publish
+        </Button>
+        <span id={`editor-publish-why-${where}`} className="sr-only">
+          {publishWhy}
+        </span>
+      </>
+    ) : (
+      <ButtonLink variant="primary" href={`/adventures/${props.draftId}/publish`}>
+        Publish
+      </ButtonLink>
+    );
+
+  const outline = <Outline doc={doc} problems={problems} section={section} location={currentLocation} arc={currentArc} open={navigate} />;
 
   return (
-    <div className="flex min-h-[calc(100vh-7rem)] flex-col">
+    <div data-workspace="editor" className="flex h-[calc(100dvh-var(--size-topbar)-1px)] min-h-[28rem] flex-col">
       {restorable && (
-        <p className="border-b border-warning bg-warning-soft px-4 py-2 font-ui text-control">
-          This browser holds unsaved changes.{" "}
-          <button type="button" className="underline" onClick={() => (commit(restorable, latest.current), setRestorable(null))}>
+        <div role="status" className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-warning bg-warning-soft px-4 py-2 text-body">
+          <TriangleAlert {...ICON_DENSE} className="text-warning" />
+          <span>This browser holds unsaved changes to this draft.</span>
+          <Button variant="secondary" size="sm" onClick={() => (commit(restorable, latest.current), setRestorable(null))}>
             Restore them
-          </button>{" "}
-          <button type="button" className="ml-2 text-muted underline" onClick={() => (setRestorable(null), void backup.drop(props.draftId))}>
+          </Button>
+          <Button variant="quiet" size="sm" onClick={() => (setRestorable(null), void backup.drop(props.draftId))}>
             Discard
-          </button>
-        </p>
+          </Button>
+        </div>
       )}
       {status.state === "conflict" && (
-        <p className="border-b border-danger bg-danger-soft px-4 py-2 font-ui text-control">
-          {status.message}{" "}
-          <button type="button" className="underline" onClick={() => window.location.reload()}>
+        <div role="alert" className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 border-b border-danger bg-danger-soft px-4 py-2 text-body">
+          <CircleAlert {...ICON_DENSE} className="text-danger" />
+          <span>{status.message}</span>
+          <Button variant="secondary" size="sm" onClick={() => window.location.reload()}>
             Reload
-          </button>{" "}
-          <button
-            type="button"
-            className="ml-2 underline"
+          </Button>
+          <Button
+            variant="quiet"
+            size="sm"
             onClick={async () => {
               const a = latest.current.adventure;
               const r = await copyDraftAction({ document: latest.current as unknown as Record<string, unknown>, material_id: a.id, title: `${a.title} (copy)`.slice(0, 80), system: a.system.id, requires: a.requires_settings });
@@ -551,116 +343,176 @@ export function Editor(props: EditorProps) {
             }}
           >
             Keep mine as a new draft
-          </button>
-        </p>
+          </Button>
+        </div>
       )}
-      <div className="grid flex-1 grid-cols-1 gap-6 px-4 py-4 lg:grid-cols-[12rem_minmax(0,1fr)_16rem]">
-        <nav className="flex flex-row flex-wrap gap-2 font-ui text-control lg:flex-col">
-          <p className="hidden font-display text-heading lg:block">{doc.adventure.title || doc.adventure.id}</p>
-          {SECTIONS.map((s) => (
-            <button key={s.id} type="button" aria-current={s.id === section ? "page" : undefined} onClick={() => (setSection(s.id), setYaml(false))} className={`text-left ${s.id === section ? "text-accent" : ""}`}>
-              {s.label}
-            </button>
-          ))}
-        </nav>
-        <main className="min-w-0">
-          <div className="mb-4 flex items-baseline justify-between">
-            <h1 className="font-display text-title">{SECTIONS.find((s) => s.id === section)!.label}</h1>
-            <button type="button" aria-pressed={yaml} onClick={() => setYaml(!yaml)} className={quiet}>
-              {yaml ? "Close YAML" : "Edit as YAML"}
-            </button>
-          </div>
-          {yaml ? (
-            <YamlPanel key={`${section}:${past.length}:${future.length}`} value={doc[key]} onApply={(v) => edit((d) => void ((d as unknown as Record<string, unknown>)[key] = v))} />
-          ) : section === "overview" ? (
-            <Overview doc={doc} refs={props.refs} edit={edit} />
-          ) : section === "flags" ? (
-            <Flags doc={doc} edit={edit} />
-          ) : section === "plot" ? (
-            <PlotSection doc={doc} refs={props.refs} edit={edit} />
-          ) : section === "locations" ? (
-            <Locations doc={doc} refs={props.refs} edit={edit} focus={focus} />
-          ) : section === "npcs" ? (
-            <Npcs doc={doc} refs={props.refs} edit={edit} />
-          ) : (
-            <EntitiesSection doc={doc} edit={edit} problems={problems} />
-          )}
-        </main>
-        <aside className="flex flex-col gap-4 font-ui text-caption">
-          <div>
-            <p className="font-ui text-label">Problems ({errors.length})</p>
-            <p className="text-muted">
-              {live.state === "checking" || loadingSettings
-                ? "Checking…"
-                : live.state === "off"
-                  ? "Checked when saved."
-                  : live.state === "failed"
-                    ? "The live check failed; showing the last results."
-                    : live.source === "browser"
-                      ? "Checked as you edit."
-                      : "Checked when saved."}
-            </p>
-            {problems.length === 0 && <p className="text-muted">None.</p>}
-            <ul className="mt-1 flex max-h-96 flex-col gap-1 overflow-auto">
-              {problems.map((p, i) => (
-                <li key={i}>
-                  <button type="button" className="text-left" onClick={() => jump(p)}>
-                    <span className={p.severity === "error" ? "text-danger" : "text-warning"}>{i + 1}.</span> {p.message} <span className="font-mono text-muted">{p.pointer || "/"}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p className="font-ui text-label">Snapshots</p>
-            <button
-              type="button"
-              className={quiet}
-              onClick={() => {
-                const name = window.prompt("Snapshot name")?.trim();
-                if (name) edit((d) => void d.editor.snapshots.push({ name: name.slice(0, 80), saved_at: new Date().toISOString(), document: content(d) }));
-              }}
-            >
-              Take snapshot
-            </button>
-            <ul className="mt-1">
-              {doc.editor.snapshots.map((s, i) => (
-                <li key={i} className="flex justify-between gap-2">
-                  <span>{s.name}</span>
-                  <button type="button" className="text-accent" onClick={() => edit((d) => Object.assign(d, structuredClone(s.document as object)))}>
-                    Restore
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </aside>
+
+      {/* Toolbar */}
+      <div className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b border-rule bg-page px-4 py-2">
+        <div className="flex min-w-0 flex-1 basis-56 items-center gap-3">
+          <h1 className="min-w-0 truncate text-heading font-semibold text-ink" title={title}>
+            <span className="sr-only">Editing </span>
+            {title}
+          </h1>
+          <SaveState status={status} />
+          <span className="ml-auto shrink-0 sm:hidden">{publish("compact")}</span>
+        </div>
+        <div className="-mx-1 flex items-center gap-1 relative overflow-x-auto px-1 py-0.5 max-sm:w-full">
+          <IconButton label="Undo" icon={<Undo2 {...ICON} />} onClick={undo} disabled={!past.length} className="disabled:opacity-40 disabled:hover:bg-transparent" />
+          <IconButton label="Redo" icon={<Redo2 {...ICON} />} onClick={redo} disabled={!future.length} className="disabled:opacity-40 disabled:hover:bg-transparent" />
+          <span className="hidden sm:contents">
+            <Divider />
+          </span>
+          <IconButton label="Edit as YAML" tone="outline" icon={<Braces {...ICON} />} aria-pressed={yaml} onClick={() => setYaml(!yaml)} />
+          <Button variant="secondary" aria-pressed={playtest} aria-controls={playtest ? "editor-playtest" : undefined} icon={<Play {...ICON_DENSE} className="hidden sm:block" />} onClick={() => setPlaytest(!playtest)} className="aria-pressed:border-accent aria-pressed:bg-accent-soft aria-pressed:text-accent">
+            Playtest
+          </Button>
+          <IconButton label="Snapshots" icon={<History {...ICON} />} aria-haspopup="dialog" onClick={() => setSnapshotsOpen(true)} />
+          <a href={`/v1/drafts/${props.draftId}/export.zip`} aria-label="Export as a ZIP of YAML files" className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-control text-ink hover:bg-desk">
+            <Download {...ICON} />
+            <Tip label="Export as a ZIP of YAML files" />
+          </a>
+          <span className="hidden items-center gap-1 sm:flex">
+            <Divider />
+            {publish("wide")}
+          </span>
+        </div>
       </div>
-      {playtest && (
-        <section className="border-t border-rule px-4 py-4">
-          <h2 className="mb-2 font-display text-heading">Playtest</h2>
-          <Playtest doc={doc} settings={settings} />
+
+      {/* Panes */}
+      <div className="flex min-h-0 flex-1">
+        <nav aria-label="Sections" className="relative hidden w-64 shrink-0 overflow-y-auto overscroll-contain border-r border-rule bg-page p-2 lg:block">
+          {outline}
+        </nav>
+
+        <section aria-labelledby="editor-section-title" className={cx("min-w-0 flex-1 overflow-y-auto overscroll-contain", playtest ? "hidden sm:block" : "block")}>
+          <div ref={pane} className="@container flex flex-col gap-5 px-4 py-5 sm:px-6">
+            <div className="flex flex-wrap items-center gap-3">
+              <Button variant="secondary" size="sm" icon={<Menu {...ICON_DENSE} />} aria-haspopup="dialog" onClick={() => setOutlineOpen(true)} className="lg:hidden">
+                Sections
+              </Button>
+              <h2 id="editor-section-title" ref={heading} tabIndex={-1} className="text-section font-semibold text-ink focus:outline-none focus-visible:outline-2">
+                {meta.label}
+                {yaml && <span className="font-normal text-muted"> as YAML</span>}
+              </h2>
+              <ProblemBadge problems={problems.filter((p) => sectionOf(p.pointer) === section)} />
+            </div>
+            <ProblemsProvider problems={problems}>
+              {yaml ? (
+                <YamlPanel key={`${section}:${past.length}:${future.length}`} label={`${meta.label} as YAML`} pointer={`/${key}`} value={doc[key]} onApply={(v) => edit((d) => void ((d as unknown as Record<string, unknown>)[key] = v))} />
+              ) : section === "overview" ? (
+                <Overview doc={doc} refs={props.refs} edit={edit} general={general} />
+              ) : section === "flags" ? (
+                <Flags doc={doc} edit={edit} />
+              ) : section === "plot" ? (
+                <PlotSection doc={doc} refs={props.refs} edit={edit} current={currentArc} select={(id) => setArc(id)} reveal={reveal} />
+              ) : section === "locations" ? (
+                <Locations doc={doc} refs={props.refs} edit={edit} current={currentLocation} select={(id) => setLocation(id)} reveal={reveal} />
+              ) : section === "npcs" ? (
+                <Npcs doc={doc} refs={props.refs} edit={edit} />
+              ) : (
+                <EntitiesSection doc={doc} edit={edit} />
+              )}
+            </ProblemsProvider>
+          </div>
         </section>
-      )}
-      <footer className="flex flex-wrap items-center gap-4 border-t border-rule px-4 py-2 font-ui text-caption">
-        <span className={errors.length ? "text-danger" : ""}>Problems ({errors.length})</span>
-        <span>{status.state === "saved" ? (status.at ? `Saved ${new Date(status.at).toLocaleTimeString()}` : "Saved") : status.state === "pending" ? "Unsaved changes" : status.state === "saving" ? "Saving…" : (status.message ?? "Not saved")}</span>
-        <button type="button" onClick={undo} disabled={!past.length} className="disabled:text-muted">
-          Undo
+
+        {playtest && (
+          <aside id="editor-playtest" aria-labelledby="editor-playtest-title" className="relative flex w-full shrink-0 flex-col overflow-y-auto overscroll-contain border-l border-rule bg-page sm:w-1/2 lg:w-[28rem] xl:w-[34rem] 2xl:w-[40rem]">
+            <div className="sticky top-0 z-10 flex h-11 shrink-0 items-center gap-2 border-b border-rule bg-page pl-4 pr-1">
+              <h2 id="editor-playtest-title" className="text-heading font-semibold">
+                Playtest
+              </h2>
+              <span className="text-caption text-muted">No models; the rules run in this browser.</span>
+              <IconButton dense label="Close playtest" icon={<X {...ICON_DENSE} />} onClick={() => setPlaytest(false)} className="ml-auto" />
+            </div>
+            <div className="p-4">
+              <Playtest doc={doc} settings={settings} onShowProblems={() => setProblemsOpen(true)} />
+            </div>
+          </aside>
+        )}
+      </div>
+
+      {problemsOpen && <ProblemsPanel id={PROBLEMS_ID} problems={problems} checking={checking} selected={picked} onSelect={jump} onClose={() => setProblemsOpen(false)} />}
+
+      {/* Status bar */}
+      <div className="flex h-9 shrink-0 items-center gap-3 border-t border-rule bg-page px-2 text-caption text-muted">
+        <button
+          type="button"
+          aria-expanded={problemsOpen}
+          aria-controls={PROBLEMS_ID}
+          title={problemsOpen ? "Hide problems" : "Show problems"}
+          onClick={() => setProblemsOpen(!problemsOpen)}
+          className="inline-flex h-7 items-center gap-2 rounded-control px-2 text-ink hover:bg-desk"
+        >
+          <span className="sr-only">Problems: </span>
+          <span className={cx("inline-flex items-center gap-1 tabular", errors.length ? "text-danger" : "text-muted")}>
+            <CircleAlert {...ICON_DENSE} />
+            {errors.length}
+            <span className="sr-only"> error{errors.length === 1 ? "" : "s"},</span>
+          </span>
+          <span className={cx("inline-flex items-center gap-1 tabular", warnings ? "text-warning" : "text-muted")}>
+            <TriangleAlert {...ICON_DENSE} />
+            {warnings}
+            <span className="sr-only"> warning{warnings === 1 ? "" : "s"}</span>
+          </span>
+          <span aria-hidden="true" className="hidden sm:inline">
+            {counts(problems) === "No problems" ? "No problems" : "Problems"}
+          </span>
+          {problemsOpen ? <ChevronDown {...ICON_DENSE} className="text-muted" /> : <ChevronUp {...ICON_DENSE} className="text-muted" />}
         </button>
-        <button type="button" onClick={redo} disabled={!future.length} className="disabled:text-muted">
-          Redo
-        </button>
-        <a href={`/v1/drafts/${props.draftId}/export.zip`} className="text-accent">
-          Export
-        </a>
-        <button type="button" aria-pressed={playtest} onClick={() => setPlaytest(!playtest)} className="text-accent">
-          {playtest ? "Close playtest" : "Playtest"}
-        </button>
-        <Link href={`/adventures/${props.draftId}/publish`} aria-disabled={errors.length > 0} title={errors.length ? `Fix ${errors.length} problem${errors.length === 1 ? "" : "s"} to publish` : undefined} className={`ml-auto rounded-control px-3 py-1 text-page ${errors.length ? "pointer-events-none bg-muted" : "bg-accent"}`}>
-          Publish
-        </Link>
-      </footer>
+        <span className="truncate">{checking}</span>
+        {publishWhy && <span className="ml-auto hidden truncate pr-2 md:inline">{publishWhy}</span>}
+      </div>
+
+      <Sheet open={outlineOpen} onClose={() => setOutlineOpen(false)} title="Sections" side="bottom">
+        <nav aria-label="Sections">{outline}</nav>
+      </Sheet>
+
+      <Sheet open={snapshotsOpen} onClose={() => setSnapshotsOpen(false)} title="Snapshots">
+        <div className="flex flex-col gap-5">
+          <form
+            className="flex flex-col gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const name = snapshotName.trim();
+              if (!name) return;
+              edit((d) => void d.editor.snapshots.push({ name: name.slice(0, 80), saved_at: new Date().toISOString(), document: content(d) }));
+              setSnapshotName("");
+            }}
+          >
+            <label htmlFor="snapshot-name" className="text-label font-medium">
+              Snapshot name
+            </label>
+            <p id="snapshot-name-hint" className="text-caption text-muted">
+              A copy of the whole draft, kept with it, that you can restore later.
+            </p>
+            <div className="flex gap-2">
+              <TextInput id="snapshot-name" aria-describedby="snapshot-name-hint" value={snapshotName} maxLength={80} onChange={(e) => setSnapshotName(e.target.value)} />
+              <Button type="submit" disabled={!snapshotName.trim()}>
+                Take snapshot
+              </Button>
+            </div>
+          </form>
+          {doc.editor.snapshots.length === 0 ? (
+            <p className="text-caption text-muted">No snapshots yet.</p>
+          ) : (
+            <ul className="divide-y divide-rule rounded-card border border-rule">
+              {doc.editor.snapshots.map((s, i) => (
+                <li key={i} className="flex items-center justify-between gap-3 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-body">{s.name}</p>
+                    <p className="text-caption text-muted">{new Date(s.saved_at).toLocaleString()}</p>
+                  </div>
+                  <Button variant="secondary" size="sm" aria-label={`Restore ${s.name}`} onClick={() => edit((d) => Object.assign(d, structuredClone(s.document as object)))}>
+                    Restore
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </Sheet>
     </div>
   );
 }

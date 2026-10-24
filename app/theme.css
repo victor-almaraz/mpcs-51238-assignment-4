@@ -1,0 +1,119 @@
+/* Cadmium design tokens (docs/design/README.md, Foundations). The Graphite neutrals are the
+   specification's (cadmium-spec/design/theme.css); the cadmium orange accent, the crimson danger, the
+   ochre warning, type, shape, and depth follow the pattern library (SPEC_ISSUES.md, design-system). */
+
+@font-face { font-family: "Libertinus Serif"; src: url("/fonts/LibertinusSerif-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
+@font-face { font-family: "Libertinus Serif"; src: url("/fonts/LibertinusSerif-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
+@font-face { font-family: "Libertinus Serif"; src: url("/fonts/LibertinusSerif-Semibold.woff2") format("woff2"); font-weight: 600; font-style: normal; font-display: swap; }
+
+@theme {
+  --color-page: #FFFFFF;
+  --color-desk: #EEECEA;
+  --color-raised: #FFFFFF;
+  --color-rule: #DBD9D7;
+  --color-ink: #282624;
+  --color-accent: #B4490F;
+  --color-accent-strong: #8C370A;
+  --color-accent-soft: #FDF0E6;
+  --color-accent-line: #EDB48C;
+  --color-danger: #A8233F;
+  --color-danger-soft: #FCEEF1;
+  --color-warning: #7A5E00;
+  --color-warning-soft: #FAF4DC;
+  --color-success: #376F44;
+  --color-success-soft: #EDF6EE;
+  --color-selection: #FBDCC5;
+  --color-border: #878481;
+  --color-muted: #6A6761;
+  --color-overlay: rgb(20 18 17 / 0.45);
+
+  /* Cadmium yellow, the pigment: a fill behind dark text that marks what is happening now (your turn,
+     a live or imminent session). Text on it is always --color-pigment-ink. */
+  --color-pigment: #F2C14E;
+  --color-pigment-ink: #282624;
+  --color-pigment-line: #A87A06;
+  --color-pigment-soft: #FCF3D7;
+
+  /* The software in the system font; the story in Libertinus Serif. */
+  --font-ui: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Page and section titles in the book serif, the product's voice; everything else in the system font. */
+  --font-display: "Libertinus Serif", Georgia, serif;
+  --font-prose: "Libertinus Serif", Georgia, serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --text-display: 34px;   --text-display--line-height: 40px;
+  --text-title: 28px;     --text-title--line-height: 34px;
+  --text-section: 21px;   --text-section--line-height: 28px;
+  --text-heading: 16px;   --text-heading--line-height: 24px;
+  --text-body: 15px;      --text-body--line-height: 22px;
+  --text-prose: 17px;     --text-prose--line-height: 27px;
+  --text-prose-sm: 15px;  --text-prose-sm--line-height: 23px;
+  --text-control: 15px;   --text-control--line-height: 22px;
+  --text-label: 14px;     --text-label--line-height: 20px;
+  --text-caption: 13px;   --text-caption--line-height: 18px;
+  --text-code: 14px;      --text-code--line-height: 20px;
+
+  --spacing: 4px;
+  --radius-control: 4px;
+  --radius-card: 6px;
+  --shadow-raised: 0 8px 24px rgb(20 18 17 / 0.14), 0 1px 3px rgb(20 18 17 / 0.08);
+
+  --container-page: 72rem;
+  --container-form: 40rem;
+  --container-prose: 42rem;
+  --size-topbar: 56px;
+  --size-target: 36px;
+  --duration-open: 120ms;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-page: #3B3937;
+    --color-desk: #2A2827;
+    --color-raised: #494746;
+    --color-rule: #5A5756;
+    --color-muted: #C3BDAE;
+    --color-ink: #F0EEEA;
+    --color-accent: #F5A66A;
+    --color-accent-strong: #FFC49A;
+    --color-accent-soft: #55402F;
+    --color-accent-line: #9C6A45;
+    --color-danger: #F59DB5;
+    --color-danger-soft: #573A44;
+    --color-warning: #DDC873;
+    --color-warning-soft: #4A4529;
+    --color-success: #96CAA0;
+    --color-success-soft: #3A4A3D;
+    --color-selection: #5E4535;
+    --color-border: #888682;
+    --color-pigment: #EDB93B;
+    --color-pigment-line: #E0B13C;
+    --color-pigment-soft: #4A4126;
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-page: #3B3937;
+  --color-desk: #2A2827;
+  --color-raised: #494746;
+  --color-rule: #5A5756;
+  --color-muted: #C3BDAE;
+  --color-ink: #F0EEEA;
+  --color-accent: #F5A66A;
+  --color-accent-strong: #FFC49A;
+  --color-accent-soft: #55402F;
+  --color-accent-line: #9C6A45;
+  --color-danger: #F59DB5;
+  --color-danger-soft: #573A44;
+  --color-warning: #DDC873;
+  --color-warning-soft: #4A4529;
+  --color-success: #96CAA0;
+  --color-success-soft: #3A4A3D;
+  --color-selection: #5E4535;
+  --color-border: #888682;
+  --color-pigment: #EDB93B;
+  --color-pigment-line: #E0B13C;
+  --color-pigment-soft: #4A4126;
+  color-scheme: dark;
+}
