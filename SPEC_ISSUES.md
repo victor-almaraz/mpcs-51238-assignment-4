@@ -1014,7 +1014,7 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 
 **Problem.** The operators revised the documents for this deployment: Cadmium is taken down on or after December 2, 2026; no data is promised to be retained for any period, before or after the takedown; and data is deleted on request unless an internal hold applies. The specification's documents promise 14 days' notice, a 30-day recovery period, and 90 days of retention after discontinuation. This application vendors the specification and does not change it.
 
-**Implemented.** The application serves and versions its own copies in `legal/terms.md` and `legal/privacy.md`. `TERMS_VERSION` hashes them, so every user accepts the revised text at the next sign-in. `[EMAIL]` is replaced by the deployment's `CONTACT_EMAIL`. The deletion and shutdown code is unchanged: accounts close at once, may be restored for 30 days, and are erased within 90 days; after the takedown, records that are not held are erased 90 days later.
+**Implemented.** The application serves and versions its own copies in `legal/terms.md` and `legal/privacy.md`. `TERMS_VERSION` hashes them, so every user accepts the revised text at the next sign-in. They give the operators' address, cadmium_mpcs@proton.me. The deletion and shutdown code is unchanged: accounts close at once, may be restored for 30 days, and are erased within 90 days; after the takedown, records that are not held are erased 90 days later.
 
 **Proposed resolution.** Treat the legal documents as the operator's, outside the specification, or adopt this revision's retention and hold wording.
 

@@ -35,15 +35,15 @@ The server reads these variables, from `.env.local` locally and from the Vercel 
 | `EXPLORATION_ROUND_TIMEOUT` | no | Seconds an exploration round waits before advancing; default 120, 0 disables |
 | `COMBAT_TURN_TIMEOUT` | no | Seconds a combat round or turn waits; default 60, 0 disables |
 | `GROQ_API_KEY` | yes | The parser and narrator; without it, text input is unavailable and narration is template text |
-| `GROQ_PARSER_MODEL`, `GROQ_NARRATOR_MODEL` | no | Groq model ids; default `openai/gpt-oss-20b` |
-| `GROQ_REASONING_EFFORT` | no | Reasoning effort for GPT-OSS models: `low` (default), `medium`, or `high` |
+| `GROQ_PARSER_MODEL`, `GROQ_NARRATOR_MODEL` | no | Groq model ids; default `qwen/qwen3.8-27b`, asked for no reasoning |
+| `GROQ_REASONING_EFFORT` | no | Reasoning effort for GPT-OSS models: `low` (default), `medium`, or `high`. Qwen models are asked for no reasoning |
 | `PARSER_TIMEOUT`, `NARRATOR_TIMEOUT` | no | Seconds before a model call falls back; defaults 8 and 10 |
 | `PARSER_ENABLED`, `NARRATOR_ENABLED` | no | `0` disables one adapter while keeping the other (runbooks/model-outage.md) |
 | `ACTION_MENU_MODE` | no | `1` sends every character an action menu at each round and turn start |
 | `CRON_SECRET` | yes | Authorizes calls to the scheduler at `/api/cron/scheduler` (Vercel Cron sends it as a bearer token) |
 | `CALENDAR_FEED_KEY` | yes | Derives calendar feed secrets; the service key is used when unset |
 | `SHUTDOWN_AT` | no | The end-of-course shutdown time (ISO 8601): a banner from 14 days before, the closed notice from then, the purge 90 days after |
-| `CONTACT_EMAIL` | no | The contact address on the closed notice, and in place of `[EMAIL]` in the Terms and Privacy Policy |
+| `CONTACT_EMAIL` | no | Overrides the contact address on the closed notice; the default is the address in the Terms and Privacy Policy |
 | `VAPID_PUBLIC_KEY` | no | Offers browser notifications in Settings; sending also needs the private key and the `web-push` package |
 
 `GET /api/health` reports which are set, and whether the database schema is applied, without revealing values.

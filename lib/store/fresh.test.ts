@@ -27,16 +27,12 @@ describe("starting the database over", () => {
     expect(await objects(db)).toEqual({ tables: [], functions: [] });
   });
 
-  it("the fresh script builds the migrated schema, from empty or from migrated", async () => {
+  it.each([false, true])("the fresh script builds the migrated schema (database migrated before: %s)", async (migrated) => {
     const reference = await testDb();
     const want = await objects(reference);
     await reference.close();
-    for (const migrated of [false, true]) {
-      db = await testDb({ migrated });
-      await db.exec(freshScript());
-      expect(await objects(db)).toEqual(want);
-      await db.close();
-      db = undefined;
-    }
+    db = await testDb({ migrated });
+    await db.exec(freshScript());
+    expect(await objects(db)).toEqual(want);
   });
 });

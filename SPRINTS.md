@@ -53,6 +53,8 @@ The work in `cadmium-spec/AGENTS.md` ("Phases") split into sprints that each fit
 
 ## Status
 
+All twelve migrations are applied to the remote database (rebuilt from `supabase/fresh.sql`, 2026-10-24).
+
 ### Sprint 0: Foundations — closed
 
 Done:
@@ -286,7 +288,6 @@ Done:
 
 Open:
 
-- The third migration is not yet applied to the remote database.
 - Starting abilities come from the Quest Quick Start setting (`materials/quest_starter`); see the Quest rules check below. Bundles are published from `/admin`.
 - Portrait uploads come with sprint 23.
 
@@ -302,7 +303,6 @@ Done:
 
 Open:
 
-- The third and fourth migrations are not yet applied to the remote database.
 - The instance lifecycle, party changes while paused, and campaign deletion moved to sprint 13.
 
 ### Sprint 13: Coordinator, API, broadcast — open
@@ -321,7 +321,6 @@ Done:
 
 Open:
 
-- Migrations 3 to 5 are not yet applied to the remote database.
 - Realtime private channels need Supabase's Clerk third-party auth integration (Supabase dashboard, Authentication, Third-party auth, Clerk) so Supabase accepts Clerk session tokens; until then subscriptions fail and clients see commits only through `get_history`.
 - Two browsers over the deployed binding are verified only in tests with an in-memory broadcaster.
 - `narration` (template and model), `action_menu`, and `submit_input` come with sprints 14 and 15.
@@ -343,7 +342,7 @@ Open:
 
 - Playwright journeys in `pnpm check` need Playwright and its browsers installed (`pnpm add -D @playwright/test`, then `pnpm exec playwright install chromium`).
 - Icon buttons use text labels until `lucide-react` is installed.
-- The page is not yet checked in a browser: signed-in pages need migrations 3 to 5 in the remote database.
+- The page is not yet checked in a browser.
 
 ### Sprint 15: Parser and narrator — open
 
@@ -362,9 +361,8 @@ Done:
 - The evaluation set covers `give` with three cases at the exemplar's tool chest; each case carries the parser hints of its own adventure's settings.
 Open:
 
-- The exit criterion (90% exact match, no overreach to a state-changing tool) is unmeasured until `GROQ_API_KEY` is available; then run `pnpm eval:parser` with the key in the environment. Enable Zero Data Retention in the Groq console before launch.
+- The exit criterion (90% exact match, no overreach to a state-changing tool) failed with `openai/gpt-oss-20b`. The parser, narrator, and agent runs now default to `qwen/qwen3.8-27b` with reasoning off (Groq serves no Llama models any more); rerun `pnpm eval:parser` to measure it.
 - The evaluation set is hand-written; the guide asks for cases from real play logs, which the input log now records.
-- Migration 6 is not yet applied to the remote database.
 
 ### Sprint 18: Schedules and reminders — open
 
@@ -384,7 +382,6 @@ Open:
 
 - Web Push: needs `pnpm add web-push` and a VAPID key pair (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`); the Notifier takes a push function once they exist. Push subscriptions and Settings come with sprint 19.
 - The cron schedule is not configured: Vercel Hobby allows daily cron jobs only, and a more frequent schedule fails the deployment. Every-minute runs need a plan that allows them, or an external scheduler calling `/api/cron/scheduler` with `CRON_SECRET`. Deadlines are also enforced on every request to an instance.
-- Migration 7 is not yet applied to the remote database.
 
 ### Sprint 19: Settings, export, deletion — open
 
@@ -402,7 +399,6 @@ Open:
 - In the Clerk dashboard, turn off users deleting their own accounts, so deletion goes through Settings and its 30-day recovery. A deletion at Clerk still marks the user deleted, and the purge erases the data after 90 days.
 - Sending Web Push needs `web-push` and VAPID keys; subscriptions are stored meanwhile.
 - `drafts/` and `assets/` in the export arrive with the adventure editor and portrait uploads.
-- Migration 8 is not yet applied to the remote database.
 
 ### Sprint 20: Operations — open
 
@@ -418,7 +414,6 @@ Done:
 
 Open:
 
-- Migration 9 is not yet applied to the remote database.
 - Reports arrive by email; the operator works from the log and the console. Asset removal (`removed_at`) comes with portrait uploads.
 
 ### Quest rules check and Quest Quick Start (between sprints 20 and 21)
@@ -448,7 +443,7 @@ Done:
 Open:
 
 - Edit as YAML is a text area: Monaco with `monaco-yaml` needs installing.
-- The editor is not yet checked in a browser, and migration 10 is not applied to the remote database.
+- The editor is not yet checked in a browser.
 
 ### Sprint 17: Adventure editor, graphs and playtest — open
 
@@ -495,7 +490,6 @@ Open:
 
 - game-icons.net icons are not shipped; packs that use `game_icons` sources render the fallback. Shipping them means vendoring the chosen SVGs with their artists' credits.
 - The example packs declare no art; the test pack adds a portrait and an icon.
-- Migration 11 is not yet applied to the remote database.
 
 ### Sprint 23: Portrait uploads — open
 
@@ -509,7 +503,6 @@ Done:
 
 Open:
 
-- Migrations 10 to 12 are not yet applied to the remote database.
 - The Terms of Service and Privacy Policy already describe portraits; they are offline for revision.
 
 ### Sprint 24: Exemplar adventure — open
