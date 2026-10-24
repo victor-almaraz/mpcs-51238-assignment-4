@@ -339,7 +339,8 @@ describe("talk, search, rest, and free tools", () => {
     const s = start();
     s.characters.c_1!.sheet = { ...s.characters.c_1!.sheet, hp: { value: 2, max: 10 } };
     const r = ok(act(s, "c_1", "rest", { kind: "short" }));
-    expect(find(r.events, "healed")).toMatchObject({ amount: 5 });
+    // SPEC_ISSUES.md#quest-regroup: up to half the maximum, so from 2 to 5.
+    expect(find(r.events, "healed")).toMatchObject({ amount: 3 });
     const t = structuredClone(s);
     t.entities.drone!.at = [3, 2];
     expect(err(act(t, "c_1", "rest", { kind: "long" }))).toBe("requirement_unmet");

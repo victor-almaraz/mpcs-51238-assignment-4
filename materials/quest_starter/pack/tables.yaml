@@ -1,0 +1,4 @@
+room_labels:
+  - { weight: 2, label: hall }
+  - { weight: 2, label: passage }
+  - { weight: 1, label: chamber }

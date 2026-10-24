@@ -1,0 +1,6 @@
+# Sleep (doctor): "putting any number of nearby commoners to sleep for an hour". An hour is longer
+# than a scene, so the sleeper misses the next rounds.
+asleep:
+  label: asleep
+  duration: 3
+  blocks: [move, attack, ability, use, interact, take, talk]

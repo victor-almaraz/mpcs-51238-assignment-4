@@ -287,7 +287,7 @@ Done:
 Open:
 
 - The third migration is not yet applied to the remote database.
-- The installed materials cannot supply six starting abilities (`SPEC_ISSUES.md#starting-abilities-supply`), so no Quest or Cadmium character can be created in the deployed app until a setting with enough abilities is installed. Bundles are not yet installed in the remote database at all.
+- Starting abilities come from the Quest Quick Start setting (`materials/quest_starter`); see the Quest rules check below. Bundles are published from `/admin`.
 - Portrait uploads come with sprint 23.
 
 ### Sprint 12: Campaigns, invitations, instances — open
@@ -420,3 +420,16 @@ Open:
 
 - Migration 9 is not yet applied to the remote database.
 - Reports arrive by email; the operator works from the log and the console. Asset removal (`removed_at`) comes with portrait uploads.
+
+### Quest rules check and Quest Quick Start (between sprints 20 and 21)
+
+Done:
+
+- Checked `systems/quest/data.json` and `docs/systems/quest.md` against the Quest Creators Resource v1.01 (CC BY 4.0). At the project owner's direction, three rules now follow the Creators Resource: a regroup restores HP up to half the maximum (`SPEC_ISSUES.md#quest-regroup`), creatures default to their template's attack rating, commoner 1, minion 2, boss 4 (`#quest-npc-attack`), and a creature's tough choice deals half damage, rounded up (`#quest-npc-tough-choice`). The AP award (5) and NPC hit points (2, 4, 10) are confirmed and no longer reported as pending (`#quest-values-confirmed`). The golden logs of the two lost scenarios were regenerated; both still end `lost`.
+- `materials/quest_starter`: a setting pack with each role's six quick-start abilities (name, learning path, cost; the short description as a comment), its `NOTICE`, and a README on the mechanics written for Cadmium. Character creation offers a role's quick start in one click; new campaigns include every setting by default; `/attribution` shows the pack's notice.
+- `pnpm bundles` writes the bundles to publish on a fresh deployment to `bundles/`.
+- Tests: `lib/api/starter.test.ts` (10), and updated Quest cases.
+
+Open:
+
+- Abilities with several activation costs use the lowest; most abilities have no mechanical effect beyond their AP and narration.

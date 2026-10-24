@@ -1,0 +1,40 @@
+# The Spy's quick start (Quest Creators Resource, chapter 3). Name, learning path,
+# and short description from the Creators Resource; costs are its lowest listed activation cost.
+
+cosmopolitan:
+  label: Cosmopolitan
+  # Invent a local mannerism to fool commoners about your identity.
+  target: self
+  system_stats: {"roles": ["spy"], "path": "charisma", "cost": {"ap": 0}}
+  effects: []
+sneak_attack:
+  label: Sneak Attack
+  # Make a quick attack on a foe who is distracted.
+  target: entity
+  system_stats: {"roles": ["spy"], "path": "termination", "cost": {"ap": 1}, "roll": true}
+  effects:
+    - {"damage": {"target": "target", "amount": 2, "type": "physical"}}
+strap:
+  label: Strap
+  # Conceal up to two weapons in your clothing without being noticed.
+  target: self
+  system_stats: {"roles": ["spy"], "path": "concealment", "cost": {"ap": 0}}
+  effects: []
+tracker:
+  label: Tracker
+  # A magic compass and tag that allows you to track something you put the tag on.
+  target: self
+  system_stats: {"roles": ["spy"], "path": "surveillance", "cost": {"ap": 0}}
+  effects: []
+persona:
+  label: Persona
+  # You can carefully prepare a convincing alternate identity. You can create the persona of a commoner, an officer, or an aristocrat.
+  target: self
+  system_stats: {"roles": ["spy"], "path": "impersonation", "cost": {"ap": 2}}
+  effects: []
+feather_hook:
+  label: Feather Hook
+  # A magical grappling hook that gently glides itself upward like a balloon.
+  target: self
+  system_stats: {"roles": ["spy"], "path": "infiltration", "cost": {"ap": 0}}
+  effects: []

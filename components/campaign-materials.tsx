@@ -19,7 +19,8 @@ export function MaterialPicker({ materials, modules, chosen, enabled }: { materi
   const adventures = materials.filter((m) => m.kind === "adventure");
   const settings = materials.filter((m) => m.kind === "setting");
   const [adventure, setAdventure] = useState(chosen.find((m) => m.kind === "adventure") ? key(chosen.find((m) => m.kind === "adventure")!) : "");
-  const [picked, setPicked] = useState<string[]>(chosen.filter((m) => m.kind === "setting").map(key));
+  // A new campaign starts with every setting, so the abilities characters chose are in its materials.
+  const [picked, setPicked] = useState<string[]>(chosen.length > 0 ? chosen.filter((m) => m.kind === "setting").map(key) : settings.map(key));
   const [on, setOn] = useState<string[]>(enabled);
   const required = new Set([...materials.filter((m) => key(m) === adventure || picked.includes(key(m))).flatMap((m) => m.modules)]);
   const needed = adventures.find((a) => key(a) === adventure)?.requires_settings ?? [];

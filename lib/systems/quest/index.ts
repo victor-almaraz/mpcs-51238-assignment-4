@@ -52,6 +52,10 @@ export interface StructureSheet extends Sheet {
 /** Creature damage per hit without a `damage` override (quest.md, "Creatures and items"). */
 const CREATURE_DAMAGE = 2;
 
+// SPEC_ISSUES.md#quest-npc-attack: the Creators Resource's NPC templates give attack ratings
+// (commoner 1, minion 2, boss 4); a creature without its own `damage` deals its template's rating.
+export const NPC_ATTACK: Readonly<Record<string, number>> = { commoner: 1, minion: 2, boss: 4 };
+
 /** Prompt of a tough choice (api.md, `choice` message example). */
 const TOUGH_CHOICE_PROMPT = "Success, at a cost. Choose a setback.";
 
@@ -160,10 +164,10 @@ export function harmSheet(target: Combatant, sheet: Sheet, amount: number, rng: 
 }
 
 /** Restores up to `amount` HP and returns a character at death's door to `active`. */
-export function healSheet(target: Combatant, sheet: Sheet, amount: number): Part {
+export function healSheet(target: Combatant, sheet: Sheet, amount: number, revive = false): Part {
   const part = emptyPart();
   if (!isInt(amount, 0)) throw new RulesError("invalid_call", `heal amount ${amount} is not a non-negative integer`);
-  if (target.kind === "structure" || amount === 0) return part;
+  if (target.kind === "structure" || (amount === 0 && !revive)) return part;
   if (sheet.status !== "active" && sheet.status !== "deaths_door") return part;
   const hp = hpOf(sheet);
   const value = Math.min(hp.max, hp.value + amount);
@@ -282,7 +286,7 @@ export function instantiate(stats: unknown, rng: Rng): CreatureSheet {
   if (speed !== undefined && !isInt(speed, 1, 24)) throw new RulesError("invalid_call", "quest creature: speed must be 1 to 24");
   if (ranged !== undefined && typeof ranged !== "boolean") throw new RulesError("invalid_call", "quest creature: ranged must be a boolean");
   const max = (hp as number | undefined) ?? DATA.npc_templates[template]!;
-  const sheet: CreatureSheet = { template, hp: { value: max, max }, damage: (damage as number | undefined) ?? CREATURE_DAMAGE, status: "active" };
+  const sheet: CreatureSheet = { template, hp: { value: max, max }, damage: (damage as number | undefined) ?? NPC_ATTACK[template] ?? CREATURE_DAMAGE, status: "active" };
   if (speed !== undefined) sheet.speed = speed as number;
   if (ranged !== undefined) sheet.ranged = ranged as boolean;
   return sheet;
@@ -382,7 +386,9 @@ function resolveAttack(
   void situation;
   const roll = d20(rng, "attack");
   const tier = tierOf(roll.total);
-  const damage = standardDamage(attacker, weapon) * MULTIPLIER[tier];
+  const base = standardDamage(attacker, weapon) * MULTIPLIER[tier];
+  // SPEC_ISSUES.md#quest-npc-tough-choice: an NPC's tough choice deals half damage, rounded up.
+  const damage = attacker.kind === "creature" && tier === "partial" ? Math.ceil(base / 2) : base;
   const part: Part = { ...emptyPart(), rolls: [roll] };
   part.events.push({ type: "attacked", actor: attacker.id, target: defender.id, roll: roll.total, outcome: tier, damage });
   merge(part, harmFn(defender, defender.sheet, damage, rng, null));
@@ -405,7 +411,10 @@ export function rest(target: Combatant, kind: string): Resolution {
   if (kind !== "short" && kind !== "long") throw new RulesError("invalid_call", `rest kind must be short or long, not '${kind}'`);
   if (target.kind === "structure") return emptyResolution();
   const hp = hpOf(target.sheet);
-  const amount = kind === "short" ? Math.floor(hp.max / 2) : hp.max;
+  // SPEC_ISSUES.md#quest-regroup: a regroup restores HP up to half the maximum, not by half of it.
+  const amount = kind === "short" ? Math.max(0, Math.floor(hp.max / 2) - hp.value) : hp.max;
+  // At death's door with nothing to restore, the regroup still ends death's door.
+  if (amount === 0 && target.sheet.status === "deaths_door") return resolution(null, healSheet(target, target.sheet, 0, true));
   return resolution(null, healSheet(target, target.sheet, amount));
 }
 

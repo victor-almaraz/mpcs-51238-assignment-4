@@ -1,0 +1,19 @@
+format_version: 2
+kind: setting
+id: quest_starter
+version: 1.0.0
+namespace: starter
+title: Quest Quick Start
+
+system: { id: quest, versions: "^1.0" }
+
+damage_types: [physical, magic, fire, cold, poison]
+
+generation:
+  door: door
+  locks: { locked_door: key }
+
+narration:
+  style: warm, adventurous, plain
+  person: second
+  max_sentences: 3

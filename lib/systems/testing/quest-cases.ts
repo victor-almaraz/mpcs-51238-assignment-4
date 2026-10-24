@@ -117,6 +117,13 @@ export function questCases(system: RulesSystem): void {
         expect(damageOf(15, creature(system, { template: "minion", damage: 3 }))).toBe(3);
       });
 
+      // SPEC_ISSUES.md#quest-npc-tough-choice: an NPC deals half damage, rounded up, on a tough choice.
+      it("deal half a creature's damage, rounded up, on its tough choice", () => {
+        expect([20, 15, 8].map((r) => damageOf(r, creature(system, { template: "boss" })))).toEqual([8, 4, 2]);
+        expect(damageOf(8, creature(system, { template: "commoner" }))).toBe(1);
+        expect(damageOf(8, character(system))).toBe(2);
+      });
+
       it("reproduce the api.md commit example: a partial hit on a drone", () => {
         const drone = creature(system, { template: "minion" }, "e_drone1");
         const r = system.attack(character(system, "c_17"), drone, WRENCH, NO_SITUATION, new Rng(seedFor(8)));
@@ -219,10 +226,14 @@ export function questCases(system: RulesSystem): void {
     });
 
     describe("resting", () => {
-      it("regains half of maximum HP on a short rest and all of it on a long rest, leaving AP unchanged", () => {
+      // SPEC_ISSUES.md#quest-regroup: a regroup restores HP up to half the maximum (Creators Resource).
+      it("regains HP up to half the maximum on a short rest and all of it on a long rest, leaving AP unchanged", () => {
         const hurt = character(system, "c_1", { hp: { value: 1, max: 10 }, ap: 3 });
-        expect(system.rest(hurt, "short").updates.c_1).toMatchObject({ hp: { value: 6, max: 10 }, ap: 3 });
+        expect(system.rest(hurt, "short").updates.c_1).toMatchObject({ hp: { value: 5, max: 10 }, ap: 3 });
         expect(system.rest(hurt, "long").updates.c_1).toMatchObject({ hp: { value: 10, max: 10 }, ap: 3 });
+        expect(system.rest(character(system, "c_1", { hp: { value: 6, max: 10 } }), "short").updates).toEqual({});
+        const door = character(system, "c_1", { hp: { value: 0, max: 10 }, status: "deaths_door" });
+        expect(system.rest(door, "short").updates.c_1).toMatchObject({ hp: { value: 5, max: 10 }, status: "active" });
       });
 
       it("rejects an unknown kind", () => {
@@ -261,7 +272,9 @@ export function questCases(system: RulesSystem): void {
         ["minion", 4],
         ["boss", 10],
       ])("instantiates a %s with %i HP", (template, max) => {
-        expect(creature(system, { template }).sheet).toEqual({ template, hp: { value: max, max }, damage: 2, status: "active" });
+        // SPEC_ISSUES.md#quest-npc-attack: the template's attack rating is the default damage.
+        const attack = { commoner: 1, minion: 2, boss: 4 }[template as string];
+        expect(creature(system, { template }).sheet).toEqual({ template, hp: { value: max, max }, damage: attack, status: "active" });
       });
 
       it("applies creature overrides and rejects invalid stats", () => {

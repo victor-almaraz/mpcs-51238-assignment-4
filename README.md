@@ -55,6 +55,10 @@ The migrations in `supabase/migrations/` create the store's tables and functions
 
 Instance and user messages travel on Supabase Realtime private channels, `instance:{id}` and `user:{id}`, admitted by the policy in the fifth migration. Browsers authenticate with their Clerk session token, which Supabase accepts once Clerk is added under Authentication, Third-party auth in the Supabase dashboard (and Supabase is enabled under Integrations in the Clerk dashboard).
 
+### Materials
+
+A fresh database has no settings or adventures. As an operator (`update users set operator = true where email = '…'`), run `pnpm bundles` and upload the four files in `bundles/` at `/admin`, in their numbered order, settings before the adventure.
+
 ### Clerk webhook
 
 Clerk keeps the `users` table current through a webhook endpoint at `https://<host>/api/webhooks/clerk`, subscribed to `user.created`, `user.updated`, and `user.deleted`. Its signing secret is `CLERK_WEBHOOK_SIGNING_SECRET`. A signed-in user without a row is created on first request, so a missed delivery is repaired on the next visit.
@@ -74,6 +78,7 @@ Clerk keeps the `users` table current through a webhook endpoint at `https://<ho
 | `pnpm materials check DIR` | The Content Compiler's `check` subcommand |
 | `pnpm harness play ...` | The engine's command-line harness; see `lib/harness/cli.ts` |
 | `pnpm golden` | Rewrite the golden scenario files after an intended behaviour change |
+| `pnpm bundles` | Build the bundles to publish on a fresh deployment (example settings, Quest Quick Start, the guide adventure) into `bundles/` |
 | `pnpm eval:parser` | Run the parser evaluation set against the Groq model; needs `GROQ_API_KEY` in the environment; exits 1 below 90% exact match or on an overreach violation |
 
 The Content Compiler's command line follows [`spec/README.md`](cadmium-spec/spec/README.md#compiler-interface). pnpm prints the script line on stdout, so run `build` directly when its output is piped:
@@ -114,6 +119,7 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `lib/bundle/` | Schema registry and generated types; generated files are never edited by hand |
 | `lib/materials/` | Content Compiler: pack reading, schema explanations, rules-system, cross-reference, map, and art checks, bundles, and the `materials` command line |
 | `scripts/` | Build-time scripts, such as type generation |
+| `materials/` | Material packs shipped with the application: `quest_starter`, the Quest Quick Start abilities (CC BY 4.0) |
 | `tests/` | Tests that span modules, such as specification validation |
 
 Modules under `lib/` follow the boundaries in [`engine-implementation.md`](cadmium-spec/docs/guides/engine-implementation.md#module-boundaries). `rng`, `grid`, `generator`, and `engine` perform no I/O.

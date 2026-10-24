@@ -1,0 +1,9 @@
+door:
+  kind: door
+  label: door
+locked_door:
+  kind: door
+  label: locked door
+key:
+  kind: item
+  label: key

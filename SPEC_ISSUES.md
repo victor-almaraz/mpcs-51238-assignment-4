@@ -748,7 +748,7 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 
 **Problem.** A Quest or Cadmium character needs six distinct abilities from installed materials, but the settings installed with Cadmium define two abilities in total (`base:overload` and `crypt:turn_undead`). No character can be created with the shipped materials.
 
-**Implemented.** The creation form offers the abilities of every listed operator setting the system accepts, and states the shortfall when there are fewer than six. Tests add five abilities to `derelict_station`.
+**Implemented.** The creation form offers the abilities of every listed operator setting the system accepts, and states the shortfall when there are fewer than six. The application ships a setting pack, `materials/quest_starter` (Quest Quick Start), with each role's six quick-start abilities from the Quest Creators Resource (CC BY 4.0), which the operator publishes; the form offers a role's quick start in one click, and new campaigns include every setting by default so the chosen abilities are in their materials.
 
 **Proposed resolution.** Ship at least six abilities usable by any role in the example settings, or a starter setting installed with Cadmium that holds a starting set.
 
@@ -877,3 +877,59 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** The user record has `suspended_at`. A suspended user may call only `get_me`, `export_my_data`, and `logout`; every other operation fails with `forbidden`.
 
 **Proposed resolution.** Add `suspended_at` to the User record and list the operations a suspended account keeps.
+
+## quest-regroup
+
+| Field | Value |
+|---|---|
+| Document | `docs/systems/quest.md` |
+| Section | Resting (`short`: "Regain half of maximum HP") |
+| Marker | `lib/systems/quest/index.ts`, `lib/systems/testing/quest-cases.ts`, `lib/engine/engine.test.ts` |
+
+**Problem.** The Quest Creators Resource v1.01 (The Adventure Guild, CC BY 4.0), downloaded from adventure.game/resources, page 12, says a regroup lets characters "regain up to the halfway point of their maximum hit points". The specification adds half of the maximum instead, so a character at 6 of 10 HP reaches 10 where Quest leaves them at 6.
+
+**Implemented.** At the project owner's direction, a short rest raises HP to half the maximum (5 of 10) when below it and otherwise restores nothing. A character at death's door returns to `active`. Long rests are unchanged.
+
+**Proposed resolution.** Change the Resting table to "Regain HP up to half of the maximum".
+
+## quest-npc-attack
+
+| Field | Value |
+|---|---|
+| Document | `docs/systems/quest.md`; `systems/quest/data.json` |
+| Section | Attacks ("a creature's `damage`"); `npc_templates` |
+| Marker | `lib/systems/quest/index.ts`, `lib/systems/testing/quest-cases.ts` |
+
+**Problem.** The Quest Creators Resource v1.01 (The Adventure Guild, CC BY 4.0), downloaded from adventure.game/resources, page 42, gives each NPC template an attack rating, the damage of its basic attack: commoner 1, minion 2, boss 4. `npc_templates` holds hit points only, and a creature without `damage` deals 2 whatever its template.
+
+**Implemented.** At the project owner's direction, a creature without its own `damage` deals its template's attack rating.
+
+**Proposed resolution.** Make `npc_templates` entries `{ hp, attack }` and use `attack` as the default `damage`.
+
+## quest-npc-tough-choice
+
+| Field | Value |
+|---|---|
+| Document | `docs/systems/quest.md` |
+| Section | Attacks (`partial`: "Standard"); "Creatures roll for their own attacks and receive no setbacks" |
+| Marker | `lib/systems/quest/index.ts`, `lib/systems/testing/quest-cases.ts` |
+
+**Problem.** The Quest Creators Resource v1.01 (The Adventure Guild, CC BY 4.0), downloaded from adventure.game/resources, page 19, says that by default an NPC deals half damage on a tough choice. The specification gives creatures standard damage on `partial`.
+
+**Implemented.** At the project owner's direction, a creature's `partial` attack deals half its damage, rounded up, so an attack of 1 still lands for 1. Characters are unchanged, and creatures still receive no setbacks.
+
+**Proposed resolution.** State half damage, rounded up, for creatures on `partial`.
+
+## quest-values-confirmed
+
+| Field | Value |
+|---|---|
+| Document | `systems/quest/data.json`; `docs/systems/quest.md` |
+| Section | `confirm`; Values to confirm |
+| Marker | `lib/api/systems.ts` |
+
+**Problem.** `ap_award_per_session` and `npc_templates` are listed as unconfirmed. The Quest Creators Resource v1.01 (The Adventure Guild, CC BY 4.0), downloaded from adventure.game/resources states both: page 13, "Players begin the game with 10 AP, and earn 5 AP at the conclusion of each session"; page 42, commoners 2 HP, minions 4 HP, bosses 10 HP.
+
+**Implemented.** `list_systems` no longer reports the two values in `pending_confirmation`. `setbacks` and `spatial` stay: Quest leaves setbacks to the Guide and measures distance in relative bands (in reach, nearby, in range, too far), not cells.
+
+**Proposed resolution.** Remove both from `confirm` and from Values to confirm, citing the Creators Resource pages.

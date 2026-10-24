@@ -16,7 +16,7 @@ const config: NextConfig = {
   outputFileTracingIncludes: {
     "/terms": ["./cadmium-spec/docs/legal/terms.md"],
     "/privacy": ["./cadmium-spec/docs/legal/privacy.md"],
-    "/attribution": ["./cadmium-spec/LICENSES.md", "./cadmium-spec/systems/*/NOTICE"],
+    "/attribution": ["./cadmium-spec/LICENSES.md", "./cadmium-spec/systems/*/NOTICE", "./materials/*/NOTICE"],
   },
 };
 

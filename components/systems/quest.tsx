@@ -29,6 +29,8 @@ export function QuestCreationForm({ system, roles, abilities, count }: CreationP
   ].filter(Boolean) as string[];
   const short = abilities.length < count;
   const toggle = (ref: string) => setChosen((c) => (c.includes(ref) ? c.filter((r) => r !== ref) : [...c, ref]));
+  // The role's quick start: the abilities tagged for exactly this role, when there are enough.
+  const quickStart = role ? abilities.filter((a) => a.roles.length === 1 && a.roles[0] === role).map((a) => a.ref) : [];
 
   return (
     <form action={action} className="mt-6 flex flex-col gap-4">
@@ -52,6 +54,11 @@ export function QuestCreationForm({ system, roles, abilities, count }: CreationP
         <legend className="font-ui text-label">
           Abilities: {chosen.length} of {count}
         </legend>
+        {quickStart.length === count && (
+          <button type="button" onClick={() => setChosen(quickStart)} className="mt-1 font-ui text-caption text-accent">
+            Use the {role} quick start
+          </button>
+        )}
         {short && (
           <p className="mt-2 text-warning">
             The installed settings offer {abilities.length} abilit{abilities.length === 1 ? "y" : "ies"}; this system needs {count}.

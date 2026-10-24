@@ -15,7 +15,8 @@
     "materials": "node --import tsx lib/materials/cli.ts",
     "harness": "node --import tsx lib/harness/cli.ts",
     "golden": "node --import tsx scripts/golden.ts",
-    "eval:parser": "node --import tsx scripts/eval-parser.ts"
+    "eval:parser": "node --import tsx scripts/eval-parser.ts",
+    "bundles": "node --import tsx scripts/bundles.ts"
   },
   "devEngines": {
     "runtime": {
