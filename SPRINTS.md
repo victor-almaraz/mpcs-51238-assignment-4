@@ -511,3 +511,9 @@ Open:
 
 - Migrations 10 to 12 are not yet applied to the remote database.
 - The Terms of Service and Privacy Policy already describe portraits; they are offline for revision.
+
+### Sprint 24: Exemplar adventure — blocked
+
+The brief (`cadmium-spec/briefs/example-adventure.md`) builds `sunken_archive` and `lantern_coast` from the story in `sunken_archive_campaign_draft.md`, "supplied with this brief", which is not in the repository. The brief also writes into the specification repository (`spec/examples/`, its guides, and `AGENTS.md`), which this application vendors and does not change. The agent-driven run needs a model (`GROQ_API_KEY`).
+
+Done meanwhile: the play page shows `action_menu` suggestions as chips.

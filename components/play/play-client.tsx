@@ -79,6 +79,8 @@ export function PlayClient(props: PlayProps) {
   const [declaration, setDeclaration] = useState<{ tool: string; label: string } | null>(null);
   const [sheet, setSheet] = useState<Sheet>(null);
   const [text, setText] = useState("");
+  // Action menu (tools.md, improvise: at a streak of 4, or in action-menu mode): valid calls as chips.
+  const [menu, setMenu] = useState<{ label: string; tool: string; args: Record<string, unknown> }[]>([]);
   const lastLabel = useRef<string>("");
   // The actor of each commit, for the heading of its narration.
   const actors = useRef(new Map(props.history.map((h) => [h.version, h.actor_id])));
@@ -102,7 +104,10 @@ export function PlayClient(props: PlayProps) {
       if (m.type === "narration") setLog((l) => (l.some((e) => e.version === m.version) ? l : [...l, { version: m.version, actor: actors.current.get(m.version) ?? null, text: String(m.text) }]));
       if (m.type === "commit") {
         actors.current.set(m.version, (m.actor_id as string | null) ?? null);
-        if (m.actor_id === characterId) setDeclaration(null);
+        if (m.actor_id === characterId) {
+          setDeclaration(null);
+          setMenu([]);
+        }
         void refresh();
       }
       if (m.type === "round") setRound({ declared: (m.declared as string[]) ?? [], waiting_on: (m.waiting_on as string[]) ?? [], current: m.current as string | undefined, deadline: (m.deadline as string | undefined) ?? null });
@@ -134,6 +139,7 @@ export function PlayClient(props: PlayProps) {
       if (m.instance_id !== instanceId) return;
       if (m.type === "declaration" && m.character_id === characterId) setDeclaration({ tool: String(m.tool), label: lastLabel.current || String(m.label) });
       if (m.type === "choice") void refresh();
+      if (m.type === "action_menu" && m.character_id === characterId) setMenu((m.options as { label: string; tool: string; args: Record<string, unknown> }[]) ?? []);
       if (m.type === "input_rejected") setError(`That did not work: ${String(m.detail ?? m.reason)}.`);
     });
     const t = setInterval(() => {
@@ -356,6 +362,15 @@ export function PlayClient(props: PlayProps) {
           <div ref={logEnd} />
         </div>
         {error && <p className="text-danger">{error}</p>}
+        {live && menu.length > 0 && (
+          <div className="flex flex-wrap gap-2" aria-label="Suggested actions">
+            {menu.map((o, i) => (
+              <button key={i} type="button" disabled={busy} onClick={() => void act(o.tool, o.args, o.label)} className="rounded-control border border-accent-line bg-accent-soft px-3 py-1 font-ui text-control">
+                {o.label}
+              </button>
+            ))}
+          </div>
+        )}
         {live && !notMyTurn && <ActionBar view={view} selected={selected} onSelect={setSelected} act={act} busy={busy} declaration={declaration} />}
         <div className="lg:hidden">{places}</div>
         <form
