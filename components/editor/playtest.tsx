@@ -5,12 +5,14 @@
 // included; a trace lists the triggers each action matched and fired, and for a matched trigger that
 // did not fire, the parts of its `when` that failed (lib/engine/why.ts); Start from here sets stages and
 // flags; a party selector plays up to the adventure's maximum; Preview 20 seeds draws generated maps.
+// Clicking a cell of the acting character's map moves to what the cell holds (lib/map/click.ts).
 import { useMemo, useState } from "react";
 import type { AdventureBundle, GeneratedLocation } from "@/lib/bundle/adventure";
 import type { SettingBundle } from "@/lib/bundle/setting";
 import { advance, labelsFor, startInstance, submit, view, type Bundles, type GameEvent, type State } from "@/lib/engine";
 import { whyHeld } from "@/lib/engine/why";
 import { generate } from "@/lib/generator";
+import { cellMove } from "@/lib/map/click";
 import { compileDraft } from "@/lib/materials";
 import { templateNarration } from "@/lib/narrator/template";
 import { Rng } from "@/lib/rng";
@@ -53,6 +55,7 @@ export function Playtest({ doc, settings }: { doc: Doc; settings: SettingBundle[
   const [state, setState] = useState<State | null>(null);
   const [actor, setActor] = useState("pc_1");
   const [trace, setTrace] = useState<TraceEntry[]>([]);
+  const [note, setNote] = useState<string | null>(null);
   const [preview, setPreview] = useState<{ location: string; results: { seed: number; ok: boolean; text: string }[] } | null>(null);
 
   if (!compiled.ok || !bundles || !adventure) {
@@ -78,6 +81,7 @@ export function Playtest({ doc, settings }: { doc: Doc; settings: SettingBundle[
     }
     setState(s);
     setActor("pc_1");
+    setNote(null);
     setTrace([{ actor: "", label: "start", ok: true, fired: r.events.filter((e) => e.type === "trigger_fired").map((e) => String((e as { trigger?: string }).trigger)), held: [], changes: [], narration: templateNarration(r.events, labelsFor([s], bundles)) }]);
   };
 
@@ -108,6 +112,14 @@ export function Playtest({ doc, settings }: { doc: Doc; settings: SettingBundle[
   };
 
   const v = state && state.characters[actor] && !state.ended ? view(state, bundles, actor) : null;
+
+  const clickCell = (x: number, y: number) => {
+    if (!v) return;
+    const m = cellMove(v, [x, y]);
+    if (!m.ok) return setNote(m.note);
+    setNote(null);
+    run(`move to ${m.label} (clicked ${x},${y})`, m.call);
+  };
   const generated = Object.entries(adventure.locations).filter(([, l]) => l.kind === "generated") as [string, GeneratedLocation][];
 
   return (
@@ -156,7 +168,14 @@ export function Playtest({ doc, settings }: { doc: Doc; settings: SettingBundle[
           <div className="flex flex-col gap-2">
             <p className="font-ui text-label">
               Act as{" "}
-              <select value={actor} onChange={(e) => setActor(e.target.value)} className={small}>
+              <select
+                value={actor}
+                onChange={(e) => {
+                  setActor(e.target.value);
+                  setNote(null);
+                }}
+                className={small}
+              >
                 {Object.keys(state.characters).map((id) => (
                   <option key={id}>{id}</option>
                 ))}
@@ -270,25 +289,38 @@ export function Playtest({ doc, settings }: { doc: Doc; settings: SettingBundle[
                 ))}
               </ul>
             </details>
-            {Object.entries(state.locations).map(([id, l]) => (
-              <details key={id} open={state.characters[actor]?.location === id}>
-                <summary className="cursor-pointer">Map: {id}</summary>
-                <pre className="font-mono text-[10px] leading-3">
-                  {l.rows
-                    .map((row, y) =>
-                      [...row]
-                        .map((ch, x) => {
-                          const pc = Object.entries(state.characters).find(([, c]) => c.location === id && c.at[0] === x && c.at[1] === y);
-                          if (pc) return pc[0].slice(-1);
-                          const e = Object.values(state.entities).find((en) => en.location === id && en.at && en.at[0] === x && en.at[1] === y);
-                          return e ? (e.kind === "creature" ? "c" : e.kind === "door" ? (e.open ? "/" : "+") : "*") : ch;
-                        })
-                        .join(""),
-                    )
-                    .join("\n")}
-                </pre>
-              </details>
-            ))}
+            {Object.entries(state.locations).map(([id, l]) => {
+              const glyph = (ch: string, x: number, y: number) => {
+                const pc = Object.entries(state.characters).find(([, c]) => c.location === id && c.at[0] === x && c.at[1] === y);
+                if (pc) return pc[0].slice(-1);
+                const e = Object.values(state.entities).find((en) => en.location === id && en.at && en.at[0] === x && en.at[1] === y);
+                return e ? (e.kind === "creature" ? "c" : e.kind === "door" ? (e.open ? "/" : "+") : "*") : ch;
+              };
+              // Only the acting character's map takes clicks; its cells resolve against that character's view.
+              // The Move buttons above are the keyboard route to the same calls.
+              const clickable = v !== null && v.character.location === id;
+              return (
+                <details key={id} open={state.characters[actor]?.location === id}>
+                  <summary className="cursor-pointer">Map: {id}</summary>
+                  {clickable && <p className="text-muted">Click a cell to move {actor} to the entity, door, link, or room on it.</p>}
+                  <pre className="font-mono text-[10px] leading-3">
+                    {clickable
+                      ? l.rows.map((row, y) => (
+                          <span key={y}>
+                            {[...row].map((ch, x) => (
+                              <span key={x} title={`${x},${y}`} className="cursor-pointer hover:bg-accent-soft" onClick={() => clickCell(x, y)}>
+                                {glyph(ch, x, y)}
+                              </span>
+                            ))}
+                            {"\n"}
+                          </span>
+                        ))
+                      : l.rows.map((row, y) => [...row].map((ch, x) => glyph(ch, x, y)).join("")).join("\n")}
+                  </pre>
+                  {clickable && note && <p className="text-warning">{note}</p>}
+                </details>
+              );
+            })}
           </div>
         </div>
       )}
