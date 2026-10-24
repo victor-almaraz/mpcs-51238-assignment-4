@@ -45,6 +45,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               </Show>
               <Show when="signed-in">
                 <Link href="/dashboard">Dashboard</Link>
+                <Link href="/notifications">Notifications</Link>
                 <Link href="/settings">Settings</Link>
                 <UserButton />
               </Show>
