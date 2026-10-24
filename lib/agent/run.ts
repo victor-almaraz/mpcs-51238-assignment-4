@@ -174,24 +174,36 @@ export function chatPlayer(chat: Chat, model: string, timeoutMs = 20000): Player
 }
 
 /**
- * Retries a model call that may recover (a timeout, a rate limit, or a server error) with doubling
- * waits, reporting each wait. Other errors, such as an unknown model or a rejected key, fail at once.
+ * Retries a model call that may recover (a timeout, a rate limit, or a server error), reporting each
+ * wait. A rate limit waits as long as Groq asks, up to `limits` times; other recoverable errors wait
+ * `waits` in turn. Other errors, such as an unknown model or a rejected key, fail at once.
  */
 export function patient(
   chat: Chat,
   waits: readonly number[] = [4000, 8000, 16000, 32000, 60000],
   sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms)),
   onRetry: (error: ModelError, waitMs: number) => void = () => {},
+  limits = 30,
 ): Chat {
   const recoverable = (e: ModelError) => e.kind === "timeout" || e.status === undefined || e.status === 429 || e.status >= 500;
   return async (request, timeoutMs) => {
-    for (let i = 0; ; i++) {
+    let backoffs = 0;
+    let rateLimits = 0;
+    for (;;) {
       try {
         return await chat(request, timeoutMs);
       } catch (e) {
-        if (!(e instanceof ModelError) || e.kind === "malformed" || !recoverable(e) || i >= waits.length) throw e;
-        onRetry(e, waits[i]!);
-        await sleep(waits[i]!);
+        if (!(e instanceof ModelError) || e.kind === "malformed" || !recoverable(e)) throw e;
+        let wait: number;
+        if (e.status === 429 && e.retryAfterMs !== undefined) {
+          if (++rateLimits > limits) throw e;
+          wait = e.retryAfterMs + 250;
+        } else {
+          if (backoffs >= waits.length) throw e;
+          wait = waits[backoffs++]!;
+        }
+        onRetry(e, wait);
+        await sleep(wait);
       }
     }
   };

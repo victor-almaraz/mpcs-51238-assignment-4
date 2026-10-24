@@ -60,10 +60,31 @@ describe("agent-driven runs", () => {
     expect(slept).toEqual([1, 2]);
     const down = patient(async () => Promise.reject(new ModelError("unavailable", "down")), [1], async () => {});
     await expect(down({ model: "m", messages: [] }, 10)).rejects.toThrow("down");
+    // A rate limit waits as long as Groq asks.
+    let limited = 0;
+    const waited: number[] = [];
+    const throttled = patient(async () => {
+      if (limited++ < 2) throw new ModelError("unavailable", "Groq answered HTTP 429", 429, 5600);
+      return { content: "ok", tool_calls: [], raw: null };
+    }, [1], async (ms) => void waited.push(ms));
+    expect((await throttled({ model: "m", messages: [] }, 10)).content).toBe("ok");
+    expect(waited).toEqual([5850, 5850]);
     let tries = 0;
     const rejected = patient(async () => (tries++, Promise.reject(new ModelError("unavailable", "Groq answered HTTP 400: model not found", 400))), [1, 2], async () => {});
     await expect(rejected({ model: "m", messages: [] }, 10)).rejects.toThrow("HTTP 400");
     expect(tries).toBe(1);
+  });
+});
+
+describe("groqChat errors", () => {
+  it("carries Groq's requested wait on a rate limit", async () => {
+    const { groqChat } = await import("../models/groq");
+    const body = JSON.stringify({ error: { message: "Rate limit reached. Please try again in 5.6325s." } });
+    const fetcher = (async () => new Response(body, { status: 429 })) as unknown as typeof fetch;
+    const error = await groqChat("k", fetcher)({ model: "m", messages: [] }, 1000).catch((e: unknown) => e);
+    expect(error).toMatchObject({ status: 429, retryAfterMs: 5633 });
+    const header = (async () => new Response("{}", { status: 429, headers: { "retry-after": "3" } })) as unknown as typeof fetch;
+    expect(await groqChat("k", header)({ model: "m", messages: [] }, 1000).catch((e: unknown) => e)).toMatchObject({ retryAfterMs: 3000 });
   });
 });
 
@@ -83,7 +104,7 @@ describe("tunedForReasoning", () => {
     await chat({ model: "openai/gpt-oss-20b", messages: [], max_tokens: 300 }, 10);
     await chat({ model: "qwen/qwen3-32b", messages: [], max_tokens: 300 }, 10);
     expect(seen).toEqual([
-      { model: "openai/gpt-oss-20b", messages: [], max_tokens: 1024, reasoning_effort: "low" },
+      { model: "openai/gpt-oss-20b", messages: [], max_tokens: 512, reasoning_effort: "low" },
       { model: "qwen/qwen3-32b", messages: [], max_tokens: 300 },
     ]);
   });

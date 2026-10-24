@@ -17,7 +17,7 @@ if (!key) {
   console.error("agent-run: GROQ_API_KEY is not set");
   process.exit(2);
 }
-const groq = patient(groqChat(key), undefined, undefined, (e, ms) => console.log(`  (${e.message}; retrying in ${ms / 1000} s)`));
+const groq = patient(groqChat(key), undefined, undefined, (e, ms) => console.log(`  (${e.status === 429 ? "rate limited" : e.message.slice(0, 120)}; waiting ${(ms / 1000).toFixed(1)} s)`));
 const chat = tunedForReasoning(groq, process.env.GROQ_REASONING_EFFORT || "low");
 const parserModel = process.env.GROQ_PARSER_MODEL || DEFAULT_MODEL;
 const playerModel = process.env.GROQ_PLAYER_MODEL || DEFAULT_MODEL;

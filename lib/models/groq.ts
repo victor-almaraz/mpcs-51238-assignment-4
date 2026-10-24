@@ -35,6 +35,8 @@ export class ModelError extends Error {
     message: string,
     /** The HTTP status when Groq answered with an error. */
     readonly status?: number,
+    /** How long Groq asks the caller to wait before retrying, from `retry-after` or its message. */
+    readonly retryAfterMs?: number,
   ) {
     super(message);
   }
@@ -46,6 +48,14 @@ export interface Chat {
 
 const ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
 
+/** Milliseconds to wait, from a `retry-after` header in seconds or "try again in 5.6s" in the body. */
+function retryAfter(header: string | null, body: string): number | undefined {
+  const fromBody = /try again in (\d+(?:\.\d+)?)(ms|s)/.exec(body);
+  if (fromBody) return Math.ceil(Number(fromBody[1]) * (fromBody[2] === "ms" ? 1 : 1000));
+  const seconds = header === null ? NaN : Number(header);
+  return Number.isFinite(seconds) ? Math.ceil(seconds * 1000) : undefined;
+}
+
 /** The model the parser and narrator use when no model is configured. */
 export const DEFAULT_MODEL = "openai/gpt-oss-20b";
 
@@ -54,7 +64,7 @@ export const DEFAULT_MODEL = "openai/gpt-oss-20b";
  * reasoning counts against `max_tokens`, so each request asks for `effort` and leaves room for it.
  * Other models' requests pass unchanged.
  */
-export function tunedForReasoning(chat: Chat, effort = "low", room = 1024): Chat {
+export function tunedForReasoning(chat: Chat, effort = "low", room = 512): Chat {
   return (request, timeoutMs) =>
     chat(request.model.startsWith("openai/gpt-oss") ? { ...request, reasoning_effort: request.reasoning_effort ?? effort, max_tokens: Math.max(request.max_tokens ?? 0, room) } : request, timeoutMs);
 }
@@ -95,7 +105,7 @@ export function groqChat(apiKey: string, fetcher: typeof fetch = fetch): Chat {
     if (!response.ok) {
       // Groq's error body names the cause, such as an unknown model or a rate limit; it holds no secrets.
       const detail = await response.text().then((t) => t.slice(0, 300), () => "");
-      throw new ModelError("unavailable", `Groq answered HTTP ${response.status}${detail ? `: ${detail}` : ""}`, response.status);
+      throw new ModelError("unavailable", `Groq answered HTTP ${response.status}${detail ? `: ${detail}` : ""}`, response.status, retryAfter(response.headers.get("retry-after"), detail));
     }
     const body = (await response.json()) as { choices?: { message?: { content?: string | null; tool_calls?: { function?: { name?: string; arguments?: string } }[] } }[] };
     const message = body.choices?.[0]?.message;
