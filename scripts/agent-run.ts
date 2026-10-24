@@ -9,7 +9,7 @@ import { agentRun, chatPlayer, patient } from "../lib/agent/run";
 import { replay } from "../lib/engine";
 import { commitOf } from "../lib/harness/harness";
 import { SCENARIOS } from "../lib/harness/scenarios";
-import { groqChat } from "../lib/models/groq";
+import { ModelError, groqChat, groqModels, type Chat } from "../lib/models/groq";
 import { modelParser } from "../lib/parser/adapter";
 
 const key = process.env.GROQ_API_KEY;
@@ -17,10 +17,15 @@ if (!key) {
   console.error("agent-run: GROQ_API_KEY is not set");
   process.exit(2);
 }
-const chat = patient(groqChat(key), undefined, undefined, (e, ms) => console.log(`  (${e.message}; retrying in ${ms / 1000} s)`));
-const parserModel = process.env.GROQ_PARSER_MODEL || "llama-3.1-8b-instant";
-const playerModel = process.env.GROQ_PLAYER_MODEL || "llama-3.1-8b-instant";
-const parser = modelParser(chat, parserModel, Number(process.env.PARSER_TIMEOUT || 8) * 1000);
+const groq = patient(groqChat(key), undefined, undefined, (e, ms) => console.log(`  (${e.message}; retrying in ${ms / 1000} s)`));
+// GPT-OSS models reason before answering, and reasoning counts against max_tokens: ask for little
+// reasoning and leave room for it.
+const reasoning = (model: string) => model.startsWith("openai/gpt-oss");
+const chat: Chat = (request, timeoutMs) =>
+  groq(reasoning(request.model) ? { ...request, reasoning_effort: process.env.GROQ_REASONING_EFFORT || "low", max_tokens: Math.max(request.max_tokens ?? 0, 1024) } : request, timeoutMs);
+const parserModel = process.env.GROQ_PARSER_MODEL || "openai/gpt-oss-20b";
+const playerModel = process.env.GROQ_PLAYER_MODEL || "openai/gpt-oss-20b";
+const parser = modelParser(chat, parserModel, Number(process.env.PARSER_TIMEOUT || 20) * 1000);
 const player = chatPlayer(chat, playerModel);
 
 const wanted = process.argv.slice(2);
@@ -30,10 +35,14 @@ mkdirSync(OUT, { recursive: true });
 
 // One small call first, so a rejected key or model name stops the run with Groq's own message.
 try {
-  await chat({ model: playerModel, messages: [{ role: "user", content: "Reply with the word ready." }], max_tokens: 5 }, 20000);
-  if (parserModel !== playerModel) await chat({ model: parserModel, messages: [{ role: "user", content: "Reply with the word ready." }], max_tokens: 5 }, 20000);
+  await chat({ model: playerModel, messages: [{ role: "user", content: "Reply with the word ready." }], max_tokens: 16 }, 20000);
+  if (parserModel !== playerModel) await chat({ model: parserModel, messages: [{ role: "user", content: "Reply with the word ready." }], max_tokens: 16 }, 20000);
 } catch (e) {
   console.error(`agent-run: ${(e as Error).message}`);
+  if (e instanceof ModelError && e.status === 404) {
+    const ids = await groqModels(key).catch(() => []);
+    if (ids.length) console.error(`Models this key may use:\n  ${ids.join("\n  ")}\nChoose with GROQ_PLAYER_MODEL and GROQ_PARSER_MODEL.`);
+  }
   process.exit(1);
 }
 

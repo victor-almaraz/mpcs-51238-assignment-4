@@ -18,6 +18,8 @@ export interface ChatRequest {
   tools?: ChatTool[];
   temperature?: number;
   max_tokens?: number;
+  /** For reasoning models (GPT-OSS on Groq): `low`, `medium`, or `high`. */
+  reasoning_effort?: string;
 }
 
 export interface ChatResponse {
@@ -43,6 +45,15 @@ export interface Chat {
 }
 
 const ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
+const MODELS = "https://api.groq.com/openai/v1/models";
+
+/** The ids of the models the key may use, sorted. */
+export async function groqModels(apiKey: string, fetcher: typeof fetch = fetch): Promise<string[]> {
+  const response = await fetcher(MODELS, { headers: { Authorization: `Bearer ${apiKey}` } });
+  if (!response.ok) throw new ModelError("unavailable", `Groq answered HTTP ${response.status}`, response.status);
+  const body = (await response.json()) as { data?: { id?: string }[] };
+  return (body.data ?? []).flatMap((m) => (typeof m.id === "string" ? [m.id] : [])).sort();
+}
 
 export function groqChat(apiKey: string, fetcher: typeof fetch = fetch): Chat {
   return async (request, timeoutMs) => {
@@ -59,6 +70,7 @@ export function groqChat(apiKey: string, fetcher: typeof fetch = fetch): Chat {
           messages: request.messages,
           temperature: request.temperature ?? 0,
           ...(request.max_tokens ? { max_tokens: request.max_tokens } : {}),
+          ...(request.reasoning_effort ? { reasoning_effort: request.reasoning_effort } : {}),
           ...(request.tools ? { tools: request.tools.map((t) => ({ type: "function", function: t })), tool_choice: "required" } : {}),
         }),
       });

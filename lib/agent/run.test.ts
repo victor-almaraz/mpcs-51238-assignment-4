@@ -66,3 +66,11 @@ describe("agent-driven runs", () => {
     expect(tries).toBe(1);
   });
 });
+
+describe("groqModels", () => {
+  it("lists the model ids, sorted", async () => {
+    const { groqModels } = await import("../models/groq");
+    const fetcher = (async () => new Response(JSON.stringify({ data: [{ id: "b-model" }, { id: "a-model" }] }))) as unknown as typeof fetch;
+    expect(await groqModels("k", fetcher)).toEqual(["a-model", "b-model"]);
+  });
+});
