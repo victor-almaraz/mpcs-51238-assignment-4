@@ -1,6 +1,7 @@
 // Adventure drafts (sprint 16 exit criterion: a three-room map and one-arc adventure built in the
 // editor publishes with the CLI's diagnostics and plays).
 
+import { deflateRawSync } from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { unzip, zip } from "../export/zip";
 import { draftFiles } from "../materials";
@@ -134,6 +135,34 @@ describe("drafts", () => {
     const back = unzip(out.data);
     expect([...back.keys()].sort()).toEqual([...draftFiles(draft.document).keys()].map((k) => `sunken_archive/${k}`).sort());
     expect(await code(importDraft(store, "user_a", new Uint8Array([1, 2, 3]), e))).toBe("invalid_request");
+  });
+
+  it("refuses an archive that unpacks past the limit, and names exports by a valid id", async () => {
+    // One deflated entry of 16 MB of spaces: about 16 KB packed.
+    const packed = deflateRawSync(new Uint8Array(16 * 1024 * 1024).fill(32));
+    const name = new TextEncoder().encode("adventure.yaml");
+    const local = new DataView(new ArrayBuffer(30));
+    local.setUint32(0, 0x04034b50, true);
+    local.setUint16(8, 8, true);
+    local.setUint32(18, packed.length, true);
+    local.setUint16(26, name.length, true);
+    const entry = new DataView(new ArrayBuffer(46));
+    entry.setUint32(0, 0x02014b50, true);
+    entry.setUint16(10, 8, true);
+    entry.setUint32(20, packed.length, true);
+    entry.setUint16(28, name.length, true);
+    const end = new DataView(new ArrayBuffer(22));
+    end.setUint32(0, 0x06054b50, true);
+    end.setUint16(8, 1, true);
+    end.setUint16(10, 1, true);
+    end.setUint32(12, 46 + name.length, true);
+    end.setUint32(16, 30 + name.length + packed.length, true);
+    const bomb = new Uint8Array(Buffer.concat([new Uint8Array(local.buffer), name, packed, new Uint8Array(entry.buffer), name, new Uint8Array(end.buffer)]));
+    await expect(importDraft(store, "user_a", bomb, e)).rejects.toMatchObject({ code: "invalid_request", detail: expect.stringContaining("8 MB") });
+
+    const d = await fresh();
+    await saveDraft(store, "user_a", { draft_id: d.id, document: { ...d.document, adventure: { ...(d.document.adventure as object), id: '../x"\r\nSet-Cookie: a=b' } }, revision: 1 });
+    expect((await exportDraft(store, "user_a", d.id)).name).toBe(`${d.material_id}.zip`);
   });
 
   it("deletes a draft and restores it within 30 days", async () => {

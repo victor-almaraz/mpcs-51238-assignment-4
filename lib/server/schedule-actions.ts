@@ -69,7 +69,9 @@ export async function createFeedAction(_: FormState, form: FormData): Promise<Fo
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
   const origin = `${h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https")}://${host}`;
-  const key = process.env.CALENDAR_FEED_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  const key = process.env.CALENDAR_FEED_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Without a key every feed secret would be guessable from the user id.
+  if (!key) return { error: "Calendar feeds are not configured." };
   const r = await attempt((uid) => rotateCalendarFeed(serverStore(), uid, { key, origin }));
   return "error" in r ? r : refresh(str(form, "instance_id"));
 }

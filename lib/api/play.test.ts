@@ -202,6 +202,18 @@ describe("party changes", () => {
     expect(r.ok).toBe(true);
   });
 
+  it("serves the instance without a view to a player with two characters who names neither", async () => {
+    const { instance, vale, make } = await table();
+    await startInstance(deps, "user_a", instance.id);
+    await pauseInstance(deps, "user_a", instance.id);
+    const second = await make("user_a", "Second");
+    await addCharacter(deps, "user_a", { instance_id: instance.id, character_id: second.id });
+    const plain = await getInstance(deps, "user_a", { instance_id: instance.id });
+    expect(plain.instance.characters).toHaveLength(3);
+    expect(plain).not.toHaveProperty("view");
+    expect((await getInstance(deps, "user_a", { instance_id: instance.id, character_id: vale.id })).view).toBeDefined();
+  });
+
   it("takes a leaving member's characters out of a running instance", async () => {
     const { campaign, instance, rook } = await table();
     await startInstance(deps, "user_a", instance.id);

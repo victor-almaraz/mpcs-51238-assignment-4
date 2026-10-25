@@ -79,4 +79,18 @@ describe("HTTP binding", () => {
     expect(limited.body.error.retry_after_ms).toBeGreaterThan(0);
     expect((await call("user_b", "GET", "/me")).status).toBe(200);
   });
+
+  it("refuses cookie-authenticated writes from other sites", async () => {
+    expect((await call("user_a", "PATCH", "/me", { display_name: "Mallory" }, { Origin: "https://evil.test" })).body).toEqual({ error: { code: "forbidden", detail: "requests from other sites are refused" } });
+    expect((await call("user_a", "PATCH", "/me", { display_name: "Mallory" }, { "Sec-Fetch-Site": "cross-site" })).status).toBe(403);
+    expect((await call("user_a", "PATCH", "/me", { display_name: "Ann" }, { Origin: "https://cadmium.test" })).status).toBe(200);
+    // A bearer token is not sent by a browser on its own, and a missing Origin is not a browser form.
+    expect((await call("user_a", "PATCH", "/me", { display_name: "Ann" }, { Origin: "https://app.test", Authorization: "Bearer t" })).status).toBe(200);
+    expect((await call("user_a", "PATCH", "/me", { display_name: "Ann" })).status).toBe(200);
+    expect((await call("user_a", "GET", "/me", undefined, { Origin: "https://evil.test" })).status).toBe(200);
+  });
+
+  it("treats a malformed escape in a path as no match", async () => {
+    expect((await call("user_a", "GET", "/campaigns/%E0")).status).toBe(404);
+  });
 });

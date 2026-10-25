@@ -15,7 +15,8 @@ import { HistoryFilter } from "./filter";
 
 export default async function History({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ after?: string }> }) {
   const { id } = await params;
-  const after = Math.max(0, Number((await searchParams).after ?? 0) || 0);
+  // A whole version: ?after=1.5 or a huge number would fail get_history's validation.
+  const after = Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Math.floor(Number((await searchParams).after ?? 0) || 0)));
   const user = await pageUser();
   const deps = serverDeps();
   const { instance } = await orNotFound(getInstance(deps, user.id, { instance_id: id }));

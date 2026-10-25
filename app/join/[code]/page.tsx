@@ -6,13 +6,13 @@ import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
 import { Standalone } from "@/components/ui/standalone";
 import { previewInviteLink } from "@/lib/api/campaigns";
 import { joinByLinkAction } from "@/lib/server/campaign-actions";
-import { orNotFound } from "@/lib/server/pages";
+import { decoded, orNotFound } from "@/lib/server/pages";
 import { serverStore } from "@/lib/server/supabase";
 import { nextStep } from "@/lib/server/visitor";
 
 export default async function Join({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const link = await orNotFound(previewInviteLink(serverStore(), decodeURIComponent(code)));
+  const link = await orNotFound(previewInviteLink(serverStore(), decoded(code)));
   const step = await nextStep(`/join/${code}`);
   return (
     <Standalone icon={<Link2 {...ICON} />} eyebrow="Invite link" title={link.campaign_title} description={`A campaign by ${link.author_display_name}.`} footer="Joining makes you a player in this campaign.">

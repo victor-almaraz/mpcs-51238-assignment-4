@@ -65,7 +65,7 @@ export async function addPushSubscription(store: Store, userId: string | null, i
   const req = onlyFields(input, ["endpoint", "keys", "label"]);
   if (typeof req.endpoint !== "string" || !/^https:\/\//.test(req.endpoint) || req.endpoint.length > 1000) throw new ApiError("invalid_request", "endpoint must be an https URL");
   const keys = onlyFields(req.keys, ["p256dh", "auth"]);
-  if (typeof keys.p256dh !== "string" || typeof keys.auth !== "string") throw new ApiError("invalid_request", "keys must have p256dh and auth");
+  if (typeof keys.p256dh !== "string" || typeof keys.auth !== "string" || keys.p256dh.length > 200 || keys.auth.length > 100) throw new ApiError("invalid_request", "keys must have p256dh and auth");
   const label = req.label === undefined ? "" : req.label;
   if (typeof label !== "string" || label.length > 80) throw new ApiError("invalid_request", "label must have at most 80 characters");
   return store.addPush({ id: entropy.id("ps"), user_id: user.id, endpoint: req.endpoint, p256dh: keys.p256dh, auth: keys.auth, label });
