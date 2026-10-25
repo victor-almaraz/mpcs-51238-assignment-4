@@ -22,11 +22,11 @@ export async function advanceAction(instanceId: string): Promise<{ error: string
 }
 
 export async function refreshAction(instanceId: string, characterId: string) {
-  const r = await attempt((uid) => getInstance(serverDeps(), uid, { instance_id: instanceId, character_id: characterId }));
+  const r = await attempt((uid) => getInstance(serverDeps(), uid, { instance_id: instanceId, character_id: characterId }), { read: true });
   return "error" in r ? null : r.ok;
 }
 
 export async function historyAction(instanceId: string, afterVersion: number): Promise<HistoryItem[]> {
-  const r = await attempt((uid) => getHistory(serverDeps().store, uid, { instance_id: instanceId, after_version: afterVersion, limit: 50 }));
+  const r = await attempt((uid) => getHistory(serverDeps().store, uid, { instance_id: instanceId, after_version: afterVersion, limit: 50 }), { read: true });
   return "error" in r ? [] : r.ok.items;
 }

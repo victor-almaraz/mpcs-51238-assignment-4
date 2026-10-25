@@ -23,6 +23,7 @@ import {
   updateCampaign,
 } from "./campaigns";
 import { ApiError, type ApiErrorCode } from "./errors";
+import { RATE_LIMIT } from "./limits";
 import {
   addCharacter,
   advanceRound,
@@ -47,6 +48,8 @@ import { calendarFeed, cancelSession, disableCalendarFeed, exportCalendar, getCa
 import { getSystemSchema, listSystems } from "./systems";
 import { acceptTerms, caller, getMe } from "./users";
 
+export { RATE_LIMIT };
+
 const STATUS: Record<ApiErrorCode, number> = {
   unauthenticated: 401,
   forbidden: 403,
@@ -59,8 +62,6 @@ const STATUS: Record<ApiErrorCode, number> = {
   unavailable: 503,
 };
 
-/** Requests per user per minute for every operation (api.md, Rate limits); deployment-configurable. */
-export const RATE_LIMIT = { window_seconds: 60, limit: 120 };
 
 interface Call {
   deps: Deps;

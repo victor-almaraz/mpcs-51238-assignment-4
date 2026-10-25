@@ -16,11 +16,11 @@ Severity scale: **Critical** (remote compromise or data exposure across users, e
 
 ## Summary
 
-No critical or high finding in application code or the database. The authorization model is consistent: every operation starts with `caller()` (terms, suspension, closing account), membership checks return `not_found` to non-members, ownership checks cover characters, drafts, push subscriptions, and deleted records, and the database grants nothing to `anon` or `authenticated`. Fixed: one medium denial-of-service path (ZIP bomb), one medium runtime crash (several characters in a started game), one medium broken flow (portraits near 1 MB), and several low-severity hardening items. Open items needing a decision are listed under [Decisions](#decisions).
+No critical or high finding in application code or the database. The authorization model is consistent: every operation starts with `caller()` (terms, suspension, closing account), membership checks return `not_found` to non-members, ownership checks cover characters, drafts, push subscriptions, and deleted records, and the database grants nothing to `anon` or `authenticated`. Fixed: one medium denial-of-service path (ZIP bomb), one medium runtime crash (several characters in a started game), one medium broken flow (portraits near 1 MB), and low-severity hardening items, including an access migration that is written but not applied. What remains for the user is listed under [Remaining for the user](#remaining-for-the-user).
 
 | Check | Result |
 |---|---|
-| `pnpm check` | Passes (typecheck, lint, 915 tests, build) |
+| `pnpm check` | Passes (typecheck, lint, 923 tests, build) |
 | `pnpm audit:ui --scheme light` | 31 screens, 0 findings |
 | `pnpm audit:ui --scheme dark` | 31 screens, 0 findings |
 | `pnpm audit` | 5 advisories, all in `dompurify` 3.4.15 under `monaco-editor` (see S-11) |
@@ -41,57 +41,29 @@ No critical or high finding in application code or the database. The authorizati
 | D-3 | Low | `app/(signed-in)/instances/[id]/history/page.tsx` | `?after=1.5` failed `get_history`'s integer validation and showed the server error page. | `after` is floored and clamped to a safe integer. |
 | D-4 | Low | `lib/api/http.ts`, `match`; `app/invite/[code]`, `app/join/[code]`; `lib/server/pages.ts`, `decoded` | A malformed percent escape in a path segment threw `URIError`, a 500. Next.js answers 400 before the app runs in the cases tried, so this is defence in depth. | Malformed escapes match nothing. Test: `lib/api/http.test.ts`. |
 | S-8 | Low | `lib/api/account.ts`, `addPushSubscription` | `keys.p256dh` and `keys.auth` had no length limit. | Limited to 200 and 100 characters (the real values are 87 and 22). |
+| S-9 | Low | `supabase/migrations/20261024000000_access_hardening.sql`; `lib/store/migrate.ts` | Supabase grants `anon` and `authenticated` every privilege on new tables, sequences, and functions in `public`, and Postgres grants `EXECUTE` on new functions to `PUBLIC`. Each migration revokes them for its own objects, so nothing is exposed today, but a migration that forgot would expose its table or function to anyone holding the publishable key. `lib/store/migrate.ts` created `cadmium_migrations` without RLS (it runs only against PGlite today). | The migration revokes those defaults for the role that applies it (globally for `PUBLIC`'s `EXECUTE`, which only the global form can revoke), and revokes the leftover grants on `operator_log_id_seq` and `bundles_immutable()`. The runner turns RLS on for its table and revokes the API roles. Test: `lib/store/migrate.test.ts`. **Not applied** (see [Remaining](#remaining-for-the-user)). |
+| S-10 | Low | same migration: `realtime_may_receive`, `cadmium_user_by_feed`, new `cadmium_user_active` | A suspended user, or a member of a soft-deleted campaign, kept receiving live game messages for as long as their Clerk token was valid, and a suspended user's calendar feed kept working. | Both checks now require an active, unsuspended user (`cadmium_user_active`), and instance channels require a campaign that is not deleted. `realtime_may_receive` now runs with an empty `search_path` and schema-qualified names. A suspended user can still read and export their own data (`SPEC_ISSUES.md#account-suspension`). Test: `lib/api/access.test.ts`. **Not applied.** |
+| S-12 | Low | `lib/api/account.ts`, `addPushSubscription` | Any `https://` endpoint was stored, and the Scheduler later posts to it: a blind request from the server to a host of the user's choosing. There was no limit on subscriptions per user. | Endpoints must be on `fcm.googleapis.com`, `updates.push.services.mozilla.com`, `web.push.apple.com`, or `*.notify.windows.com`, with no port or credentials; others get "this browser's push service is not supported". At most 10 per user; subscribing the same browser again replaces it. Test: `lib/api/account.test.ts`. |
+| S-13 | Info | `app/api/health/route.ts` | The public health check reported which Supabase settings were present and each migration's state. | Anyone gets `{ status }` (`ok`, `incomplete`, `unconfigured`) with 200 or 503; `Authorization: Bearer $CRON_SECRET` adds the per-setting and per-migration detail. The new migration is probed through `cadmium_user_active`, so health reports `incomplete` until it is applied. README updated. |
+| S-14 | Info | `lib/server/forms.ts`, `attempt` | Server actions had no rate limit; `/v1` allows 120 requests a minute per user. | Every action counts against the same per-user budget (`lib/api/limits.ts`, shared with `/v1`) and returns "too many requests; try again in N seconds" past it. The play page's view and history refreshes and the editor's settings and draft reads are exempt, so an active table does not spend its budget on them. Visitors who are not signed in are not counted. Test: `lib/server/forms.test.ts`. |
+| D-5 | Low | `lib/api/schedules.ts`; `app/(signed-in)/instances/[id]/schedule/page.tsx` | An ended game's schedule still listed future sessions with answer and change controls, although the Scheduler, reminders, and feeds ignore ended games. | Sessions stay as a record. `update_session`, `move_occurrence`, `cancel_session`, and `rsvp` fail with `conflict` on an ended game, and the page shows "This game has ended." without controls. Recorded as `SPEC_ISSUES.md#ended-instance-schedule`. Test: `lib/api/schedules.test.ts`; checked in demo mode. |
+| D-6 | Info | `components/play/play-client.tsx`; `app/(signed-in)/instances/[id]/play/page.tsx` | A player with several characters in one game could play only the first one; `?character=<id>` worked but nothing linked to it. | In the turn tracker, the player's other characters are links ("Play as Rook") to `?character=<id>`; the play client is keyed by character, so the view starts fresh. Recorded as `SPEC_ISSUES.md#play-character-switch`. Checked in demo mode. |
 
-## Decisions
+## Remaining for the user
 
-Items that need the user's decision, a migration, or a dependency change. Nothing below was changed.
+### Apply the access migration (S-9, S-10)
 
-### S-9 (Low): Supabase default privileges and a latent unprotected table
+Paste `supabase/migrations/20261024000000_access_hardening.sql` into the Supabase SQL Editor and run it once. Until then, `/api/health` reports `incomplete` with status 503, and the suspension checks are not in force. After it, functions that the `postgres` role creates in any schema are executable only by their owner until a grant says so, which every Cadmium migration already does; a hand-written function elsewhere (an auth hook, say) needs its own `grant execute`.
 
-Supabase grants `anon` and `authenticated` all privileges on new tables, sequences, and functions in `public`. Each migration revokes them explicitly, so today nothing is exposed (all 23 tables have RLS on, no policies, no grants; every `cadmium_*` function is executable only by `service_role`). A future migration that forgets the revoke block would expose its table through PostgREST to anyone holding the publishable key. `lib/store/migrate.ts` creates `cadmium_migrations` without RLS or revokes; it runs only against PGlite in tests today, and production is set up from `supabase/fresh.sql`, which does not create that table.
-
-Proposed migration, for the user to apply in the SQL Editor if wanted:
-
-```sql
-alter default privileges for role postgres in schema public revoke all on tables from anon, authenticated;
-alter default privileges for role postgres in schema public revoke all on sequences from anon, authenticated;
-alter default privileges for role postgres in schema public revoke all on functions from anon, authenticated;
-alter default privileges for role postgres in schema public revoke execute on functions from public;
-revoke all on sequence operator_log_id_seq from anon, authenticated;
-revoke execute on function bundles_immutable() from public, anon, authenticated;
-```
-
-### S-10 (Low): Realtime and the calendar feed ignore suspension
-
-`realtime_may_receive` (`supabase/migrations/20261023000400_coordinator.sql:152`) admits any member of the instance's campaign, including suspended users and members of soft-deleted campaigns, for as long as their Clerk token is valid. `cadmium_user_by_feed` checks `status = 'active'` but not `suspended_at`, so a suspended user's calendar feed keeps working. Whether suspension should cut live delivery and feeds is a policy question (`SPEC_ISSUES.md#account-suspension` lets a suspended account read its own data). If it should, a new migration replaces both functions with `and u.suspended_at is null` and, for Realtime, `and c.deleted_at is null`. Also confirm in the Supabase dashboard that Realtime allows private channels only; that setting is not in the repository.
+Also confirm in the Supabase dashboard (Realtime settings) that only private channels are allowed. That setting is not in the repository.
 
 ### S-11 (Info, dependency): `dompurify` advisories
 
-`pnpm audit` reports one critical, one high, and three low advisories, all in `dompurify` 3.4.15, pulled in by `monaco-editor` (also via `monaco-yaml`). They concern `IN_PLACE` sanitization with hooks, `SAFE_FOR_TEMPLATES` with shadow roots, and the XHTML parser mode; Monaco does not use those modes for its hover and markdown rendering, and the editor renders only the author's own draft, so exploitability here is low. Proposed fix for the user to run: add a pnpm override in `pnpm-workspace.yaml` (`overrides: { dompurify: ">=3.4.17" }`) and `pnpm install`, or update `monaco-editor` once a release depends on a patched version.
+`pnpm audit` reports one critical, one high, and three low advisories, all in `dompurify` 3.4.15, pulled in by `monaco-editor` (also via `monaco-yaml`). They concern `IN_PLACE` sanitization with hooks, `SAFE_FOR_TEMPLATES` with shadow roots, and the XHTML parser mode. Monaco does not use those modes for its hover and markdown rendering, and the editor shows only the author's own draft, so exploitability here is low. Fix: add `overrides: { dompurify: ">=3.4.17" }` to `pnpm-workspace.yaml`, run `pnpm install`, and open the adventure editor once to confirm hovers and diagnostics still render.
 
-### S-12 (Low): Push endpoint accepts any HTTPS URL
+### S-15 (Info): dedicated `CALENDAR_FEED_KEY`
 
-`add_push_subscription` stores any `https://` endpoint, and the Scheduler later POSTs encrypted payloads to it: a blind server-side request to a host of the user's choosing. Impact is small (fixed method, encrypted body, no response read). Restricting endpoints to the push services browsers use (`fcm.googleapis.com`, `updates.push.services.mozilla.com`, `web.push.apple.com`, `*.notify.windows.com`) closes it but may refuse a less common browser. There is also no limit on subscriptions per user.
-
-### S-13 (Info): `/api/health` is public
-
-It reports whether each Supabase setting is present and which migrations are applied; values and errors are never shown. Each call runs eleven RPCs. Options: keep as is, return only the overall status to anonymous callers, or require `CRON_SECRET`.
-
-### S-14 (Info): Server actions are not rate limited
-
-The `/v1` binding limits each user to 120 requests a minute; server actions, which call the same operations, have no limit. Paths of note: `enterCodeAction` previews invitation codes without sign-in (100-bit codes, so guessing is infeasible), and `inputAction` reaches the parser model (one input in processing per character at a time). Adding `store.rateHit` to `attempt()` in `lib/server/forms.ts` would apply the same limit everywhere.
-
-### S-15 (Info): Calendar feed key falls back to the service role key
-
-`CALENDAR_FEED_KEY` defaults to `SUPABASE_SERVICE_ROLE_KEY` as the HMAC key. This does not leak the key, but rotating the service role key then invalidates every feed URL, and one secret serves two purposes. Setting a dedicated `CALENDAR_FEED_KEY` in Vercel is recommended.
-
-### D-5 (Low): Schedule of an ended game still takes answers
-
-After a game ends, `/instances/[id]/schedule` still lists its future sessions with RSVP buttons and "Change this session", although the Scheduler, reminders, and calendar feeds ignore ended games. `schedule_session` refuses an ended game; `update_session`, `move_occurrence`, and `rsvp` do not. Options: cancel a game's sessions when it ends, or show them read-only with a notice. The specification does not say which.
-
-### D-6 (Info): No character switch on the play page
-
-A player with several characters in one game plays the first one; the play page accepts `?character=<id>` but offers no control to switch.
+`CALENDAR_FEED_KEY` falls back to `SUPABASE_SERVICE_ROLE_KEY` as the HMAC key for feed secrets. This does not leak the key, but rotating the service role key then invalidates every feed URL, and one secret serves two purposes. Generate one (`openssl rand -base64 32`) and set it in Vercel. Existing feed URLs change once.
 
 ## Verified as sound
 

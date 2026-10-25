@@ -1,5 +1,6 @@
-// Health check: whether the server is configured and each migration's functions are reachable. Reports
-// states only, never values or error details.
+// Health check: whether the server is configured and each migration's functions are reachable. Anyone
+// gets the overall status; the operator, with `Authorization: Bearer $CRON_SECRET`, gets each setting's
+// and each migration's state. Reports states only, never values or error details.
 import { configured } from "@/lib/server/env";
 import { serviceClient, supabaseRpc } from "@/lib/server/supabase";
 
@@ -18,12 +19,20 @@ const PROBES: [migration: string, fn: string, args: Record<string, unknown>][] =
   ["20261023000900_drafts", "cadmium_get_draft", { p_id: "health" }],
   ["20261023001000_assets", "cadmium_get_asset", { p_hash: "health" }],
   ["20261023001100_portraits", "cadmium_asset_meta", { p_hash: "health" }],
+  ["20261024000000_access_hardening", "cadmium_user_active", { p_id: "health" }],
 ];
 
-export async function GET() {
+/** Whether the caller presented the cron secret, and so may see the details. */
+function operator(request: Request): boolean {
+  const secret = process.env.CRON_SECRET;
+  return !!secret && request.headers.get("authorization") === `Bearer ${secret}`;
+}
+
+export async function GET(request: Request) {
+  const detailed = operator(request);
   const settings = configured();
   if (!settings.supabaseUrl || !settings.supabaseServiceRoleKey) {
-    return Response.json({ database: "unconfigured", settings }, { status: 503 });
+    return Response.json(detailed ? { status: "unconfigured", database: "unconfigured", settings } : { status: "unconfigured" }, { status: 503 });
   }
   const rpc = supabaseRpc(serviceClient());
   const migrations: Record<string, "applied" | "missing" | "error"> = {};
@@ -39,5 +48,6 @@ export async function GET() {
     }
   }
   const all = Object.values(migrations).every((m) => m === "applied");
-  return Response.json({ database: "ok", schema: all ? "applied" : "incomplete", migrations, settings }, { status: all ? 200 : 503 });
+  const status = all ? "ok" : "incomplete";
+  return Response.json(detailed ? { status, database: "ok", schema: all ? "applied" : "incomplete", migrations, settings } : { status }, { status: all ? 200 : 503 });
 }

@@ -38,7 +38,9 @@ export default async function Play({ params, searchParams }: { params: Promise<{
   return (
     <>
       {/* A workspace has no footer (docs/design/README.md, App frame), so it fills the window under the top bar. */}
+      {/* Keyed by character: switching characters starts the client afresh, with that character's view. */}
       <PlayClient
+        key={characterId}
         instance={instance}
         view={view}
         history={history.items}

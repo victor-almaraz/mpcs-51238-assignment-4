@@ -19,6 +19,7 @@ import { Panel } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Choice, Field, Select, TextArea, TextInput, described, inputClass } from "@/components/ui/field";
 import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
+import { Notice } from "@/components/ui/notice";
 import { Page, PageHeader, Section, WithAside } from "@/components/ui/page";
 
 const DAY = 86_400_000;
@@ -32,6 +33,8 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
   const { instance } = await orNotFound(getInstance(serverDeps(), user.id, { instance_id: id }));
   const campaign = await getCampaign(store, user.id, instance.campaign_id);
   const author = campaign.author_id === user.id;
+  // SPEC_ISSUES.md#ended-instance-schedule: an ended game's sessions stay as a record, closed to answers and changes.
+  const ended = instance.status === "ended";
   const names = new Map(campaign.members.map((m) => [m.user_id, m.display_name]));
   const now = requestTime();
   // list_occurrences takes a window of at most 92 days: from a day ago, so a session that just ended
@@ -89,7 +92,7 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
                 )}
               </div>
             </Panel>
-            {author && instance.status !== "ended" && (
+            {author && !ended && (
               <Panel title="New session" className="gap-4">
                 <ActionForm action={scheduleSessionAction} className="flex flex-col gap-4">
                   <input type="hidden" name="instance_id" value={id} />
@@ -139,6 +142,11 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
           </>
         }
       >
+        {ended && (
+          <Notice title="This game has ended." className="mb-6">
+            Its sessions are kept as a record. Answers and changes are closed.
+          </Notice>
+        )}
         {list.length === 0 && <EmptyState icon={<CalendarDays {...ICON} />}>No sessions in the next 91 days.</EmptyState>}
         {[...weeks].map(([week, items], n) => (
           <Section key={week} id={`week-${n}`} title={week} className="mb-8">
@@ -166,7 +174,7 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
                         ))}
                       </ul>
                     )}
-                    {o.status !== "cancelled" && (
+                    {o.status !== "cancelled" && !ended && (
                       <div className="mt-3 flex flex-col gap-3 border-t border-rule pt-3">
                         <div role="group" aria-label={`Your answer for ${formatWhen(o.starts_at, tz)}`} className="flex flex-wrap items-center gap-2">
                           <span className="text-label font-medium text-muted">Your answer</span>

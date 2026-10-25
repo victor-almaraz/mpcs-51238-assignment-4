@@ -1129,3 +1129,31 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** The application's own pattern library, `docs/design/README.md`, replaces Margin for this application: size classes, hub, detail, form, and workspace layouts, the components in `components/ui/`, and per-screen patterns, with sources. The Graphite neutrals and contrast minimums, the Lucide icon vocabulary, and the writing rules stay. The accent is cadmium orange instead of Graphite's lavender, after the product's name; danger moves to crimson and warning to ochre so that neither reads as the accent; cadmium yellow is added as the mark of what is happening now. The software is set in the system font and the story in self-hosted Libertinus Serif (`app/theme.css`).
 
 **Proposed resolution.** Replace the Margin documents with a pattern library along these lines, or keep Margin for the specification and state that applications may substitute their own design system that meets the same accessibility and contrast requirements.
+
+## ended-instance-schedule
+
+| Field | Value |
+|---|---|
+| Document | `docs/api.md`; `docs/app-flow.md` |
+| Section | Scheduling (`update_session`, `move_occurrence`, `cancel_session`, `rsvp`); Schedule |
+| Marker | `lib/api/schedules.ts`, `app/(signed-in)/instances/[id]/schedule/page.tsx` |
+
+**Problem.** `schedule_session` refuses an instance that has ended, and the Scheduler sends nothing for one, but the specification does not say what happens to the sessions an instance already had when it ends, or whether members may still answer or the author still change them.
+
+**Implemented.** An ended instance's sessions stay as they are, as a record. `update_session`, `move_occurrence`, `cancel_session`, and `rsvp` fail with `conflict` once the instance has ended. The Schedule page lists the sessions under a notice that the game has ended, without answer or change controls.
+
+**Proposed resolution.** State that ending an instance closes its schedule: sessions are kept and listed, and every scheduling write fails with `conflict`.
+
+## play-character-switch
+
+| Field | Value |
+|---|---|
+| Document | `docs/app-flow.md`; `docs/api.md` |
+| Section | Play interface; Instances (several characters per user) |
+| Marker | `components/play/play-client.tsx` |
+
+**Problem.** A user may have several characters in one instance and passes `character_id` to play as one of them, but the Play interface does not say how the user chooses which character the page plays.
+
+**Implemented.** The play page plays the character named by `?character=<id>`, or the user's first character in the instance. In the turn tracker, the user's other characters are links that switch the page to them.
+
+**Proposed resolution.** Add the choice to the Play interface: the turn tracker, or a character menu, switches between the user's characters in the instance.
