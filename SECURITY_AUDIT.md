@@ -23,7 +23,7 @@ No critical or high finding in application code or the database. The authorizati
 | `pnpm check` | Passes (typecheck, lint, 923 tests, build) |
 | `pnpm audit:ui --scheme light` | 31 screens, 0 findings |
 | `pnpm audit:ui --scheme dark` | 31 screens, 0 findings |
-| `pnpm audit` | 5 advisories, all in `dompurify` 3.4.15 under `monaco-editor` (see S-11) |
+| `pnpm audit` | No known vulnerabilities, after the `dompurify` override (S-11) |
 
 ## Fixed findings
 
@@ -48,6 +48,7 @@ No critical or high finding in application code or the database. The authorizati
 | S-14 | Info | `lib/server/forms.ts`, `attempt` | Server actions had no rate limit; `/v1` allows 120 requests a minute per user. | Every action counts against the same per-user budget (`lib/api/limits.ts`, shared with `/v1`) and returns "too many requests; try again in N seconds" past it. The play page's view and history refreshes and the editor's settings and draft reads are exempt, so an active table does not spend its budget on them. Visitors who are not signed in are not counted. Test: `lib/server/forms.test.ts`. |
 | D-5 | Low | `lib/api/schedules.ts`; `app/(signed-in)/instances/[id]/schedule/page.tsx` | An ended game's schedule still listed future sessions with answer and change controls, although the Scheduler, reminders, and feeds ignore ended games. | Sessions stay as a record. `update_session`, `move_occurrence`, `cancel_session`, and `rsvp` fail with `conflict` on an ended game, and the page shows "This game has ended." without controls. Recorded as `SPEC_ISSUES.md#ended-instance-schedule`. Test: `lib/api/schedules.test.ts`; checked in demo mode. |
 | D-6 | Info | `components/play/play-client.tsx`; `app/(signed-in)/instances/[id]/play/page.tsx` | A player with several characters in one game could play only the first one; `?character=<id>` worked but nothing linked to it. | In the turn tracker, the player's other characters are links ("Play as Rook") to `?character=<id>`; the play client is keyed by character, so the view starts fresh. Recorded as `SPEC_ISSUES.md#play-character-switch`. Checked in demo mode. |
+| S-11 | Info | `pnpm-workspace.yaml`, `overrides`; `pnpm-lock.yaml` | `pnpm audit` reported one critical, one high, and three low advisories, all in `dompurify` 3.4.15, a dependency of `monaco-editor` and `monaco-yaml`. No module of the application imports `monaco-editor` or `dompurify` (YAML is edited in a text area), so the vulnerable code never reached a browser. | A pnpm override resolves `dompurify` to 3.4.17 or later; `pnpm audit` reports no known vulnerabilities. The adventure editor was checked in demo mode afterwards: it loads, autosaves, and shows Edit as YAML without console errors. |
 
 ## Remaining for the user
 
@@ -56,10 +57,6 @@ No critical or high finding in application code or the database. The authorizati
 Paste `supabase/migrations/20261024000000_access_hardening.sql` into the Supabase SQL Editor and run it once. Until then, `/api/health` reports `incomplete` with status 503, and the suspension checks are not in force. After it, functions that the `postgres` role creates in any schema are executable only by their owner until a grant says so, which every Cadmium migration already does; a hand-written function elsewhere (an auth hook, say) needs its own `grant execute`.
 
 Also confirm in the Supabase dashboard (Realtime settings) that only private channels are allowed. That setting is not in the repository.
-
-### S-11 (Info, dependency): `dompurify` advisories
-
-`pnpm audit` reports one critical, one high, and three low advisories, all in `dompurify` 3.4.15, pulled in by `monaco-editor` (also via `monaco-yaml`). They concern `IN_PLACE` sanitization with hooks, `SAFE_FOR_TEMPLATES` with shadow roots, and the XHTML parser mode. Monaco does not use those modes for its hover and markdown rendering, and the editor shows only the author's own draft, so exploitability here is low. Fix: add `overrides: { dompurify: ">=3.4.17" }` to `pnpm-workspace.yaml`, run `pnpm install`, and open the adventure editor once to confirm hovers and diagnostics still render.
 
 ### S-15 (Info): dedicated `CALENDAR_FEED_KEY`
 
