@@ -8,6 +8,7 @@ import * as monaco from "monaco-editor";
 import { configureMonacoYaml } from "monaco-yaml";
 import { useEffect, useRef } from "react";
 import { SCHEMAS } from "@/lib/bundle/schemas.generated";
+import { isDark, useDark } from "./dark";
 
 const BASE = "https://schema.dungeon-crawler.invalid/v1/";
 
@@ -45,11 +46,6 @@ function configure() {
   });
 }
 
-const dark = () => {
-  const chosen = document.documentElement.dataset.theme;
-  return chosen ? chosen === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
-};
-
 let models = 0;
 
 /** A YAML editor bound to `value`; `onChange` receives every edit. */
@@ -57,6 +53,8 @@ export default function YamlEditor({ value, onChange, file, label, invalid }: { 
   const host = useRef<HTMLDivElement>(null);
   const editor = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   const changed = useRef(onChange);
+  const dark = useDark();
+  useEffect(() => monaco.editor.setTheme(dark ? "vs-dark" : "vs"), [dark]);
   useEffect(() => {
     changed.current = onChange;
   }, [onChange]);
@@ -76,19 +74,12 @@ export default function YamlEditor({ value, onChange, file, label, invalid }: { 
       fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
       fontSize: 14,
       lineHeight: 20,
-      theme: dark() ? "vs-dark" : "vs",
+      theme: isDark() ? "vs-dark" : "vs",
       quickSuggestions: { other: true, comments: false, strings: true },
     });
     editor.current = e;
     const sub = model.onDidChangeContent(() => changed.current(model.getValue()));
-    const scheme = window.matchMedia("(prefers-color-scheme: dark)");
-    const retheme = () => monaco.editor.setTheme(dark() ? "vs-dark" : "vs");
-    const observer = new MutationObserver(retheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    scheme.addEventListener("change", retheme);
     return () => {
-      scheme.removeEventListener("change", retheme);
-      observer.disconnect();
       sub.dispose();
       e.dispose();
       model.dispose();

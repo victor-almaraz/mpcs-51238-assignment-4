@@ -3,8 +3,8 @@
 // selected arc's graph with stages as nodes and `set_stage` effects as edges, and the triggers that act
 // in the selected stage as rule cards: When, If, Then, Narrate, Only once, with a plain-English summary.
 // Stages are chosen by clicking a node, by keyboard on a node, or from the stage list.
-import { ArrowDown, ArrowUp, Braces, Plus, Trash2, X } from "lucide-react";
-import { useMemo, useState, type ReactNode } from "react";
+import { ArrowDown, ArrowUp, Braces, GripVertical, Plus, Trash2, X } from "lucide-react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { parse, stringify } from "yaml";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { Select, TextInput } from "@/components/ui/field";
 import { ICON, ICON_DENSE, IconButton } from "@/components/ui/icon-button";
 import { Notice } from "@/components/ui/notice";
 import { plotGraph } from "@/lib/materials/plot";
+import ArcGraph from "./arc-graph";
 import { denseArea, denseInput, denseSelect, NewId, Panel, RemoveButton } from "./controls";
 import { freshId, type Arc, type AuthoredLocation, type Doc, type Refs } from "./doc";
 import { EditorField, fieldId, InlineProblems, segments, SeverityIcon, useProblems } from "./problems";
@@ -21,9 +22,6 @@ import type { Reveal } from "./sections";
 
 type Obj = Record<string, unknown>;
 type Trigger = { id: string; on: Obj; when?: unknown; effects: Obj[]; narrate?: string; once?: boolean };
-
-const NODE_W = 120;
-const NODE_H = 32;
 
 // Reference index -------------------------------------------------------------------------------------
 
@@ -308,8 +306,17 @@ function summary(t: Trigger, doc: Doc): string {
   return `When ${when}${t.when !== undefined ? ", if its conditions hold" : ""}: ${effects || "nothing happens"}.${t.once ? " Only once." : ""}`;
 }
 
+/** `list` with the item at `from` moved to `to`. */
+function moved<T>(list: T[], from: number, to: number): T[] {
+  const out = [...list];
+  const [item] = out.splice(from, 1);
+  out.splice(to, 0, item!);
+  return out;
+}
+
 function RuleCard({ t, pointer, set, remove, doc, ix }: { t: Trigger; pointer: string; set: (t: Trigger) => void; remove: () => void; doc: Doc; ix: Index }) {
   const [yaml, setYaml] = useState(false);
+  const [dragging, setDragging] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const problems = useProblems().under(pointer);
   const id = fieldId(pointer);
@@ -365,7 +372,30 @@ function RuleCard({ t, pointer, set, remove, doc, ix }: { t: Trigger; pointer: s
             {t.effects.length > 0 && (
               <ol className="flex flex-col gap-1.5">
                 {t.effects.map((e, i) => (
-                  <li key={i} className="flex items-center gap-1">
+                  <li
+                    key={i}
+                    onDragOver={(ev) => dragging !== null && ev.preventDefault()}
+                    onDrop={(ev) => {
+                      ev.preventDefault();
+                      if (dragging !== null && dragging !== i) set({ ...t, effects: moved(t.effects, dragging, i) });
+                      setDragging(null);
+                    }}
+                    className={cx("flex items-center gap-1 rounded-control", dragging === i && "opacity-50", dragging !== null && dragging !== i && "outline-dashed outline-1 outline-rule")}
+                  >
+                    <span
+                      draggable
+                      aria-hidden="true"
+                      title="Drag to reorder"
+                      onDragStart={(ev) => {
+                        ev.dataTransfer.effectAllowed = "move";
+                        ev.dataTransfer.setData("text/plain", String(i));
+                        setDragging(i);
+                      }}
+                      onDragEnd={() => setDragging(null)}
+                      className="cursor-grab text-muted active:cursor-grabbing"
+                    >
+                      <GripVertical {...ICON_DENSE} />
+                    </span>
                     <span className="w-5 shrink-0 text-caption text-muted tabular">{i + 1}.</span>
                     <Effect e={e} ix={ix} set={(n) => set({ ...t, effects: t.effects.map((x, j) => (j === i ? n : x)) })} />
                     <span className="ml-auto flex shrink-0 items-center">
@@ -400,85 +430,23 @@ function RuleCard({ t, pointer, set, remove, doc, ix }: { t: Trigger; pointer: s
 
 type Layout = Record<string, Record<string, { x: number; y: number }>>;
 
-function ArcGraph({ arc, doc, selected, select, move }: { arc: Arc; doc: Doc; selected: string | null; select: (s: string) => void; move: (stage: string, x: number, y: number) => void }) {
+/** The arc's stages, reachability, and transitions for the graph; each transition's rule is its trigger's summary. */
+function ArcGraphOf({ arc, doc, selected, select, move }: { arc: Arc; doc: Doc; selected: string | null; select: (s: string) => void; move: (stage: string, x: number, y: number) => void }) {
   const g = useMemo(() => plotGraph(doc as unknown as Obj), [doc]);
-  const info = g.arcs.find((a) => a.id === arc.id);
-  const layout = ((doc.editor.layout as Layout)[arc.id] ?? {}) as Record<string, { x: number; y: number }>;
-  const pos = (s: string, i: number) => layout[s] ?? { x: 20 + i * (NODE_W + 40), y: 40 + (i % 2) * 50 };
-  const [drag, setDrag] = useState<{ stage: string; dx: number; dy: number } | null>(null);
-  const edges = g.edges.filter((e) => e.arc === arc.id);
-  const width = Math.max(...arc.stages.map((s, i) => pos(s, i).x + NODE_W + 20), 300);
-  const height = Math.max(...arc.stages.map((s, i) => pos(s, i).y + NODE_H + 30), 140);
-  return (
-    <svg
-      width={width}
-      height={height}
-      role="group"
-      aria-label={`Stages of ${arc.title || arc.id}`}
-      className="block"
-      onMouseMove={(e) => {
-        if (!drag) return;
-        const r = e.currentTarget.getBoundingClientRect();
-        move(drag.stage, Math.max(0, Math.round(e.clientX - r.left - drag.dx)), Math.max(0, Math.round(e.clientY - r.top - drag.dy)));
-      }}
-      onMouseUp={() => setDrag(null)}
-      onMouseLeave={() => setDrag(null)}
-    >
-      <defs>
-        <marker id={`arrow-${arc.id}`} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-          <path d="M0,0 L10,5 L0,10 z" fill="var(--color-muted)" />
-        </marker>
-      </defs>
-      {edges.map((e, i) => {
-        const ti = arc.stages.indexOf(e.to);
-        if (ti < 0) return null;
-        const to = pos(e.to, ti);
-        const fi = e.from ? arc.stages.indexOf(e.from) : -1;
-        const from = fi >= 0 ? { x: pos(e.from!, fi).x + NODE_W, y: pos(e.from!, fi).y + NODE_H / 2 } : { x: to.x - 30, y: to.y - 20 };
-        return (
-          <g key={i} aria-hidden="true">
-            <path d={`M${from.x},${from.y} C${from.x + 30},${from.y} ${to.x - 30},${to.y + NODE_H / 2} ${to.x},${to.y + NODE_H / 2}`} fill="none" stroke="var(--color-muted)" strokeDasharray={fi < 0 ? "3 3" : undefined} markerEnd={`url(#arrow-${arc.id})`} />
-            <text x={(from.x + to.x) / 2} y={(from.y + to.y + NODE_H / 2) / 2 - 4} fontSize="10" fill="var(--color-muted)" textAnchor="middle">
-              {e.source.replace(/^trigger [^.]+\./, "").replace(/^topic /, "")}
-            </text>
-          </g>
-        );
-      })}
-      {arc.stages.map((s, i) => {
-        const p = pos(s, i);
-        const reachable = info?.reachable.includes(s) ?? true;
-        const on = s === selected;
-        return (
-          <g
-            key={s}
-            role="button"
-            tabIndex={0}
-            aria-pressed={on}
-            aria-label={`Stage ${s}${s === arc.initial ? ", initial" : ""}${reachable ? "" : ", unreachable"}`}
-            transform={`translate(${p.x},${p.y})`}
-            className="cursor-pointer outline-none [&:focus-visible>rect]:stroke-[var(--color-accent)] [&:focus-visible>rect]:[stroke-width:3]"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                select(s);
-              }
-            }}
-            onMouseDown={(e) => {
-              const r = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();
-              setDrag({ stage: s, dx: e.clientX - r.left - p.x, dy: e.clientY - r.top - p.y });
-              select(s);
-            }}
-          >
-            <rect width={NODE_W} height={NODE_H} rx={4} fill={on ? "var(--color-accent-soft)" : "var(--color-raised)"} stroke={reachable ? (on ? "var(--color-accent)" : "var(--color-border)") : "var(--color-warning)"} strokeDasharray={reachable ? undefined : "4 3"} strokeWidth={on ? 1.75 : 1} />
-            <text x={NODE_W / 2} y={NODE_H / 2 + 4} fontSize="12" textAnchor="middle" fill={on ? "var(--color-accent)" : "var(--color-ink)"} fontWeight={on ? 600 : 400}>
-              {s}
-              {s === arc.initial ? " ●" : ""}
-            </text>
-          </g>
-        );
-      })}
-    </svg>
+  const reachable = useMemo(() => g.arcs.find((a) => a.id === arc.id)?.reachable ?? arc.stages, [g, arc]);
+  const transitions = useMemo(
+    () =>
+      g.edges
+        .filter((e) => e.arc === arc.id)
+        .map((e) => {
+          const m = /^trigger ([^.]+)\.(.+)$/.exec(e.source);
+          const t = m ? (doc.arcs[m[1]!]?.triggers as Trigger[] | undefined)?.find((x) => x.id === m[2]) : undefined;
+          return { from: e.from, to: e.to, rule: t ? summary(t, doc) : e.source };
+        }),
+    [g, arc.id, doc],
   );
+  const layout = ((doc.editor.layout as Layout)[arc.id] ?? {}) as Record<string, { x: number; y: number }>;
+  return <ArcGraph label={`Stages of ${arc.title || arc.id}`} stages={arc.stages} initial={arc.initial} reachable={reachable} transitions={transitions} layout={layout} selected={selected} select={select} move={move} />;
 }
 
 // Arc ----------------------------------------------------------------------------------------------
@@ -496,6 +464,7 @@ function ArcEditor({ arc, doc, ix, edit, stage, setStage }: { arc: Arc; doc: Doc
   const setTrigger = (i: number, t: Trigger) => edit((d) => void ((d.arcs[arc.id]!.triggers as Trigger[])[i] = t));
   const top = rest(base, ["title", "stages", "initial", "triggers"].map((k) => `${base}/${k}`));
   const stageSelect = fieldId(`${base}/stage-select`);
+  const move = useCallback((s: string, x: number, y: number) => edit((d) => void (d.editor.layout = { ...d.editor.layout, [arc.id]: { ...((d.editor.layout as Layout)[arc.id] ?? {}), [s]: { x, y } } })), [edit, arc.id]);
   return (
     <div className="flex flex-col gap-5">
       <Panel pointer={base} aria-labelledby={`${fieldId(base)}-title`} className="flex flex-col gap-4">
@@ -527,15 +496,9 @@ function ArcEditor({ arc, doc, ix, edit, stage, setStage }: { arc: Arc; doc: Doc
         </div>
         <div className="flex flex-col gap-2">
           <div className="relative overflow-auto rounded-card border border-rule bg-desk/60">
-            <ArcGraph
-              arc={arc}
-              doc={doc}
-              selected={stage}
-              select={setStage}
-              move={(s, x, y) => edit((d) => void (d.editor.layout = { ...d.editor.layout, [arc.id]: { ...((d.editor.layout as Layout)[arc.id] ?? {}), [s]: { x, y } } }))}
-            />
+            <ArcGraphOf arc={arc} doc={doc} selected={stage} select={setStage} move={move} />
           </div>
-          <p className="text-caption text-muted">Click or press Enter on a stage to show its triggers; drag a stage to move it. ● marks the initial stage; a dashed outline marks a stage nothing reaches.</p>
+          <p className="text-caption text-muted">Click or press Enter on a stage to show its triggers; drag a stage to move it. ● marks the initial stage; a dashed outline marks a stage nothing reaches. Hover a transition’s dot for its rule.</p>
         </div>
       </Panel>
 
