@@ -18,3 +18,7 @@ agent-runs/
 supabase/fresh.sql
 screenshots/
 .DS_Store
+
+# The course assignment brief, kept locally
+/Design, Build, Ship - Assignment 4 - Full Stack App.pdf
+/assignment-4-brief.pdf
