@@ -17,7 +17,7 @@ export interface RunSummary {
   advanced: number;
   invitations_expired: number;
   /** Work that threw. Each moment is marked done before its work runs, so a failed step is not retried. */
-  errors: { step: "resume" | "end_of_session" | "pause" | "advance"; instance_id: string; message: string }[];
+  errors: { step: "remind" | "resume" | "end_of_session" | "pause" | "advance"; instance_id: string; message: string }[];
 }
 
 export async function runScheduler(deps: Deps, notify: Notifier, now = deps.now()): Promise<RunSummary> {
@@ -54,8 +54,7 @@ export async function runScheduler(deps: Deps, notify: Notifier, now = deps.now(
           for (const lead of m.reminders.lead_minutes) {
             if (start - lead * 60_000 > t) continue;
             if (!(await once(`reminder:${occ}:${m.user_id}:${lead}`))) continue;
-            await notify.remind(m.user_id, m.reminders.push, { instance_id: instance.id, session_id: session.id, occurrence_start: o.occurrence_start, starts_at: o.starts_at, title: session.title });
-            summary.reminders++;
+            if (await attempt("remind", instance.id, () => notify.remind(m.user_id, m.reminders.push, { instance_id: instance.id, session_id: session.id, occurrence_start: o.occurrence_start, starts_at: o.starts_at, title: session.title }))) summary.reminders++;
           }
         }
       }

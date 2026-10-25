@@ -44,9 +44,11 @@ The server reads these variables, from `.env.local` locally and from the Vercel 
 | `CALENDAR_FEED_KEY` | yes | Derives calendar feed secrets; the service key is used when unset |
 | `SHUTDOWN_AT` | no | The end-of-course shutdown time (ISO 8601): a banner from 14 days before, the closed notice from then, the purge 90 days after |
 | `CONTACT_EMAIL` | no | Overrides the contact address on the closed notice; the default is the address in the Terms and Privacy Policy |
-| `VAPID_PUBLIC_KEY` | no | Offers browser notifications in Settings; sending also needs the private key and the `web-push` package |
+| `VAPID_PUBLIC_KEY` | no | The Web Push public key: Settings offers browser notifications when it is set |
+| `VAPID_PRIVATE_KEY` | yes | With the public key, the scheduler sends reminders by Web Push; generate the pair with `pnpm exec web-push generate-vapid-keys` |
+| `VAPID_SUBJECT` | no | The contact push services see, a `mailto:` or `https:` URL; default `mailto:` the contact address |
 
-`GET /api/health` reports `status` (`ok`, `incomplete`, or `unconfigured`) to anyone. With `Authorization: Bearer $CRON_SECRET` it also reports which settings are set and each migration's state, without revealing values.
+`GET /api/health` reports `status` (`ok`, `incomplete`, or `unconfigured`) to anyone. With `Authorization: Bearer $CRON_SECRET` it also reports which settings are set, whether Web Push is configured (`settings.webPush`), and each migration's state, without revealing values.
 
 ### Database schema
 

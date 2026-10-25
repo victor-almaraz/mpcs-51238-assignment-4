@@ -30,7 +30,7 @@ function operator(request: Request): boolean {
 
 export async function GET(request: Request) {
   const detailed = operator(request);
-  const settings = configured();
+  const settings = { ...configured(), webPush: !!process.env.VAPID_PUBLIC_KEY?.trim() && !!process.env.VAPID_PRIVATE_KEY?.trim() };
   if (!settings.supabaseUrl || !settings.supabaseServiceRoleKey) {
     return Response.json(detailed ? { status: "unconfigured", database: "unconfigured", settings } : { status: "unconfigured" }, { status: 503 });
   }
