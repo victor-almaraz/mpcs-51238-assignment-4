@@ -77,6 +77,7 @@ Clerk keeps the `users` table current through a webhook endpoint at `https://<ho
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm lint` | ESLint |
 | `pnpm test` | Vitest: unit tests, test vectors, and specification validation |
+| `pnpm e2e` | Playwright with real Clerk sign-in (`e2e/isolation.e2e.ts`): two users each save an adventure draft, and neither can list or open the other's; a signed-out visitor is sent to sign-in. Needs the Clerk development keys in `.env.local` and the bundles published at `/admin`; it writes to the Supabase project in `.env.local` and deletes its drafts afterwards |
 | `pnpm check` | Every gate: `gen:check`, `typecheck`, `lint --max-warnings 0`, `test`, and `build` |
 | `pnpm materials check DIR` | The Content Compiler's `check` subcommand |
 | `pnpm harness play ...` | The engine's command-line harness; see `lib/harness/cli.ts` |

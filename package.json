@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
+    "e2e": "playwright test",
     "check": "pnpm gen:check && pnpm typecheck && pnpm lint --max-warnings 0 && pnpm test && pnpm build",
     "materials": "node --import tsx lib/materials/cli.ts",
     "harness": "node --import tsx lib/harness/cli.ts",
@@ -47,6 +48,7 @@
     "yaml": "^2.9.1"
   },
   "devDependencies": {
+    "@clerk/testing": "^2.2.50",
     "@electric-sql/pglite": "^0.5.11",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4.3.3",
