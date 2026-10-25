@@ -3,6 +3,7 @@
 // NPCs, and the YAML view every section also has. Plot is plot.tsx; Items & creatures is entities.tsx.
 // Every field marks the draft value it edits with `data-pointer` and shows its own problems.
 import { MapPinned, Plus, Trash2 } from "lucide-react";
+import dynamic from "next/dynamic";
 import { Fragment, useState } from "react";
 import { parse, stringify } from "yaml";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,7 @@ import { Notice } from "@/components/ui/notice";
 import { denseInput, denseSelect, NewId, Panel, RemoveButton } from "./controls";
 import { freshId, type Adventure, type AuthoredLocation, type Doc, type Flag, type Npc, type Problem, type Refs } from "./doc";
 import { MapEditor } from "./map-editor";
+import type { YamlFile } from "./yaml-editor";
 import { EditorField, fieldId, InlineProblems, problemProps, useProblems } from "./problems";
 
 type Edit = (f: (d: Doc) => void) => void;
@@ -24,6 +26,15 @@ export type Reveal = { pointer: string; n: number } | null;
 
 // YAML ---------------------------------------------------------------------------------------------
 
+// Monaco is large and browser-only, so it loads when a YAML view first opens.
+const YamlEditor = dynamic(() => import("./yaml-editor"), {
+  ssr: false,
+  loading: () => <div className="flex h-[32rem] items-center justify-center rounded-card border border-border bg-page text-caption text-muted">Loading the YAML editor</div>,
+});
+
+/** The schema a YAML view validates against: a whole section, or one location. */
+const yamlFile = (pointer: string | undefined): YamlFile => (/^\/locations\/[^/]+$/.test(pointer ?? "") ? "location" : ((pointer ?? "/adventure").slice(1).split("/")[0] as YamlFile));
+
 export function YamlPanel({ value, onApply, label, pointer }: { value: unknown; onApply: (v: unknown) => void; label: string; pointer?: string }) {
   const [text, setText] = useState(() => stringify(value, { version: "1.2" }));
   const [error, setError] = useState<string | null>(null);
@@ -31,19 +42,8 @@ export function YamlPanel({ value, onApply, label, pointer }: { value: unknown; 
   const problems = pointer ? under(pointer) : [];
   const id = fieldId(`${pointer ?? ""}/yaml`);
   return (
-    <div data-pointer={pointer} className="flex min-h-0 flex-col gap-3">
-      <label htmlFor={id} className="sr-only">
-        {label}
-      </label>
-      <textarea
-        {...problemProps(id, problems)}
-        aria-describedby={[error ? `${id}-error` : null, problems.length ? `${id}-problems` : null].filter(Boolean).join(" ") || undefined}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        rows={28}
-        spellCheck={false}
-        className="block w-full rounded-card border border-border bg-page px-3 py-2 font-mono text-code text-ink"
-      />
+    <div data-pointer={pointer} id={id} className="flex min-h-0 flex-col gap-3">
+      <YamlEditor value={text} onChange={setText} file={yamlFile(pointer)} label={label} invalid={!!error || problems.length > 0} />
       {error && (
         <Notice tone="danger" live>
           <p id={`${id}-error`}>{error}</p>
