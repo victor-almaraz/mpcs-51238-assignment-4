@@ -15,7 +15,7 @@ same tasks; [Sources](#sources) lists them.
 | Problems appear where they are and in one list | A field or entity shows its own error; a count in the toolbar opens the list of all of them. No numbered footnotes. |
 | Status is always in view | Round, turn, save state, and connection sit in a bar that does not scroll away. |
 | The story is set like a book; the software is not | Narration, room text, briefs, and page and section titles use Libertinus Serif. Controls, data, and card titles use the system font. |
-| Colour means something | The cadmium orange accent marks what can be acted on and the current selection; cadmium yellow marks what is happening now; crimson marks errors and destructive actions. Every status also has an icon or a word. |
+| Colour means something | The cadmium orange accent marks what can be acted on and the current selection; cadmium yellow marks what is happening now; cadmium red marks errors and destructive actions. Every status also has an icon or a word. |
 
 ## Foundations
 
@@ -45,14 +45,15 @@ The Graphite neutrals stay, with their light and dark values and contrast minimu
 |---|---|---|---|
 | `accent` | `#B4490F` cadmium orange | `#F5A66A` | Links, primary buttons, selection, the current item, focus rings, the logo |
 | `pigment` | `#F2C14E` cadmium yellow | `#EDB93B` | What is happening now (see Identity); a fill behind `pigment-ink` only |
-| `danger` | `#A8233F` crimson | `#F59DB5` | Errors and destructive actions |
-| `warning` | `#7A5E00` ochre | `#DDC873` | Waiting states (lobby, maybe, draft) and warnings |
-| `success` | `#376F44` green | `#96CAA0` | Done, available, published |
+| `danger` | `#A81E2A` cadmium red deep | `#FF9AA2` | Errors and destructive actions |
+| `warning` | `#7F5B00` cadmium yellow deep | `#E5C65C` | Waiting states (lobby, maybe, draft) and warnings |
+| `success` | `#006B3C` cadmium green | `#86CFA4` | Done, available, published |
 
 Each has `-soft` (a tinted background) and the accent also `-strong` (hover) and `-line` (decorative
-borders); `selection` tints selected rows. Accent and danger text meet 4.5:1 on `page`, `desk`, and
-their `-soft` tint in both themes, and white text meets 4.5:1 on an accent fill. Danger and warning
-sit away from the accent's hue, crimson and ochre, so no status reads as an action (`app/theme.css`).
+borders); `selection` tints selected rows. Accent, danger, warning, and success text meet 4.5:1 on
+`page`, `desk`, and their `-soft` tint in both themes, and white text meets 4.5:1 on an accent fill.
+Danger takes the deep, blue side of cadmium red and warning the deep side of cadmium yellow, so
+neither shares the accent's hue and no status reads as an action (`app/theme.css`).
 Surfaces: `desk` behind workspaces and hub pages; `page` for cards, panels, and
 inputs; `raised` for menus, dialogs, and sheets. The theme follows the system unless the user picks
 Light or Dark in Settings.
