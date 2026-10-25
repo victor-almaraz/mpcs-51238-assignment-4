@@ -11,10 +11,6 @@ export type CellTest = (cell: Cell) => boolean;
 
 export const UNIT: Footprint = [1, 1];
 
-export function sameCell(a: Cell, b: Cell): boolean {
-  return a[0] === b[0] && a[1] === b[1];
-}
-
 export function distance(a: Cell, b: Cell, metric: Metric): number {
   const dx = Math.abs(a[0] - b[0]);
   const dy = Math.abs(a[1] - b[1]);

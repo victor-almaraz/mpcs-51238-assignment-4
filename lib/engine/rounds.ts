@@ -220,11 +220,6 @@ function actFor(ctx: Ctx, id: string, call: ToolCall | undefined): void {
   afterAction(ctx);
 }
 
-export function inCombatArea(ctx: Ctx, id: string): boolean {
-  const room = roomOf(ctx.state, id)?.room;
-  return room !== undefined && ctx.state.combat_area.includes(room);
-}
-
 /** Closes a simultaneous round: computes the order and resolves every action. */
 export function closeRound(ctx: Ctx): void {
   const round = ctx.state.round;

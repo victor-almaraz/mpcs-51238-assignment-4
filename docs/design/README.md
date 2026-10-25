@@ -187,7 +187,7 @@ otherwise.
 |---|---|---|
 | Hub | Dashboard, Characters, Campaigns, Adventures, Notifications | Page header (title, one-line description, primary action); a "Needs you" strip when anything does; titled sections of cards or rows; an empty state per section with the action that fills it |
 | Detail | Campaign, game lobby, character, schedule, history | Page header with breadcrumb, title, status badge, and actions; a main column of sections; an aside (summary facts, people, next session) beside it on expanded screens and under it otherwise |
-| Form | New character, new campaign, new adventure, campaign editor, settings sections, accept terms | Page header; an error summary at the top after a failed submit; fields in titled groups; actions at the foot, primary first |
+| Form | New character, new campaign, new adventure, campaign editor, settings sections, accept terms | Page header; fields in titled groups; actions at the foot, primary first; after a failed submit, the error in a `danger` notice under the fields |
 | Workspace | Play, adventure editor | A toolbar; panes; a status bar. See [Play](#play) and [Adventure editor](#adventure-editor) |
 
 ## Components
@@ -209,7 +209,6 @@ All live in `components/ui/`. Each is the only way the application draws that th
 | `Badge` | A word on a tint, with an optional icon (a dot only for a live state): neutral, accent, success, warning, danger, and pigment (Your turn, Live now) | Colour is never the only signal |
 | `Field` | Label above the control, hint under the label, error under the control with an icon | `label` bound to the control; hint and error joined by `aria-describedby`; `aria-invalid` on error |
 | `TextInput`, `TextArea`, `Select`, `Checkbox`, `Radio` | 40 px controls (checkboxes 20 px with a 40 px hit area) | Native elements |
-| `ErrorSummary` | A `danger` box at the top of a form listing each error as a link to its field | Receives focus after a failed submit; `role="alert"` |
 | `Notice` | Inline message with icon: info, success, warning, danger | `role="status"` for success, `alert` for errors |
 | `Tabs` | Underlined tabs for sections of one page; labels sit on the content edge, 24 px apart | APG tabs: arrow keys move, `aria-selected` |
 | `EmptyState` | Centred icon, one sentence, and the action that fills the space | |
@@ -343,8 +342,7 @@ Every screen meets WCAG 2.2 AA:
 - GitHub dashboard: https://docs.github.com/en/account-and-profile/reference/personal-dashboard
 - Linear inbox: https://linear.app/docs/inbox
 - AI Dungeon play modes: https://help.aidungeon.com/faq/how-to-play
-- GOV.UK error summary and check answers: https://design-system.service.gov.uk/components/error-summary/,
-  https://design-system.service.gov.uk/patterns/check-answers/
+- GOV.UK check answers: https://design-system.service.gov.uk/patterns/check-answers/
 - Android window size classes:
   https://developer.android.com/develop/ui/compose/layouts/adaptive/use-window-size-classes
 - WAI-ARIA APG grid and modal dialog: https://www.w3.org/WAI/ARIA/apg/patterns/grid/,

@@ -25,20 +25,3 @@ export function Notice({ tone = "info", title, children, className, live }: { to
     </div>
   );
 }
-
-export function ErrorSummary({ errors }: { errors: { message: string; href?: string }[] }) {
-  if (errors.length === 0) return null;
-  return (
-    <div role="alert" tabIndex={-1} className="mb-6 rounded-card border-2 border-danger bg-page p-4">
-      <p className="flex items-center gap-2 font-semibold text-danger">
-        <CircleAlert size={18} aria-hidden="true" />
-        {errors.length === 1 ? "There is a problem" : `There are ${errors.length} problems`}
-      </p>
-      <ul className="mt-2 list-disc pl-6">
-        {errors.map((e) => (
-          <li key={e.message}>{e.href ? <a href={e.href} className="text-danger underline">{e.message}</a> : e.message}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}

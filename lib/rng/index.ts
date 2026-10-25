@@ -4,9 +4,6 @@
 const MASK = (1n << 64n) - 1n;
 const TWO_64 = 1n << 64n;
 
-/** The algorithm identifier recorded with an instance. */
-export const ALGORITHM = "splitmix64_v1";
-
 /** A 64-bit seed or counter. */
 export type U64 = bigint | number;
 
