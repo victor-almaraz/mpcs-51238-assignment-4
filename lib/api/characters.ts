@@ -118,6 +118,47 @@ export interface AbilityOption {
   label: string;
   roles: string[];
   setting: string;
+  /** AP spent each use (systems/quest.md, Abilities). */
+  cost: number;
+  /** Whether a use rolls the d20; the effects apply on a passing tier. */
+  roll: boolean;
+  /** The learning path, such as "dueling". */
+  path?: string;
+  target: "self" | "entity" | "door" | "none";
+  /** Maximum distance in cells to the target; absent: any visible target. */
+  range?: number;
+  /** One plain sentence per mechanical effect; empty when the narrator decides the outcome. */
+  effects: string[];
+  /** A short description of the ability, where the application ships one for its pack. */
+  description?: string;
+}
+
+type PackEffect = Record<string, Record<string, unknown>>;
+
+/** Plain sentences for an ability's effects, naming conditions by their label and duration in rounds. */
+export function effectSentences(effects: PackEffect[], conditions: Record<string, { label: string; duration?: number | null }>): string[] {
+  const amount = (a: Record<string, unknown>) => String(a.amount ?? a.dice ?? "");
+  const condition = (a: Record<string, unknown>) => conditions[String(a.condition)]?.label ?? String(a.condition);
+  return effects.map((e) => {
+    const [name] = Object.keys(e);
+    const a = e[name!] ?? {};
+    switch (name) {
+      case "damage":
+        return `Deals ${amount(a)} ${a.type ? `${String(a.type)} ` : ""}damage.`;
+      case "heal":
+        return `Restores ${amount(a)} HP.`;
+      case "apply_condition":
+        return `Leaves the target ${condition(a)}${typeof conditions[String(a.condition)]?.duration === "number" ? ` for ${conditions[String(a.condition)]!.duration} rounds` : ""}.`;
+      case "remove_condition":
+        return `Ends ${condition(a)}.`;
+      case "give_item":
+        return "Gives an item.";
+      case "spawn":
+        return "Brings a creature or object into play.";
+      default:
+        return `${String(name).replaceAll("_", " ")}.`.replace(/^./, (c) => c.toUpperCase());
+    }
+  });
 }
 
 /**
@@ -128,7 +169,21 @@ export interface AbilityOption {
 export async function abilityOptions(store: Store, systemId: string): Promise<AbilityOption[]> {
   const settings = await store.listedBundles<import("../bundle/setting").SettingBundle>("setting", accepted(systemId));
   return settings.flatMap((s) =>
-    Object.entries(s.abilities).map(([key, a]) => ({ ref: `${s.namespace}:${key}`, label: a.label, roles: ((a.system_stats as { roles?: string[] }).roles ?? []).slice(), setting: s.manifest.title })),
+    Object.entries(s.abilities).map(([key, a]) => {
+      const stats = a.system_stats as { roles?: string[]; path?: string; cost?: { ap?: number }; roll?: boolean };
+      return {
+        ref: `${s.namespace}:${key}`,
+        label: a.label,
+        roles: (stats.roles ?? []).slice(),
+        setting: s.manifest.title,
+        cost: stats.cost?.ap ?? 0,
+        roll: stats.roll === true,
+        ...(stats.path ? { path: stats.path } : {}),
+        target: a.target,
+        ...(typeof a.range === "number" ? { range: a.range } : {}),
+        effects: effectSentences((a.effects ?? []) as unknown as PackEffect[], s.conditions),
+      };
+    }),
   );
 }
 

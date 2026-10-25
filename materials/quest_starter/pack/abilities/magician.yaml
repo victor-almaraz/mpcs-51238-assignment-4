@@ -1,39 +1,33 @@
-# The Magician's quick start (Quest Creators Resource, chapter 3). Name, learning path,
-# and short description from the Creators Resource; costs are its lowest listed activation cost.
+# The Magician's quick start (Quest Creators Resource, chapter 3). Name and learning path
+# from the Creators Resource, short description in ../../descriptions.yaml; costs are its lowest listed activation cost.
 
 magic_tricks:
   label: Magic Tricks
-  # Produce a tiny magical effect to surprise, delight, or confuse those around you.
   target: self
   system_stats: {"roles": ["magician"], "path": "misdirection", "cost": {"ap": 0}}
   effects: []
 splitting_image:
   label: Splitting Image
-  # Create illusory duplicates to confuse others.
   target: self
   system_stats: {"roles": ["magician"], "path": "mannequins", "cost": {"ap": 1}}
   effects: []
 magic_eye:
   label: Magic Eye
-  # You briefly gain the ability to see beyond physical reality.
   target: self
   system_stats: {"roles": ["magician"], "path": "clairvoyance", "cost": {"ap": 1}}
   effects: []
 little_bird:
   label: Little Bird
-  # You summon an illusory bird that keeps watch over an area.
   target: self
   system_stats: {"roles": ["magician"], "path": "conjuration", "cost": {"ap": 1}}
   effects: []
 bamboozle:
   label: Bamboozle
-  # Make a creature mildly confused about a specific subject.
   target: entity
   system_stats: {"roles": ["magician"], "path": "mind control", "cost": {"ap": 1}}
   effects: []
 scintillate:
   label: Scintillate
-  # Launch a streaking bolt of sparks to harm an enemy or create a harmless firework.
   target: entity
   system_stats: {"roles": ["magician"], "path": "mayhem", "cost": {"ap": 0}, "roll": true}
   effects:

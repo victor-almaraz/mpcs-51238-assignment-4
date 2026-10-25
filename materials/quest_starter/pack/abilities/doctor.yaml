@@ -1,42 +1,36 @@
-# The Doctor's quick start (Quest Creators Resource, chapter 3). Name, learning path,
-# and short description from the Creators Resource; costs are its lowest listed activation cost.
+# The Doctor's quick start (Quest Creators Resource, chapter 3). Name and learning path
+# from the Creators Resource, short description in ../../descriptions.yaml; costs are its lowest listed activation cost.
 
 mend:
   label: Mend
-  # You gently touch a creature, immediately restoring hit points and mending minor wounds.
   target: entity
   system_stats: {"roles": ["doctor"], "path": "healing", "cost": {"ap": 1}}
   effects:
     - {"heal": {"target": "target", "amount": 2}}
 sleep:
   label: Sleep
-  # You whisper a brief lullaby, putting any number of nearby commoners to sleep for an hour.
   target: entity
   system_stats: {"roles": ["doctor"], "path": "alteration", "cost": {"ap": 2}}
   effects:
     - {"apply_condition": {"target": "target", "condition": "asleep"}}
 deathsense:
   label: Deathsense
-  # You sense whether any spirit creatures are nearby, and can extend your vision to see them.
   target: self
   system_stats: {"roles": ["doctor"], "path": "necromancy", "cost": {"ap": 0}}
   effects: []
 corrupt:
   label: Corrupt
-  # You grip a creature and create a necrotizing wound in its flesh.
   target: entity
   system_stats: {"roles": ["doctor"], "path": "harm", "cost": {"ap": 0}, "roll": true}
   effects:
     - {"damage": {"target": "target", "amount": 2, "type": "magic"}}
 modulate:
   label: Modulate
-  # You alter the nature and intensity of a creature's physical sensations for up to an hour.
   target: entity
   system_stats: {"roles": ["doctor"], "path": "perception", "cost": {"ap": 1}}
   effects: []
 examine_the_dead:
   label: Examine the Dead
-  # You evaluate a corpse to diagnose its cause of death.
   target: entity
   system_stats: {"roles": ["doctor"], "path": "examination", "cost": {"ap": 1}}
   effects: []

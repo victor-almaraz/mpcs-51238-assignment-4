@@ -236,6 +236,13 @@ campaign with its module facts. A summary card beside the steps (under them on c
 choice with a Change link. Create character is the primary button, disabled with its reason until the
 choices are complete.
 
+The Role step opens with a closed "New to Quest?" (or Cadmium) disclosure: attributes, roles, AP, rolls,
+and HP in one sentence each, with the system's numbers. Each role shows its learning paths and how many
+abilities suggest it. Each ability shows its description where its pack ships one, then its cost,
+roll, target, and path, then its effect in a sentence; both hints are joined to their control by
+`aria-describedby`, not read as its name. The character page lists the sheet's abilities the same way
+(`components/systems/ability-info.tsx`, for Quest and Cadmium).
+
 ### Campaign
 
 A detail page. Tabs: Overview (games with their status and Open, the next session), Members,

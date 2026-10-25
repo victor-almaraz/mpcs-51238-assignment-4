@@ -1,41 +1,35 @@
-# The Naturalist's quick start (Quest Creators Resource, chapter 3). Name, learning path,
-# and short description from the Creators Resource; costs are its lowest listed activation cost.
+# The Naturalist's quick start (Quest Creators Resource, chapter 3). Name and learning path
+# from the Creators Resource, short description in ../../descriptions.yaml; costs are its lowest listed activation cost.
 
 animal_form:
   label: Animal Form
-  # You take the form of a wild animal, adopting its shape, senses, and range of motion.
   target: self
   system_stats: {"roles": ["naturalist"], "path": "shapeshifter", "cost": {"ap": 2}}
   effects: []
 thorn:
   label: Thorn
-  # You conjure a poisonous thorn and shoot it toward a nearby target.
   target: entity
   system_stats: {"roles": ["naturalist"], "path": "summoner", "cost": {"ap": 0}, "roll": true}
   effects:
     - {"damage": {"target": "target", "amount": 2, "type": "poison"}}
 freeze:
   label: Freeze
-  # You blow cool air, creating freezing winds that swirl around a nearby target.
   target: entity
   system_stats: {"roles": ["naturalist"], "path": "elementalist", "cost": {"ap": 0}, "roll": true}
   effects:
     - {"damage": {"target": "target", "amount": 2, "type": "cold"}}
 cloudcall:
   label: Cloudcall
-  # You create a thick fog that rapidly expands around you, concealing the area.
   target: self
   system_stats: {"roles": ["naturalist"], "path": "stormcaller", "cost": {"ap": 1}}
   effects: []
 wild_aspect:
   label: Wild Aspect
-  # You harness the aspect of one of three wild creatures, gaining heightened physical capabilities.
   target: self
   system_stats: {"roles": ["naturalist"], "path": "spiritcaller", "cost": {"ap": 1}}
   effects: []
 command_nature:
   label: Command Nature
-  # You recite a brief poem to the plants around you, causing them to produce an effect.
   target: self
   system_stats: {"roles": ["naturalist"], "path": "ecologist", "cost": {"ap": 0}}
   effects: []

@@ -1,0 +1,59 @@
+# Short descriptions of the Quest Quick Start abilities, from the Quest Creators Resource (CC BY 4.0;
+# see NOTICE), keyed by ability. The character creation form shows them under each ability.
+
+# Doctor
+mend: "You gently touch a creature, immediately restoring hit points and mending minor wounds."
+sleep: "You whisper a brief lullaby, putting any number of nearby commoners to sleep for an hour."
+deathsense: "You sense whether any spirit creatures are nearby, and can extend your vision to see them."
+corrupt: "You grip a creature and create a necrotizing wound in its flesh."
+modulate: "You alter the nature and intensity of a creature's physical sensations for up to an hour."
+examine_the_dead: "You evaluate a corpse to diagnose its cause of death."
+# Fighter
+counterattack: "Quickly turn the tables on an attacker who makes a mistake."
+wild_attack: "Strike a foe with reckless power."
+provoke: "Draw the attention of a nearby creature by taunting them."
+intercept: "Rush in to interrupt an attack on someone else."
+summon_the_blood: "Recite a poem to bolster the spirits of your friends."
+size_up: "Evaluate the capabilities and vulnerabilities of a nearby creature."
+# Invoker
+declare: "Profess a reason for intervening in a matter, steeling your resolve."
+petition: "While regrouping, recite a petition to receive a boon."
+soul_gaze: "You peer into the eyes of another creature to sense their ideals and flaws."
+fiery_avenger: "You speak a phrase of power, igniting your weapon in magical flame."
+thunderous_word: "You speak a word of power that releases a thunderous shockwave."
+shield: "Summon a magical shield that blocks damage."
+# Magician
+magic_tricks: "Produce a tiny magical effect to surprise, delight, or confuse those around you."
+splitting_image: "Create illusory duplicates to confuse others."
+magic_eye: "You briefly gain the ability to see beyond physical reality."
+little_bird: "You summon an illusory bird that keeps watch over an area."
+bamboozle: "Make a creature mildly confused about a specific subject."
+scintillate: "Launch a streaking bolt of sparks to harm an enemy or create a harmless firework."
+# Naturalist
+animal_form: "You take the form of a wild animal, adopting its shape, senses, and range of motion."
+thorn: "You conjure a poisonous thorn and shoot it toward a nearby target."
+freeze: "You blow cool air, creating freezing winds that swirl around a nearby target."
+cloudcall: "You create a thick fog that rapidly expands around you, concealing the area."
+wild_aspect: "You harness the aspect of one of three wild creatures, gaining heightened physical capabilities."
+command_nature: "You recite a brief poem to the plants around you, causing them to produce an effect."
+# Ranger
+commune: "Invent a local saying to charm information out of a commoner."
+read_the_winds: "You sense weather patterns, and can predict the weather in the days ahead."
+speak_with_animal: "You form a bond with an animal, allowing you to interpret its thoughts and feelings."
+animal_partner: "You bond with a nearby animal who becomes your companion and follows your instructions."
+track: "You can pick up on tracks left nearby and identify the type of creature that left them."
+remedy: "Scavenge your area to find a plant-based remedy for an ailment."
+# Spy
+cosmopolitan: "Invent a local mannerism to fool commoners about your identity."
+sneak_attack: "Make a quick attack on a foe who is distracted."
+strap: "Conceal up to two weapons in your clothing without being noticed."
+tracker: "A magic compass and tag that allows you to track something you put the tag on."
+persona: "You can carefully prepare a convincing alternate identity. You can create the persona of a commoner, an officer, or an aristocrat."
+feather_hook: "A magical grappling hook that gently glides itself upward like a balloon."
+# Wizard
+magic_strike: "Shoot a shimmering missile of force from your wand or staff."
+blink: "Vanish and reappear somewhere nearby."
+sense_magic: "Get a tingling feeling in your bones when you're near magic, and discern its nature."
+speak: "Speak silently into the mind of a nearby creature."
+pinch: "Briefly imbue your fingers with supernatural strength."
+familiar: "You summon a tiny spectral creature who becomes your ally."

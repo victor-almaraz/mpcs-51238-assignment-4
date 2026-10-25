@@ -16,6 +16,7 @@ import { ICON_DENSE } from "@/components/ui/icon-button";
 import { DescriptionList } from "@/components/ui/list";
 import { Notice } from "@/components/ui/notice";
 import { WithAside } from "@/components/ui/page";
+import { AbilityDetails, NewPlayerPrimer, roleSummary } from "./ability-info";
 
 export interface CreationProps {
   system: string;
@@ -31,6 +32,9 @@ export interface CreationProps {
   systemCredit?: string;
   /** Where Change leads for the system: the system choice. */
   systemHref?: string;
+  /** The system's starting hit points and AP, for the new-player notes. */
+  hp?: number;
+  ap?: number;
 }
 
 /** A choice in the summary card, with the step that changes it. */
@@ -68,7 +72,7 @@ export function CreationStep({ n, id, title, done, status, children }: { n: numb
  * `summary` their rows in the summary card; they carry no `name`, so `create_character` receives only
  * Quest's choices.
  */
-export function QuestCreationForm({ system, roles, abilities, count, systemTitle, systemCredit, systemHref = "/characters/new", children, summary = [] }: CreationProps & { children?: ReactNode; summary?: SummaryRow[] }) {
+export function QuestCreationForm({ system, roles, abilities, count, systemTitle, systemCredit, systemHref = "/characters/new", hp = 10, ap = 10, children, summary = [] }: CreationProps & { children?: ReactNode; summary?: SummaryRow[] }) {
   const [state, form, pending] = useFormAction<FormState>(createCharacterAction, { error: null });
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
@@ -90,10 +94,20 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
   const muted = (s: string) => <span className="text-muted">{s}</span>;
 
   const abilityChoices = (list: AbilityOption[]) => (
-    <ul className="grid grid-cols-2 gap-x-4 xl:grid-cols-3">
+    <ul className="grid gap-x-6 sm:grid-cols-2 xl:grid-cols-3">
       {list.map((a) => (
         <li key={a.ref}>
-          <Choice name="abilities" value={a.ref} checked={chosen.includes(a.ref)} onChange={() => toggle(a.ref)} disabled={!chosen.includes(a.ref) && chosen.length >= count} label={a.label} className="has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60" />
+          <Choice
+            id={`ability-${a.ref.replace(/[^\w-]/g, "-")}`}
+            name="abilities"
+            value={a.ref}
+            checked={chosen.includes(a.ref)}
+            onChange={() => toggle(a.ref)}
+            disabled={!chosen.includes(a.ref) && chosen.length >= count}
+            label={a.label}
+            hint={<AbilityDetails a={a} />}
+            className="has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60"
+          />
         </li>
       ))}
     </ul>
@@ -170,12 +184,13 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
           </CreationStep>
 
           <CreationStep n={2} id="step-role" title="Role" done={role !== ""}>
+            <NewPlayerPrimer systemTitle={systemTitle ?? sentence(system)} hp={hp} ap={ap} count={count} cadmium={system === "cadmium"} />
             <p id="step-role-hint" className="mb-3 text-caption text-muted">
               The role puts its abilities first in the next step; any ability can still be chosen.
             </p>
-            <div role="radiogroup" aria-labelledby="step-role-title" aria-describedby="step-role-hint" className="grid grid-cols-2 gap-2 xl:grid-cols-4">
+            <div role="radiogroup" aria-labelledby="step-role-title" aria-describedby="step-role-hint" className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
               {roles.map((r) => (
-                <Choice key={r} type="radio" name="role" value={r} checked={role === r} onChange={() => setRole(r)} label={sentence(r)} className="border border-rule px-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft" />
+                <Choice key={r} id={`role-${r}`} type="radio" name="role" value={r} checked={role === r} onChange={() => setRole(r)} label={sentence(r)} hint={roleSummary(r, abilities)} className="border border-rule px-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft" />
               ))}
             </div>
           </CreationStep>
@@ -252,7 +267,9 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
   );
 }
 
-export function QuestSheetView({ sheet, labels }: { sheet: Record<string, unknown>; labels: Record<string, string> }) {
+/** The sheet. With `abilities`, each of the character's abilities shows what it does. */
+export function QuestSheetView({ sheet, labels, abilities }: { sheet: Record<string, unknown>; labels: Record<string, string>; abilities?: AbilityOption[] }) {
+  const known = new Map((abilities ?? []).map((a) => [a.ref, a]));
   const s = sheet as { role: string; hp: { value: number; max: number }; ap: number; abilities: string[]; inventory: { ref: string }[]; status: string; armor?: { value: number; max: number } };
   const items: [ReactNode, ReactNode][] = [
     ["Role", sentence(s.role)],
@@ -274,7 +291,28 @@ export function QuestSheetView({ sheet, labels }: { sheet: Record<string, unknow
         ] as [ReactNode, ReactNode][])
       : []),
     ["Status", <StatusBadge key="status" status={s.status} />],
-    ["Abilities", s.abilities.map((a) => labels[a] ?? a).join(", ")],
+    [
+      "Abilities",
+      known.size === 0 ? (
+        s.abilities.map((a) => labels[a] ?? a).join(", ")
+      ) : (
+        <ul key="abilities" className="flex flex-col gap-2">
+          {s.abilities.map((ref) => {
+            const a = known.get(ref);
+            return (
+              <li key={ref}>
+                <span className="text-ink">{a?.label ?? labels[ref] ?? ref}</span>
+                {a && (
+                  <span className="block text-caption text-muted">
+                    <AbilityDetails a={a} />
+                  </span>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      ),
+    ],
     ["Inventory", s.inventory.length === 0 ? "Empty" : s.inventory.map((i) => labels[i.ref] ?? i.ref).join(", ")],
   ];
   return <DescriptionList items={items} />;

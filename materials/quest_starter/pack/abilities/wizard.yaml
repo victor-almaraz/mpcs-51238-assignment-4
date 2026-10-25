@@ -1,40 +1,34 @@
-# The Wizard's quick start (Quest Creators Resource, chapter 3). Name, learning path,
-# and short description from the Creators Resource; costs are its lowest listed activation cost.
+# The Wizard's quick start (Quest Creators Resource, chapter 3). Name and learning path
+# from the Creators Resource, short description in ../../descriptions.yaml; costs are its lowest listed activation cost.
 
 magic_strike:
   label: Magic Strike
-  # Shoot a shimmering missile of force from your wand or staff.
   target: entity
   system_stats: {"roles": ["wizard"], "path": "evocation", "cost": {"ap": 0}, "roll": true}
   effects:
     - {"damage": {"target": "target", "amount": 2, "type": "magic"}}
 blink:
   label: Blink
-  # Vanish and reappear somewhere nearby.
   target: self
   system_stats: {"roles": ["wizard"], "path": "planeshifting", "cost": {"ap": 1}}
   effects: []
 sense_magic:
   label: Sense Magic
-  # Get a tingling feeling in your bones when you're near magic, and discern its nature.
   target: self
   system_stats: {"roles": ["wizard"], "path": "projection", "cost": {"ap": 0}}
   effects: []
 speak:
   label: Speak
-  # Speak silently into the mind of a nearby creature.
   target: entity
   system_stats: {"roles": ["wizard"], "path": "trickery", "cost": {"ap": 1}}
   effects: []
 pinch:
   label: Pinch
-  # Briefly imbue your fingers with supernatural strength.
   target: self
   system_stats: {"roles": ["wizard"], "path": "trickery", "cost": {"ap": 2}}
   effects: []
 familiar:
   label: Familiar
-  # You summon a tiny spectral creature who becomes your ally.
   target: self
   system_stats: {"roles": ["wizard"], "path": "conjuration", "cost": {"ap": 2}}
   effects: []
