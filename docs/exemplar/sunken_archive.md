@@ -142,6 +142,6 @@ their inputs and logs are in `lib/harness/golden/exemplar_*.jsonl`.
 
 ## Balance
 
-Combat numbers are Quest's templates and the draft's values, before the simulation of the draft's
-section 14.9. The golden runs give their one character 40 hit points: a 10-hit-point character alone
+Combat numbers are Quest's templates and the draft's values. The balance simulation of the draft's
+section 14.9 and its proposed values are in `tools/sim/README.md`. The golden runs give their one character 40 hit points: a 10-hit-point character alone
 does not survive the octopus. A party of four Quest characters is the expected table.

@@ -1,6 +1,6 @@
 # Cadmium
 
-The web application for Cadmium, a multiplayer text dungeon crawler run by software. The specification lives in [`cadmium-spec/`](cadmium-spec/); start with [`cadmium-spec/AGENTS.md`](cadmium-spec/AGENTS.md) and [`cadmium-spec/docs/README.md`](cadmium-spec/docs/README.md). The specification is the requirement: this repository implements it and does not edit it.
+The web application for Cadmium, a multiplayer text dungeon crawler run by software. The specification lives in [`cadmium-spec/`](cadmium-spec/); start with [`cadmium-spec/AGENTS.md`](cadmium-spec/AGENTS.md) and [`cadmium-spec/docs/README.md`](cadmium-spec/docs/README.md). The specification is the requirement. Changes to `cadmium-spec/` are specification changes and follow its own rules; see [Specification version](#specification-version).
 
 The work is planned in [SPRINTS.md](SPRINTS.md). Gaps in the specification found during implementation are recorded in [SPEC_ISSUES.md](SPEC_ISSUES.md).
 
@@ -58,7 +58,7 @@ Instance and user messages travel on Supabase Realtime private channels, `instan
 
 ### Materials
 
-A fresh database has no settings or adventures. As an operator (`update users set operator = true where email = '…'`), run `pnpm bundles` and upload the four files in `bundles/` at `/admin`, in their numbered order, settings before the adventure.
+A fresh database has no settings or adventures. As an operator (`update users set operator = true where email = '…'`), run `pnpm bundles` and upload the five files in `bundles/` at `/admin`, in their numbered order, settings before the adventure.
 
 ### Clerk webhook
 
@@ -139,7 +139,7 @@ Modules under `lib/` follow the boundaries in [`engine-implementation.md`](cadmi
 
 ## Specification version
 
-`cadmium-spec/` is a copy of the specification at commit `54f4adcdffe5bf3c8547a5c89a9f55fefbeb2fef`. It is to become a git submodule pinned to that commit once the specification repository's URL is available. Updating the specification is its own change, with the specification diff summarized.
+`cadmium-spec/` is a copy of the specification at commit `54f4adcdffe5bf3c8547a5c89a9f55fefbeb2fef` with one change applied: the exemplar of `briefs/example-adventure.md`, which adds `spec/examples/lantern_coast` and `spec/examples/sunken_archive` and updates `spec/README.md`, `AGENTS.md`, `docs/adventure-packs.md`, and `docs/guides/adventure-authoring.md`. That change belongs in the specification repository. The copy becomes a git submodule, pinned to a commit that contains the change, when the specification repository's URL is available. Updating the specification is its own change, with the specification diff summarized.
 
 ## License
 
