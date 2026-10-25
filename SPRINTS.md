@@ -151,7 +151,7 @@ Done:
 
 Phase 1 is complete. Notes for sprint 6:
 
-- `guideAdventure()` and `derelictStation()` in `lib/materials/testing/fixtures.ts` give a compiled setting and adventure for engine tests; `lower_archive` is generated, so playing past the lift needs sprint 8's generator.
+- `stationAdventure()` (the guide adventure of that sprint, frozen in `lib/materials/testing/station_archive`) and `derelictStation()` in `lib/materials/testing/fixtures.ts` give a compiled setting and adventure for engine tests; `lower_archive` is generated, so playing past the lift needs sprint 8's generator.
 - Bundle refs are qualified (`base:hatch`); room references stay as written and resolve at runtime by the scopes in adventure-packs.md, "Room references".
 
 ### Sprint 6: Engine state and exploration — closed
@@ -509,8 +509,8 @@ Open:
 
 Built from the author's campaign draft, supplied separately and not committed.
 
-- `materials/lantern_coast/pack`: the setting for Cadmium with `armor` and `stash`. It adds the floret currency, sea and shore terrain (with `window` and `low_wall`, which block movement but not sight), people and creatures, goods with `armor` and `slots`, chests with `capacity`, the `vault_door` lock-and-key pair, and the `registry_vault` room template.
-- `materials/sunken_archive/pack`: the adventure, 1.0.0. It has 13 locations (one generated), 33 NPCs, six arcs with 76 triggers, and the endings `escaped` (six variants), `archive_sealed` (two), and `lost`. `materials/sunken_archive/README.md` maps the brief's coverage list to the pack, reports the schema and semantic passes, gives a walkthrough per ending, and lists departures from the draft.
+- `cadmium-spec/spec/examples/lantern_coast`: the setting for Cadmium with `armor` and `stash`. It adds the floret currency, sea and shore terrain (with `window` and `low_wall`, which block movement but not sight), people and creatures, goods with `armor` and `slots`, chests with `capacity`, the `vault_door` lock-and-key pair, and the `registry_vault` room template.
+- `cadmium-spec/spec/examples/sunken_archive`: the adventure, 1.0.0. It has 13 locations (one generated), 33 NPCs, six arcs with 76 triggers, and the endings `escaped` (six variants), `archive_sealed` (two), and `lost`. `docs/exemplar/sunken_archive.md` maps the brief's coverage list to the pack, reports the schema and semantic passes, gives a walkthrough per ending, and lists departures from the draft.
 - Scripted runs reach every ending: the golden scenarios `exemplar_escaped` (contract path), `exemplar_archive_sealed` (rumor path), and `exemplar_lost`. `lib/harness/exemplar.test.ts` covers room-wide rewards, purchases and affordability, stash capacity, the strongbox lock, the fog bank's lit-lamp lock, `item_given`, `set_hostile`, and NPCs moved between locations, and checks the coverage list against the pack files.
 - `tools/sim` (`pnpm sim`): seeded, replayable Monte Carlo fights of the exemplar's twelve encounters through the engine, sweeping party size, loadout, `armor.max`, and the octopus's hit points; it writes `tools/sim/REPORT.md`. One character finishes about one time in five to two in five, because of the octopus and the gallery ambush; two or more win every required fight. Tests: `tools/sim/sim.test.ts` (4).
 - `pnpm bundles` publishes `lantern_coast` and the exemplar in place of the guide adventure. The campaign material picker lists an adventure's required settings first ([generation-order](SPEC_ISSUES.md#generation-order)).
@@ -522,6 +522,7 @@ Open:
 
 - The agent-driven runs are built but not yet run: `pnpm agent:run` (reads `GROQ_API_KEY`, from `.env.local` when present). A Groq player model writes free text from a description of the view and a route guide per ending (`lib/agent/goals.ts`); the Groq parser turns it into a call with the Coordinator's retry and fallback; each run's turns and replayable log go to `agent-runs/`. `lib/agent/run.test.ts` checks the loop with a scripted parser.
 - The balance values in `tools/sim/README.md` wait for the designers' target ranges; the packs keep the draft's values. The proposed Cadmium values are in [armor-tuning](SPEC_ISSUES.md#armor-tuning).
-- The packs are a proposal for the specification's `spec/examples/`; the brief's documentation updates are not made ([exemplar-location](SPEC_ISSUES.md#exemplar-location)).
 
 Done meanwhile: the play page shows `action_menu` suggestions as chips.
+
+Specification updates (branch `cleanup-review`): both packs are in the vendored specification's `spec/examples/`, with the brief's documentation updates: `spec/README.md` lists them, `docs/guides/adventure-authoring.md` builds the wreck of Perpetua from the exemplar's files, `docs/adventure-packs.md` quotes the exemplar, and `AGENTS.md` drops the open item and defines labelled excerpts. `tests/spec-validation.test.ts` checks that every quotation of `spec/examples/` is the whole file or an excerpt of it. The former guide adventure (Quest, `derelict_station`) is the application's fixture `lib/materials/testing/station_archive`, used by the compiler fixtures, the generator tests, and the `sunken_*` golden runs. The vendored specification differs from its pinned commit until the change is made upstream.

@@ -6,10 +6,10 @@ import { parse } from "yaml";
 import { loadAdventureBundle } from "../bundle/adventure";
 import { main } from "./cli";
 import { compile, compileAdventure, compileDraft, formatDiagnostic } from "./index";
-import { ADVENTURE_FIXTURES, EXAMPLES, derelictStation, guideAdventure, referenceAdventure, type Files } from "./testing/fixtures";
+import { ADVENTURE_FIXTURES, EXAMPLES, derelictStation, stationAdventure, type Files } from "./testing/fixtures";
 
-describe("the adventure authoring guide's sunken_archive", () => {
-  const result = compileAdventure(guideAdventure(), [derelictStation()]);
+describe("the Quest fixture adventure", () => {
+  const result = compileAdventure(stationAdventure(), [derelictStation()]);
 
   it("compiles against derelict_station without diagnostics, and its bundle loads", () => {
     expect(result.diagnostics.map(formatDiagnostic)).toEqual([]);
@@ -38,7 +38,7 @@ describe("the adventure authoring guide's sunken_archive", () => {
   });
 
   it("compiles identically from an editor draft", () => {
-    const files = guideAdventure();
+    const files = stationAdventure();
     const read = (p: string) => parse(files.get(p) as string) as Record<string, unknown>;
     const byId = (dir: string) =>
       Object.fromEntries([...files.keys()].filter((p) => p.startsWith(dir)).map((p) => [read(p).id as string, read(p)]));
@@ -58,17 +58,7 @@ describe("the adventure authoring guide's sunken_archive", () => {
   });
 
   it("is deterministic", () => {
-    expect(JSON.stringify(compileAdventure(guideAdventure(), [derelictStation()]))).toBe(JSON.stringify(result));
-  });
-});
-
-describe("the adventure-packs.md reference blocks", () => {
-  it("are format illustrations: compiled together, they lack the core item and a lift_powered setter", () => {
-    expect(compileAdventure(referenceAdventure(), [derelictStation()]).diagnostics.map(formatDiagnostic)).toEqual([
-      "locations/dock.yaml: map.contents[0].lock: no effect sets flag 'lift_powered'",
-      "locations/lower_archive.yaml: anchors[0].place.ref: unknown ref 'sunken_archive:reactor_core'",
-      "plot/find_the_core.yaml: triggers[1].on.ref: unknown ref 'sunken_archive:reactor_core'",
-    ]);
+    expect(JSON.stringify(compileAdventure(stationAdventure(), [derelictStation()]))).toBe(JSON.stringify(result));
   });
 });
 
@@ -99,7 +89,7 @@ describe("materials command line with adventures", () => {
   };
 
   it("compiles an adventure against a setting directory or a setting bundle", () => {
-    const dir = write(guideAdventure());
+    const dir = write(stationAdventure());
     const bundleFile = join(dir, "..", `${dir.split("/").pop()}-setting.json`);
     try {
       expect(run("check", "--setting", join(EXAMPLES, "derelict_station"), dir)).toEqual({ code: 0, stdout: "", stderr: "" });
@@ -114,7 +104,7 @@ describe("materials command line with adventures", () => {
   });
 
   it("exit 1 without the required setting, and 2 for a setting path that cannot be read", () => {
-    const dir = write(guideAdventure());
+    const dir = write(stationAdventure());
     try {
       expect(run("check", dir)).toEqual({
         code: 1,

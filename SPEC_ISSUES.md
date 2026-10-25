@@ -948,20 +948,6 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 
 **Proposed resolution.** Define the asset fields of the bundle and the archive `publish_bundle` accepts, or make bundles carry files.
 
-## exemplar-location
-
-| Field | Value |
-|---|---|
-| Document | `briefs/example-adventure.md` |
-| Section | Goal; Deliverables; Documentation updates; Acceptance |
-| Marker | `materials/sunken_archive/README.md` |
-
-**Problem.** The brief places `lantern_coast` and `sunken_archive` in the specification's `spec/examples/` and edits `spec/README.md`, `docs/guides/adventure-authoring.md`, `docs/adventure-packs.md`, and `AGENTS.md` in the same change. This application vendors the specification at a pinned commit and does not change it. The brief also names `sunken_archive` for both the exemplar (1.0.0, `lantern_coast`, Cadmium) and the existing guide adventure (0.1.0, `derelict_station`, Quest), whose snippets `docs/adventure-packs.md` quotes.
-
-**Implemented.** Both packs live in `materials/lantern_coast/pack` and `materials/sunken_archive/pack`, in the brief's file layout, as a proposal for `spec/examples/`. `materials/sunken_archive/README.md` holds the schema and semantic pass report and the walkthroughs. The documentation updates are not made. The guide adventure stays the fixture for the guide's snippets; `pnpm bundles` publishes the exemplar instead of it.
-
-**Proposed resolution.** Copy both pack directories into `spec/examples/`, then make the four documentation updates. Rename the guide adventure, or make the guide build a subset of the exemplar as the brief asks.
-
 ## generation-order
 
 | Field | Value |

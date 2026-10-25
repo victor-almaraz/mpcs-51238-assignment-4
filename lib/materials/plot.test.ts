@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { filesToDraft } from "./draft-io";
 import { plotGraph, plotWarnings } from "./plot";
-import { guideAdventure } from "./testing/fixtures";
+import { stationAdventure } from "./testing/fixtures";
 
-const guide = () => filesToDraft(new Map([...guideAdventure()].map(([k, v]) => [k, String(v)]))).draft;
+const guide = () => filesToDraft(new Map([...stationAdventure()].map(([k, v]) => [k, String(v)]))).draft;
 
 describe("plot graph", () => {
   it("finds every stage and ending of the guide adventure reachable", () => {

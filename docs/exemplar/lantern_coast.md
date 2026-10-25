@@ -2,7 +2,7 @@
 
 A setting pack for Cadmium with the modules `armor` and `stash`: a coastal region of Renaissance
 city-states, salt towns, and fog-bound isles, where the tides follow two moons and lanterns matter.
-It supplies the world content of the exemplar adventure [`sunken_archive`](../sunken_archive/README.md).
+It supplies the world content of the exemplar adventure [`sunken_archive`](sunken_archive.md).
 
 | Field | Value |
 |---|---|
@@ -29,7 +29,7 @@ It supplies the world content of the exemplar adventure [`sunken_archive`](../su
 
 House fronts use `window` and outdoor dividers use `low_wall`. Both obstruct movement but not
 sight. A door in a solid wall line is out of sight from most cells of a plaza, because a sight line
-that grazes the wall is blocked; see [Maps](../sunken_archive/README.md#maps).
+that grazes the wall is blocked; see [Maps](sunken_archive.md#maps).
 
 The pack has no abilities. A campaign adds the Quest Quick Start (`materials/quest_starter`) for
 character abilities, which Cadmium accepts.
@@ -37,5 +37,5 @@ character abilities, which Cadmium accepts.
 Check it with:
 
 ```bash
-pnpm materials check materials/lantern_coast/pack
+pnpm materials check cadmium-spec/spec/examples/lantern_coast
 ```

@@ -129,7 +129,8 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `lib/bundle/` | Schema registry and generated types; generated files are never edited by hand |
 | `lib/materials/` | Content Compiler: pack reading, schema explanations, rules-system, cross-reference, map, and art checks, bundles, and the `materials` command line |
 | `scripts/` | Build-time scripts, such as type generation |
-| `materials/` | Material packs shipped with the application: `quest_starter` (the Quest Quick Start abilities, CC BY 4.0), `lantern_coast`, and the exemplar `sunken_archive` |
+| `materials/` | Material packs shipped with the application: `quest_starter` (the Quest Quick Start abilities, CC BY 4.0). The exemplar `sunken_archive` and its setting `lantern_coast` are specification examples in `cadmium-spec/spec/examples/` |
+| `docs/exemplar/` | The exemplar's report: coverage, validation passes, walkthroughs, and departures from the draft |
 | `tools/sim/` | The balance simulation |
 | `public/fonts/` | Libertinus Serif (SIL Open Font License, `OFL.txt`) for story text |
 | `tests/` | Tests that span modules, such as specification validation |

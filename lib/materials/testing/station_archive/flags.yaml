@@ -1,0 +1,2 @@
+lift_powered: { type: bool, initial: false }
+alarm_level:  { type: int, min: 0, max: 3, initial: 0 }

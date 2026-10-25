@@ -27,7 +27,7 @@ export const LOADOUTS: Record<string, Loadout> = {
 let coast: SettingBundle | undefined;
 function setting(): SettingBundle {
   if (!coast) {
-    const r = compileSetting(readPackDir(join(process.cwd(), "materials/lantern_coast/pack")));
+    const r = compileSetting(readPackDir(join(process.cwd(), "cadmium-spec/spec/examples/lantern_coast")));
     if (!r.bundle) throw new Error(r.diagnostics.map(formatDiagnostic).join("\n"));
     coast = r.bundle;
   }

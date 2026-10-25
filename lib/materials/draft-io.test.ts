@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { draftFiles } from ".";
 import { draftPointer, filesToDraft } from "./draft-io";
-import { guideAdventure } from "./testing/fixtures";
+import { stationAdventure } from "./testing/fixtures";
 
 describe("draft and directory", () => {
   it("reads an adventure directory into a draft that maps back onto the same files", () => {
-    const files = new Map([...guideAdventure()].map(([k, v]) => [k, String(v)]));
+    const files = new Map([...stationAdventure()].map(([k, v]) => [k, String(v)]));
     const { draft, problems } = filesToDraft(files);
     expect(problems).toEqual([]);
     expect((draft.adventure as { id: string }).id).toBe("sunken_archive");

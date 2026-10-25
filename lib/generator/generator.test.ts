@@ -5,13 +5,13 @@ import { TerrainGrid, adjacent, footprintCells, parseMap, type Cell, type Metric
 import { compileAdventure } from "../materials";
 import { checkGrid, checkPlacements, npcRef, templateOf, terrainTable } from "../materials/maps";
 import { Diagnostics } from "../materials/pack";
-import { derelictStation, guideAdventure } from "../materials/testing/fixtures";
+import { derelictStation, stationAdventure } from "../materials/testing/fixtures";
 import type { JsonObject } from "../materials/walk";
 import { Rng, draw, fnv1a64 } from "../rng";
 import { MAX_ATTEMPTS, attemptSeed, generate, locationSeed, pickWeighted, type GeneratedMap } from "./index";
 
 const setting = derelictStation();
-const adventure = compileAdventure(guideAdventure(), [setting]).bundle!;
+const adventure = compileAdventure(stationAdventure(), [setting]).bundle!;
 const lowerArchive = adventure.locations.lower_archive as GeneratedLocation;
 const reactor = { label: "reactor room", role: "boss", min_depth: 3 };
 

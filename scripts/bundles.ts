@@ -9,12 +9,12 @@ import { readPackDir } from "../lib/materials/fs";
 const OUT = join(process.cwd(), "bundles");
 mkdirSync(OUT, { recursive: true });
 
-const compiled = ["cadmium-spec/spec/examples/derelict_station", "cadmium-spec/spec/examples/sunless_crypt", "materials/quest_starter/pack", "materials/lantern_coast/pack"].map((dir) => {
+const compiled = ["cadmium-spec/spec/examples/derelict_station", "cadmium-spec/spec/examples/sunless_crypt", "materials/quest_starter/pack", "cadmium-spec/spec/examples/lantern_coast"].map((dir) => {
   const r = compileSetting(readPackDir(join(process.cwd(), dir)));
   if (!r.bundle) throw new Error(`${dir}:\n${r.diagnostics.map(formatDiagnostic).join("\n")}`);
   return r;
 });
-const adventure = compileAdventure(readPackDir(join(process.cwd(), "materials/sunken_archive/pack")), compiled.map((r) => r.bundle!));
+const adventure = compileAdventure(readPackDir(join(process.cwd(), "cadmium-spec/spec/examples/sunken_archive")), compiled.map((r) => r.bundle!));
 if (!adventure.bundle) throw new Error(adventure.diagnostics.map(formatDiagnostic).join("\n"));
 
 for (const [n, r] of [...compiled, adventure].entries()) {
