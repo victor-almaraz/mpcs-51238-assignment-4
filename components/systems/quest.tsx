@@ -16,7 +16,8 @@ import { ICON_DENSE } from "@/components/ui/icon-button";
 import { DescriptionList } from "@/components/ui/list";
 import { Notice } from "@/components/ui/notice";
 import { WithAside } from "@/components/ui/page";
-import { AbilityDetails, NewPlayerPrimer, roleSummary } from "./ability-info";
+import { WithInfo } from "@/components/ui/with-info";
+import { AbilityDetails, roleSummary, RulesPrimer } from "./ability-info";
 
 export interface CreationProps {
   system: string;
@@ -94,20 +95,12 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
   const muted = (s: string) => <span className="text-muted">{s}</span>;
 
   const abilityChoices = (list: AbilityOption[]) => (
-    <ul className="grid gap-x-6 sm:grid-cols-2 xl:grid-cols-3">
+    <ul className="grid items-start gap-x-6 sm:grid-cols-2 xl:grid-cols-3">
       {list.map((a) => (
         <li key={a.ref}>
-          <Choice
-            id={`ability-${a.ref.replace(/[^\w-]/g, "-")}`}
-            name="abilities"
-            value={a.ref}
-            checked={chosen.includes(a.ref)}
-            onChange={() => toggle(a.ref)}
-            disabled={!chosen.includes(a.ref) && chosen.length >= count}
-            label={a.label}
-            hint={<AbilityDetails a={a} />}
-            className="has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60"
-          />
+          <WithInfo label={`About ${a.label}`} info={<AbilityDetails a={a} />}>
+            <Choice name="abilities" value={a.ref} checked={chosen.includes(a.ref)} onChange={() => toggle(a.ref)} disabled={!chosen.includes(a.ref) && chosen.length >= count} label={a.label} className="has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60" />
+          </WithInfo>
         </li>
       ))}
     </ul>
@@ -184,13 +177,16 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
           </CreationStep>
 
           <CreationStep n={2} id="step-role" title="Role" done={role !== ""}>
-            <NewPlayerPrimer systemTitle={systemTitle ?? sentence(system)} hp={hp} ap={ap} count={count} cadmium={system === "cadmium"} />
-            <p id="step-role-hint" className="mb-3 text-caption text-muted">
-              The role puts its abilities first in the next step; any ability can still be chosen.
-            </p>
-            <div role="radiogroup" aria-labelledby="step-role-title" aria-describedby="step-role-hint" className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+            <WithInfo label={`New to ${systemTitle ?? sentence(system)}? The rules in brief`} info={<RulesPrimer hp={hp} ap={ap} count={count} cadmium={system === "cadmium"} />} className="mb-3">
+              <p id="step-role-hint" className="pt-2 text-caption text-muted">
+                The role puts its abilities first in the next step; any ability can still be chosen.
+              </p>
+            </WithInfo>
+            <div role="radiogroup" aria-labelledby="step-role-title" aria-describedby="step-role-hint" className="grid items-start gap-2 sm:grid-cols-2 xl:grid-cols-4">
               {roles.map((r) => (
-                <Choice key={r} id={`role-${r}`} type="radio" name="role" value={r} checked={role === r} onChange={() => setRole(r)} label={sentence(r)} hint={roleSummary(r, abilities)} className="border border-rule px-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft" />
+                <WithInfo key={r} label={`About the ${r}`} info={roleSummary(r, abilities)} className="rounded-control border border-rule px-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft">
+                  <Choice type="radio" name="role" value={r} checked={role === r} onChange={() => setRole(r)} label={sentence(r)} />
+                </WithInfo>
               ))}
             </div>
           </CreationStep>
@@ -296,16 +292,17 @@ export function QuestSheetView({ sheet, labels, abilities }: { sheet: Record<str
       known.size === 0 ? (
         s.abilities.map((a) => labels[a] ?? a).join(", ")
       ) : (
-        <ul key="abilities" className="flex flex-col gap-2">
+        <ul key="abilities" className="flex flex-col">
           {s.abilities.map((ref) => {
             const a = known.get(ref);
             return (
               <li key={ref}>
-                <span className="text-ink">{a?.label ?? labels[ref] ?? ref}</span>
-                {a && (
-                  <span className="block text-caption text-muted">
-                    <AbilityDetails a={a} />
-                  </span>
+                {a ? (
+                  <WithInfo label={`About ${a.label}`} info={<AbilityDetails a={a} />}>
+                    <span className="block pt-1.5 text-ink">{a.label}</span>
+                  </WithInfo>
+                ) : (
+                  <span className="text-ink">{labels[ref] ?? ref}</span>
                 )}
               </li>
             );

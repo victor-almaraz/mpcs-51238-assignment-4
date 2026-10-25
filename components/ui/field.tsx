@@ -54,27 +54,10 @@ export function Select({ className, children, ...rest }: ComponentProps<"select"
 }
 
 /** A checkbox or radio with its label to the right, in a 40 px hit area. */
-/**
- * A checkbox or radio with its label. With an `id`, the hint is joined by aria-describedby rather than
- * read as part of the name, for hints longer than a few words.
- */
-export function Choice({ type = "checkbox", label, hint, className, id, ...rest }: { type?: "checkbox" | "radio"; label: ReactNode; hint?: ReactNode; className?: string } & Omit<ComponentProps<"input">, "type">) {
-  if (id && hint) {
-    return (
-      <div className={cx("flex flex-col gap-0.5 rounded-control py-2", className)}>
-        <label htmlFor={id} className="flex min-h-6 cursor-pointer items-start gap-3">
-          <input type={type} id={id} aria-describedby={`${id}-hint`} className="mt-0.5 size-5 shrink-0 accent-[var(--color-accent)]" {...rest} />
-          <span className="text-control text-ink">{label}</span>
-        </label>
-        <span id={`${id}-hint`} className="pl-8 text-caption text-muted">
-          {hint}
-        </span>
-      </div>
-    );
-  }
+export function Choice({ type = "checkbox", label, hint, className, ...rest }: { type?: "checkbox" | "radio"; label: ReactNode; hint?: ReactNode; className?: string } & Omit<ComponentProps<"input">, "type">) {
   return (
     <label className={cx("flex min-h-10 cursor-pointer items-start gap-3 rounded-control py-2", className)}>
-      <input type={type} id={id} className="mt-0.5 size-5 shrink-0 accent-[var(--color-accent)]" {...rest} />
+      <input type={type} className="mt-0.5 size-5 shrink-0 accent-[var(--color-accent)]" {...rest} />
       <span className="flex flex-col">
         <span className="text-control text-ink">{label}</span>
         {hint && <span className="text-caption text-muted">{hint}</span>}
