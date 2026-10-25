@@ -70,10 +70,10 @@ Observation, not changed:
 
 - **Access migration (S-9, S-10): applied.** `/api/health` against the production database reports `ok`, which includes the probe of `cadmium_user_active`. Functions that the `postgres` role creates from now on, in any schema, are executable only by their owner until a grant says so; every Cadmium migration grants explicitly, and a hand-written function elsewhere (an auth hook, say) needs its own `grant execute`.
 - **S-15: `CALENDAR_FEED_KEY` is set** in Vercel, so feed secrets no longer derive from the service role key.
+- **Realtime: private channels only** is set in the Supabase dashboard, so no one can open a public channel on an `instance:` or `user:` topic; every subscription passes `realtime_may_receive`. A play page that connects in production (no "Reconnecting" after a few seconds) also confirms the Clerk third-party auth integration.
 
 ## Remaining for the user
 
-- **Realtime: private channels only.** In the Supabase dashboard, Realtime settings, turn off public access. The setting is not in the repository. Then confirm in production that the play page connects (no "Reconnecting" after a few seconds), which also confirms the Clerk third-party auth integration.
 - **Merge** this branch into `master`.
 
 ## Verified as sound
