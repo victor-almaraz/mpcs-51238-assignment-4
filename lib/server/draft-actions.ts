@@ -37,7 +37,7 @@ export type SaveResult = { error: string | null; revision?: number; saved_at?: s
 export async function saveDraftAction(input: { draft_id: string; document: Record<string, unknown>; revision: number }): Promise<SaveResult> {
   const r = await attempt((uid) => saveDraft(serverStore(), uid, input));
   if ("error" in r) return { error: r.error, conflict: /saved elsewhere/.test(r.error) };
-  const d = await attempt((uid) => getDraft(serverStore(), uid, input.draft_id));
+  const d = await attempt((uid) => getDraft(serverStore(), uid, input.draft_id), { read: true });
   return { error: null, ...r.ok, diagnostics: "ok" in d ? d.ok.diagnostics : [] };
 }
 
@@ -62,7 +62,7 @@ export async function requiredSettingsAction(draftId: string, requires: unknown)
   const r = await attempt(async (uid) => {
     await getDraft(serverStore(), uid, draftId);
     return requiredSettings(serverStore(), { adventure: { requires_settings: requires } });
-  });
+  }, { read: true });
   return "ok" in r ? r.ok : null;
 }
 

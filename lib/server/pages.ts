@@ -13,6 +13,15 @@ export async function orNotFound<T>(p: Promise<T>): Promise<T> {
   }
 }
 
+/** A path segment decoded; a malformed escape such as "%E0" is kept as written, so it matches nothing. */
+export function decoded(segment: string): string {
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
 /** The default system version range for a new campaign: the installed major and minor version. */
 export function defaultRange(version: string): string {
   const [major, minor] = version.split(".");

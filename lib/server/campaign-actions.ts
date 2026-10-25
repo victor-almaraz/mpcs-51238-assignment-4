@@ -156,8 +156,11 @@ export async function removeCharacterAction(_: FormState, form: FormData): Promi
 /** Start, Pause, Resume, and End in the lobby (app-flow.md, Instance lobby: Controls). */
 export async function instanceControlAction(_: FormState, form: FormData): Promise<FormState> {
   const id = str(form, "instance_id");
-  const run = { start: startInstance, pause: pauseInstance, resume: resumeInstance, end: endInstance }[str(form, "control") as "start" | "pause" | "resume" | "end"];
-  if (!run) return { error: "Unknown control." };
+  const controls = { start: startInstance, pause: pauseInstance, resume: resumeInstance, end: endInstance };
+  const control = str(form, "control") ?? "";
+  // Own keys only: "constructor" or "toString" would otherwise find Object's.
+  if (!Object.hasOwn(controls, control)) return { error: "Unknown control." };
+  const run = controls[control as keyof typeof controls];
   const r = await attempt((uid) => run(serverDeps(), uid, id));
   if ("error" in r) return r;
   revalidatePath(`/instances/${id}`);

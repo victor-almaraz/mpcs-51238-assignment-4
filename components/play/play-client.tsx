@@ -255,6 +255,7 @@ export function PlayClient(props: PlayProps) {
 
   const markOf = (id: string): Mark => (round.current === id ? "current" : round.declared.includes(id) ? "declared" : round.waiting_on.includes(id) ? "waiting" : null);
   const members = [{ id: characterId, name: myName }, ...view.party.map((p) => ({ id: p.id, name: p.name }))];
+  const mine = new Set(props.instance.characters.filter((c) => c.user_id === props.userId).map((c) => c.id));
   const roomLabel = (id: string | null) => (id ? view.map.rooms.find((r) => r.id === id)?.label : undefined);
 
   const tracker = (
@@ -275,12 +276,25 @@ export function PlayClient(props: PlayProps) {
         {members.map((m) => {
           const mark = markOf(m.id);
           const meta = mark ? MARKS[mark] : null;
-          return (
-            <li key={m.id} title={meta ? `${m.name}: ${meta.word}` : m.name} className={cx("inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-caption font-medium", meta?.className ?? "border-rule bg-page text-ink")}>
+          const chip = cx("inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-caption font-medium", meta?.className ?? "border-rule bg-page text-ink");
+          const content = (
+            <>
               {meta?.icon}
               {m.name}
               {m.id === characterId && <span className="font-normal text-muted max-lg:sr-only">(you)</span>}
               {meta && <span className="sr-only">, {meta.word}</span>}
+            </>
+          );
+          // SPEC_ISSUES.md#play-character-switch: the user's other characters switch the page to them.
+          return (
+            <li key={m.id} title={mine.has(m.id) && m.id !== characterId ? `Play as ${m.name}` : meta ? `${m.name}: ${meta.word}` : m.name} className="flex">
+              {mine.has(m.id) && m.id !== characterId ? (
+                <Link href={`/instances/${instanceId}/play?character=${encodeURIComponent(m.id)}`} aria-label={`Play as ${m.name}${meta ? `, ${meta.word}` : ""}`} className={cx(chip, "border-dashed hover:border-accent hover:text-accent")}>
+                  {content}
+                </Link>
+              ) : (
+                <span className={chip}>{content}</span>
+              )}
             </li>
           );
         })}

@@ -8,7 +8,12 @@ export interface Migration {
   sql: string;
 }
 
-const TRACKING = "create table if not exists cadmium_migrations (name text primary key, applied_at timestamptz not null default now())";
+// Like every store table: row-level security on, and nothing granted to Supabase's API roles.
+const TRACKING = `create table if not exists cadmium_migrations (name text primary key, applied_at timestamptz not null default now());
+alter table cadmium_migrations enable row level security;
+do $$ begin
+  if exists (select 1 from pg_roles where rolname = 'anon') then revoke all on cadmium_migrations from anon, authenticated; end if;
+end $$;`;
 
 /** Migrations not yet applied, in name order. Reads only: it creates nothing. */
 export async function pending(db: Db, all: readonly Migration[]): Promise<Migration[]> {

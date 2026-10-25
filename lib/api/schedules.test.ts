@@ -13,7 +13,7 @@ import { createCampaign, joinByLink, rotateInviteLink } from "./campaigns";
 import { createCharacter } from "./characters";
 import type { Entropy } from "./entropy";
 import { handle } from "./http";
-import { addCharacter, createInstance, pauseInstance, startInstance, submitAction, type Deps } from "./instances";
+import { addCharacter, createInstance, endInstance, pauseInstance, startInstance, submitAction, type Deps } from "./instances";
 import { calendarFeed, cancelSession, disableCalendarFeed, exportCalendar, getCalendarFeed, listOccurrences, moveOccurrence, rotateCalendarFeed, rsvp, scheduleSession, updateSession } from "./schedules";
 import { code, entropy, richSetting, SIX, SUNKEN, world } from "./testing/fixtures";
 
@@ -55,6 +55,19 @@ describe("scheduling", () => {
     expect(answered.rsvps).toEqual({ yes: [], no: [], maybe: ["user_b"] });
     expect(await code(rsvp(store, "user_b", { session_id: s.id, occurrence_start: "2026-10-28T19:00:00Z", response: "yes" }))).toBe("invalid_request");
     expect(await code(listOccurrences(store, "user_b", { instance_id: instance.id, from: "2026-01-01T00:00:00Z", to: "2026-06-01T00:00:00Z" }))).toBe("invalid_request");
+  });
+
+  it("keeps an ended game's sessions as a record, closed to answers and changes", async () => {
+    const { instance } = await table();
+    const s = await weekly(instance.id);
+    await startInstance(deps, "user_a", instance.id);
+    await endInstance(deps, "user_a", instance.id);
+    const at = "2026-10-27T19:00:00Z";
+    expect(await code(rsvp(store, "user_b", { session_id: s.id, occurrence_start: at, response: "yes" }))).toBe("conflict");
+    expect(await code(updateSession(store, "user_a", { session_id: s.id, title: "Later" }))).toBe("conflict");
+    expect(await code(moveOccurrence(store, "user_a", { session_id: s.id, occurrence_start: at, starts_at: "2026-10-28T19:00:00Z" }))).toBe("conflict");
+    expect(await code(cancelSession(store, "user_a", { session_id: s.id }))).toBe("conflict");
+    expect((await listOccurrences(store, "user_b", { instance_id: instance.id, from: "2026-10-19T00:00:00Z", to: "2026-11-04T00:00:00Z" })).length).toBe(3);
   });
 
   it("lets only the author schedule, move, cancel, and change sessions", async () => {

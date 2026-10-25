@@ -13,8 +13,9 @@ export interface CalendarEntry {
 
 const stamp = (iso: string) => iso.replace(/[-:]/g, "").replace(/\.\d{3}/, "");
 
-function text(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+/** A TEXT value (RFC 5545, 3.3.11). A lone CR is a line break too: some readers end the line there. */
+export function text(value: string): string {
+  return value.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r\n|\r|\n/g, "\\n");
 }
 
 /** Folds a content line at 75 octets (RFC 5545, 3.1). */

@@ -46,11 +46,11 @@ The server reads these variables, from `.env.local` locally and from the Vercel 
 | `CONTACT_EMAIL` | no | Overrides the contact address on the closed notice; the default is the address in the Terms and Privacy Policy |
 | `VAPID_PUBLIC_KEY` | no | Offers browser notifications in Settings; sending also needs the private key and the `web-push` package |
 
-`GET /api/health` reports which are set, and whether the database schema is applied, without revealing values.
+`GET /api/health` reports `status` (`ok`, `incomplete`, or `unconfigured`) to anyone. With `Authorization: Bearer $CRON_SECRET` it also reports which settings are set and each migration's state, without revealing values.
 
 ### Database schema
 
-The migrations in `supabase/migrations/` create the store's tables and functions, and restrict both to the service role. Apply them in file-name order by pasting each file into the Supabase SQL Editor. Each file applies once; `/api/health` then reports `"schema": "applied"`.
+The migrations in `supabase/migrations/` create the store's tables and functions, and restrict both to the service role. Apply them in file-name order by pasting each file into the Supabase SQL Editor. Each file applies once; `/api/health` then reports `"status": "ok"`.
 
 ### Realtime
 

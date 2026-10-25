@@ -18,6 +18,11 @@ import { caller } from "./users";
 
 const ID = /^[a-z][a-z0-9_]{0,63}$/;
 const DAY = 86_400_000;
+/** The largest draft document save_draft accepts, as JSON. */
+const MAX_DRAFT = 2_000_000;
+/** An imported archive's limits: files, and their unpacked size together (a ZIP bomb stops here). */
+const MAX_FILES = 500;
+const MAX_UNPACKED = 4 * MAX_DRAFT;
 
 /** The draft summary of `list_drafts`: everything but the document, with problem counts. */
 export function draftSummary(d: Omit<DraftRecord, "document">) {
@@ -106,17 +111,27 @@ export async function createDraft(store: Store, userId: string | null, input: un
 export async function importDraft(store: Store, userId: string | null, archive: Uint8Array, entropy: Entropy = cryptoEntropy) {
   const user = await caller(store, userId, "import_draft");
   let entries: Map<string, Uint8Array>;
+  let unpacked = 0;
+  const inflate = (d: Uint8Array) => {
+    const out = new Uint8Array(inflateRawSync(d, { maxOutputLength: MAX_UNPACKED - unpacked + 1 }));
+    unpacked += out.length;
+    if (unpacked > MAX_UNPACKED) throw new Error("larger than 8 MB unpacked");
+    return out;
+  };
   try {
-    entries = unzip(archive, (d) => new Uint8Array(inflateRawSync(d)));
+    entries = unzip(archive, inflate);
   } catch (e) {
-    throw new ApiError("invalid_request", `the file is not a readable ZIP: ${(e as Error).message}`);
+    const tooLarge = (e as { code?: string }).code === "ERR_BUFFER_TOO_LARGE";
+    throw new ApiError("invalid_request", `the file is not a readable ZIP: ${tooLarge ? "larger than 8 MB unpacked" : (e as Error).message}`);
   }
+  if (entries.size > MAX_FILES) throw new ApiError("invalid_request", `the ZIP has more than ${MAX_FILES} files`);
   const names = [...entries.keys()];
   const root = names.includes("adventure.yaml") ? "" : (names.find((n) => /^[^/]+\/adventure\.yaml$/.test(n))?.split("/")[0] ?? null);
   if (root === null) throw new ApiError("invalid_request", "the ZIP has no adventure.yaml");
   const files = new Map<string, string>();
   for (const [name, data] of entries) if (!root || name.startsWith(`${root}/`)) files.set(root ? name.slice(root.length + 1) : name, new TextDecoder().decode(data));
   const { draft, problems } = filesToDraft(files);
+  if (JSON.stringify(draft).length > MAX_DRAFT) throw new ApiError("invalid_request", "the draft is larger than 2 MB");
   const a = draft.adventure as { id?: unknown; title?: unknown; system?: { id?: unknown } };
   if (typeof a.id !== "string" || !ID.test(a.id)) throw new ApiError("invalid_request", "adventure.yaml needs a valid id");
   const system = systemOrThrow(a.system?.id);
@@ -159,7 +174,7 @@ export async function saveDraft(store: Store, userId: string | null, input: unkn
   // The system is fixed after creation, and the id after the first publication.
   if (a.system?.id !== d.system) throw new ApiError("invalid_request", `the system is fixed: ${d.system}`);
   if (d.last_published_version && a.id !== d.material_id) throw new ApiError("invalid_request", `the adventure id is fixed after publication: ${d.material_id}`);
-  if (JSON.stringify(document).length > 2_000_000) throw new ApiError("invalid_request", "the draft is larger than 2 MB");
+  if (JSON.stringify(document).length > MAX_DRAFT) throw new ApiError("invalid_request", "the draft is larger than 2 MB");
   const title = typeof a.title === "string" && a.title.trim() !== "" ? a.title.slice(0, 80) : d.title;
   const saved = await store.saveDraft(d.id, req.revision, document, title, await diagnose(store, document));
   if (!saved) throw new ApiError("conflict", "the draft was saved elsewhere; reload it or keep yours as a new draft");
@@ -178,7 +193,9 @@ export async function validateDraft(store: Store, userId: string | null, draftId
 export async function exportDraft(store: Store, userId: string | null, draftId: unknown): Promise<{ name: string; data: Uint8Array }> {
   const user = await caller(store, userId, "export_draft");
   const d = await owned(store, user.id, draftId);
-  const id = String((d.document.adventure as { id?: string } | undefined)?.id ?? d.material_id);
+  // The id names the folder and the download; an unpublished draft's id may not be valid yet.
+  const named = (d.document.adventure as { id?: unknown } | undefined)?.id;
+  const id = typeof named === "string" && ID.test(named) ? named : d.material_id;
   const files = [...draftFiles(d.document)].map(([path, text]) => ({ name: `${id}/${path}`, data: text }));
   return { name: `${id}.zip`, data: zip(files) };
 }

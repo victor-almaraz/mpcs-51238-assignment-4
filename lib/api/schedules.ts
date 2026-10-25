@@ -65,6 +65,10 @@ function fieldsOf(req: Record<string, unknown>, base: Partial<SessionRecord>): P
   };
 }
 
+/**
+ * The session for a change or an answer, and the caller's role. An ended game's sessions are a record:
+ * nothing about them changes any more (SPEC_ISSUES.md#ended-instance-schedule).
+ */
 async function authorSession(store: Store, user: UserRecord, sessionId: unknown) {
   if (typeof sessionId !== "string") throw new ApiError("invalid_request", "session_id must be a string");
   const session = await store.getSession(sessionId);
@@ -72,6 +76,7 @@ async function authorSession(store: Store, user: UserRecord, sessionId: unknown)
   const { instance, role } = await instanceOf(store, user, session.instance_id).catch(() => {
     throw new ApiError("not_found", "no such session");
   });
+  if (instance.status === "ended") throw new ApiError("conflict", "the instance has ended");
   return { session, instance, role };
 }
 

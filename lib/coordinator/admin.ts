@@ -48,6 +48,8 @@ export async function replayInstance(store: Store, id: string, toVersion?: numbe
   const instance = await instanceOrThrow(store, id);
   const bundles = await pinnedBundles(store, instance);
   const commits = await store.commits(id);
+  // An instance still in the lobby has no commits and no state, so nothing can diverge.
+  if (commits.length === 0 && instance.state === null) return { state: null, matches_stored: true, diverges_at: null };
   const to = toVersion ?? instance.version;
   const r = replay(bundles, commits, to);
   if (!r.ok) return { state: null, matches_stored: false, diverges_at: r.version };

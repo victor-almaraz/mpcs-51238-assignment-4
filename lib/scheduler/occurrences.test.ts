@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { occurrencesBetween, occurrencesOf, originalStarts, type SessionRecord } from "./occurrences";
-import { instantOf } from "./zone";
+import { instantOf, localInstant } from "./zone";
 
 const weekly = (over: Partial<SessionRecord> = {}): SessionRecord => ({
   id: "s_1",
@@ -62,5 +62,14 @@ describe("weekly recurrence", () => {
   it("moves a time in a daylight-saving gap forward", () => {
     // 02:30 on 29 March 2026 does not exist in Berlin.
     expect(new Date(instantOf({ year: 2026, month: 3, day: 29, hour: 2, minute: 30, second: 0 }, "Europe/Berlin")).toISOString()).toBe("2026-03-29T01:30:00.000Z");
+  });
+});
+
+describe("localInstant", () => {
+  it("reads a datetime-local value in a zone, and refuses a bad value or zone without throwing", () => {
+    expect(localInstant("2026-10-31T15:30", "America/Chicago")).toBe("2026-10-31T20:30:00.000Z");
+    expect(localInstant("2026-10-31T15:30", "Not/AZone")).toBeUndefined();
+    expect(localInstant("tomorrow", "UTC")).toBeUndefined();
+    expect(localInstant(undefined, "UTC")).toBeUndefined();
   });
 });

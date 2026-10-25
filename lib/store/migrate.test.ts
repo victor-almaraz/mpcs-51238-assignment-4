@@ -63,5 +63,13 @@ describe("migrations", () => {
       );
       expect(rows[0], table).toEqual({ anon: false, rls: true });
     }
+    // The runner's own table, and objects a later migration creates without revoking anything.
+    const { rows: tracking } = await db.query<{ anon: boolean; rls: boolean }>("select has_table_privilege('anon', 'cadmium_migrations', 'select') as anon, relrowsecurity as rls from pg_class where relname = 'cadmium_migrations'");
+    expect(tracking[0]).toEqual({ anon: false, rls: true });
+    await db.exec("create table later (x int); create function cadmium_later() returns int language sql as $$ select 1 $$;");
+    const { rows: later } = await db.query<{ table: boolean; fn: boolean; pub: boolean }>(
+      "select has_table_privilege('anon', 'later', 'select') as table, has_function_privilege('authenticated', 'cadmium_later()', 'execute') as fn, has_function_privilege('public', 'cadmium_later()', 'execute') as pub",
+    );
+    expect(later[0]).toEqual({ table: false, fn: false, pub: false });
   });
 });

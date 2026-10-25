@@ -8,7 +8,7 @@ import { Notice } from "@/components/ui/notice";
 import { Standalone } from "@/components/ui/standalone";
 import { previewInvitation } from "@/lib/api/invitations";
 import { acceptInvitationAction, declineInvitationAction } from "@/lib/server/campaign-actions";
-import { orNotFound } from "@/lib/server/pages";
+import { decoded, orNotFound } from "@/lib/server/pages";
 import { serverStore } from "@/lib/server/supabase";
 import { nextStep } from "@/lib/server/visitor";
 
@@ -21,7 +21,7 @@ const REASONS: Record<string, string> = {
 
 export default async function Invitation({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const invitation = await orNotFound(previewInvitation(serverStore(), decodeURIComponent(code)));
+  const invitation = await orNotFound(previewInvitation(serverStore(), decoded(code)));
   const step = invitation.status === "pending" ? await nextStep(`/invite/${code}`) : null;
   const expires = new Date(invitation.expires_at).toUTCString();
   return (

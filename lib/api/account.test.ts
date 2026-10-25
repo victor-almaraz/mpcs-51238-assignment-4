@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { unzip } from "../export/zip";
 import type { Store } from "../store";
 import type { testDb } from "../store/testing/pglite";
-import { addPushSubscription, exportMyData, listPushSubscriptions, removePushSubscription, requestAccountDeletion, restoreAccount, runPurge, updateMe } from "./account";
+import { addPushSubscription, MAX_PUSH_SUBSCRIPTIONS, exportMyData, listPushSubscriptions, removePushSubscription, requestAccountDeletion, restoreAccount, runPurge, updateMe } from "./account";
 import { createCampaign, getCampaign, joinByLink, rotateInviteLink } from "./campaigns";
 import { createCharacter } from "./characters";
 import type { Entropy } from "./entropy";
@@ -54,18 +54,28 @@ describe("settings", () => {
   });
 
   it("adds, lists, and removes browser subscriptions without revealing their keys", async () => {
-    const s = await addPushSubscription(store, "user_a", { endpoint: "https://push.example/abc", keys: { p256dh: "key", auth: "secret" }, label: "Firefox on a laptop" }, e);
+    const s = await addPushSubscription(store, "user_a", { endpoint: "https://fcm.googleapis.com/fcm/send/abc", keys: { p256dh: "key", auth: "secret" }, label: "Firefox on a laptop" }, e);
     expect(await listPushSubscriptions(store, "user_a")).toEqual([{ id: s.id, label: "Firefox on a laptop", created_at: expect.any(String), last_used_at: null }]);
     expect(await code(addPushSubscription(store, "user_a", { endpoint: "http://insecure", keys: { p256dh: "k", auth: "a" } }, e))).toBe("invalid_request");
     await removePushSubscription(store, "user_a", s.id);
     expect(await listPushSubscriptions(store, "user_a")).toEqual([]);
+  });
+
+  it("accepts only the browsers' push services, and at most ten browsers", async () => {
+    const add = (endpoint: string) => addPushSubscription(store, "user_a", { endpoint, keys: { p256dh: "k", auth: "a" } }, e);
+    for (const bad of ["https://internal.example/hook", "https://fcm.googleapis.com.evil.test/x", "https://fcm.googleapis.com:8443/x", "https://user@fcm.googleapis.com/x", "not a url"]) expect(await code(add(bad)), bad).toBe("invalid_request");
+    for (const good of ["https://web.push.apple.com/QK1", "https://wns2-par02p.notify.windows.com/w/?token=1"]) expect(await code(add(good)), good).toBe("ok");
+    for (let n = 2; n < MAX_PUSH_SUBSCRIPTIONS; n++) await add(`https://fcm.googleapis.com/fcm/send/${n}`);
+    expect(await code(add("https://fcm.googleapis.com/fcm/send/one-more"))).toBe("conflict");
+    // The same browser subscribing again replaces its subscription.
+    expect(await code(add("https://web.push.apple.com/QK1"))).toBe("ok");
   });
 });
 
 describe("export", () => {
   it("contains every listed file, with the user's records", async () => {
     const { own, rook } = await lives();
-    await addPushSubscription(store, "user_b", { endpoint: "https://push.example/b", keys: { p256dh: "k", auth: "a" }, label: "Phone" }, e);
+    await addPushSubscription(store, "user_b", { endpoint: "https://updates.push.services.mozilla.com/wpush/v2/b", keys: { p256dh: "k", auth: "a" }, label: "Phone" }, e);
     const files = unzip(await exportMyData(store, "user_b"));
     const read = (name: string) => JSON.parse(new TextDecoder().decode(files.get(name)!));
     expect([...files.keys()].sort()).toEqual(["README.txt", `campaigns/${own.id}.json`, `characters/${rook.id}.json`, "inputs.json", "invitations.json", "memberships.json", "profile.json", "schedule.json"].sort());

@@ -23,6 +23,7 @@ import {
   updateCampaign,
 } from "./campaigns";
 import { ApiError, type ApiErrorCode } from "./errors";
+import { RATE_LIMIT } from "./limits";
 import {
   addCharacter,
   advanceRound,
@@ -47,6 +48,8 @@ import { calendarFeed, cancelSession, disableCalendarFeed, exportCalendar, getCa
 import { getSystemSchema, listSystems } from "./systems";
 import { acceptTerms, caller, getMe } from "./users";
 
+export { RATE_LIMIT };
+
 const STATUS: Record<ApiErrorCode, number> = {
   unauthenticated: 401,
   forbidden: 403,
@@ -59,8 +62,6 @@ const STATUS: Record<ApiErrorCode, number> = {
   unavailable: 503,
 };
 
-/** Requests per user per minute for every operation (api.md, Rate limits); deployment-configurable. */
-export const RATE_LIMIT = { window_seconds: 60, limit: 120 };
 
 interface Call {
   deps: Deps;
@@ -243,7 +244,14 @@ function match(pattern: string, path: string): Record<string, string> | null {
   if (p.length !== s.length) return null;
   const params: Record<string, string> = {};
   for (let i = 0; i < p.length; i++) {
-    if (p[i]!.startsWith(":")) params[p[i]!.slice(1)] = decodeURIComponent(s[i]!);
+    if (p[i]!.startsWith(":")) {
+      // A malformed escape such as "%E0" matches no record.
+      try {
+        params[p[i]!.slice(1)] = decodeURIComponent(s[i]!);
+      } catch {
+        return null;
+      }
+    }
     else if (p[i] !== s[i]) return null;
   }
   return params;
@@ -257,6 +265,26 @@ function json(status: number, body: unknown, headers: Record<string, string> = {
 function failure(e: ApiError): Response {
   const headers: Record<string, string> = e.code === "rate_limited" ? { "Retry-After": String(Math.ceil(Number(e.extra.retry_after_ms ?? 1000) / 1000)) } : {};
   return json(STATUS[e.code], e.toJSON(), headers);
+}
+
+/**
+ * A browser request from another site, which carries the session cookie but not the bearer token: a
+ * cross-site write (CSRF). Clients without an Origin header, and bearer-token callers, are not browsers
+ * acting for the user.
+ */
+function crossSite(request: Request, url: URL): boolean {
+  if (request.method === "GET" || request.method === "HEAD") return false;
+  if (/^Bearer\s/i.test(request.headers.get("authorization") ?? "")) return false;
+  if (request.headers.get("sec-fetch-site") === "cross-site") return true;
+  const origin = request.headers.get("origin");
+  if (origin === null) return false;
+  // The public host, as Next.js compares it for server actions: a proxy forwards it in x-forwarded-host.
+  const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? url.host;
+  try {
+    return new URL(origin).host !== host;
+  } catch {
+    return true;
+  }
 }
 
 /** Serves one request under the binding's base path, as the signed-in user `user` (or nobody). */
@@ -279,6 +307,7 @@ export async function handle(request: Request, user: string | null, deps: Deps):
   if (!route || !params) return json(allowed ? 405 : 404, { error: { code: allowed ? "invalid_request" : "not_found", detail: `no route ${request.method} ${url.pathname}` } });
 
   try {
+    if (crossSite(request, url)) throw new ApiError("forbidden", "requests from other sites are refused");
     const phase = shutdownPhase(process.env.SHUTDOWN_AT, new Date()).phase;
     if (phase === "closed" || phase === "purge") throw new ApiError("unavailable", "Cadmium has closed");
     // SPEC_ISSUES.md#binding-gaps: images are immutable and cached, so they do not count against the limit.
@@ -305,7 +334,7 @@ export async function handle(request: Request, user: string | null, deps: Deps):
       // Displayed as images only: SVG cannot run script or load anything (data-model.md, Asset).
       return new Response(reply.image.data as BodyInit, {
         status: 200,
-        headers: { "Content-Type": reply.image.type, "Cache-Control": "private, max-age=31536000, immutable", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox", "X-Content-Type-Options": "nosniff" },
+        headers: { "Content-Type": reply.image.type, "Cache-Control": "private, max-age=31536000, immutable", "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox; frame-ancestors 'none'", "X-Content-Type-Options": "nosniff" },
       });
     }
     if (reply.file) return new Response(reply.file.data as BodyInit, { status: reply.status, headers: { "Content-Type": reply.file.type, "Content-Disposition": `attachment; filename="${reply.file.name}"` } });

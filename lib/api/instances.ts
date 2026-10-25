@@ -90,8 +90,9 @@ export async function getInstance(deps: Deps, userId: string | null, input: unkn
   let { instance } = await instanceOf(deps.store, user, req.instance_id);
   if (instance.status === "active" && (await coordinated(coordinator.catchUp(deps, instance.id)))) instance = (await deps.store.instanceView(instance.id))!;
   const started = instance.status === "active" || instance.status === "paused";
-  const playing = instance.characters.some((c) => c.user_id === user.id);
-  if (!started || (!playing && req.character_id === undefined)) return { instance };
+  const mine = instance.characters.filter((c) => c.user_id === user.id).length;
+  // Without character_id the view is that of the caller's only character; with several, there is none to pick.
+  if (!started || (req.character_id === undefined && mine !== 1)) return { instance };
   const v = await coordinated(coordinator.characterView(deps, instance.id, actorOf(instance, user, req.character_id)));
   return v ? { instance, view: v } : { instance };
 }

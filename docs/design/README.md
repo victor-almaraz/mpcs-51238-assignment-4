@@ -213,6 +213,7 @@ All live in `components/ui/`. Each is the only way the application draws that th
 | `Tabs` | Underlined tabs for sections of one page; labels sit on the content edge, 24 px apart | APG tabs: arrow keys move, `aria-selected` |
 | `EmptyState` | Centred icon, one sentence, and the action that fills the space | |
 | `Sheet` / `Dialog` | Dialog centred; sheets slide from the side (expanded) or the foot (compact) on `raised` | APG modal dialog: focus moves in, stays in, Escape closes, focus returns |
+| `ConfirmButton` | A `danger` button (or icon button) for an action that cannot be undone, such as End or Remove member; it opens a centred dialog with the question, one sentence on the consequence, Cancel, and a filled `danger` button that submits | APG alert dialog: Cancel has focus first, Escape and the backdrop close, focus returns to the trigger |
 | `Toast` | Short confirmations (Saved, Copied) at the foot, 4 s | A polite live region |
 | `DescriptionList` | Facts as term and value | `dl` |
 

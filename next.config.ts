@@ -8,9 +8,26 @@ const config: NextConfig = {
   ...(process.env.CADMIUM_DEMO === "1" ? { devIndicators: false as const } : {}),
   // No analytics or tracking (app-flow.md, "Stack constraints"): Clerk's SDK telemetry is off.
   env: { NEXT_PUBLIC_CLERK_TELEMETRY_DISABLED: "1" },
-  // Hidden from search engines until launch, for every response, including API routes and files.
+  // A portrait may be 1 MB (lib/api/assets.ts); the multipart form around it needs room beyond that.
+  experimental: { serverActions: { bodySizeLimit: "2mb" } },
+  // Hidden from search engines until launch, for every response, including API routes and files. No
+  // page may be framed, no response is sniffed as another type, and invite and feed codes in paths
+  // never leave the site in a Referer.
   async headers() {
-    return [{ source: "/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] }];
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Robots-Tag", value: "noindex, nofollow" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ],
+      },
+      // Assets carry their own sandboxing policy (lib/api/http.ts), which this would replace.
+      { source: "/((?!v1/assets/|api/v1/assets/).*)", headers: [{ key: "Content-Security-Policy", value: "frame-ancestors 'none'" }] },
+    ];
   },
   // The HTTP binding's base path (api.md, Transport: /v1) is served by app/api/v1.
   async rewrites() {

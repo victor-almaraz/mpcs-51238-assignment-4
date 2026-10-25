@@ -29,11 +29,13 @@ export async function sessionUser(): Promise<UserRecord | undefined> {
 }
 
 /**
- * The user for a signed-in page: sends a user who has not accepted the current terms to the acceptance
- * page. Pages call this themselves because a layout does not re-render on client navigation.
+ * The user for a signed-in page: sends a user who has not accepted the current terms, whose account is
+ * closing, or who is suspended to the acceptance page, which says which and what they can still do.
+ * Pages call this themselves because a layout does not re-render on client navigation.
  */
 export async function pageUser(): Promise<UserRecord> {
   const user = await sessionUser();
-  if (!user || user.status !== "active" || !termsCurrent(user)) redirect("/accept-terms");
+  // SPEC_ISSUES.md#account-suspension: a suspended account can only read and export its own data.
+  if (!user || user.status !== "active" || user.suspended_at || !termsCurrent(user)) redirect("/accept-terms");
   return user;
 }

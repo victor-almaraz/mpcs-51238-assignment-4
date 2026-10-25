@@ -60,15 +60,43 @@ export function getPushKey(publicKey: string | undefined) {
   return { public_key: publicKey };
 }
 
+/**
+ * Push services of the browsers Cadmium supports: Chrome, Edge on Android, Samsung Internet, Brave, and
+ * Opera (FCM), Firefox, Safari, and Edge on Windows. The Scheduler posts to the endpoint, so any other
+ * host would be a request the server makes on a user's behalf (SECURITY_AUDIT.md, S-12).
+ */
+const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /^updates\.push\.services\.mozilla\.com$/, /^web\.push\.apple\.com$/, /^[a-z0-9-]+\.notify\.windows\.com$/];
+
+/** Browsers per user that receive reminders. */
+export const MAX_PUSH_SUBSCRIPTIONS = 10;
+
+function pushEndpoint(v: unknown): string {
+  if (typeof v !== "string" || v.length > 1000) throw new ApiError("invalid_request", "endpoint must be an https URL");
+  let url: URL;
+  try {
+    url = new URL(v);
+  } catch {
+    throw new ApiError("invalid_request", "endpoint must be an https URL");
+  }
+  if (url.protocol !== "https:" || url.port !== "" || url.username !== "" || url.password !== "") throw new ApiError("invalid_request", "endpoint must be an https URL");
+  if (!PUSH_HOSTS.some((h) => h.test(url.hostname))) throw new ApiError("invalid_request", "this browser's push service is not supported");
+  return v;
+}
+
 export async function addPushSubscription(store: Store, userId: string | null, input: unknown, entropy: Entropy = cryptoEntropy) {
   const user = await caller(store, userId, "add_push_subscription");
   const req = onlyFields(input, ["endpoint", "keys", "label"]);
-  if (typeof req.endpoint !== "string" || !/^https:\/\//.test(req.endpoint) || req.endpoint.length > 1000) throw new ApiError("invalid_request", "endpoint must be an https URL");
+  const endpoint = pushEndpoint(req.endpoint);
   const keys = onlyFields(req.keys, ["p256dh", "auth"]);
-  if (typeof keys.p256dh !== "string" || typeof keys.auth !== "string") throw new ApiError("invalid_request", "keys must have p256dh and auth");
+  if (typeof keys.p256dh !== "string" || typeof keys.auth !== "string" || keys.p256dh.length > 200 || keys.auth.length > 100) throw new ApiError("invalid_request", "keys must have p256dh and auth");
   const label = req.label === undefined ? "" : req.label;
   if (typeof label !== "string" || label.length > 80) throw new ApiError("invalid_request", "label must have at most 80 characters");
-  return store.addPush({ id: entropy.id("ps"), user_id: user.id, endpoint: req.endpoint, p256dh: keys.p256dh, auth: keys.auth, label });
+  // Subscribing the same browser again replaces its subscription, so it does not count twice.
+  const existing = await store.listPush(user.id);
+  if (existing.length >= MAX_PUSH_SUBSCRIPTIONS && !existing.some((p) => p.endpoint === endpoint)) {
+    throw new ApiError("conflict", `at most ${MAX_PUSH_SUBSCRIPTIONS} browsers receive reminders; remove one first`);
+  }
+  return store.addPush({ id: entropy.id("ps"), user_id: user.id, endpoint, p256dh: keys.p256dh, auth: keys.auth, label });
 }
 
 export async function listPushSubscriptions(store: Store, userId: string | null) {

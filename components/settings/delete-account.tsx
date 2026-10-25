@@ -1,7 +1,8 @@
 "use client";
 // Delete account (app-flow.md, Settings: Your data): asks for the display name, then signs out.
 import { Trash2 } from "lucide-react";
-import { useActionState, useEffect } from "react";
+import { useEffect } from "react";
+import { useFormAction } from "@/components/form-action";
 import { Button } from "@/components/ui/button";
 import { described, Field, TextInput } from "@/components/ui/field";
 import { ICON_DENSE } from "@/components/ui/icon-button";
@@ -11,13 +12,13 @@ import type { FormState } from "@/lib/server/forms";
 
 export function DeleteAccount({ name }: { name: string }) {
   const { signOut } = useClerkSignOut();
-  const [state, run, pending] = useActionState<FormState & { closed?: boolean }, FormData>(deleteAccountAction, { error: null });
+  const [state, form, pending] = useFormAction<FormState & { closed?: boolean }>(deleteAccountAction, { error: null });
   useEffect(() => {
     if (state.closed) void signOut({ redirectUrl: "/" });
   }, [state.closed, signOut]);
   const id = "delete-confirm";
   return (
-    <form action={run} className="flex flex-col gap-4">
+    <form {...form} className="flex flex-col gap-4">
       <p className="text-body text-ink">
         Delete your account. You may be able to restore the account by signing in within 30 days. Within 90 days it is erased with everything it owns.
       </p>
