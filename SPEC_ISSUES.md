@@ -870,11 +870,11 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 |---|---|
 | Document | `docs/legal/terms.md`; `docs/runbooks/content-reports.md`; `docs/data-model.md` |
 | Section | Terms, reports ("suspend accounts"); Procedure, step 2; User |
-| Marker | `supabase/migrations/20261023000800_operations.sql`, `lib/api/users.ts` |
+| Marker | `supabase/migrations/20261023000800_operations.sql`, `lib/api/users.ts`, `lib/server/session.ts` |
 
 **Problem.** Operators may suspend accounts, but the User record has no field for it and no document says what a suspended user may still do.
 
-**Implemented.** The user record has `suspended_at`. A suspended user may call only `get_me`, `export_my_data`, and `logout`; every other operation fails with `forbidden`.
+**Implemented.** The user record has `suspended_at`. A suspended user may call only `get_me`, `export_my_data`, and `logout`; every other operation fails with `forbidden`. Signed-in pages send a suspended user to a notice that names the contact address and offers the data export; live messages and calendar feeds stop.
 
 **Proposed resolution.** Add `suspended_at` to the User record and list the operations a suspended account keeps.
 

@@ -57,6 +57,16 @@ export function instantOf(w: Wall, tz: string): number {
   return fits[0] ?? Math.max(first, second);
 }
 
+/**
+ * A form's `datetime-local` value (`YYYY-MM-DDTHH:MM`) read as wall time in `tz`, as an ISO instant;
+ * undefined when the value or the zone is invalid, so the operation reports the field.
+ */
+export function localInstant(local: string | undefined, tz: string): string | undefined {
+  const m = local && /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(local);
+  if (!m || !validZone(tz)) return undefined;
+  return new Date(instantOf({ year: +m[1]!, month: +m[2]!, day: +m[3]!, hour: +m[4]!, minute: +m[5]!, second: 0 }, tz)).toISOString();
+}
+
 /** `w` moved by whole days, keeping the wall-clock time. */
 export function addDays(w: Wall, days: number): Wall {
   const d = new Date(Date.UTC(w.year, w.month - 1, w.day + days));

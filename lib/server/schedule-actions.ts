@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { cancelSession, moveOccurrence, rotateCalendarFeed, rsvp, scheduleSession } from "../api/schedules";
-import { instantOf } from "../scheduler/zone";
+import { localInstant } from "../scheduler/zone";
 import { attempt, type FormState } from "./forms";
 import { serverStore } from "./supabase";
 
@@ -11,13 +11,6 @@ const str = (form: FormData, name: string) => {
   const v = form.get(name);
   return typeof v === "string" ? v : undefined;
 };
-
-/** A `datetime-local` value read as wall time in `tz`, as an ISO instant. */
-function instantFrom(local: string | undefined, tz: string): string | undefined {
-  const m = local && /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(local);
-  if (!m) return undefined;
-  return new Date(instantOf({ year: +m[1]!, month: +m[2]!, day: +m[3]!, hour: +m[4]!, minute: +m[5]!, second: 0 }, tz)).toISOString();
-}
 
 function refresh(instanceId: unknown): FormState {
   revalidatePath(`/instances/${String(instanceId)}/schedule`);
@@ -35,7 +28,7 @@ export async function scheduleSessionAction(_: FormState, form: FormData): Promi
     scheduleSession(serverStore(), uid, {
       instance_id: id,
       title: str(form, "title") ?? "",
-      starts_at: instantFrom(str(form, "starts_at"), timezone),
+      starts_at: localInstant(str(form, "starts_at"), timezone),
       timezone,
       duration_minutes: Number(str(form, "duration_minutes")),
       recurrence: every > 0 ? { freq: "weekly", interval: every, ...(Number.isInteger(count) && count > 0 ? { count } : {}) } : null,
@@ -54,7 +47,7 @@ export async function rsvpAction(_: FormState, form: FormData): Promise<FormStat
 
 export async function moveOccurrenceAction(_: FormState, form: FormData): Promise<FormState> {
   const r = await attempt((uid) =>
-    moveOccurrence(serverStore(), uid, { session_id: str(form, "session_id"), occurrence_start: str(form, "occurrence_start"), starts_at: instantFrom(str(form, "starts_at"), str(form, "timezone") ?? "UTC") }),
+    moveOccurrence(serverStore(), uid, { session_id: str(form, "session_id"), occurrence_start: str(form, "occurrence_start"), starts_at: localInstant(str(form, "starts_at"), str(form, "timezone") ?? "UTC") }),
   );
   return "error" in r ? r : refresh(str(form, "instance_id"));
 }

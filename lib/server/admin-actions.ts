@@ -1,6 +1,7 @@
 "use server";
 // Server actions for the operator console.
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { endGame, hold, publishBundle, release, removeAssetContent, removeCampaignContent, removeCharacterContent, restoreInstance, setListed, suspend } from "../api/admin";
 import { ApiError } from "../api/errors";
 import { serverDeps } from "./coordinator";
@@ -11,9 +12,13 @@ const str = (form: FormData, name: string) => {
   return typeof v === "string" ? v : undefined;
 };
 
-function done(): FormState {
+/**
+ * Back to the console without its query: re-rendering `/admin?inspect=…` would run the inspection again
+ * and write it to the operator log a second time.
+ */
+function done(): never {
   revalidatePath("/admin");
-  return { error: null };
+  redirect("/admin");
 }
 
 export async function publishAction(_: FormState, form: FormData): Promise<FormState> {

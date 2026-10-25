@@ -3,7 +3,8 @@
 // Character creation): titled steps that can be revisited (System, Role, Abilities counted against six,
 // Name and description) beside a summary card with a Change link per choice and the Create button.
 import { Check } from "lucide-react";
-import { useActionState, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
+import { useFormAction } from "@/components/form-action";
 import type { AbilityOption } from "@/lib/api/characters";
 import type { CampaignChoice } from "@/lib/systems/creation";
 import { createCharacterAction } from "@/lib/server/actions";
@@ -68,7 +69,7 @@ export function CreationStep({ n, id, title, done, status, children }: { n: numb
  * Quest's choices.
  */
 export function QuestCreationForm({ system, roles, abilities, count, systemTitle, systemCredit, systemHref = "/characters/new", children, summary = [] }: CreationProps & { children?: ReactNode; summary?: SummaryRow[] }) {
-  const [state, action, pending] = useActionState<FormState, FormData>(createCharacterAction, { error: null });
+  const [state, form, pending] = useFormAction<FormState>(createCharacterAction, { error: null });
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [chosen, setChosen] = useState<string[]>([]);
@@ -120,7 +121,7 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
   ];
 
   return (
-    <form action={action}>
+    <form {...form}>
       <input type="hidden" name="system" value={system} />
       <WithAside
         aside={

@@ -6,7 +6,7 @@ import { sunkenBundles } from "../harness/scenarios";
 import { openWhenClosed, shutdownPhase } from "../ops/shutdown";
 import type { Store } from "../store";
 import type { testDb } from "../store/testing/pglite";
-import { endGame, hold, inspectInstance, listBundles, operatorLog, publishBundle, removeCharacterContent, setListed, suspend } from "./admin";
+import { endGame, hold, inspectInstance, listBundles, operatorLog, publishBundle, removeCharacterContent, replayInstance, setListed, suspend } from "./admin";
 import { createCampaign, joinByLink, rotateInviteLink } from "./campaigns";
 import { createCharacter, getCharacter } from "./characters";
 import type { Entropy } from "./entropy";
@@ -57,6 +57,16 @@ describe("materials", () => {
     expect(await code(publishBundle(store, "user_op", { kind: "adventure", bundle: orphan }))).toBe("invalid_request");
     await setListed(store, "user_op", { kind: "setting", id: "derelict_station", version: "3.2.0", listed: false });
     expect((await listBundles(store, "user_op")).find((b) => b.version === "3.2.0")!.listed).toBe(false);
+  });
+});
+
+describe("replay", () => {
+  it("finds nothing diverging in an instance still in the lobby", async () => {
+    const k = await createCampaign(store, "user_a", { title: "Archive", system: "quest", system_versions: "^1.0", materials: SUNKEN }, e);
+    const lobby = await createInstance(store, "user_a", { campaign_id: k.id, name: "Later" }, e);
+    expect(await replayInstance(store, "user_op", { instance_id: lobby.id })).toMatchObject({ matches_stored: true, diverges_at: null });
+    const { instance } = await game();
+    expect(await replayInstance(store, "user_op", { instance_id: instance.id })).toMatchObject({ matches_stored: true, diverges_at: null });
   });
 });
 

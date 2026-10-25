@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Check, Download, FileText, RotateCcw, ShieldCheck } from "lucide-react";
 import { redirect } from "next/navigation";
 import { TERMS_VERSION } from "@/lib/api/terms";
+import { CONTACT } from "@/lib/legal";
 import { termsCurrent } from "@/lib/api/users";
 import { ActionForm } from "@/components/action-form";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +37,29 @@ export default async function AcceptTerms({ searchParams }: { searchParams: Prom
               Export my data
             </a>
           </ActionForm>
+        </Card>
+      </Page>
+    );
+  }
+  if (user?.status === "active" && user.suspended_at) {
+    const contact = process.env.CONTACT_EMAIL || CONTACT;
+    return (
+      <Page width="form">
+        <PageHeader title="Your account is suspended" status={<Badge tone="danger">Suspended</Badge>} />
+        <Card className="flex flex-col gap-4">
+          <p>
+            The operators suspended this account. You can still export your data. To ask about the suspension, write to{" "}
+            <a href={`mailto:${contact}`} className="font-medium text-accent underline">
+              {contact}
+            </a>
+            .
+          </p>
+          <div>
+            <a href="/v1/me/export.zip" className={buttonClass("secondary")}>
+              <Download {...ICON_DENSE} />
+              Export my data
+            </a>
+          </div>
         </Card>
       </Page>
     );
