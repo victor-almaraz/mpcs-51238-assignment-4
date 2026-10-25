@@ -467,9 +467,9 @@ function ArcEditor({ arc, doc, ix, edit, stage, setStage }: { arc: Arc; doc: Doc
   const move = useCallback((s: string, x: number, y: number) => edit((d) => void (d.editor.layout = { ...d.editor.layout, [arc.id]: { ...((d.editor.layout as Layout)[arc.id] ?? {}), [s]: { x, y } } })), [edit, arc.id]);
   return (
     <div className="flex flex-col gap-5">
-      <Panel pointer={base} aria-labelledby={`${fieldId(base)}-title`} className="flex flex-col gap-4">
+      <Panel pointer={base} aria-labelledby={`${fieldId(base)}-heading`} className="flex flex-col gap-4">
         <div className="flex flex-wrap items-center gap-3">
-          <h3 id={`${fieldId(base)}-title`} className="text-heading font-semibold">
+          <h3 id={`${fieldId(base)}-heading`} className="text-heading font-semibold">
             {arc.title || arc.id}
           </h3>
           <span className="font-mono text-caption text-muted">{arc.id}</span>

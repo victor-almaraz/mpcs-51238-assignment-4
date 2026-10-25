@@ -87,7 +87,7 @@ Clerk keeps the `users` table current through a webhook endpoint at `https://<ho
 | `pnpm sim` | The balance simulation of the exemplar's fights; writes `tools/sim/REPORT.md` |
 | `pnpm demo` | `next dev` on port 3100 in demo mode: signed in as a fixture user against an in-memory database, without Clerk, Realtime, or Groq; `/` lists every screen |
 | `pnpm screens` | Screenshot every demo screen, wide and narrow, into `screenshots/` with the installed Chrome (run `pnpm demo` first) |
-| `pnpm audit:ui` | Design and accessibility audit of every demo screen at 1280 and 390 px into `screenshots/audit.md` (run `pnpm demo` first) |
+| `pnpm audit:ui` | Design and accessibility audit of every demo screen, and of the editor's arc graph and YAML view, at 1280 and 390 px into `screenshots/audit.md` (run `pnpm demo` first); `--scheme dark` for the dark theme, `--screens REGEX` for the screens whose path matches |
 | `pnpm db:fresh` | Write `supabase/fresh.sql`: delete every Cadmium table and function and apply every migration, in one transaction |
 
 The Content Compiler's command line follows [`spec/README.md`](cadmium-spec/spec/README.md#compiler-interface). pnpm prints the script line on stdout, so run `build` directly when its output is piped:

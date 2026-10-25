@@ -1,16 +1,39 @@
 // Design and accessibility audit of every demo screen (docs/design/README.md, Accessibility checklist).
 // Start `pnpm demo` first; this drives the installed Google Chrome through Playwright.
-//   pnpm audit:ui [--base http://localhost:3100] [--out screenshots/audit.md] [--scheme light|dark]
+//   pnpm audit:ui [--base http://localhost:3100] [--out screenshots/audit.md] [--scheme light|dark] [--screens REGEX]
 // Checks, at 1280 px and 390 px: one h1 and no skipped heading levels; main, header, and nav
 // landmarks; an accessible name on every control, button, link, and image; no duplicate ids; targets of
 // at least 24 x 24 px (WCAG 2.5.8; inline text links excepted); text contrast against its background
 // (4.5:1, or 3:1 for large text); a visible focus indicator on the first focusable elements; no
 // horizontal scrolling; console errors, page errors, and hydration failures; and the Hierarchy rules
 // (headings only at the type scale's sizes, no serif heading inside a card, a 16 px card inset, and page
-// title, section headings, and tab labels on one content edge).
+// title, section headings, and tab labels on one content edge). Views that need a click to open, such as
+// the adventure editor's arc graph and YAML view, are audited after their screen.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { chromium, type Page } from "@playwright/test";
+
+/** Views reached by acting on a screen: the screen whose path matches `on`, then `open`. */
+const VIEWS: { label: string; on: RegExp; open: (page: Page) => Promise<void> }[] = [
+  {
+    label: "Editor: arc graph",
+    on: /^\/adventures\/[^/]+\/edit$/,
+    open: async (page) => {
+      // On compact screens the outline is in the Sections sheet.
+      if (!(await page.getByRole("button", { name: "The Archive", exact: true }).first().isVisible())) await page.getByRole("button", { name: "Sections" }).first().click();
+      await page.getByRole("button", { name: "The Archive", exact: true }).filter({ visible: true }).first().click();
+      await page.locator(".react-flow__node-stage").first().waitFor();
+    },
+  },
+  {
+    label: "Editor: YAML view",
+    on: /^\/adventures\/[^/]+\/edit$/,
+    open: async (page) => {
+      await page.locator('button[aria-label="Edit as YAML"]:visible').first().click();
+      await page.locator(".monaco-editor .view-lines").first().waitFor();
+    },
+  },
+];
 
 const arg = (name: string, fallback: string) => {
   const i = process.argv.indexOf(`--${name}`);
@@ -19,6 +42,8 @@ const arg = (name: string, fallback: string) => {
 const base = arg("base", "http://localhost:3100");
 const out = join(process.cwd(), arg("out", "screenshots/audit.md"));
 const scheme = arg("scheme", "light") === "dark" ? "dark" : "light";
+/** Audits only the screens whose path matches. */
+const only = new RegExp(arg("screens", ""));
 
 interface Finding {
   rule: string;
@@ -67,12 +92,13 @@ function pageChecks(): Finding[] {
   }
   for (const [sel, label] of [["main", "main"], ["header, [role=banner]", "header"], ["nav", "nav"]] as const) if (!document.querySelector(sel)) add("landmark", `no ${label} landmark`);
 
-  // Names.
+  // Names, for elements assistive technology is shown (not inside aria-hidden).
+  const exposed = (el: Element) => visible(el) && !el.closest('[aria-hidden="true"]');
   for (const el of document.querySelectorAll("input:not([type=hidden]), select, textarea")) {
-    if (visible(el) && !name(el)) add("control-name", describe(el));
+    if (exposed(el) && !name(el)) add("control-name", describe(el));
   }
   for (const el of document.querySelectorAll("button, a[href], [role=button], [role=tab]")) {
-    if (visible(el) && !name(el)) add("button-name", describe(el));
+    if (exposed(el) && !name(el)) add("button-name", describe(el));
   }
   for (const el of document.querySelectorAll("img")) if (!el.hasAttribute("alt")) add("img-alt", describe(el));
   for (const el of document.querySelectorAll("svg[role=img]")) if (!name(el)) add("img-alt", "svg role=img without a name");
@@ -208,12 +234,14 @@ const index = await browser.newPage();
 await index.goto(base, { waitUntil: "networkidle" });
 const screens = await index.$$eval('main a[href^="/"]', (as) => [...new Map(as.map((a) => [a.getAttribute("href") ?? "", { label: (a.textContent ?? "").trim().replace(/\s+/g, " "), href: a.getAttribute("href") ?? "" }])).values()].filter((s) => s.href !== "/"));
 screens.unshift({ label: "Demo index", href: "/" });
+screens.splice(0, screens.length, ...screens.filter((s) => only.test(s.href)));
 await index.close();
 
 const lines = ["# Design and accessibility audit", "", `Demo mode at ${base}, ${new Date().toISOString().slice(0, 16)} UTC, by \`pnpm audit:ui\`, ${scheme} theme. Each screen is checked at 1280 px and 390 px.`, ""];
 let total = 0;
 const tally = new Map<string, number>();
-for (const s of screens) {
+
+async function audit(label: string, href: string, open?: (page: Page) => Promise<void>) {
   const rows: string[] = [];
   for (const width of [1280, 390]) {
     const page = await browser.newPage({ viewport: { width, height: 900 }, colorScheme: scheme });
@@ -224,7 +252,8 @@ for (const s of screens) {
     page.on("console", (m) => {
       if (m.type() === "error") errors.push(m.text().split("\n")[0]!.slice(0, 160));
     });
-    await page.goto(base + s.href, { waitUntil: "networkidle", timeout: 90_000 }).catch((e: Error) => console.error(`${s.href}: ${e.message.split("\n")[0]}; auditing what loaded`));
+    await page.goto(base + href, { waitUntil: "networkidle", timeout: 90_000 }).catch((e: Error) => console.error(`${href}: ${e.message.split("\n")[0]}; auditing what loaded`));
+    if (open) await open(page).catch((e: Error) => errors.push(`could not open ${label}: ${e.message.split("\n")[0]}`));
     await page.waitForTimeout(600);
     const findings = [...(await page.evaluate(pageChecks)), ...(await focusChecks(page)), ...[...new Set(errors)].map((detail) => ({ rule: "console", detail }))];
     for (const f of findings) {
@@ -234,9 +263,14 @@ for (const s of screens) {
     total += findings.length;
     await page.close();
   }
-  lines.push(`## ${s.label} (\`${s.href}\`)`, "");
+  lines.push(`## ${label} (\`${href}\`)`, "");
   lines.push(...(rows.length ? ["| Width | Rule | Detail |", "|---|---|---|", ...rows] : ["No findings."]), "");
-  console.log(`${s.label}: ${rows.length} findings`);
+  console.log(`${label}: ${rows.length} findings`);
+}
+
+for (const s of screens) {
+  await audit(s.label, s.href);
+  for (const v of VIEWS.filter((v) => v.on.test(s.href))) await audit(v.label, s.href, v.open);
 }
 lines.splice(4, 0, `${total} findings. By rule: ${[...tally].map(([r, n]) => `${r} ${n}`).join(", ") || "none"}.`, "");
 mkdirSync(dirname(out), { recursive: true });

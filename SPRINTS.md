@@ -505,6 +505,18 @@ Open:
 
 - The Terms of Service and Privacy Policy already describe portraits; they are offline for revision.
 
+### Polish pass (branch `cleanup-review`)
+
+- Web Push: `lib/notifier/push.ts` sends session reminders through `web-push` when `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` are set (`lib/server/push.ts`); gone subscriptions are deleted. This closes the Web Push items of sprints 18 and 19.
+- Edit as YAML is Monaco with `monaco-yaml` (`components/editor/yaml-editor.tsx`), with completion and marked errors from the specification's schemas. `monaco-editor` is pinned to `~0.55.1`, and `patches/monaco-worker-manager@2.0.1.patch` adapts monaco-yaml's worker manager to Monaco's `createWebWorker({ worker })`. This closes the Monaco item of sprint 16.
+- Arc graphs are React Flow (`components/editor/arc-graph.tsx`), and a rule card's effects reorder by drag. This closes the React Flow item of sprint 17.
+- The scheduler and the purge report failures instead of discarding them; the status colours are cadmium red deep, yellow deep, and green.
+- `pnpm audit:ui` also audits the editor's arc graph and YAML view.
+
+Open:
+
+- `VAPID_PRIVATE_KEY` (and optionally `VAPID_SUBJECT`) in Vercel; `/api/health` reports `settings.webPush` to the operator.
+
 ### Sprint 24: Exemplar adventure — open
 
 Built from the author's campaign draft, supplied separately and not committed.
