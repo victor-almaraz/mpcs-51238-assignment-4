@@ -42,13 +42,19 @@ async function saveDraft(page: Page, title: string, id: string): Promise<string>
   return new URL(page.url()).pathname;
 }
 
-async function deleteDraft(page: Page, title: string) {
+/** Deletes every draft this test saved for the signed-in user, this run's and any a failed run left. */
+async function deleteTestDrafts(page: Page) {
   await open(page, "/adventures");
-  const remove = page.getByRole("button", { name: `Delete ${title}` });
-  if (await remove.count()) {
-    await remove.click();
-    await expect(page.getByRole("link", { name: title })).toHaveCount(0);
+  await page.waitForLoadState("networkidle");
+  const remove = page.getByRole("button", { name: /^Delete Isolation test / });
+  for (let left = await remove.count(); left > 0; left--) {
+    // The server action posts to the page itself; Clerk's own requests go elsewhere.
+    const deleted = page.waitForResponse((r) => r.request().method() === "POST" && new URL(r.url()).pathname === "/adventures");
+    await remove.first().click();
+    await deleted;
+    await page.reload();
   }
+  await expect(remove).toHaveCount(0);
 }
 
 test("two users cannot see each other's adventure drafts", async ({ browser }) => {
@@ -78,7 +84,7 @@ test("two users cannot see each other's adventure drafts", async ({ browser }) =
     await expect(visitor).toHaveURL(/\/sign-in/);
   } finally {
     // Remove what the run saved, even after a failure.
-    await deleteDraft(a, titleA).catch((e: Error) => console.error(`cleanup: ${e.message}`));
-    await deleteDraft(b, titleB).catch((e: Error) => console.error(`cleanup: ${e.message}`));
+    await deleteTestDrafts(a).catch((e: Error) => console.error(`cleanup: ${e.message}`));
+    await deleteTestDrafts(b).catch((e: Error) => console.error(`cleanup: ${e.message}`));
   }
 });
