@@ -112,9 +112,9 @@ describe("deletion", () => {
     const { k, instance, rook, own } = await lives();
     await requestAccountDeletion(store, "user_b", { confirm: "B" });
     const erased: string[] = [];
-    expect(await runPurge(store, async (id) => void erased.push(id))).toEqual({ users: 0, campaigns: 0 });
+    expect(await runPurge(store, async (id) => void erased.push(id))).toEqual({ users: 0, campaigns: 0, identity_errors: [] });
     await db.query("update users set deletion_requested_at = now() - interval '91 days' where id = 'user_b'");
-    expect(await runPurge(store, async (id) => void erased.push(id))).toEqual({ users: 1, campaigns: 0 });
+    expect(await runPurge(store, async (id) => void erased.push(id))).toEqual({ users: 1, campaigns: 0, identity_errors: [] });
     expect(erased).toEqual(["user_b"]);
     expect(await store.getUser("user_b")).toBeUndefined();
     expect(await store.getCharacter(rook.id)).toBeUndefined();
@@ -125,6 +125,16 @@ describe("deletion", () => {
     expect(rows.every((r) => r.payload.actor_label === "Former player")).toBe(true);
     expect((await db.query("select 1 from input_logs where user_id = 'user_b'")).rows).toHaveLength(0);
     expect((await db.query("select 1 from rsvps where user_id = 'user_b'")).rows).toHaveLength(0);
+  });
+
+  it("erases the account when the identity provider fails, and reports the failure", async () => {
+    await requestAccountDeletion(store, "user_b", { confirm: "B" });
+    await db.query("update users set deletion_requested_at = now() - interval '91 days' where id = 'user_b'");
+    const failing = async () => {
+      throw new Error("provider unavailable");
+    };
+    expect(await runPurge(store, failing)).toEqual({ users: 1, campaigns: 0, identity_errors: [{ user_id: "user_b", message: "provider unavailable" }] });
+    expect(await store.getUser("user_b")).toBeUndefined();
   });
 
   it("skips held accounts until the hold is cleared", async () => {

@@ -9,5 +9,7 @@ export async function GET(request: Request): Promise<Response> {
   if (!secret) return Response.json({ error: "CRON_SECRET is not set" }, { status: 503 });
   if (request.headers.get("authorization") !== `Bearer ${secret}`) return Response.json({ error: "unauthorized" }, { status: 401 });
   const deps = serverDeps();
-  return Response.json(await runScheduler({ ...deps, defer: undefined }, notifier(deps.broadcast)));
+  const summary = await runScheduler({ ...deps, defer: undefined }, notifier(deps.broadcast));
+  for (const e of summary.errors) console.error(`scheduler: ${e.step} failed for instance ${e.instance_id}: ${e.message}`);
+  return Response.json(summary);
 }

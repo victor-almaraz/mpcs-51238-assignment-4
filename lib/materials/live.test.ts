@@ -8,16 +8,15 @@ import { plotWarnings } from "./plot";
 import { derelictStation, stationAdventure } from "./testing/fixtures";
 
 const setting = derelictStation();
-const text = (files: ReturnType<typeof stationAdventure>) => new Map([...files].map(([k, v]) => [k, typeof v === "string" ? v : new TextDecoder().decode(v)]));
 
 describe("draftDiagnostics", () => {
   it("finds no errors in the guide adventure as a draft", () => {
-    const { draft } = filesToDraft(text(stationAdventure()));
+    const { draft } = filesToDraft(stationAdventure());
     expect(draftDiagnostics(draft, [setting]).filter((d) => d.severity === "error")).toEqual([]);
   });
 
   it("reports schema, reference, and system_stats problems with pointers into the draft", () => {
-    const { draft } = filesToDraft(text(stationAdventure()));
+    const { draft } = filesToDraft(stationAdventure());
     (draft.entities as Record<string, unknown>).goon = { kind: "creature", label: "goon", behavior: "aggressive", system_stats: { template: "minion", hp: 0 } };
     const out = draftDiagnostics(draft, [setting]);
     expect(out).toEqual([...toDraftDiagnostics(compileDraft(draft, [setting]).diagnostics), ...plotWarnings(draft)]);

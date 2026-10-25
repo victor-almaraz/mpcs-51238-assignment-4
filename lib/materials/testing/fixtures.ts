@@ -427,7 +427,7 @@ import type { SettingBundle } from "../../bundle/setting";
  * `lower_archive` locations, and the archivist. The adventure compiler fixtures, the generator tests,
  * and the `sunken_*` golden scenarios edit or play it.
  */
-export function stationAdventure(): Files {
+export function stationAdventure(): Map<string, string> {
   return new Map([...readPackDir(join(HERE, "station_archive"))].map(([path, data]) => [path, typeof data === "string" ? data : new TextDecoder().decode(data)]));
 }
 

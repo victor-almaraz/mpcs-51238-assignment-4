@@ -163,6 +163,25 @@ describe("scheduler", () => {
     expect(r.ok && canonical(r.state) === canonical((await store.getInstance(instance.id))!.state)).toBe(true);
   });
 
+  it("reports a resume that fails instead of counting it", async () => {
+    const { instance } = await table();
+    await startInstance(deps, "user_a", instance.id);
+    await pauseInstance(deps, "user_a", instance.id);
+    await weekly(instance.id, { recurrence: null, duration_minutes: 60 });
+    const broken = new Proxy(store, {
+      get: (target, key) => {
+        if (key === "setInstanceStatus") return async () => Promise.reject(new Error("store unavailable"));
+        const value = Reflect.get(target, key, target);
+        return typeof value === "function" ? value.bind(target) : value;
+      },
+    });
+    clock.now = new Date("2026-10-20T18:01:00Z");
+    const summary = await runScheduler({ ...deps, store: broken }, notifier(deps.broadcast), clock.now);
+    expect(summary.resumed).toBe(0);
+    expect(summary.errors).toEqual([{ step: "resume", instance_id: instance.id, message: "store unavailable" }]);
+    expect((await store.instanceView(instance.id))!.status).toBe("paused");
+  });
+
   it("waits for a round under way before auto_pause, and sweeps expired deadlines", async () => {
     const { campaign, instance } = await table();
     const rook = await createCharacter(store, "user_b", { system: "quest", name: "Rook", choices: { role: "spy", abilities: SIX } }, e);

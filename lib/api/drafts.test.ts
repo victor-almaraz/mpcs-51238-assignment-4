@@ -126,7 +126,7 @@ describe("drafts", () => {
   });
 
   it("imports and exports adventure directories as ZIPs", async () => {
-    const files = [...stationAdventure()].map(([name, data]) => ({ name: `sunken_archive/${name}`, data: String(data) }));
+    const files = [...stationAdventure()].map(([name, data]) => ({ name: `sunken_archive/${name}`, data }));
     const { draft, diagnostics } = await importDraft(store, "user_a", zip(files), e);
     expect(diagnostics).toEqual([]);
     expect(draft.material_id).toBe("sunken_archive");

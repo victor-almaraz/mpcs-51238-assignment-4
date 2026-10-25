@@ -16,14 +16,25 @@ export interface RunSummary {
   paused: number;
   advanced: number;
   invitations_expired: number;
+  /** Work that threw. Each moment is marked done before its work runs, so a failed step is not retried. */
+  errors: { step: "resume" | "end_of_session" | "pause" | "advance"; instance_id: string; message: string }[];
 }
 
 export async function runScheduler(deps: Deps, notify: Notifier, now = deps.now()): Promise<RunSummary> {
   const t = now.getTime();
-  const summary: RunSummary = { reminders: 0, resumed: 0, session_ends: 0, paused: 0, advanced: 0, invitations_expired: 0 };
+  const summary: RunSummary = { reminders: 0, resumed: 0, session_ends: 0, paused: 0, advanced: 0, invitations_expired: 0, errors: [] };
   const snap = await deps.store.schedulerSnapshot();
   const instances = new Map(snap.instances.map((i) => [i.id, i]));
   const once = (key: string) => deps.store.scheduleMark(key);
+  // One instance's failure does not stop the run; it is reported in the summary.
+  const attempt = async <T>(step: RunSummary["errors"][number]["step"], instance_id: string, work: () => Promise<T>): Promise<{ value: T } | null> => {
+    try {
+      return { value: await work() };
+    } catch (e) {
+      summary.errors.push({ step, instance_id, message: e instanceof Error ? e.message : String(e) });
+      return null;
+    }
+  };
 
   for (const session of snap.sessions) {
     const instance = instances.get(session.instance_id);
@@ -51,23 +62,24 @@ export async function runScheduler(deps: Deps, notify: Notifier, now = deps.now(
 
       // Start: resume a paused instance.
       if (session.auto_resume && start <= t && t < end && instance.status === "paused" && (await once(`start:${occ}`))) {
-        await setStatus(deps, instance.id, "active").catch(() => undefined);
-        instance.status = "active";
-        summary.resumed++;
+        if (await attempt("resume", instance.id, () => setStatus(deps, instance.id, "active"))) {
+          instance.status = "active";
+          summary.resumed++;
+        }
       }
 
       // End: end-of-session changes for every character, then auto_pause.
       if (end <= t && t < end + END_GRACE_MS && (await once(`end:${occ}`))) {
-        if (await endOfSession(deps, instance.id, session.id, o.occurrence_start).catch(() => null)) summary.session_ends++;
+        if ((await attempt("end_of_session", instance.id, () => endOfSession(deps, instance.id, session.id, o.occurrence_start)))?.value) summary.session_ends++;
         if (session.auto_pause && instance.status === "active") {
-          const r = await pauseWhenRoundCloses(deps, instance.id).catch(() => "skipped" as const);
-          if (r !== "skipped") summary.paused++;
+          const r = await attempt("pause", instance.id, () => pauseWhenRoundCloses(deps, instance.id));
+          if (r && r.value !== "skipped") summary.paused++;
         }
       }
     }
   }
 
-  for (const id of await deps.store.expiredDeadlines(now)) if (await catchUp(deps, id).catch(() => false)) summary.advanced++;
+  for (const id of await deps.store.expiredDeadlines(now)) if ((await attempt("advance", id, () => catchUp(deps, id)))?.value) summary.advanced++;
   summary.invitations_expired = await deps.store.expireInvitations();
   return summary;
 }

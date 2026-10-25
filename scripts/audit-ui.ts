@@ -224,7 +224,7 @@ for (const s of screens) {
     page.on("console", (m) => {
       if (m.type() === "error") errors.push(m.text().split("\n")[0]!.slice(0, 160));
     });
-    await page.goto(base + s.href, { waitUntil: "networkidle", timeout: 90_000 }).catch(() => undefined);
+    await page.goto(base + s.href, { waitUntil: "networkidle", timeout: 90_000 }).catch((e: Error) => console.error(`${s.href}: ${e.message.split("\n")[0]}; auditing what loaded`));
     await page.waitForTimeout(600);
     const findings = [...(await page.evaluate(pageChecks)), ...(await focusChecks(page)), ...[...new Set(errors)].map((detail) => ({ rule: "console", detail }))];
     for (const f of findings) {

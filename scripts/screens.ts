@@ -36,7 +36,7 @@ for (const [i, s] of screens.entries()) {
     ["narrow", { width: 390, height: 844 }],
   ] as const) {
     await page.setViewportSize(viewport);
-    await page.goto(base + s.href, { waitUntil: "networkidle", timeout: 60_000 }).catch(() => undefined);
+    await page.goto(base + s.href, { waitUntil: "networkidle", timeout: 60_000 }).catch((e: Error) => console.error(`${s.href}: ${e.message.split("\n")[0]}; capturing what loaded`));
     await page.waitForTimeout(800);
     await page.screenshot({ path: join(out, `${name}-${size}.png`), fullPage: true });
   }
