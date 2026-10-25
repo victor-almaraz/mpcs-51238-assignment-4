@@ -7,7 +7,8 @@ import { MaterialPicker } from "@/components/campaign-materials";
 import { getCampaign } from "@/lib/api/campaigns";
 import { listMaterials } from "@/lib/api/materials";
 import { systemView } from "@/lib/api/systems";
-import { archiveCampaignAction, setMaterialsAction, updateCampaignAction } from "@/lib/server/campaign-actions";
+import { setMaterialsAction, updateCampaignAction } from "@/lib/server/campaign-actions";
+import { ArchivedNotice, ArchiveForm, DeleteCampaignForm } from "@/components/campaign-lifecycle";
 import { orNotFound, origin } from "@/lib/server/pages";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
@@ -16,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Choice, Field, FieldGroup, TextArea, TextInput, described } from "@/components/ui/field";
 import { DescriptionList } from "@/components/ui/list";
 import { Notice } from "@/components/ui/notice";
-import { DangerZone } from "@/components/ui/card";
+import { DangerZone, Panel } from "@/components/ui/card";
 import { Page, PageHeader } from "@/components/ui/page";
 import { Tabs } from "@/components/ui/tabs";
 import { InvitationsPanel, MembersPanel } from "../panels";
@@ -61,19 +62,18 @@ export default async function EditCampaign({ params, searchParams }: { params: P
           </Button>
         </div>
       </ActionForm>
-      {!campaign.archived && (
-        <div className="mt-10">
-          <DangerZone id="danger-zone" title="Archive campaign">
-            <ActionForm action={archiveCampaignAction} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <input type="hidden" name="campaign_id" value={campaign.id} />
-              <p className="text-muted">An archived campaign accepts no new games, members, or invitations.</p>
-              <Button type="submit" variant="danger" className="shrink-0">
-                Archive campaign
-              </Button>
-            </ActionForm>
-          </DangerZone>
-        </div>
-      )}
+      <div className="mt-10 flex flex-col gap-6">
+        {campaign.archived ? (
+          <ArchivedNotice campaignId={campaign.id} author />
+        ) : (
+          <Panel title="Archive campaign">
+            <ArchiveForm campaignId={campaign.id} />
+          </Panel>
+        )}
+        <DangerZone id="danger-zone" title="Delete campaign">
+          <DeleteCampaignForm campaignId={campaign.id} title={campaign.title} />
+        </DangerZone>
+      </div>
     </>
   );
 

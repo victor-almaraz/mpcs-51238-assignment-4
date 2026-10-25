@@ -511,11 +511,15 @@ Open:
 - Edit as YAML is Monaco with `monaco-yaml` (`components/editor/yaml-editor.tsx`), with completion and marked errors from the specification's schemas. `monaco-editor` is pinned to `~0.55.1`, and `patches/monaco-worker-manager@2.0.1.patch` adapts monaco-yaml's worker manager to Monaco's `createWebWorker({ worker })`. This closes the Monaco item of sprint 16.
 - Arc graphs are React Flow (`components/editor/arc-graph.tsx`), and a rule card's effects reorder by drag. This closes the React Flow item of sprint 17.
 - The scheduler and the purge report failures instead of discarding them; the status colours are cadmium red deep, yellow deep, and green.
-- `pnpm audit:ui` also audits the editor's arc graph and YAML view.
+- `pnpm audit:ui` also audits the editor's arc graph and YAML view, and `--screens REGEX` audits a subset.
+- Character creation and the character page explain roles and abilities behind info icons, for Quest and Cadmium.
+- Campaigns: the hub lists archived campaigns with Unarchive and recently deleted ones with Restore; the editor offers Unarchive and Delete campaign (title confirmed). Migration `20261025000000_campaign_archive` adds `cadmium_unarchive_campaign` and `cadmium_deleted_campaigns` ([campaign-unarchive](SPEC_ISSUES.md#campaign-unarchive)). The Privacy Policy (both copies) states how archived and deleted campaigns are kept, and its effective date and `TERMS_VERSION` change, so users accept it again.
+- Assignment 4: `AGENTS.md` at the root holds the data model and access rules, and `pnpm e2e` (`e2e/isolation.e2e.ts`) signs two Clerk test users in and checks that neither can list or open the other's drafts. It passes against the deployment's Supabase project with the bundles published.
 
 Open:
 
 - `VAPID_PRIVATE_KEY` (and optionally `VAPID_SUBJECT`) in Vercel; `/api/health` reports `settings.webPush` to the operator.
+- Apply migration `20261025000000_campaign_archive` to the remote database; until then `/api/health` reports it missing and the Campaigns page's lists fail.
 
 ### Sprint 24: Exemplar adventure — open
 
@@ -532,7 +536,7 @@ Built from the author's campaign draft, supplied separately and not committed.
 - The draft's lore of section 14.10 appears as background in topic text: six new topics and seven extended briefs.
 Open:
 
-- The agent-driven runs are built but not yet run: `pnpm agent:run` (reads `GROQ_API_KEY`, from `.env.local` when present). A Groq player model writes free text from a description of the view and a route guide per ending (`lib/agent/goals.ts`); the Groq parser turns it into a call with the Coordinator's retry and fallback; each run's turns and replayable log go to `agent-runs/`. `lib/agent/run.test.ts` checks the loop with a scripted parser.
+- Agent-driven runs (`pnpm agent:run`, which reads `GROQ_API_KEY` from `.env.local`): `lost` reaches its ending in 8 turns and replays. `escaped` did not converge: after 51 turns in about 4.5 hours the player model was acting on later steps of its route guide (the holds, the hatch) while still on the quay, the parser answered most of them with `improvise`, and Groq's limits had grown to waits of up to 22 minutes. The run was stopped; `archive_sealed` did not start. The route guide needs to give the player only the next step, or the run needs a paid Groq tier. A Groq player model writes free text from a description of the view and a route guide per ending (`lib/agent/goals.ts`); the Groq parser turns it into a call with the Coordinator's retry and fallback; each run's turns and replayable log go to `agent-runs/`. `lib/agent/run.test.ts` checks the loop with a scripted parser.
 - The balance values in `tools/sim/README.md` wait for the designers' target ranges; the packs keep the draft's values. The proposed Cadmium values are in [armor-tuning](SPEC_ISSUES.md#armor-tuning).
 
 Done meanwhile: the play page shows `action_menu` suggestions as chips.

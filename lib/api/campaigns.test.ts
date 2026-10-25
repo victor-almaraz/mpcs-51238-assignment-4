@@ -10,14 +10,18 @@ import { createCharacter } from "./characters";
 import {
   archiveCampaign,
   createCampaign,
+  deleteCampaign,
   disableInviteLink,
   getCampaign,
   joinByLink,
   leaveCampaign,
   listCampaigns,
+  listDeletedCampaigns,
   removeMember,
+  restoreCampaign,
   rotateInviteLink,
   setMaterials,
+  unarchiveCampaign,
   updateCampaign,
 } from "./campaigns";
 import type { Entropy } from "./entropy";
@@ -92,6 +96,45 @@ describe("campaigns", () => {
     expect(await code(updateCampaign(store, "user_b", { campaign_id: c.id, title: "Mine" }))).toBe("forbidden");
     expect((await updateCampaign(store, "user_a", { campaign_id: c.id, title: "Below" })).title).toBe("Below");
     expect(await code(updateCampaign(store, "user_a", { campaign_id: c.id, modules: ["armor"] }))).toBe("invalid_request");
+  });
+});
+
+// SPEC_ISSUES.md#campaign-unarchive
+describe("archiving and deleting", () => {
+  it("unarchives a campaign for its author only, and lists it as archived until then", async () => {
+    const c = await campaign();
+    await joinByLink(store, "user_b", (await rotateInviteLink(store, "user_a", c.id, e)).invite_link_code);
+    expect(await code(unarchiveCampaign(store, "user_a", c.id))).toBe("conflict");
+    await archiveCampaign(store, "user_a", c.id);
+    expect((await listCampaigns(store, "user_b", { archived: true })).items.map((x) => x.id)).toEqual([c.id]);
+    expect((await listCampaigns(store, "user_b", { archived: false })).items).toEqual([]);
+    expect(await code(unarchiveCampaign(store, "user_b", c.id))).toBe("forbidden");
+    expect((await unarchiveCampaign(store, "user_a", c.id)).archived).toBe(false);
+    expect((await listCampaigns(store, "user_b", { archived: false })).items.map((x) => x.id)).toEqual([c.id]);
+  });
+
+  it("lists the author's deleted campaigns with their stage dates until restored, and hides them from members", async () => {
+    const c = await campaign();
+    await joinByLink(store, "user_b", (await rotateInviteLink(store, "user_a", c.id, e)).invite_link_code);
+    await deleteCampaign(deps, "user_a", { campaign_id: c.id, confirm: c.title });
+    const [d] = await listDeletedCampaigns(store, "user_a");
+    expect(d).toMatchObject({ id: c.id, title: c.title, system: "quest" });
+    expect(Date.parse(d!.restorable_until) - Date.parse(d!.deleted_at)).toBe(30 * 86_400_000);
+    expect(Date.parse(d!.erased_by) - Date.parse(d!.deleted_at)).toBe(90 * 86_400_000);
+    expect(await listDeletedCampaigns(store, "user_b")).toEqual([]);
+    expect(await code(getCampaign(store, "user_b", c.id))).toBe("not_found");
+    expect((await listCampaigns(store, "user_b")).items).toEqual([]);
+    await restoreCampaign(store, "user_a", c.id);
+    expect(await listDeletedCampaigns(store, "user_a")).toEqual([]);
+    expect((await getCampaign(store, "user_b", c.id)).id).toBe(c.id);
+  });
+
+  it("stops listing a deletion once the 30 days to restore it have passed", async () => {
+    const c = await campaign();
+    await deleteCampaign(deps, "user_a", { campaign_id: c.id, confirm: c.title });
+    await db.query("update campaigns set deleted_at = now() - interval '31 days' where id = $1", [c.id]);
+    expect(await listDeletedCampaigns(store, "user_a")).toEqual([]);
+    expect(await code(restoreCampaign(store, "user_a", c.id))).toBe("conflict");
   });
 });
 

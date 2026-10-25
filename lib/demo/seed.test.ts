@@ -20,7 +20,10 @@ describe("demo mode", () => {
     expect((await store.getInstance(w.lobby))!.status).toBe("lobby");
     expect(w.draft).not.toBeNull();
     const count = async (t: string) => (await db.query<{ n: number }>(`select count(*)::int as n from ${t}`)).rows[0]!.n;
-    expect([await count("users"), await count("campaigns"), await count("scheduled_sessions"), await count("invitations")]).toEqual([3, 2, 1, 1]);
+    expect([await count("users"), await count("campaigns"), await count("scheduled_sessions"), await count("invitations")]).toEqual([3, 4, 1, 1]);
+    // The Campaigns hub's Archived and Recently deleted sections each have one campaign.
+    expect((await store.listCampaigns("user_demo", { archived: true, limit: 10 })).map((c) => c.title)).toEqual(["Summer in Vessaro"]);
+    expect((await store.deletedCampaigns("user_demo")).map((c) => c.title)).toEqual(["Test table"]);
     await db.close();
   });
 

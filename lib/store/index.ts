@@ -205,6 +205,14 @@ export interface DraftRecord {
   updated_at: string;
 }
 
+/** A campaign its author deleted and can still restore. */
+export interface DeletedCampaign {
+  id: string;
+  title: string;
+  system: string;
+  deleted_at: string;
+}
+
 export interface PushView {
   id: string;
   label: string;
@@ -453,6 +461,15 @@ export class Store {
 
   async archiveCampaign(id: string): Promise<CampaignRecord> {
     return this.rpc.call<CampaignRecord>("cadmium_archive_campaign", { p_id: id });
+  }
+
+  async unarchiveCampaign(id: string): Promise<CampaignRecord> {
+    return this.rpc.call<CampaignRecord>("cadmium_unarchive_campaign", { p_id: id });
+  }
+
+  /** The author's campaigns deleted less than 30 days ago, newest first. */
+  async deletedCampaigns(authorId: string): Promise<DeletedCampaign[]> {
+    return this.rpc.call<DeletedCampaign[]>("cadmium_deleted_campaigns", { p_author: authorId });
   }
 
   async setInviteLink(id: string, code: string | null): Promise<void> {

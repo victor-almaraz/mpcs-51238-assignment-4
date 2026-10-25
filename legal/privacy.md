@@ -1,7 +1,7 @@
 # Privacy Policy
 
 **Cadmium**
-Effective date: October 24, 2026
+Effective date: October 25, 2026
 Operated by: the Cadmium project, a student project for MPCS 51238 Design, Build, Ship at the University of Chicago
 Contact: cadmium_mpcs@proton.me
 
@@ -75,6 +75,8 @@ We make no promise to retain any data for any period. Data may be lost or delete
 | Data | Deleted |
 |---|---|
 | Account and content | When you delete it (see section 6), or at any time after the takedown |
+| Archived campaigns, with their games | Kept until the campaign or its author's account is deleted. The author can unarchive the campaign at any time. |
+| Deleted campaigns, with their games and invitations | Kept, hidden from every member, until erased within 90 days of the deletion. The author can restore the campaign within 30 days. If the author deletes their account in the meantime, the campaign is erased with the account (section 6). |
 | Game history | With its campaign, or at any time after the takedown |
 | Push notification subscriptions | When you remove the browser in Settings, the browser revokes the subscription, or you delete your account |
 | Invitations | With their campaign |
@@ -97,7 +99,7 @@ The following controls are built into Cadmium and available to every user withou
 | Access | All data Cadmium holds about you is shown in Cadmium and included in full in your data export. |
 | Data portability | **Settings, Your data, Export my data** provides a ZIP archive in machine-readable formats (JSON, with adventures also as YAML) containing your profile and settings, characters, adventures, the campaigns you authored with their games, the campaigns you joined, every game input you made with its results, invitations you created or accepted, sessions and RSVPs, and every image you uploaded. |
 | Rectification | **Settings, Account** for your email address, display name, and time zone. Characters, adventures, campaigns, sessions, and RSVPs are edited where you created them; portraits and their alt text in the character editor. |
-| Erasure | **Settings, Your data, Delete account** for your whole account. Characters, adventures, campaigns, and invitations are deleted where you created them; portraits with **Remove portrait** in the character editor. |
+| Erasure | **Settings, Your data, Delete account** for your whole account. Characters, adventures, and invitations are deleted where you created them; a campaign with **Delete campaign** in its editor, and restored from **Campaigns, Recently deleted**; portraits with **Remove portrait** in the character editor. |
 | Withdrawing reminders | **Settings, Reminders** to disable notifications or remove a browser; **Settings, Calendar** to disable your calendar feed. |
 
 ### Deleting your data
@@ -117,7 +119,7 @@ Effects on other users:
 - Games in your campaigns that use an adventure you published end, and the adventure is removed.
 - AI narration in other users' games is stored as free text and may continue to mention your character's name.
 
-Characters, drafts, and campaigns deleted individually follow the same stages: they may be restored within 30 days and are erased within 90 days.
+Characters, drafts, and campaigns deleted individually follow the same stages. Until they are erased, within 90 days of the deletion, they are kept and hidden, and they may be restored within 30 days. Deleting a campaign ends its games, and its members lose access to it at once; their characters stay with them. Archiving a campaign deletes nothing: the campaign and its games stay visible to its members, and its author can unarchive it.
 
 Data under an internal hold is kept until the hold is released, even if you ask for its deletion, and is then deleted.
 

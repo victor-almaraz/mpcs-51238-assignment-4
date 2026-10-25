@@ -1143,3 +1143,17 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** The play page plays the character named by `?character=<id>`, or the user's first character in the instance. In the turn tracker, the user's other characters are links that switch the page to them.
 
 **Proposed resolution.** Add the choice to the Play interface: the turn tracker, or a character menu, switches between the user's characters in the instance.
+
+## campaign-unarchive
+
+| Field | Value |
+|---|---|
+| Document | `docs/api.md`; `docs/app-flow.md` |
+| Section | Campaigns (`archive_campaign`, `delete_campaign`, `restore_campaign`); Campaign editor |
+| Marker | `lib/api/campaigns.ts` |
+
+**Problem.** `archive_campaign` has no inverse, so an archived campaign stays archived. `restore_campaign` takes the id of a deleted campaign, but no operation lists deleted campaigns, so the interface cannot offer the restore that the 30-day recovery stage promises.
+
+**Implemented.** `unarchive_campaign` (author; `conflict` unless archived) clears `archived`. `list_deleted_campaigns` returns the caller's campaigns deleted less than 30 days ago, each with `restorable_until` and `erased_by`. The Campaigns page lists archived campaigns with Unarchive and recently deleted ones with Restore; the campaign editor offers Unarchive and Delete campaign. Migration `20261025000000_campaign_archive` adds the two SQL functions.
+
+**Proposed resolution.** Add `unarchive_campaign` and `list_deleted_campaigns` to api.md's Campaigns operations and the HTTP binding, and the archived and deleted lists to app-flow.md's Campaigns hub and Campaign editor.

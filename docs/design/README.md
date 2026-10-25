@@ -227,6 +227,15 @@ game, RSVP buttons, Join when it is live). Then **Your games**: cards with the g
 user's character, a status badge, and Continue. Then **Campaigns**, **Characters**, and
 **Adventures** as card grids with a New button in each section header and an empty state when empty.
 
+### Campaigns
+
+A hub: **You run** and **You play** as card grids, the code form, then **Archived** as a list with
+Unarchive on each campaign the viewer runs, and **Recently deleted** (shown when not empty) with each
+deletion's date, the last day to restore it, and Restore. The campaign editor ends with Archive
+campaign in a plain card (or the archived notice with Unarchive), then Delete campaign in the danger
+zone, confirmed by typing the title. An archived campaign's page shows the archived notice under its
+header.
+
 ### Character creation
 
 One page in titled steps that can be revisited: System, Role, Abilities (a checklist counted against

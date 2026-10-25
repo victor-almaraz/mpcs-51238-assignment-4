@@ -5,6 +5,7 @@
 import { Gamepad2, Pencil, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
+import { ArchivedNotice } from "@/components/campaign-lifecycle";
 import { formatWhen } from "@/components/when";
 import { getCampaign } from "@/lib/api/campaigns";
 import { listInstances } from "@/lib/api/instances";
@@ -143,6 +144,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
           )
         }
       />
+      {campaign.archived && <ArchivedNotice campaignId={campaign.id} author={author} />}
       <WithAside
         aside={
           <>
