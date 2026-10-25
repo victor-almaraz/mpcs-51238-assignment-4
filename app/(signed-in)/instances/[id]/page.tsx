@@ -18,6 +18,7 @@ import { serverDeps } from "@/lib/server/coordinator";
 import { serverStore } from "@/lib/server/supabase";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button, ButtonLink, type Variant } from "@/components/ui/button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Card, Panel } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, Select, described } from "@/components/ui/field";
@@ -86,9 +87,19 @@ export default async function Lobby({ params }: { params: Promise<{ id: string }
                 <ActionForm key={c.control} action={instanceControlAction}>
                   <input type="hidden" name="instance_id" value={instance.id} />
                   <input type="hidden" name="control" value={c.control} />
-                  <Button type="submit" variant={variant(c)} icon={ICONS[c.control]}>
-                    {c.label}
-                  </Button>
+                  {c.control === "end" ? (
+                    <ConfirmButton
+                      label={c.label}
+                      icon={ICONS[c.control]}
+                      title={`End ${instance.name}?`}
+                      description="The game stops for everyone and cannot be resumed. Characters go back to their players with their sheets, and the history stays."
+                      confirm="End game"
+                    />
+                  ) : (
+                    <Button type="submit" variant={variant(c)} icon={ICONS[c.control]}>
+                      {c.label}
+                    </Button>
+                  )}
                 </ActionForm>
               ))}
             </>

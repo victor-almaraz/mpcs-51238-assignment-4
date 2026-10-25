@@ -1,9 +1,10 @@
-// Buttons (docs/design/README.md, Components): primary (one per view), secondary, quiet, danger.
+// Buttons (docs/design/README.md, Components): primary (one per view), secondary, quiet, danger, and
+// danger-filled, which only a confirm dialog uses.
 import Link from "next/link";
 import type { ComponentProps, ReactNode } from "react";
 import { cx } from "./cx";
 
-export type Variant = "primary" | "secondary" | "quiet" | "danger";
+export type Variant = "primary" | "secondary" | "quiet" | "danger" | "danger-filled";
 export type Size = "md" | "sm";
 
 const base =
@@ -13,6 +14,7 @@ const variants: Record<Variant, string> = {
   secondary: "border border-border bg-page text-ink hover:bg-desk",
   quiet: "text-accent hover:bg-accent-soft",
   danger: "border border-danger bg-page text-danger hover:bg-danger-soft",
+  "danger-filled": "border border-danger bg-danger text-page hover:opacity-90",
 };
 const sizes: Record<Size, string> = { md: "h-9 px-4 text-control", sm: "h-8 px-3 text-label" };
 

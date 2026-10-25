@@ -4,6 +4,7 @@
 import { Ban, Link2, Link2Off, RefreshCw, UserMinus } from "lucide-react";
 import type { ReactNode } from "react";
 import { ActionForm } from "@/components/action-form";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { CopyButton, InviteForm } from "@/components/invite-form";
 import { listInvitations } from "@/lib/api/invitations";
 import { disableInviteLinkAction, removeMemberAction, revokeInvitationAction, rotateInviteLinkAction } from "@/lib/server/campaign-actions";
@@ -39,7 +40,15 @@ export function MembersPanel({ campaignId, members, author }: { campaignId: stri
                 <ActionForm action={removeMemberAction}>
                   <input type="hidden" name="campaign_id" value={campaignId} />
                   <input type="hidden" name="user_id" value={m.user_id} />
-                  <IconButton type="submit" tone="danger" tip="end" label={`Remove ${m.display_name}`} icon={<UserMinus {...ICON} />} />
+                  <ConfirmButton
+                    as="icon"
+                    tip="end"
+                    label={`Remove ${m.display_name}`}
+                    icon={<UserMinus {...ICON} />}
+                    title={`Remove ${m.display_name} from the campaign?`}
+                    description="Their characters leave the campaign's games, and they need a new invitation to come back."
+                    confirm="Remove"
+                  />
                 </ActionForm>
               )
             }

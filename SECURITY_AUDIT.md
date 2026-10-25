@@ -16,7 +16,7 @@ Severity scale: **Critical** (remote compromise or data exposure across users, e
 
 ## Summary
 
-No critical or high finding in application code or the database. The authorization model is consistent: every operation starts with `caller()` (terms, suspension, closing account), membership checks return `not_found` to non-members, ownership checks cover characters, drafts, push subscriptions, and deleted records, and the database grants nothing to `anon` or `authenticated`. Fixed: one medium denial-of-service path (ZIP bomb), one medium runtime crash (several characters in a started game), one medium broken flow (portraits near 1 MB), and low-severity hardening items, including an access migration (applied). A [second debugging pass](#second-debugging-pass) fixed five more defects. What remains for the user is listed under [Remaining for the user](#remaining-for-the-user).
+No critical or high finding in application code or the database. The authorization model is consistent: every operation starts with `caller()` (terms, suspension, closing account), membership checks return `not_found` to non-members, ownership checks cover characters, drafts, push subscriptions, and deleted records, and the database grants nothing to `anon` or `authenticated`. Fixed: one medium denial-of-service path (ZIP bomb), one medium runtime crash (several characters in a started game), one medium broken flow (portraits near 1 MB), and low-severity hardening items, including an access migration (applied). A [second debugging pass](#second-debugging-pass) fixed five more defects and added confirm dialogs to the irreversible controls. What remains for the user is listed under [Remaining for the user](#remaining-for-the-user).
 
 | Check | Result |
 |---|---|
@@ -61,10 +61,9 @@ A walk through every form in demo mode after the fixes above: character creation
 | D-9 | Low | `lib/server/admin-actions.ts`, `done` | After any console action, `/admin?inspect=…` was rendered again, which ran the inspection and replay again and wrote both to the operator log: the audit trail recorded inspections nobody made. | A successful console action returns to `/admin` without the query. Checked in demo mode: a hold adds one log entry. |
 | D-10 | Low | `lib/coordinator/admin.ts`, `replayInstance` | Inspecting an instance still in the lobby reported `matches_stored=false`, because replay requires a start commit. | An instance with no commits and no state replays as matching. Test: `lib/api/admin.test.ts`. |
 | D-11 | Medium | `lib/server/session.ts`, `pageUser`; `app/(signed-in)/accept-terms/page.tsx` | A suspended user passed the page gate, then every operation answered `forbidden`, so every signed-in page was a server error, and `/accept-terms` sent them back to the dashboard. | Signed-in pages send a suspended user to `/accept-terms`, which says the account is suspended, names the contact address, and offers the data export. Recorded under `SPEC_ISSUES.md#account-suspension`. Checked in demo mode. |
+| D-12 | Low | `components/ui/confirm.tsx`; `app/(signed-in)/instances/[id]/page.tsx`, `campaigns/[id]/panels.tsx`, `instances/[id]/schedule/page.tsx` | End (game), Remove member, and Cancel the series acted on one click and cannot be undone; End sits beside Pause in the lobby header. The design system calls for a confirm dialog, which did not exist. | `ConfirmButton` opens a modal on the native `<dialog>` (role `alertdialog`): a question, one sentence on the consequence, Cancel with focus first, and a filled `danger` button (`danger-filled`) that submits the form. Escape and the backdrop close it, and focus returns to the trigger. Checked in demo mode in light and dark: Cancel leaves the game running; confirming ends it, removes the member, or cancels every occurrence. |
+Observation, not changed:
 
-Decision for the user, not changed:
-
-- **D-12 (Low): destructive controls act on one click.** End (game), Remove member, Cancel the series, Turn off (calendar feed), and the operator's Remove and Suspend run as soon as they are pressed; the design system mentions a confirm dialog, but none exists. End sits beside Pause in the lobby header and cannot be undone. A small confirm dialog (`<dialog>` with a filled `danger` button) on End, Remove member, and Cancel the series would follow the design system's own rule.
 - **Info: operation wording in messages.** Some form errors use the API's field names, for example "reminders.lead_minutes must list up to 5 lead times of 5 to 10,080 minutes" under Remind me.
 
 ## Deployment state
@@ -75,7 +74,6 @@ Decision for the user, not changed:
 ## Remaining for the user
 
 - **Realtime: private channels only.** In the Supabase dashboard, Realtime settings, turn off public access. The setting is not in the repository. Then confirm in production that the play page connects (no "Reconnecting" after a few seconds), which also confirms the Clerk third-party auth integration.
-- **D-12:** whether destructive controls get a confirm dialog.
 - **Merge** this branch into `master`.
 
 ## Verified as sound

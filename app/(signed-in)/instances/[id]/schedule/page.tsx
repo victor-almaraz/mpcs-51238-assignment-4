@@ -19,6 +19,7 @@ import { Panel } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Choice, Field, Select, TextArea, TextInput, described, inputClass } from "@/components/ui/field";
 import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { Notice } from "@/components/ui/notice";
 import { Page, PageHeader, Section, WithAside } from "@/components/ui/page";
 
@@ -214,9 +215,13 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
                                 <ActionForm action={cancelAction}>
                                   <input type="hidden" name="instance_id" value={id} />
                                   <input type="hidden" name="session_id" value={o.session_id} />
-                                  <Button type="submit" variant="danger" size="sm">
-                                    Cancel the series
-                                  </Button>
+                                  <ConfirmButton
+                                    size="sm"
+                                    label="Cancel the series"
+                                    title="Cancel the whole series?"
+                                    description="Every session of this series is cancelled, including moved ones. This cannot be undone."
+                                    confirm="Cancel the series"
+                                  />
                                 </ActionForm>
                               </div>
                             </div>
