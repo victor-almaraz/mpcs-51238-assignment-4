@@ -5,7 +5,7 @@
 import * as lifecycle from "@/components/lifecycle";
 import { archiveCampaignAction, deleteCampaignAction, restoreCampaignAction, unarchiveCampaignAction } from "@/lib/server/campaign-actions";
 
-export const ARCHIVE_NOTE = "An archived campaign keeps its games and members, and accepts no new games, members, or invitations.";
+export const ARCHIVE_NOTE = "An archived campaign keeps its games and members, and accepts no new games, members, or invitations. Archiving turns its invite link off; after unarchiving, enable a new one under Invitations.";
 
 export function ArchiveForm({ campaignId }: { campaignId: string }) {
   return <lifecycle.ArchiveForm action={archiveCampaignAction} field="campaign_id" id={campaignId} note={ARCHIVE_NOTE} label="Archive campaign" />;

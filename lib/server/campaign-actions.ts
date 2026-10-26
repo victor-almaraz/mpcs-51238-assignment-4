@@ -3,7 +3,7 @@
 // lib/api through `attempt`.
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { archiveCampaign, createCampaign, deleteCampaign, disableInviteLink, joinByLink, removeMember, restoreCampaign, rotateInviteLink, setMaterials, unarchiveCampaign, updateCampaign } from "../api/campaigns";
+import { archiveCampaign, createCampaign, deleteCampaign, disableInviteLink, getCampaign, joinByLink, leaveCampaign, previewInviteLink, removeMember, restoreCampaign, rotateInviteLink, setMaterials, unarchiveCampaign, updateCampaign } from "../api/campaigns";
 import { addCharacter, createInstance, endInstance, pauseInstance, removeCharacter, resumeInstance, startInstance } from "../api/instances";
 import { acceptInvitation, declineInvitation, invite, previewInvitation, revokeInvitation } from "../api/invitations";
 import { attempt, type FormState } from "./forms";
@@ -30,10 +30,11 @@ function materialsFrom(form: FormData) {
 
 const modulesFrom = (form: FormData) => form.getAll("modules").filter((v): v is string => typeof v === "string");
 
-function refresh(campaignId: unknown): FormState {
+/** Revalidates the campaign's pages and the hub; `saved` confirms a change the form shows no other way. */
+function refresh(campaignId: unknown, saved?: string): FormState {
   revalidatePath(`/campaigns/${String(campaignId)}`, "layout");
   revalidatePath("/campaigns");
-  return { error: null };
+  return saved ? { error: null, saved } : { error: null };
 }
 
 export async function createCampaignAction(_: FormState, form: FormData): Promise<FormState> {
@@ -55,13 +56,23 @@ export async function createCampaignAction(_: FormState, form: FormData): Promis
 export async function updateCampaignAction(_: FormState, form: FormData): Promise<FormState> {
   const id = str(form, "campaign_id");
   const r = await attempt((uid) => updateCampaign(serverStore(), uid, { campaign_id: id, title: str(form, "title"), description: str(form, "description") ?? "", modules: modulesFrom(form) }));
-  return "error" in r ? r : refresh(id);
+  return "error" in r ? r : refresh(id, "Saved.");
 }
 
+/**
+ * Saves the Materials tab: first enables the modules the new materials require (the form submits them,
+ * locked on), keeping those already on, then sets the materials, which check_materials checks against
+ * the campaign's modules.
+ */
 export async function setMaterialsAction(_: FormState, form: FormData): Promise<FormState> {
   const id = str(form, "campaign_id");
-  const r = await attempt((uid) => setMaterials(serverStore(), uid, { campaign_id: id, materials: materialsFrom(form) }));
-  return "error" in r ? r : refresh(id);
+  const r = await attempt(async (uid) => {
+    const campaign = await getCampaign(serverStore(), uid, id);
+    const modules = [...new Set([...campaign.modules, ...modulesFrom(form)])];
+    if (modules.length > campaign.modules.length) await updateCampaign(serverStore(), uid, { campaign_id: id, modules });
+    return setMaterials(serverStore(), uid, { campaign_id: id, materials: materialsFrom(form) });
+  });
+  return "error" in r ? r : refresh(id, "Materials saved. Games created from now on use them.");
 }
 
 export async function archiveCampaignAction(_: FormState, form: FormData): Promise<FormState> {
@@ -94,6 +105,14 @@ export async function restoreCampaignAction(_: FormState, form: FormData): Promi
   return refresh(id);
 }
 
+export async function leaveCampaignAction(_: FormState, form: FormData): Promise<FormState> {
+  const r = await attempt((uid) => leaveCampaign(serverDeps(), uid, str(form, "campaign_id")));
+  if ("error" in r) return r;
+  revalidatePath("/campaigns");
+  revalidatePath("/dashboard");
+  redirect("/campaigns");
+}
+
 export async function removeMemberAction(_: FormState, form: FormData): Promise<FormState> {
   const id = str(form, "campaign_id");
   const r = await attempt((uid) => removeMember(serverDeps(), uid, { campaign_id: id, user_id: str(form, "user_id") }));
@@ -112,19 +131,19 @@ export async function inviteAction(_: InviteState, form: FormData): Promise<Invi
 
 export async function revokeInvitationAction(_: FormState, form: FormData): Promise<FormState> {
   const r = await attempt((uid) => revokeInvitation(serverStore(), uid, str(form, "invitation_id")));
-  return "error" in r ? r : refresh(str(form, "campaign_id"));
+  return "error" in r ? r : refresh(str(form, "campaign_id"), "Invitation revoked.");
 }
 
 export async function rotateInviteLinkAction(_: FormState, form: FormData): Promise<FormState> {
   const id = str(form, "campaign_id");
   const r = await attempt((uid) => rotateInviteLink(serverStore(), uid, id));
-  return "error" in r ? r : refresh(id);
+  return "error" in r ? r : refresh(id, "The new invite link is ready. Earlier links no longer work.");
 }
 
 export async function disableInviteLinkAction(_: FormState, form: FormData): Promise<FormState> {
   const id = str(form, "campaign_id");
   const r = await attempt((uid) => disableInviteLink(serverStore(), uid, id));
-  return "error" in r ? r : refresh(id);
+  return "error" in r ? r : refresh(id, "The invite link is off.");
 }
 
 export async function acceptInvitationAction(_: FormState, form: FormData): Promise<FormState> {
@@ -151,9 +170,11 @@ export async function enterCodeAction(_: FormState, form: FormData): Promise<For
   // A pasted link works too: keep the last path segment.
   const code = raw.split("/").filter(Boolean).at(-1) ?? "";
   if (code === "") return { error: "Enter a code." };
-  const invitation = await attempt(() => previewInvitation(serverStore(), code));
+  const invitation = await attempt(() => previewInvitation(serverStore(), code), { read: true });
   if ("ok" in invitation) redirect(`/invite/${encodeURIComponent(code)}`);
-  redirect(`/join/${encodeURIComponent(code)}`);
+  const link = await attempt(() => previewInviteLink(serverStore(), code), { read: true });
+  if ("ok" in link) redirect(`/join/${encodeURIComponent(code)}`);
+  return { error: "No invitation or invite link matches this code. Check it with whoever sent it." };
 }
 
 export async function createInstanceAction(_: FormState, form: FormData): Promise<FormState> {

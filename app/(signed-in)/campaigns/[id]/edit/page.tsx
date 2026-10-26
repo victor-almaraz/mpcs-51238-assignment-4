@@ -3,9 +3,9 @@
 // (docs/design/README.md, Page layouts); `?tab=` opens a tab.
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
-import { MaterialPicker } from "@/components/campaign-materials";
+import { MaterialPicker, ModuleChoice } from "@/components/campaign-materials";
 import { getCampaign } from "@/lib/api/campaigns";
-import { listMaterials } from "@/lib/api/materials";
+import { listMaterials, materialView } from "@/lib/api/materials";
 import { systemView } from "@/lib/api/systems";
 import { setMaterialsAction, updateCampaignAction } from "@/lib/server/campaign-actions";
 import { ArchivedNotice, ArchiveForm, DeleteCampaignForm } from "@/components/campaign-lifecycle";
@@ -33,6 +33,11 @@ export default async function EditCampaign({ params, searchParams }: { params: P
   const campaign = await orNotFound(getCampaign(store, user.id, id));
   if (campaign.author_id !== user.id || !("invite_link_code" in campaign)) notFound();
   const system = systemView(campaign.system);
+  // The library lists each material's newest version; the campaign's pinned versions are added, so the
+  // pickers show what the campaign uses even after a newer version is published.
+  const listed = await listMaterials(store, user.id, { system: campaign.system });
+  const pinned = await Promise.all(campaign.materials.filter((c) => !listed.some((m) => m.kind === c.kind && m.id === c.id && m.version === c.version)).map((c) => store.material(c.kind, c.id, c.version)));
+  const library = [...listed, ...pinned.filter((m) => m !== undefined).map(materialView)];
 
   const details = (
     <>
@@ -51,7 +56,7 @@ export default async function EditCampaign({ params, searchParams }: { params: P
           <FieldGroup legend="Modules" description="For games created from now on.">
             <div className="flex flex-col">
               {system.modules.map((m) => (
-                <Choice key={m.id} name="modules" value={m.id} defaultChecked={campaign.modules.includes(m.id)} label={m.title} />
+                <ModuleChoice key={m.id} module={m} defaultChecked={campaign.modules.includes(m.id)} requiredBy={library.filter((x) => campaign.materials.some((c) => c.kind === x.kind && c.id === x.id && c.version === x.version) && x.modules.includes(m.id)).map((x) => x.title)} />
               ))}
             </div>
           </FieldGroup>
@@ -82,7 +87,7 @@ export default async function EditCampaign({ params, searchParams }: { params: P
       <input type="hidden" name="campaign_id" value={campaign.id} />
       <Notice>Changes apply to games created from now on; existing games keep their versions.</Notice>
       <FieldGroup legend="Materials">
-        <MaterialPicker materials={await listMaterials(store, user.id, { system: campaign.system })} modules={[]} chosen={campaign.materials} enabled={campaign.modules} />
+        <MaterialPicker materials={library} modules={system.modules} chosen={campaign.materials} enabled={campaign.modules} requiredOnly />
       </FieldGroup>
       <div>
         <Button type="submit" variant="primary">
@@ -109,7 +114,7 @@ export default async function EditCampaign({ params, searchParams }: { params: P
           { id: "details", label: "Details", panel: details },
           { id: "materials", label: "Materials", panel: materials },
           { id: "members", label: "Members", panel: <MembersPanel campaignId={campaign.id} members={campaign.members} author /> },
-          { id: "invitations", label: "Invitations", panel: <InvitationsPanel campaignId={campaign.id} userId={user.id} archived={campaign.archived} linkCode={campaign.invite_link_code ?? null} origin={await origin()} /> },
+          { id: "invitations", label: "Invitations", panel: <InvitationsPanel campaignId={campaign.id} userId={user.id} archived={campaign.archived} linkCode={campaign.invite_link_code ?? null} origin={await origin()} timeZone={user.timezone} /> },
         ]}
       />
     </Page>

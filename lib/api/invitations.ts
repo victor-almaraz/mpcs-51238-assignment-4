@@ -60,6 +60,17 @@ export async function previewInvitation(store: Store, code: unknown) {
   return { campaign_title: i.campaign_title, inviter_display_name: i.inviter.display_name, message: i.message, status: i.status, expires_at: i.expires_at };
 }
 
+/**
+ * For the invitation page: the code's campaign, whether it is archived, and whether `userId` already
+ * belongs to it, so the page offers Accept only when accepting can succeed.
+ */
+export async function invitationContext(store: Store, userId: string | null, code: unknown): Promise<{ campaignId: string; archived: boolean; member: boolean } | undefined> {
+  const i = await store.invitationByHash(codeHash(normalizeCode(code)));
+  const campaign = i && (await store.getCampaign(i.campaign_id));
+  if (!campaign) return undefined;
+  return { campaignId: campaign.id, archived: campaign.archived, member: !!userId && campaign.members.some((m) => m.user_id === userId) };
+}
+
 export async function listInvitations(store: Store, userId: string | null, input: unknown) {
   const user = await caller(store, userId, "list_invitations");
   const req = onlyFields(input, ["campaign_id", "status"]);

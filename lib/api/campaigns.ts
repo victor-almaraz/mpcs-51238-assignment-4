@@ -33,9 +33,11 @@ export async function membership(store: Store, user: UserRecord, campaignId: unk
   return { campaign, role };
 }
 
+/** The text, trimmed, when it has `min` to `max` characters. */
 function text(v: unknown, field: string, min: number, max: number): string {
-  if (typeof v !== "string" || v.trim().length < min || v.length > max) throw new ApiError("invalid_request", `${field} must have ${min} to ${max} characters`);
-  return v;
+  const t = typeof v === "string" ? v.trim() : undefined;
+  if (t === undefined || t.length < min || t.length > max) throw new ApiError("invalid_request", `${field} must have ${min} to ${max} characters`);
+  return t;
 }
 
 function modulesOf(v: unknown, system: string): string[] {
@@ -159,7 +161,7 @@ export async function deleteCampaign(deps: Deps, userId: string | null, input: u
   const user = await caller(deps.store, userId, "delete_campaign");
   const req = onlyFields(input, ["campaign_id", "confirm"]);
   const { campaign } = await membership(deps.store, user, req.campaign_id, "author");
-  if (req.confirm !== campaign.title) throw new ApiError("invalid_request", "confirm must be the campaign's title");
+  if (typeof req.confirm !== "string" || req.confirm.trim() !== campaign.title.trim()) throw new ApiError("invalid_request", "type the campaign's title exactly as shown to delete it");
   for (const id of campaign.instance_ids) {
     const instance = await deps.store.instanceView(id);
     if (!instance) continue;

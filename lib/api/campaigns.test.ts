@@ -101,6 +101,14 @@ describe("campaigns", () => {
 
 // SPEC_ISSUES.md#campaign-unarchive
 describe("archiving and deleting", () => {
+  it("stores titles trimmed, and deletes when the typed title matches, spaces aside", async () => {
+    const c = await campaign({ title: "  Archive  " });
+    expect(c.title).toBe("Archive");
+    await expect(deleteCampaign(deps, "user_a", { campaign_id: c.id, confirm: "Archiv" })).rejects.toThrow("type the campaign's title exactly as shown");
+    await deleteCampaign(deps, "user_a", { campaign_id: c.id, confirm: " Archive " });
+    expect(await code(getCampaign(store, "user_a", c.id))).toBe("not_found");
+  });
+
   it("unarchives a campaign for its author only, and lists it as archived until then", async () => {
     const c = await campaign();
     await joinByLink(store, "user_b", (await rotateInviteLink(store, "user_a", c.id, e)).invite_link_code);

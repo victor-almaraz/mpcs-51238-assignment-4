@@ -2,7 +2,6 @@
 // Members, Invitations; docs/design/README.md, Campaign): members with Remove for the author, and
 // invitations (create, pending with Revoke, the invite link with Copy, Rotate, Disable).
 import { Ban, Link2, Link2Off, RefreshCw, UserMinus } from "lucide-react";
-import type { ReactNode } from "react";
 import { ActionForm } from "@/components/action-form";
 import { ConfirmButton } from "@/components/ui/confirm";
 import { CopyButton, InviteForm } from "@/components/invite-form";
@@ -13,7 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ICON, ICON_DENSE, IconButton } from "@/components/ui/icon-button";
+import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
+import { formatWhen } from "@/components/when";
 import { List, ListRow } from "@/components/ui/list";
 import { Notice } from "@/components/ui/notice";
 import { Section } from "@/components/ui/page";
@@ -46,7 +46,7 @@ export function MembersPanel({ campaignId, members, author }: { campaignId: stri
                     label={`Remove ${m.display_name}`}
                     icon={<UserMinus {...ICON} />}
                     title={`Remove ${m.display_name} from the campaign?`}
-                    description="Their characters leave the campaign's games, and they need a new invitation to come back."
+                    description="Their characters leave the campaign's games. They can come back with a new invitation, or through the invite link while it is on."
                     confirm="Remove"
                   />
                 </ActionForm>
@@ -60,7 +60,7 @@ export function MembersPanel({ campaignId, members, author }: { campaignId: stri
 }
 
 /** The author's invitations: create one, the pending list, and the invite link. */
-export function InvitationsPanel({ campaignId, userId, archived, linkCode, origin }: { campaignId: string; userId: string; archived: boolean; linkCode: string | null; origin: string }) {
+export function InvitationsPanel({ campaignId, userId, archived, linkCode, origin, timeZone }: { campaignId: string; userId: string; archived: boolean; linkCode: string | null; origin: string; timeZone: string }) {
   return (
     <>
       <Section id="new-invitation" title="New invitation" description="A code for one player. It is shown once, when you create it.">
@@ -73,7 +73,7 @@ export function InvitationsPanel({ campaignId, userId, archived, linkCode, origi
         )}
       </Section>
       <Section id="pending-invitations" title="Pending invitations">
-        <PendingInvitations campaignId={campaignId} userId={userId} />
+        <PendingInvitations campaignId={campaignId} userId={userId} timeZone={timeZone} />
       </Section>
       <Section id="invite-link" title="Invite link" description="Anyone with an enabled link can join.">
         {linkCode ? (
@@ -86,8 +86,14 @@ export function InvitationsPanel({ campaignId, userId, archived, linkCode, origi
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <CopyButton text={`${origin}/join/${linkCode}`} label="Copy link" />
-              <LinkAction action={rotateInviteLinkAction} campaignId={campaignId} label="Rotate" icon={<RefreshCw {...ICON_DENSE} />} />
-              <LinkAction action={disableInviteLinkAction} campaignId={campaignId} label="Disable" icon={<Link2Off {...ICON_DENSE} />} danger />
+              <ActionForm action={rotateInviteLinkAction}>
+                <input type="hidden" name="campaign_id" value={campaignId} />
+                <ConfirmButton size="sm" label="Rotate" icon={<RefreshCw {...ICON_DENSE} />} title="Replace the invite link?" description="The link you shared stops working at once; only the new one lets people join." confirm="Rotate link" />
+              </ActionForm>
+              <ActionForm action={disableInviteLinkAction}>
+                <input type="hidden" name="campaign_id" value={campaignId} />
+                <ConfirmButton size="sm" label="Disable" icon={<Link2Off {...ICON_DENSE} />} title="Turn the invite link off?" description="Nobody can join through the link until you enable a new one; the old link never works again." confirm="Turn off" />
+              </ActionForm>
             </div>
             <p className="text-caption text-muted">Rotate replaces the link, so the old one stops working.</p>
           </Card>
@@ -97,7 +103,14 @@ export function InvitationsPanel({ campaignId, userId, archived, linkCode, origi
               <Badge>Off</Badge>
               <span className="text-muted">Link joining is off.</span>
             </div>
-            {!archived && <LinkAction action={rotateInviteLinkAction} campaignId={campaignId} label="Enable invite link" icon={<Link2 {...ICON_DENSE} />} />}
+            {!archived && (
+              <ActionForm action={rotateInviteLinkAction}>
+                <input type="hidden" name="campaign_id" value={campaignId} />
+                <Button type="submit" size="sm" icon={<Link2 {...ICON_DENSE} />}>
+                  Enable invite link
+                </Button>
+              </ActionForm>
+            )}
           </Card>
         )}
       </Section>
@@ -105,18 +118,7 @@ export function InvitationsPanel({ campaignId, userId, archived, linkCode, origi
   );
 }
 
-function LinkAction({ action, campaignId, label, icon, danger }: { action: typeof rotateInviteLinkAction; campaignId: string; label: string; icon: ReactNode; danger?: boolean }) {
-  return (
-    <ActionForm action={action}>
-      <input type="hidden" name="campaign_id" value={campaignId} />
-      <Button type="submit" size="sm" variant={danger ? "danger" : "secondary"} icon={icon}>
-        {label}
-      </Button>
-    </ActionForm>
-  );
-}
-
-async function PendingInvitations({ campaignId, userId }: { campaignId: string; userId: string }) {
+async function PendingInvitations({ campaignId, userId, timeZone }: { campaignId: string; userId: string; timeZone: string }) {
   const pending = await listInvitations(serverStore(), userId, { campaign_id: campaignId, status: "pending" });
   if (pending.length === 0) return <EmptyState>No pending invitations.</EmptyState>;
   return (
@@ -126,12 +128,20 @@ async function PendingInvitations({ campaignId, userId }: { campaignId: string; 
           key={i.id}
           title={i.note || "No note"}
           badge={<Badge tone="warning">Pending</Badge>}
-          meta={`By ${i.inviter.display_name}, expires ${new Date(i.expires_at).toUTCString().slice(5, 16)}`}
+          meta={`By ${i.inviter.display_name}, expires ${formatWhen(i.expires_at, timeZone)}`}
           actions={
             <ActionForm action={revokeInvitationAction}>
               <input type="hidden" name="campaign_id" value={campaignId} />
               <input type="hidden" name="invitation_id" value={i.id} />
-              <IconButton type="submit" tone="danger" tip="end" label={`Revoke ${i.note ? `the invitation “${i.note}”` : "this invitation"}`} icon={<Ban {...ICON} />} />
+              <ConfirmButton
+                as="icon"
+                tip="end"
+                label={`Revoke ${i.note ? `the invitation “${i.note}”` : "this invitation"}`}
+                icon={<Ban {...ICON} />}
+                title="Revoke this invitation?"
+                description="Its code stops working at once. You can create a new invitation later."
+                confirm="Revoke"
+              />
             </ActionForm>
           }
         />
