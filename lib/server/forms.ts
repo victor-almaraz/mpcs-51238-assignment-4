@@ -4,7 +4,18 @@ import { RATE_LIMIT } from "../api/limits";
 import { sessionUser } from "./session";
 import { serverStore } from "./supabase";
 
-export type FormState = { error: string | null };
+/** A form's result: the error to show, or on success an optional confirmation such as "Saved." */
+export type FormState = { error: string | null; saved?: string };
+
+/**
+ * An API error detail as a sentence for the form: a leading field name in words ("display_name must
+ * have…" becomes "Display name must have…"), a capital, and a full stop.
+ */
+export function plain(detail: string): string {
+  const s = detail.replace(/^([a-z]+(?:[._][a-z]+)+)\b/, (field) => field.replace(/[._]/g, " ")).trim();
+  const sentence = s.charAt(0).toUpperCase() + s.slice(1);
+  return /[.!?]$/.test(sentence) ? sentence : `${sentence}.`;
+}
 
 /**
  * Runs `fn` as the session user; an ApiError becomes the form's error message. Each call counts against
@@ -20,7 +31,7 @@ export async function attempt<T>(fn: (userId: string | null) => Promise<T>, opti
     }
     return { ok: await fn(user?.id ?? null) };
   } catch (e) {
-    if (e instanceof ApiError) return { error: e.detail };
+    if (e instanceof ApiError) return { error: plain(e.detail) };
     throw e;
   }
 }
