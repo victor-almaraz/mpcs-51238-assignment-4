@@ -1199,3 +1199,17 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** `rebuild_character` (`character_id`, `name?`, `choices`; owner) builds the sheet again from new choices with a new seed, as `create_character` does, keeping the id and portrait. It is allowed while the character is `available` and has never joined an instance; otherwise it is a `conflict`. The character page offers Change role and abilities in that state, which opens the system's creation form filled with the current choices (`/characters/{id}/rebuild`). HTTP: `POST /v1/characters/{id}/rebuild`. Migration `20261025000200_character_rebuild` adds `cadmium_character_played` and `cadmium_rebuild_character`, which re-checks the state in the same statement.
 
 **Proposed resolution.** Add `rebuild_character` to api.md's Characters operations and the HTTP binding, and Change role and abilities to app-flow.md's Character editor, for characters that have not played.
+
+## active-campaigns
+
+| Field | Value |
+|---|---|
+| Document | `docs/api.md` |
+| Section | Users (`get_me`: `active_campaign_ids`, `authored_campaign_ids`) |
+| Marker | `lib/api/users.ts` |
+
+**Problem.** `get_me` returns `active_campaign_ids`, but the specification does not say which campaigns are active.
+
+**Implemented.** `active_campaign_ids` lists every campaign the user belongs to, as author or player, that is neither archived nor deleted; `authored_campaign_ids` lists those the user authored, archived included, deleted excluded.
+
+**Proposed resolution.** Define active as unarchived and not deleted, for any role, in api.md's User object.

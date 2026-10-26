@@ -7,7 +7,7 @@ It supplies the world content of the exemplar adventure [`sunken_archive`](sunke
 | Field | Value |
 |---|---|
 | Id, namespace | `lantern_coast`, `coast` |
-| Version | 1.0.0, `format_version: 2` |
+| Version | 1.1.0, `format_version: 2` |
 | System | `cadmium ^1.0`, modules `armor`, `stash` |
 | Currency | `coast:floret`, stored in quarter florets: quarter (1), half (2), oner (4), fiver (20), tener (40) |
 | Generation | Doors `hatch`; lock-and-key pair `vault_door` with `vault_key` |

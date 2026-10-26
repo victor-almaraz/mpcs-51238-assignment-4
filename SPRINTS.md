@@ -53,7 +53,7 @@ The work in `cadmium-spec/AGENTS.md` ("Phases") split into sprints that each fit
 
 ## Status
 
-Fourteen of the eighteen migrations are applied to the remote database (rebuilt from `supabase/fresh.sql` on 2026-10-24; `20261025000000_campaign_archive` and `20261025000100_character_draft_archive` applied on 2026-10-25). `20261025000200_character_rebuild`, `20261025000300_play_fixes`, `20261025000400_editor_fixes`, and `20261025000500_account_fixes` are not; the code on `ui-pass` calls their functions, so they must be applied before it is deployed. `/api/health` reports each.
+Fourteen of the eighteen migrations are applied to the remote database (rebuilt from `supabase/fresh.sql` on 2026-10-24; `20261025000000_campaign_archive` and `20261025000100_character_draft_archive` applied on 2026-10-25). `20261025000200_character_rebuild`, `20261025000300_play_fixes`, `20261025000400_editor_fixes`, and `20261025000500_account_fixes` are not; the code on `ui-pass` calls their functions, so they must be applied before it is deployed. `/api/health` reports each. `lantern_coast` is 1.1.0 with its abilities; publish `bundles/4-setting-lantern_coast-1.1.0.json` (from `pnpm bundles`) at `/admin`, and move campaigns to it under Materials.
 
 ### Sprint 0: Foundations — closed
 

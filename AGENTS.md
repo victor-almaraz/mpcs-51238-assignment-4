@@ -58,4 +58,4 @@ The parser and narrator call Groq (`lib/models/groq.ts`) from the server only. T
 |---|---|
 | `pnpm test` | Vitest: unit tests, test vectors, compiler fixtures, golden replays, specification validation, the API against an in-memory Postgres |
 | `pnpm e2e` | Playwright against `next dev` with real Clerk sign-in, using `.env.local`. It needs the bundles published at `/admin` (a draft requires a setting), writes to the Supabase project those keys name, and deletes its drafts afterwards |
-| `pnpm audit:ui` | The design and accessibility audit of the demo screens |
+| `pnpm audit:ui` | The design, spacing, and accessibility audit of the demo screens; exits 1 on any finding |
