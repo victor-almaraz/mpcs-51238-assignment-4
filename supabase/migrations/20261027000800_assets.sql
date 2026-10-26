@@ -1,5 +1,6 @@
--- Assets (data-model.md, Asset; decisions/0005-art.md): images stored once by content hash, shared by
--- pack art and player portraits. Access as in the store migration: service role only.
+-- Assets and portraits (docs/spec/docs/data-model.md, Asset, Deletion;
+-- docs/spec/docs/decisions/0005-art.md; docs/spec/docs/api.md, Characters: upload_asset, update_character
+-- portrait): images stored once by content hash, shared by pack art and player portraits.
 
 create table assets (
   hash text primary key check (hash ~ '^[0-9a-f]{64}$'),
@@ -14,13 +15,23 @@ create table assets (
   provenance text check (provenance is null or char_length(provenance) <= 500),
   uploader_id text references users (id) on delete set null,
   bundle_refs jsonb not null default '[]',
-  -- The file's bytes, at most 1 MB (setting-packs.md, Art).
+  -- The file's bytes, at most 1 MB (docs/spec/docs/setting-packs.md, Art).
   data bytea not null,
   created_at timestamptz not null default now(),
   removed_at timestamptz,
   held_at timestamptz,
   hold_reason text
 );
+
+-- Who uploaded each image: an identical file is stored once, and each uploader may use it.
+create table asset_uploads (
+  hash text not null references assets (hash) on delete cascade,
+  user_id text not null references users (id) on delete cascade,
+  uploaded_at timestamptz not null default now(),
+  primary key (hash, user_id)
+);
+
+-- Assets -------------------------------------------------------------------------------------------
 
 -- Stores an asset, or adds a bundle reference to the existing record of the same file.
 create function cadmium_put_asset(p_asset jsonb, p_data text, p_bundle_ref jsonb) returns void language sql as $$
@@ -45,6 +56,11 @@ create function cadmium_get_asset(p_hash text) returns jsonb language sql stable
   select jsonb_build_object('mime', mime, 'data', encode(data, 'base64')) from assets where hash = p_hash and removed_at is null;
 $$;
 
+-- An asset's record without its bytes.
+create function cadmium_asset_meta(p_hash text) returns jsonb language sql stable as $$
+  select to_jsonb(a.*) - 'data' from assets a where hash = p_hash;
+$$;
+
 -- Credits of the assets packs ship, for the attribution page.
 create function cadmium_pack_credits() returns jsonb language sql stable as $$
   select coalesce(jsonb_agg(jsonb_build_object('hash', hash, 'kind', kind, 'alt', alt, 'license', license, 'credit', credit, 'bundle_refs', bundle_refs) order by created_at), '[]'::jsonb)
@@ -58,23 +74,41 @@ begin
   return found;
 end $$;
 
+-- Uploads and portraits ----------------------------------------------------------------------------
+
+create function cadmium_record_upload(p_hash text, p_user text) returns void language sql as $$
+  insert into asset_uploads (hash, user_id) values (p_hash, p_user) on conflict do nothing;
+$$;
+
+create function cadmium_uploaded_by(p_hash text, p_user text) returns boolean language sql stable as $$
+  select exists (select 1 from asset_uploads where hash = p_hash and user_id = p_user);
+$$;
+
+create function cadmium_set_portrait(p_character text, p_hash text) returns jsonb language sql as $$
+  update characters set portrait_asset = p_hash where id = p_character and deleted_at is null
+  returning to_jsonb(characters.*);
+$$;
+
+-- Images the user uploaded, with their records and bytes, for the data export.
+create function cadmium_user_assets(p_user text) returns jsonb language sql stable as $$
+  select coalesce(jsonb_agg((to_jsonb(a.*) - 'data') || jsonb_build_object('data', encode(a.data, 'base64')) order by a.created_at), '[]'::jsonb)
+  from assets a
+  where a.hash in (select hash from asset_uploads where user_id = p_user)
+     or a.hash in (select portrait_asset from characters where owner_id = p_user and portrait_asset is not null);
+$$;
+
+-- Access -------------------------------------------------------------------------------------------
+
 alter table assets enable row level security;
+alter table asset_uploads enable row level security;
 
 do $$
-declare
-  f regprocedure;
 begin
-  for f in select p.oid::regprocedure from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-           where n.nspname = 'public' and p.proname like 'cadmium\_%' loop
-    execute format('revoke execute on function %s from public', f);
-    if exists (select 1 from pg_roles where rolname = 'anon') then
-      execute format('revoke execute on function %s from anon, authenticated', f);
-    end if;
-    if exists (select 1 from pg_roles where rolname = 'service_role') then
-      execute format('grant execute on function %s to service_role', f);
-    end if;
-  end loop;
   if exists (select 1 from pg_roles where rolname = 'anon') then
-    revoke all on assets from anon, authenticated;
+    revoke all on assets, asset_uploads from anon, authenticated;
   end if;
 end $$;
+
+select cadmium_service_only(array['cadmium_put_asset', 'cadmium_add_asset_ref', 'cadmium_get_asset',
+  'cadmium_asset_meta', 'cadmium_pack_credits', 'cadmium_remove_asset', 'cadmium_record_upload',
+  'cadmium_uploaded_by', 'cadmium_set_portrait', 'cadmium_user_assets']);

@@ -1,7 +1,7 @@
--- Campaigns, members, materials, and invitations (data-model.md, Records: Campaign, Campaign member,
--- Invitation, Campaign material, Instance character). Permission checks and material validation run
--- in lib/api; these functions keep each operation's writes in one transaction.
--- Access as in the store migration: functions and tables for the service role only.
+-- Campaigns, their members and materials, their games, and invitations (docs/spec/docs/data-model.md,
+-- Records: Campaign, Campaign member, Campaign material, Instance, Invitation; docs/spec/docs/api.md,
+-- Campaigns, Invitations). Permission checks and material validation run in lib/api; these functions
+-- keep each operation's writes in one transaction.
 
 create table campaigns (
   id text primary key,
@@ -14,7 +14,15 @@ create table campaigns (
   invite_link_code text unique,
   archived boolean not null default false,
   created_at timestamptz not null default now(),
-  deleted_at timestamptz
+  deleted_at timestamptz,
+  -- A hold for a report of apparently illegal content (docs/spec/docs/data-model.md, Deletion); operators
+  -- set it.
+  held_at timestamptz,
+  hold_reason text,
+  -- When an operator removed the campaign (docs/spec/docs/runbooks/content-reports.md). A removed
+  -- campaign is deleted for good: its author neither lists nor restores it, and the purge erases it as
+  -- any deleted campaign.
+  removed_at timestamptz
 );
 
 create table campaign_members (
@@ -37,6 +45,34 @@ create table campaign_materials (
   foreign key (kind, bundle_id, bundle_version) references bundles (kind, id, version)
 );
 
+-- A game: its status, pinned materials, seed, and engine state.
+create table instances (
+  id text primary key,
+  campaign_id text not null references campaigns (id),
+  name text not null check (char_length(name) between 1 and 80),
+  system text not null,
+  system_version text not null,
+  modules jsonb not null default '[]',
+  materials jsonb not null,
+  status text not null default 'lobby' check (status in ('lobby', 'active', 'paused', 'ended')),
+  -- Seeds are in [0, 2^53 - 1] (docs/spec/docs/data-model.md, Instance).
+  seed bigint not null check (seed >= 0 and seed < 9007199254740992),
+  rng_algorithm text not null default 'splitmix64_v1',
+  version integer not null default 0,
+  state jsonb,
+  ending text,
+  created_at timestamptz not null default now(),
+  started_at timestamptz,
+  ended_at timestamptz,
+  deleted_at timestamptz,
+  -- The time at which the Coordinator invokes `advance`, or null when no wait is timed.
+  round_deadline timestamptz,
+  -- Set by auto_pause at an occurrence's end while a round is under way: the Coordinator pauses after
+  -- the round closes.
+  pause_requested boolean not null default false,
+  unique (campaign_id, name)
+);
+
 create table invitations (
   id text primary key,
   campaign_id text not null references campaigns (id) on delete cascade,
@@ -53,14 +89,10 @@ create table invitations (
 );
 create index invitations_by_campaign on invitations (campaign_id, created_at);
 
--- Instances belong to campaigns; instance characters to characters and users.
-alter table instances add foreign key (campaign_id) references campaigns (id);
-alter table instance_characters add foreign key (character_id) references characters (id);
-alter table instance_characters add foreign key (user_id) references users (id);
-
 -- Campaigns ---------------------------------------------------------------------------------------
 
--- The campaign object of api.md, with `invite_link_code`; lib/api removes it for players.
+-- The campaign object of docs/spec/docs/api.md, with `invite_link_code`; lib/api removes it for players.
+-- Members are active accounts only: closing accounts are hidden (docs/spec/docs/data-model.md, Deletion).
 create function cadmium_campaign(p_id text) returns jsonb language sql stable as $$
   select jsonb_build_object(
     'id', c.id, 'title', c.title, 'description', c.description, 'author_id', c.author_id,
@@ -71,7 +103,8 @@ create function cadmium_campaign(p_id text) returns jsonb language sql stable as
                              from campaign_materials m where m.campaign_id = c.id), '[]'::jsonb),
     'members', coalesce((select jsonb_agg(jsonb_build_object('user_id', m.user_id, 'display_name', u.display_name, 'role', m.role)
                                           order by m.role, m.joined_at, m.user_id)
-                           from campaign_members m join users u on u.id = m.user_id where m.campaign_id = c.id), '[]'::jsonb),
+                           from campaign_members m join users u on u.id = m.user_id and u.status = 'active'
+                          where m.campaign_id = c.id), '[]'::jsonb),
     'instance_ids', coalesce((select jsonb_agg(i.id order by i.created_at, i.id)
                                 from instances i where i.campaign_id = c.id and i.deleted_at is null), '[]'::jsonb))
   from campaigns c where c.id = p_id and c.deleted_at is null;
@@ -132,6 +165,12 @@ begin
   return cadmium_campaign(p_id);
 end $$;
 
+create function cadmium_unarchive_campaign(p_id text) returns jsonb language plpgsql as $$
+begin
+  update campaigns set archived = false where id = p_id and deleted_at is null;
+  return cadmium_campaign(p_id);
+end $$;
+
 create function cadmium_set_invite_link(p_id text, p_code text) returns void language sql as $$
   update campaigns set invite_link_code = p_code where id = p_id and deleted_at is null;
 $$;
@@ -161,9 +200,41 @@ begin
   delete from campaign_members where campaign_id = p_campaign and user_id = p_user and role = 'player';
 end $$;
 
+-- Deletion and restore ----------------------------------------------------------------------------
+
+-- Campaign deletion (docs/spec/docs/api.md, Campaigns: delete_campaign is recoverable for 30 days; the
+-- erasure after 90 days is a scheduled job).
+create function cadmium_delete_campaign(p_id text) returns void language sql as $$
+  update campaigns set deleted_at = now(), invite_link_code = null
+   where id = p_id and deleted_at is null;
+$$;
+
+-- Restores a campaign deleted less than 30 days ago and not removed; false otherwise.
+create function cadmium_restore_campaign(p_id text) returns boolean language plpgsql as $$
+begin
+  update campaigns set deleted_at = null
+   where id = p_id and deleted_at is not null and deleted_at > now() - interval '30 days' and removed_at is null;
+  return found;
+end $$;
+
+-- A deleted campaign's author and deletion time, for restore_campaign; none once removed.
+create function cadmium_deleted_campaign(p_id text) returns jsonb language sql stable as $$
+  select jsonb_build_object('id', id, 'author_id', author_id, 'deleted_at', deleted_at) from campaigns
+   where id = p_id and deleted_at is not null and removed_at is null;
+$$;
+
+-- The author's campaigns deleted less than 30 days ago and not removed, which restore_campaign can
+-- still bring back, newest first, as summaries.
+create function cadmium_deleted_campaigns(p_author text) returns jsonb language sql stable as $$
+  select coalesce(jsonb_agg(jsonb_build_object('id', id, 'title', title, 'system', system, 'deleted_at', deleted_at) order by deleted_at desc), '[]'::jsonb)
+  from campaigns
+  where author_id = p_author and deleted_at is not null and deleted_at > now() - interval '30 days' and removed_at is null;
+$$;
+
 -- Invitations -------------------------------------------------------------------------------------
 
--- The invitation object of api.md, with `note`; a pending invitation past `expires_at` is `expired`.
+-- The invitation object of docs/spec/docs/api.md, with `note`; a pending invitation past `expires_at` is
+-- `expired`.
 create function cadmium_invitation_json(i invitations) returns jsonb language sql stable as $$
   select jsonb_build_object(
     'id', i.id, 'campaign_id', i.campaign_id, 'campaign_title', c.title,
@@ -232,98 +303,36 @@ begin
   return found;
 end $$;
 
--- Instances ---------------------------------------------------------------------------------------
-
--- The instance object of api.md without `next_session`, which arrives with scheduling.
-create function cadmium_instance(p_id text) returns jsonb language sql stable as $$
-  select jsonb_build_object(
-    'id', i.id, 'campaign_id', i.campaign_id, 'name', i.name, 'system', i.system,
-    'system_version', i.system_version, 'modules', i.modules,
-    'materials', (select coalesce(jsonb_agg(m - 'position' order by (m->>'position')::integer), '[]'::jsonb)
-                    from jsonb_array_elements(i.materials) m),
-    'status', i.status, 'version', i.version,
-    'characters', coalesce((select jsonb_agg(jsonb_build_object('id', ch.id, 'user_id', ic.user_id, 'name', ch.name)
-                                             order by ic.joined_at, ch.id)
-                              from instance_characters ic join characters ch on ch.id = ic.character_id
-                             where ic.instance_id = i.id and ic.left_at is null), '[]'::jsonb),
-    'created_at', i.created_at, 'started_at', i.started_at, 'ended_at', i.ended_at, 'ending', i.ending)
-  from instances i where i.id = p_id and i.deleted_at is null;
-$$;
-
-create function cadmium_list_instances(p_campaign text) returns jsonb language sql stable as $$
-  select coalesce(jsonb_agg(cadmium_instance(id) order by created_at, id), '[]'::jsonb)
-  from instances where campaign_id = p_campaign and deleted_at is null;
-$$;
-
--- Puts an available character into an instance; false when the character is no longer available.
-create function cadmium_join_instance(p_instance text, p_character text, p_user text) returns boolean language plpgsql as $$
+-- Marks pending invitations past `expires_at` as expired, for the scheduled job; returns how many.
+create function cadmium_expire_invitations() returns integer language plpgsql as $$
+declare
+  n integer;
 begin
-  update characters set status = 'in_instance', instance_id = p_instance
-   where id = p_character and owner_id = p_user and status = 'available' and deleted_at is null;
-  if not found then return false; end if;
-  insert into instance_characters (instance_id, character_id, user_id) values (p_instance, p_character, p_user)
-  on conflict (instance_id, character_id) do update set joined_at = now(), left_at = null, user_id = excluded.user_id;
-  return true;
+  update invitations set status = 'expired' where status = 'pending' and expires_at <= now();
+  get diagnostics n = row_count;
+  return n;
 end $$;
-
--- Takes a character out of an instance, writing back its sheet when one is given.
-create function cadmium_leave_instance(p_instance text, p_character text, p_sheet jsonb) returns boolean language plpgsql as $$
-begin
-  update instance_characters set left_at = now() where instance_id = p_instance and character_id = p_character and left_at is null;
-  if not found then return false; end if;
-  update characters set status = 'available', instance_id = null, sheet = coalesce(p_sheet, sheet)
-   where id = p_character and instance_id = p_instance;
-  return true;
-end $$;
-
--- Materials ---------------------------------------------------------------------------------------
-
--- A bundle with what decides who may use it.
-create function cadmium_material(p_kind text, p_id text, p_version text) returns jsonb language sql stable as $$
-  select jsonb_build_object('kind', kind, 'id', id, 'version', version, 'system', system, 'system_versions', system_versions,
-                            'origin', origin, 'listed', listed, 'publisher_id', publisher_id, 'manifest', data->'manifest')
-  from bundles where kind = p_kind and id = p_id and version = p_version;
-$$;
-
--- The latest version of each material a user may choose for the given declared systems: listed
--- operator bundles and the user's own published adventures, or only the latter with `p_own`.
-create function cadmium_list_materials(p_user text, p_systems jsonb, p_kind text, p_own boolean) returns jsonb
-language sql stable as $$
-  select coalesce(jsonb_agg(m order by m->>'kind' desc, m->>'id'), '[]'::jsonb)
-  from (
-    select distinct on (kind, id)
-           jsonb_build_object('kind', kind, 'id', id, 'version', version, 'system', system, 'system_versions', system_versions,
-                              'origin', origin, 'listed', listed, 'publisher_id', publisher_id, 'manifest', data->'manifest') m
-      from bundles
-     where system in (select jsonb_array_elements_text(p_systems))
-       and (p_kind is null or kind = p_kind)
-       and ((origin = 'author' and publisher_id = p_user) or (not p_own and origin = 'operator' and listed))
-     order by kind, id, string_to_array(version, '.')::int[] desc
-  ) t;
-$$;
 
 -- Access -------------------------------------------------------------------------------------------
 
 alter table campaigns enable row level security;
 alter table campaign_members enable row level security;
 alter table campaign_materials enable row level security;
+alter table instances enable row level security;
 alter table invitations enable row level security;
 
 do $$
-declare
-  f regprocedure;
 begin
-  for f in select p.oid::regprocedure from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-           where n.nspname = 'public' and p.proname like 'cadmium\_%' loop
-    execute format('revoke execute on function %s from public', f);
-    if exists (select 1 from pg_roles where rolname = 'anon') then
-      execute format('revoke execute on function %s from anon, authenticated', f);
-    end if;
-    if exists (select 1 from pg_roles where rolname = 'service_role') then
-      execute format('grant execute on function %s to service_role', f);
-    end if;
-  end loop;
   if exists (select 1 from pg_roles where rolname = 'anon') then
-    revoke all on campaigns, campaign_members, campaign_materials, invitations from anon, authenticated;
+    revoke all on campaigns, campaign_members, campaign_materials, instances, invitations from anon, authenticated;
   end if;
 end $$;
+
+select cadmium_service_only(array['cadmium_campaign', 'cadmium_set_campaign_materials',
+  'cadmium_create_campaign', 'cadmium_list_campaigns', 'cadmium_update_campaign',
+  'cadmium_replace_campaign_materials', 'cadmium_archive_campaign', 'cadmium_unarchive_campaign',
+  'cadmium_set_invite_link', 'cadmium_campaign_by_link', 'cadmium_add_member', 'cadmium_remove_member',
+  'cadmium_delete_campaign', 'cadmium_restore_campaign', 'cadmium_deleted_campaign',
+  'cadmium_deleted_campaigns', 'cadmium_invitation_json', 'cadmium_create_invitation',
+  'cadmium_get_invitation', 'cadmium_invitation_by_hash', 'cadmium_list_invitations',
+  'cadmium_respond_invitation', 'cadmium_revoke_invitation', 'cadmium_expire_invitations']);

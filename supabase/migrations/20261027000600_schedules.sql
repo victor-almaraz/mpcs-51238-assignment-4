@@ -1,6 +1,6 @@
--- Schedules (data-model.md, Scheduled session, Session exception, RSVP; api.md, Scheduling;
--- app-flow.md, Scheduled jobs). Occurrences are computed in lib/scheduler, not stored.
--- Access as in the store migration: functions and tables for the service role only.
+-- Schedules, the Scheduler's bookkeeping, and calendar feeds (docs/spec/docs/data-model.md, Scheduled
+-- session, Session exception, RSVP; docs/spec/docs/api.md, Scheduling; docs/spec/docs/app-flow.md,
+-- Scheduled jobs). Occurrences are computed in lib/scheduler, not stored.
 
 create table scheduled_sessions (
   id text primary key,
@@ -14,7 +14,7 @@ create table scheduled_sessions (
   auto_pause boolean not null default false,
   notes text not null default '' check (char_length(notes) <= 500),
   status text not null default 'scheduled' check (status in ('scheduled', 'cancelled')),
-  -- When the series was cancelled; later occurrences are cancelled (api.md, Scheduling).
+  -- When the series was cancelled; later occurrences are cancelled (docs/spec/docs/api.md, Scheduling).
   cancelled_at timestamptz,
   created_by text not null references users (id),
   created_at timestamptz not null default now()
@@ -45,14 +45,6 @@ create table scheduler_marks (
   key text primary key,
   done_at timestamptz not null default now()
 );
-
--- The feed secret is derived from this generation, so its URL can be shown again while only its hash
--- is stored (api.md, Users, Calendar feed secret).
-alter table users add column calendar_feed_generation integer not null default 0;
-
--- Set by auto_pause at an occurrence's end while a round is under way: the Coordinator pauses after
--- the round closes.
-alter table instances add column pause_requested boolean not null default false;
 
 -- Sessions -----------------------------------------------------------------------------------------
 
@@ -96,7 +88,8 @@ create function cadmium_rsvp(p_session text, p_occurrence_start timestamptz, p_u
   on conflict (session_id, occurrence_start, user_id) do update set response = excluded.response, updated_at = now();
 $$;
 
--- Sessions of the given instances with their exceptions and RSVPs; all instances when p_instances is null.
+-- Sessions of the given instances with their exceptions and RSVPs; all instances when p_instances is
+-- null.
 create function cadmium_schedules(p_instances jsonb) returns jsonb language sql stable as $$
   with s as (
     select * from scheduled_sessions
@@ -131,7 +124,8 @@ begin
 end $$;
 
 -- What a scheduler run needs: sessions of instances that have not ended, those instances, and the
--- members of their campaigns with their reminder settings.
+-- members of their campaigns with their reminder settings. Closing and suspended accounts get no
+-- reminders (docs/spec/docs/api.md, Conventions).
 create function cadmium_scheduler_snapshot() returns jsonb language sql stable as $$
   with i as (
     select id, status, campaign_id from instances where status <> 'ended' and deleted_at is null
@@ -140,7 +134,7 @@ create function cadmium_scheduler_snapshot() returns jsonb language sql stable a
          || jsonb_build_object(
               'instances', coalesce((select jsonb_agg(jsonb_build_object('id', id, 'status', status, 'campaign_id', campaign_id)) from i), '[]'::jsonb),
               'members', coalesce((select jsonb_agg(jsonb_build_object('campaign_id', m.campaign_id, 'user_id', m.user_id, 'reminders', u.reminders))
-                                     from campaign_members m join users u on u.id = m.user_id and u.status = 'active'
+                                     from campaign_members m join users u on u.id = m.user_id and u.status = 'active' and u.suspended_at is null
                                     where m.campaign_id in (select campaign_id from i)), '[]'::jsonb));
 $$;
 
@@ -149,21 +143,19 @@ create function cadmium_expired_deadlines(p_now timestamptz) returns jsonb langu
    where status = 'active' and round_deadline is not null and round_deadline <= p_now and deleted_at is null;
 $$;
 
-create function cadmium_expire_invitations() returns integer language plpgsql as $$
-declare
-  n integer;
-begin
-  update invitations set status = 'expired' where status = 'pending' and expires_at <= now();
-  get diagnostics n = row_count;
-  return n;
-end $$;
-
 create function cadmium_set_pause_requested(p_id text, p_requested boolean) returns void language sql as $$
   update instances set pause_requested = p_requested where id = p_id;
 $$;
 
 create function cadmium_pause_requested(p_id text) returns boolean language sql stable as $$
   select coalesce((select pause_requested from instances where id = p_id), false);
+$$;
+
+-- Which of the user's reminder keys (reminder:<session>:<occurrence>:<user>:<lead>) the Scheduler has
+-- marked done: it marks each reminder just before sending it.
+create function cadmium_reminder_marks(p_user text, p_keys jsonb) returns jsonb language sql stable as $$
+  select coalesce(jsonb_agg(key), '[]'::jsonb) from scheduler_marks
+   where key in (select jsonb_array_elements_text(p_keys)) and key like 'reminder:%:' || p_user || ':%';
 $$;
 
 -- Calendar feeds -----------------------------------------------------------------------------------
@@ -176,8 +168,9 @@ create function cadmium_set_calendar_feed(p_user text, p_hash text) returns inte
   returning calendar_feed_generation;
 $$;
 
+-- The user whose feed has the secret's hash, while the user may receive calendar entries.
 create function cadmium_user_by_feed(p_hash text) returns jsonb language sql stable as $$
-  select to_jsonb(u.*) from users u where calendar_token_hash = p_hash and status = 'active';
+  select to_jsonb(u.*) from users u where calendar_token_hash = p_hash and cadmium_user_active(u.id);
 $$;
 
 -- Access -------------------------------------------------------------------------------------------
@@ -188,20 +181,14 @@ alter table rsvps enable row level security;
 alter table scheduler_marks enable row level security;
 
 do $$
-declare
-  f regprocedure;
 begin
-  for f in select p.oid::regprocedure from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-           where n.nspname = 'public' and p.proname like 'cadmium\_%' loop
-    execute format('revoke execute on function %s from public', f);
-    if exists (select 1 from pg_roles where rolname = 'anon') then
-      execute format('revoke execute on function %s from anon, authenticated', f);
-    end if;
-    if exists (select 1 from pg_roles where rolname = 'service_role') then
-      execute format('grant execute on function %s to service_role', f);
-    end if;
-  end loop;
   if exists (select 1 from pg_roles where rolname = 'anon') then
     revoke all on scheduled_sessions, session_exceptions, rsvps, scheduler_marks from anon, authenticated;
   end if;
 end $$;
+
+select cadmium_service_only(array['cadmium_session_json', 'cadmium_put_session', 'cadmium_get_session',
+  'cadmium_set_exception', 'cadmium_rsvp', 'cadmium_schedules', 'cadmium_user_instances',
+  'cadmium_schedule_mark', 'cadmium_scheduler_snapshot', 'cadmium_expired_deadlines',
+  'cadmium_set_pause_requested', 'cadmium_pause_requested', 'cadmium_reminder_marks',
+  'cadmium_set_calendar_feed', 'cadmium_user_by_feed']);

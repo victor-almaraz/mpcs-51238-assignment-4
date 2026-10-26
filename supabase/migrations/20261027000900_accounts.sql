@@ -1,5 +1,6 @@
--- Settings, export, and deletion (app-flow.md, Settings; api.md, Users, Data export; data-model.md,
--- Push subscription, Deletion). Access as in the store migration: service role only.
+-- Accounts: get_me, push subscriptions, the data export, deletion, and the purge
+-- (docs/spec/docs/app-flow.md, Settings; docs/spec/docs/api.md, Users, Data export;
+-- docs/spec/docs/data-model.md, Push subscription, Deletion).
 
 create table push_subscriptions (
   id text primary key,
@@ -13,19 +14,19 @@ create table push_subscriptions (
 );
 create index push_subscriptions_by_user on push_subscriptions (user_id);
 
--- Holds for reports of apparently illegal content (data-model.md, Deletion); operators set them.
-alter table users add column held_at timestamptz, add column hold_reason text;
-alter table characters add column held_at timestamptz, add column hold_reason text;
-alter table campaigns add column held_at timestamptz, add column hold_reason text;
-
 -- Users ---------------------------------------------------------------------------------------------
 
--- Updates the fields a user edits in Settings; null leaves a field unchanged.
-create function cadmium_update_me(p_id text, p_display_name text, p_timezone text, p_reminders jsonb) returns jsonb language sql as $$
-  update users set display_name = coalesce(p_display_name, display_name), timezone = coalesce(p_timezone, timezone),
-                   reminders = coalesce(p_reminders, reminders)
-   where id = p_id and status = 'active'
-  returning to_jsonb(users.*);
+-- The ids get_me lists, newest first: the user's characters, the campaigns they belong to that are not
+-- archived, and the campaigns they author; none of them deleted.
+create function cadmium_user_ids(p_user text) returns jsonb language sql stable as $$
+  select jsonb_build_object(
+    'character_ids', coalesce((select jsonb_agg(id order by created_at desc, id desc) from characters
+                                where owner_id = p_user and deleted_at is null), '[]'::jsonb),
+    'active_campaign_ids', coalesce((select jsonb_agg(c.id order by c.created_at desc, c.id desc)
+                                       from campaigns c join campaign_members m on m.campaign_id = c.id and m.user_id = p_user
+                                      where c.deleted_at is null and not c.archived), '[]'::jsonb),
+    'authored_campaign_ids', coalesce((select jsonb_agg(id order by created_at desc, id desc) from campaigns
+                                        where author_id = p_user and deleted_at is null), '[]'::jsonb));
 $$;
 
 -- The recovery stage: the account closes and is hidden from members.
@@ -39,24 +40,6 @@ create function cadmium_restore_account(p_id text) returns jsonb language sql as
   update users set status = 'active', deletion_requested_at = null
    where id = p_id and status = 'closing' and deletion_requested_at > now() - interval '30 days'
   returning to_jsonb(users.*);
-$$;
-
--- Campaigns show only active members: closing accounts are hidden (data-model.md, Deletion).
-create or replace function cadmium_campaign(p_id text) returns jsonb language sql stable as $$
-  select jsonb_build_object(
-    'id', c.id, 'title', c.title, 'description', c.description, 'author_id', c.author_id,
-    'system', c.system, 'system_versions', c.system_versions, 'modules', c.modules,
-    'archived', c.archived, 'invite_link_code', c.invite_link_code, 'created_at', c.created_at,
-    'materials', coalesce((select jsonb_agg(jsonb_build_object('kind', m.kind, 'id', m.bundle_id, 'version', m.bundle_version)
-                                            order by m.position)
-                             from campaign_materials m where m.campaign_id = c.id), '[]'::jsonb),
-    'members', coalesce((select jsonb_agg(jsonb_build_object('user_id', m.user_id, 'display_name', u.display_name, 'role', m.role)
-                                          order by m.role, m.joined_at, m.user_id)
-                           from campaign_members m join users u on u.id = m.user_id and u.status = 'active'
-                          where m.campaign_id = c.id), '[]'::jsonb),
-    'instance_ids', coalesce((select jsonb_agg(i.id order by i.created_at, i.id)
-                                from instances i where i.campaign_id = c.id and i.deleted_at is null), '[]'::jsonb))
-  from campaigns c where c.id = p_id and c.deleted_at is null;
 $$;
 
 -- Push subscriptions ---------------------------------------------------------------------------------
@@ -88,17 +71,19 @@ $$;
 
 -- Export --------------------------------------------------------------------------------------------
 
--- Every record that refers to the user (api.md, Data export), grouped by export file.
+-- Every record that refers to the user (docs/spec/docs/api.md, Data export), grouped by export file.
+-- Operator and moderation fields (the operator flag, suspension, holds, removal) and secrets are left
+-- out.
 create function cadmium_export_user(p_user text) returns jsonb language sql stable as $$
   with authored as (select id from campaigns where author_id = p_user),
        instances_authored as (select id from instances where campaign_id in (select id from authored))
   select jsonb_build_object(
-    'profile', (select to_jsonb(u.*) - 'calendar_token_hash' from users u where u.id = p_user),
+    'profile', (select to_jsonb(u.*) - array['calendar_token_hash', 'operator', 'suspended_at', 'held_at', 'hold_reason', 'hold_direct'] from users u where u.id = p_user),
     'push_subscriptions', coalesce((select jsonb_agg(jsonb_build_object('label', label, 'created_at', created_at)) from push_subscriptions where user_id = p_user), '[]'::jsonb),
-    'characters', coalesce((select jsonb_agg(to_jsonb(c.*) order by c.created_at) from characters c where c.owner_id = p_user), '[]'::jsonb),
+    'characters', coalesce((select jsonb_agg(to_jsonb(c.*) - array['held_at', 'hold_reason', 'removed_at'] order by c.created_at) from characters c where c.owner_id = p_user), '[]'::jsonb),
     'adventures', coalesce((select jsonb_agg(b.data) from bundles b where b.origin = 'author' and b.publisher_id = p_user), '[]'::jsonb),
     'campaigns', coalesce((select jsonb_agg(jsonb_build_object(
-        'campaign', to_jsonb(c.*),
+        'campaign', to_jsonb(c.*) - array['held_at', 'hold_reason', 'removed_at'],
         'members', (select coalesce(jsonb_agg(to_jsonb(m.*)), '[]'::jsonb) from campaign_members m where m.campaign_id = c.id),
         'materials', (select coalesce(jsonb_agg(to_jsonb(m.*)), '[]'::jsonb) from campaign_materials m where m.campaign_id = c.id),
         'invitations', (select coalesce(jsonb_agg(to_jsonb(i.*) - 'token_hash'), '[]'::jsonb) from invitations i where i.campaign_id = c.id),
@@ -124,11 +109,14 @@ $$;
 
 -- Purge ---------------------------------------------------------------------------------------------
 
--- Accounts and campaigns whose deletion was requested more than 90 days before p_now, not held.
+-- Accounts and campaigns whose deletion was requested more than 90 days before p_now, not held and, for
+-- a campaign, not authored by a held user.
 create function cadmium_purge_due(p_now timestamptz) returns jsonb language sql stable as $$
   select jsonb_build_object(
     'users', coalesce((select jsonb_agg(id) from users where status in ('closing', 'deleted') and deletion_requested_at <= p_now - interval '90 days' and held_at is null), '[]'::jsonb),
-    'campaigns', coalesce((select jsonb_agg(id) from campaigns where deleted_at <= p_now - interval '90 days' and held_at is null), '[]'::jsonb));
+    'campaigns', coalesce((select jsonb_agg(c.id) from campaigns c
+                            where c.deleted_at <= p_now - interval '90 days' and c.held_at is null
+                              and not exists (select 1 from users u where u.id = c.author_id and u.held_at is not null)), '[]'::jsonb));
 $$;
 
 -- Erases a campaign with its instances, their records, schedules, and invitations; characters of
@@ -143,8 +131,8 @@ begin
   delete from campaigns where id = p_id;
 end $$;
 
--- Erases an account and what it owns (data-model.md, Deletion: purging an account). The Clerk user is
--- deleted by the caller through Clerk's API.
+-- Erases an account and what it owns (docs/spec/docs/data-model.md, Deletion: purging an account). The
+-- Clerk user is deleted by the caller through Clerk's API.
 create function cadmium_purge_user(p_user text) returns void language plpgsql as $$
 declare
   c text;
@@ -180,25 +168,43 @@ begin
   delete from users where id = p_user;
 end $$;
 
+-- The purge's work on characters, drafts, and images: characters and drafts deleted more than 90 days
+-- ago, then uploaded images no record refers to. None is erased while it or its owner (the uploader, for
+-- an image) is held. Returns the counts.
+create function cadmium_purge_content(p_now timestamptz) returns jsonb language plpgsql as $$
+declare
+  c integer;
+  d integer;
+  a integer;
+begin
+  delete from characters ch
+   where ch.deleted_at <= p_now - interval '90 days' and ch.held_at is null
+     and not exists (select 1 from users u where u.id = ch.owner_id and u.held_at is not null);
+  get diagnostics c = row_count;
+  delete from material_drafts md
+   where md.deleted_at <= p_now - interval '90 days'
+     and not exists (select 1 from users u where u.id = md.owner_id and u.held_at is not null);
+  get diagnostics d = row_count;
+  delete from assets
+   where jsonb_array_length(bundle_refs) = 0 and held_at is null
+     and not exists (select 1 from characters where portrait_asset = assets.hash)
+     and not exists (select 1 from users u where u.id = assets.uploader_id and u.held_at is not null);
+  get diagnostics a = row_count;
+  return jsonb_build_object('characters', c, 'drafts', d, 'assets', a);
+end $$;
+
 -- Access --------------------------------------------------------------------------------------------
 
 alter table push_subscriptions enable row level security;
 
 do $$
-declare
-  f regprocedure;
 begin
-  for f in select p.oid::regprocedure from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-           where n.nspname = 'public' and p.proname like 'cadmium\_%' loop
-    execute format('revoke execute on function %s from public', f);
-    if exists (select 1 from pg_roles where rolname = 'anon') then
-      execute format('revoke execute on function %s from anon, authenticated', f);
-    end if;
-    if exists (select 1 from pg_roles where rolname = 'service_role') then
-      execute format('grant execute on function %s to service_role', f);
-    end if;
-  end loop;
   if exists (select 1 from pg_roles where rolname = 'anon') then
     revoke all on push_subscriptions from anon, authenticated;
   end if;
 end $$;
+
+select cadmium_service_only(array['cadmium_user_ids', 'cadmium_request_deletion', 'cadmium_restore_account',
+  'cadmium_add_push', 'cadmium_list_push', 'cadmium_remove_push', 'cadmium_push_result',
+  'cadmium_export_user', 'cadmium_purge_due', 'cadmium_purge_campaign', 'cadmium_purge_user',
+  'cadmium_purge_content']);

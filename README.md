@@ -52,11 +52,11 @@ The server reads these variables, from `.env.local` locally and from the Vercel 
 
 ### Database schema
 
-The migrations in `supabase/migrations/` create the store's tables and functions, and restrict both to the service role. Apply them in file-name order by pasting each file into the Supabase SQL Editor. Each file applies once; `/api/health` then reports `"status": "ok"`.
+The migrations in `supabase/migrations/` create the store's tables and functions, and restrict both to the service role. To build the database, run `pnpm db:fresh` and paste the `supabase/fresh.sql` it writes into the Supabase SQL Editor: it deletes every Cadmium table and function, then applies every migration in file-name order, in one transaction. `/api/health` then reports `"status": "ok"`.
 
 ### Realtime
 
-Instance and user messages travel on Supabase Realtime private channels, `instance:{id}` and `user:{id}`, admitted by the policy in the fifth migration. Browsers authenticate with their Clerk session token, which Supabase accepts through the Clerk third-party auth integration (Authentication, Third-party auth in the Supabase dashboard, with Supabase enabled under Integrations in the Clerk dashboard).
+Instance and user messages travel on Supabase Realtime private channels, `instance:{id}` and `user:{id}`, admitted by the policy in `supabase/migrations/20261027001100_realtime.sql`. Browsers authenticate with their Clerk session token, which Supabase accepts through the Clerk third-party auth integration (Authentication, Third-party auth in the Supabase dashboard, with Supabase enabled under Integrations in the Clerk dashboard).
 
 ### Materials
 
@@ -90,6 +90,7 @@ Clerk keeps the `users` table current through a webhook endpoint at `https://<ho
 | `pnpm screens` | Screenshot every demo screen, wide and narrow, into `screenshots/` with the installed Chrome (run `pnpm demo` first) |
 | `pnpm audit:ui` | Design and accessibility audit of every demo screen, and of the editor's arc graph and YAML view, at 1280 and 390 px into `screenshots/audit.md` (run `pnpm demo` first); `--scheme dark` for the dark theme, `--screens REGEX` for the screens whose path matches; it checks spacing too, and exits 1 when it finds anything |
 | `pnpm db:fresh` | Write `supabase/fresh.sql`: delete every Cadmium table and function and apply every migration, in one transaction |
+| `pnpm schema:diff OLD_DIR [NEW_DIR]` | Compare the schema two migration folders build (tables, columns, constraints, indexes, functions and their access, triggers, row-level security, policies); prints each difference and exits 1 when there is any |
 
 The Content Compiler's command line follows [`spec/README.md`](docs/spec/spec/README.md#compiler-interface). pnpm prints the script line on stdout, so run `build` directly when its output is piped:
 
