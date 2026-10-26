@@ -72,6 +72,14 @@ Observation, not changed:
 - **S-15: `CALENDAR_FEED_KEY` is set** in Vercel, so feed secrets no longer derive from the service role key.
 - **Realtime: private channels only** is set in the Supabase dashboard, so no one can open a public channel on an `instance:` or `user:` topic; every subscription passes `realtime_may_receive`. A play page that connects in production (no "Reconnecting" after a few seconds) also confirms the Clerk third-party auth integration.
 
+## Follow-up on `cleanup-review` (2026-10-25)
+
+A `/security-review` of the branch found no vulnerability in its new code. One finding came from re-checking S-11 against the branch: it ships `monaco-editor` to the browser for Edit as YAML, so S-11's premise, that no module imports it, no longer holds.
+
+| ID | Severity | Location | Scenario | Fix |
+|---|---|---|---|---|
+| S-16 | Medium | `monaco-editor` 0.55.1, `esm/vs/base/browser/dompurify/dompurify.js`; `patches/monaco-editor@0.55.1.patch` | Monaco sanitizes the Markdown of hovers, completions, and other widgets with its own copy of DOMPurify 3.2.7, older than the 3.4.15 that S-11's advisories cover. The `dompurify` override reaches only the npm package, which Monaco declares but does not import, so `pnpm audit` reported nothing while the browser bundle carried the old sanitizer. | A pnpm patch replaces the bundled copy with `export { default } from 'dompurify'`, so Monaco uses the npm package at 3.4.17 or later through the override. Verified in demo mode: the loaded chunks contain DOMPurify 3.4.17 only, and Monaco's schema hovers still render. Updating `monaco-editor` past 0.55 needs a new check of monaco-yaml's worker (see the `monaco-worker-manager` patch) and of this one. |
+
 ## Remaining for the user
 
 - **Merge** this branch into `master`.

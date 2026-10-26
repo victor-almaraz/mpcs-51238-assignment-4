@@ -5,4 +5,5 @@ allowBuilds:
 overrides: { dompurify: ">=3.4.17" }
 
 patchedDependencies:
+  monaco-editor@0.55.1: patches/monaco-editor@0.55.1.patch
   monaco-worker-manager@2.0.1: patches/monaco-worker-manager@2.0.1.patch
