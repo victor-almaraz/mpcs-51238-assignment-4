@@ -117,7 +117,7 @@ export function questCases(system: RulesSystem): void {
         expect(damageOf(15, creature(system, { template: "minion", damage: 3 }))).toBe(3);
       });
 
-      // SPEC_ISSUES.md#quest-npc-tough-choice: an NPC deals half damage, rounded up, on a tough choice.
+      // quest.md, "Attacks": a creature deals half damage, rounded up, on a tough choice.
       it("deal half a creature's damage, rounded up, on its tough choice", () => {
         expect([20, 15, 8].map((r) => damageOf(r, creature(system, { template: "boss" })))).toEqual([8, 4, 2]);
         expect(damageOf(8, creature(system, { template: "commoner" }))).toBe(1);
@@ -226,7 +226,7 @@ export function questCases(system: RulesSystem): void {
     });
 
     describe("resting", () => {
-      // SPEC_ISSUES.md#quest-regroup: a regroup restores HP up to half the maximum (Creators Resource).
+      // quest.md, "Resting": a regroup restores HP up to half the maximum.
       it("regains HP up to half the maximum on a short rest and all of it on a long rest, leaving AP unchanged", () => {
         const hurt = character(system, "c_1", { hp: { value: 1, max: 10 }, ap: 3 });
         expect(system.rest(hurt, "short").updates.c_1).toMatchObject({ hp: { value: 5, max: 10 }, ap: 3 });
@@ -272,7 +272,7 @@ export function questCases(system: RulesSystem): void {
         ["minion", 4],
         ["boss", 10],
       ])("instantiates a %s with %i HP", (template, max) => {
-        // SPEC_ISSUES.md#quest-npc-attack: the template's attack rating is the default damage.
+        // quest.md, "Creatures and items": the template's attack rating in `npc_attack` is the default damage.
         const attack = { commoner: 1, minion: 2, boss: 4 }[template as string];
         expect(creature(system, { template }).sheet).toEqual({ template, hp: { value: max, max }, damage: attack, status: "active" });
       });

@@ -163,7 +163,21 @@ A timeout of 0 disables the timer; the round then waits for all participants or 
 
 Each instance records a seed and an RNG algorithm identifier. State contains an RNG counter. The engine derives every random value from `(seed, counter)` and increments the counter per value drawn.
 
-Replaying an instance's events from its initial state with the same bundles, rules system version, and RNG algorithm MUST reproduce the stored state.
+Event payloads do not carry enough to rebuild state, so every commit also records the input that produced it, in the same atomic write (see [data-model.md](data-model.md#commit)):
+
+| Input | Engine call |
+|---|---|
+| `start`: the seed and the joining characters | Instance start; version 1 |
+| `call`: actor, tool, and arguments | `submit` |
+| `advance` | `advance` |
+| `join`: a character | A character joining a paused instance |
+| `leave`: a character id | A character leaving the instance |
+| `session_end`: the session and occurrence | `session_end` for each character |
+| `restore`: `to_version` and reason | The operator's `restore_instance` |
+
+Replay starts the instance again from the `start` commit and re-runs every later input in version order, with the same bundles, rules system version, and RNG algorithm. Each commit's events MUST equal the recorded events, and the final state MUST equal the stored state; replay fails at the first version whose input is rejected or whose events differ. A `restore` commit emits `state_restored` and takes the state replayed up to its `to_version`. Events and state read back from storage are compared with object keys sorted, because storage does not keep key order.
+
+The command-line harness log holds the same records, one JSON line per commit: `{ version, start: { seed, characters }, events }` for version 1, then `{ version, input, events }` with `input` as `{ actor, tool, args }` or `{ advance: true }`.
 
 ## Model adapters
 

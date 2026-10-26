@@ -126,7 +126,7 @@ function only(where: string, value: unknown, allowed: readonly string[]): Obj {
 
 const ENTITY_DEFAULTS = ["footprint", "obstructs", "cover", "open", "uses"];
 
-// SPEC_ISSUES.md#bundle-format: fields are those of the pack schemas plus the compiler's additions.
+// Bundle fields (spec/README.md, "Bundle"): those of the pack schemas plus the compiler's additions.
 /** Loads an adventure bundle, failing on unknown fields at every level the compiler writes. */
 export function loadAdventureBundle(json: unknown): AdventureBundle {
   const b = only("bundle", json, ["kind", "format_version", "id", "version", "namespace", "manifest", "flags", "arcs", "locations", "npcs", "entities", "assets"]);

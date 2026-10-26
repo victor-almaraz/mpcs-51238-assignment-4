@@ -26,7 +26,7 @@ Material packs (settings and adventures) MUST NOT add rule logic. They supply da
 
 ## Random numbers
 
-All randomness derives from the instance seed and `state.rng_counter`. Each draw uses the current counter and increments it by 1. The algorithm identifier `splitmix64_v1` is defined as:
+All randomness derives from the instance seed and `state.rng_counter`. The instance seed is an integer in `[0, 2^53 − 1]`, drawn uniformly by the server when the instance is created, so that it is exact as a JSON number and fits a signed 64-bit column. Seeds derived inside the engine and the generator, such as location seeds, are unsigned 64-bit values and are never stored as JSON numbers. Each draw uses the current counter and increments it by 1. The algorithm identifier `splitmix64_v1` is defined as:
 
 ```
 draw(seed, counter):
@@ -37,6 +37,8 @@ draw(seed, counter):
 ```
 
 A die with `n` faces takes draws until a value `v < floor(2^64 / n) * n` appears, then returns `(v mod n) + 1`. Rejected draws consume counters. A dice expression `NdM+K` rolls N dice in sequence and adds K. Selections "by RNG" from a list of length `n` use a die with `n` faces and take the item at index `result - 1`.
+
+A *weighted selection* from a table rolls one die whose number of faces is the sum of the entries' `weight`s, and takes the first entry, in table order, at which the running total of weights reaches the result. A *table draw* of `picks` entries first rolls `picks` when it is a dice expression, then makes that many weighted selections. Each selected entry yields its `ref` `count` times, default 1; a `count` given as a dice expression is rolled immediately after the entry is selected. The generator and the engine use the same weighted selection.
 
 The engine passes one `Rng` through each resolution, including every call into the rules system, and stores the final counter. Draw order is therefore the order of calls in this document, in event order, and the order of draws inside each system function.
 
@@ -113,7 +115,7 @@ Every entity in a location occupies the cells of its footprint: `[width, height]
 | `container`, `fixture` | Its footprint | Nothing |
 | `item` | One cell | Nothing |
 
-Obstacles, containers, and fixtures override the default with their `obstructs` field; doors set what they obstruct while closed. A cell is *open for a mover* when its terrain does not obstruct movement, no non-creature entity on it obstructs movement, and no creature of the other side occupies it. A cell is *free* when it is open and no other creature occupies it. Movers pass through allies' cells but stop only on free cells. Entities with the `hidden` condition still obstruct movement; they do not obstruct sight for those they are hidden from.
+Obstacles, containers, and fixtures override the default with their `obstructs` field; doors set what they obstruct while closed. A cell is *open for a mover* when its terrain does not obstruct movement, no non-creature entity on it obstructs movement, and no creature of the other side occupies it. A cell is *free* when it is open and no other creature occupies it. Movers pass through allies' cells but stop only on free cells. A creature or character whose sheet status is `dead` stays at its anchor cell, keeps what it carries, and occupies no cells: it obstructs no movement, and its cells count as free for others. The engine never draws a creature template's `loot`. Entities with the `hidden` condition still obstruct movement; they do not obstruct sight for those they are hidden from.
 
 ### Rooms
 
@@ -121,7 +123,7 @@ A room is a labelled set of cells given as rectangles. Every cell that is not `v
 
 ### Containers
 
-A container holds items. It has no open or closed state.
+A container holds items. It has no open or closed state. Its template's `contents` are drawn whenever the engine creates the container entity: at instance start, by `spawn`, or as a structure's `remains`. Each drawn item becomes an item entity held by the container, listed in its `contents` in state.
 
 | Kind of container | Contents | `take` | `give` |
 |---|---|---|---|
@@ -152,7 +154,7 @@ Distance uses the rules system's metric, `SPATIAL.metric`:
 | `chebyshev` | `max(abs(x1 − x2), abs(y1 − y2))` | Eight directions |
 | `manhattan` | `abs(x1 − x2) + abs(y1 − y2)` | Four directions |
 
-The distance between two entities is the smallest distance between any cell of one footprint and any cell of the other. Two cells are *adjacent* when their distance is 1, except that a diagonal pair is not adjacent when either of the two cells it passes between obstructs movement. Movement never cuts a blocked corner.
+The distance between two entities is the smallest distance between any cell of one footprint and any cell of the other. Two cells are *adjacent* when their distance is 1, except that a diagonal pair is not adjacent when either of the two cells it passes between obstructs movement. Movement never cuts a blocked corner: a mover with a footprint larger than `[1, 1]` takes a diagonal step only when, for every cell of its footprint, neither of the two cells that cell passes between obstructs movement.
 
 ### Line of sight
 
@@ -219,7 +221,7 @@ The engine finds the cheapest path with Dijkstra's algorithm:
 
 1. Start with the mover's cell at cost 0. The frontier is ordered by `(cost, y, x)`, ascending.
 2. Take the first cell from the frontier. If it is a goal, stop.
-3. For each neighbour in the order north, east, south, west, north-east, south-east, south-west, north-west (the last four only under `chebyshev`), that is adjacent and open for the mover with its whole footprint: the new cost is the current cost plus the neighbour's terrain cost. Record the current cell as the neighbour's predecessor only when the new cost is strictly lower than any recorded cost, and add the neighbour to the frontier.
+3. For each neighbour in the order north, east, south, west, north-east, south-east, south-west, north-west (the last four only under `chebyshev`), that the whole footprint can step to without cutting a blocked corner and that is open for the mover with its whole footprint: the new cost is the current cost plus the terrain cost of the neighbour, the new anchor cell. Record the current cell as the neighbour's predecessor only when the new cost is strictly lower than any recorded cost, and add the neighbour to the frontier.
 4. Repeat from step 2 until the frontier is empty, in which case there is no path.
 
 The path is the chain of predecessors from the goal. When several goal cells are given, the first goal taken from the frontier wins: lowest cost, then lowest `y`, then lowest `x`. The result is unique for a given state.
@@ -242,7 +244,7 @@ A mover walks its path one cell at a time, spending each cell's terrain cost.
 | `exploration` | The whole path |
 | `combat` | Up to the system's `speed` for the mover |
 
-The mover stops on the last free cell it reaches within its allowance. In exploration, it also stops early on the first cell of a room that is not `visited`, and on the cell where a hostile creature first becomes visible that was not visible when the move began. The `moved` event records the reason.
+The walk ends when the path is used up, when the next cell would exceed the allowance, or, in exploration, early: for a character, on the first cell of a room, other than the room where the move began, that is not `visited`, and for any mover, on the cell where a hostile creature first becomes visible that was not visible when the move began. The mover then stands on the last free cell of the walk, which is the cell where the walk ended when that cell is free and otherwise the last free cell before it. The `moved` event records the reason the walk ended in `stopped`, and `steps` counts the cells up to the cell the mover stands on.
 
 In exploration, a path MAY pass a closed, unlocked door: the mover opens it on reaching it and emits `door_opened`. In combat, opening a door takes an `interact` action.
 
@@ -299,6 +301,18 @@ Map `hall`:
 
 Direction labels in views and parser context use the offset `(dx, dy)` from the actor to the target: `here` when both are 0; `east` or `west` when `abs(dx) ≥ 2 × abs(dy)`; `north` or `south` when `abs(dy) ≥ 2 × abs(dx)`; otherwise the diagonal, such as `south-east`. `(3, −1)` is `east`, `(2, 2)` is `south-east`, `(1, 3)` is `south`.
 
+## Instance start
+
+Instance start builds the initial state from the instance seed, the pinned bundles, and the joining characters, with `state.rng_counter` at 0:
+
+1. Build every location of the adventure in ascending location id: compile an authored location's map, or generate a generated location (see [generation.md](generation.md)).
+2. Place every location's contents, locations in ascending location id. Within a location, legend placements come first, in row-major order, then the `contents` entries in list order. An entry with `at` is placed at that cell; an entry with `room` places `count` entities, rolled when it is a dice expression, each at one of the room's [placement cells](generation.md#7-population) chosen by RNG. A container's contents are drawn when it is placed.
+3. Set every flag that is not character-scoped, and every arc stage, to its initial value.
+4. Place the characters in ascending id on the start room's free cells in row-major order, creating each character's carried items and drawing each setting's `starting_items`, and mark the start room `visited`. When the start room has no free cell for a character, instance start fails with `requirement_unmet`.
+5. Apply the adventure's start effects, start the first round, and run the processing that follows every action (see [Action resolution](#action-resolution)).
+
+An entity created without an id, at instance start or by an effect, takes the next of the ids `_e1`, `_e2`, and so on, counted by `state.next_entity`. Ascending location id fixes the order of entity ids and of random draws independently of how a stored bundle orders its keys.
+
 ## Items
 
 Items MAY have `uses`. An item with `uses: 0` cannot be used. Items with `uses: null` are unlimited. Carrying capacity is decided by the system's `can_carry`, which the engine calls with the inventory a character would hold after any take, give, drop, or use; a change it refuses fails with `requirement_unmet`.
@@ -329,7 +343,7 @@ A round cannot close while a choice is pending. When the round or turn timeout e
 
 The instance mode is `exploration` or `combat`.
 
-Combat starts when an `attack` targets a creature, or when the effect `start_combat` is applied. The room where it starts becomes the first room of the *combat area*. A room joins the combat area when a combatant enters it.
+Combat starts when an `attack` targets a creature, or when the effect `start_combat` is applied. The room where it starts becomes the first room of the *combat area*. Combatants are entities, never characters. After each resolved action, the room of every combatant joins the combat area. Characters never extend it, so a party can leave the combat area. A `start_combat` effect applied during combat adds the actor's room to the combat area.
 
 An entity is *hostile* when its template, or its NPC through `disposition: hostile`, carries the tag `hostile`. The effect `set_hostile` adds or removes the tag on one entity for the rest of the instance. A creature without the tag never becomes a combatant, even when attacked.
 
@@ -343,7 +357,7 @@ Mode changes take effect at the start of the next round. The current round compl
 
 All play proceeds in rounds. The time at which an input arrives never determines the order in which actions resolve. The engine computes resolution order from the rules system's ordering policy for the round's mode.
 
-A round includes every character in the instance whose sheet status is `active`. In combat, a round also includes every combatant entity (see [Modes](#modes)). Characters outside the combat area take part in combat rounds with exploration tools only.
+A round includes every character in the instance whose sheet status is `active`. In combat, a round also includes every combatant entity (see [Modes](#modes)). The *exploration-only tools* are `interact`, `search`, `take`, `drop`, `give`, and `rest`. In a combat round, a character in the combat area cannot use them: they fail with `invalid_in_mode`. A character outside the combat area takes part in combat rounds with every tool, including the exploration-only tools, and moves with the combat allowance.
 
 Each round proceeds as follows:
 
@@ -392,7 +406,7 @@ Sort keys:
 |---|---|---|
 | `side` | `first`: `characters` or `entities` | Participant side. |
 | `initiative` | none | Position in the list returned by the system's `initiative` function. |
-| `tool_priority` | `tools` | Position of the declared tool in the list. Valid only with `simultaneous`. |
+| `tool_priority` | `tools` | Position of the declared tool in the list; a tool absent from the list sorts after every listed tool. Valid only with `simultaneous`. |
 
 The engine appends ascending participant id as a final key, so every order is total. No sort key depends on submission time.
 
@@ -444,27 +458,28 @@ Effects are the only way materials change state. Each effect is a single-key obj
 
 Verbs on containers, fixtures, obstacles, and doors, item `use` effects, and ability effects apply the setting effects: every effect in this table except `set_flag`, `add_flag`, `set_stage`, `end_campaign`, and `reveal` of secrets. This holds for templates in adventure packs too. Plot effects belong in triggers, for example a trigger on `interacted` with the verb.
 
-| Effect | Arguments | Result |
-|---|---|---|
-| `damage` | `target`, `dice` or `amount`, `type?` | Roll the amount and call the system's `harm` with the type. |
-| `heal` | `target`, `dice` or `amount` | Call the system's `heal`. |
-| `apply_condition` | `target`, `condition`, `duration?` | Add a condition. |
-| `remove_condition` | `target`, `condition` | Remove a condition. |
-| `give_item` / `remove_item` | `target`, `ref` | Change inventory. `give_item` respects `can_carry`; an item that cannot be carried drops to the target's cell. |
-| `drop_item` | `target`, `ref` | Move a carried item to the target's cell. |
-| `spawn` | `ref`, `room`, `at?`, `id?` | Create an entity at `at`, or at a free cell of the room chosen by RNG from its free cells in row-major order. Creature sheets come from `instantiate`. |
-| `despawn` | `target` | Remove an entity. |
-| `move_entity` | `target`, `room`, `at?` | Relocate a creature, as for `spawn`. No path is needed. |
-| `open_door` / `close_door` | `door` | Open and unlock, or close, a door. `close_door` has no effect while the door's cell is occupied. |
-| `set_light` | `target`, `lit` | Light or extinguish a light source. |
-| `set_room_light` | `room`, `level` | Set a room's ambient light to `bright`, `dim`, or `dark`. |
-| `set_flag` / `add_flag` | `flag`, `value`, `target?` | Change a flag, clamped to its range. For a character-scoped flag, change the acting character's value, or with `target: room` every character's in the actor's room. `target` is valid only on character-scoped flags. Adventures only. |
-| `set_hostile` | `target`, `hostile` | Add or remove the `hostile` tag on an entity, keeping its cell, sheet, and conditions. |
-| `set_stage` | `arc`, `stage` | Change an arc stage. Adventures only. |
-| `reveal` | `target` or `secret` | Remove `hidden`, or release a secret to the narrator. Secrets: adventures only. |
-| `start_combat` | none | Enter combat in the actor's room. |
-| `end_campaign` | `ending` | End the instance with the named ending. Adventures only. |
-| `if` | `when` (requirement), `then` (effects), `else?` (effects) | Conditional effects. |
+| Effect | Arguments | Result | Events |
+|---|---|---|---|
+| `damage` | `target`, `dice` or `amount`, `type?` | Roll the amount and call the system's `harm` with the type. | The system's, such as `damaged` and `died`; `destroyed` for a structure |
+| `heal` | `target`, `dice` or `amount` | Call the system's `heal`. | The system's, such as `healed` |
+| `apply_condition` | `target`, `condition`, `duration?` | Add a condition. Applying a condition the target already has resets its duration. | `condition_applied` |
+| `remove_condition` | `target`, `condition` | Remove a condition. | `condition_removed`, when the target had the condition |
+| `give_item` | `target`, `ref` | Create an item and give it to a target character. `give_item` respects `can_carry`; an item that cannot be carried stays at the target's cell. | `entity_spawned` |
+| `remove_item` | `target`, `ref` | Remove the target character's first carried item with that ref from the instance. | `entity_despawned` |
+| `drop_item` | `target`, `ref` | Move the target character's first carried item with that ref to the target's cell. | `item_dropped`, with the target as `actor` |
+| `spawn` | `ref`, `room`, `at?`, `id?` | Create an entity at `at`, or at a free cell of the room chosen by RNG from its free cells in row-major order. Creature sheets come from `instantiate`. | `entity_spawned` |
+| `despawn` | `target` | Remove an entity. | `entity_despawned` |
+| `move_entity` | `target`, `room`, `at?` | Relocate a creature, as for `spawn`. No path is needed. | `moved`, with `steps: 0` and `stopped: arrived` |
+| `open_door` / `close_door` | `door` | Open and unlock, or close, a door. `close_door` has no effect while the door's cell is occupied. | `door_opened` or `door_closed`, without an actor, when the door changes |
+| `set_light` | `target`, `lit` | Light or extinguish a light source. | `light_changed`, without an actor |
+| `set_room_light` | `room`, `level` | Set a room's ambient light to `bright`, `dim`, or `dark`. | `room_light_changed` |
+| `set_flag` / `add_flag` | `flag`, `value`, `target?` | Change a flag, clamped to its range. For a character-scoped flag, change the acting character's value, or with `target: room` every character's in the actor's room. `target` is valid only on character-scoped flags. Adventures only. | `flag_set`, once per value changed |
+| `set_hostile` | `target`, `hostile` | Add or remove the `hostile` tag on an entity, keeping its cell, sheet, and conditions. | None |
+| `set_stage` | `arc`, `stage` | Change an arc stage. Adventures only. | `stage_set` |
+| `reveal` | `target` or `secret` | Remove `hidden`, or release a secret to the narrator. Secrets: adventures only. | `revealed`, for a target only when it was hidden |
+| `start_combat` | none | Enter combat in the actor's room, or, during combat, add the actor's room to the combat area. | `combat_started`, when the instance enters combat |
+| `end_campaign` | `ending` | End the instance with the named ending. Adventures only. | `instance_ended` |
+| `if` | `when` (requirement), `then` (effects), `else?` (effects) | Conditional effects. | Those of the applied effects |
 
 `target` accepts an entity id, `actor`, `target` (the tool call's target), or `room` (every creature in the actor's room). A `spawn` or `move_entity` whose room has no free cell has no effect.
 
@@ -478,20 +493,20 @@ When a structure's status leaves `active`, the engine emits `destroyed`, removes
 |---|---|---|
 | `move` | `to_id` is a room, door, link, or visible entity, or `away_from_id` is a visible creature; a path exists; not blocked by condition | Walk as in [Movement](#movement); travel the link when `to_id` is a link and the mover reaches it; set rooms `visited`; emit `moved`. For `away_from_id`, the goal is the free cell within the allowance farthest from that creature, ties as for `fleeing`. |
 | `attack` | target visible; in reach, or reachable by approach; item held if given | Call `attack(actor, target, weapon, situation, rng)`; start combat if not in combat and the target is a creature. |
-| `ability` | ability known; target valid for target type and in range | Call `pay_cost` with the ability's `system_stats.cost`; if the system marks the ability as rolled (see each system's document), call `check`; on a passing outcome, apply effects. |
+| `ability` | ability known; target valid for target type and in range | Call `pay_cost` with the ability's `system_stats.cost` and emit `ability_used`. When `system_stats.roll` is `true`, the ability is *rolled*: call `check` with the empty check specification `{}`, apply its resolution, apply the ability's effects on a passing outcome, then offer the resolution's pending choice, if any. An ability that is not rolled applies its effects directly. |
 | `use` | item held; uses remaining; target valid and in reach; the item has `use` effects, `light`, or a non-null `use_item` result | Call `use_item`; apply its resolution, and remove the item when it returns `consume: true`; then apply item effects and decrement uses. Using an item on a door whose `lock` is `has_item` for that ref opens it. Using a light source with no `use` effects toggles it. |
 | `interact` | target in reach; verb defined on target, `open` or `close` on a door, or `light` or `extinguish` on a light source; verb requirement holds | Apply verb effects. `open` and `close` on a door follow [Doors](#doors); `light` and `extinguish` follow [Lighting](#lighting). |
 | `examine` | target visible, or omitted | No state change; emit `examined`. |
-| `search` | not in combat | Call `check` with the system's `STANDARD_CHECKS.search`; on a passing outcome, reveal hidden entities in the actor's room that the actor sees. |
+| `search` | not in the combat area during combat | Call `check` with the system's `STANDARD_CHECKS.search`; on a passing outcome, reveal hidden entities in the actor's room that the actor sees. |
 | `take` | target is an item, a container, or an item in a container with `capacity`, in reach; the container's `lock` holds; `can_carry` holds for the resulting inventory | Move the item or items to inventory. |
 | `drop` / `give` | item held; `can_carry` holds for the actor's resulting inventory; for `give`, the recipient is a character or a container with `capacity` and room, in reach, whose `lock` holds; `can_carry` holds for a recipient character | Move the item to the recipient, or to the actor's cell. `item_given` carries `to` with the recipient's id. |
 | `talk` | NPC in reach; topic available if given | Emit `talked`; topic briefs pass to the narrator. |
-| `rest` | not in combat; `kind` is `short` or `long`; no hostile creature visible | Call `rest` for the actor. |
+| `rest` | not in the combat area during combat; `kind` is `short` or `long`; no hostile creature visible | Call `rest` for the actor. |
 | `wait` | none | Emit `waited`. |
 | `choose` | actor has a pending choice; option id exists | Apply the option. |
 | `improvise` | none | Emit `improvised`. No other state change. |
 
-After each action resolves, the engine evaluates triggers (see [adventure-packs.md](adventure-packs.md#triggers)), recomputes illumination, updates seen cells, then evaluates combat end conditions.
+After each action resolves, the engine evaluates triggers (see [adventure-packs.md](adventure-packs.md#triggers)), recomputes illumination, updates seen cells, adds the rooms of combatants to the combat area (see [Modes](#modes)), then evaluates combat end conditions.
 
 ## Events
 
@@ -500,8 +515,6 @@ Events produced by the engine:
 | Type | Payload |
 |---|---|
 | `moved` | `actor`, `location`, `from` (room), `to` (room), `at` (cell), `steps`, `stopped` (`arrived`, `allowance`, `new_room`, `hostile_seen`), `via?` (link id) |
-
-When a move travels a link, `via` is the id of the link the mover entered, in the location it left; `location`, `to`, and `at` describe the arrival, and `from` is the room the mover left.
 | `item_taken` / `item_dropped` / `item_given` | `actor`, `item` (entity id), `ref`, `to?` |
 | `item_used` | `actor`, `item`, `target?` |
 | `ability_used` | `actor`, `ability`, `target?` |
@@ -518,6 +531,7 @@ When a move travels a link, `via` is the id of the link the mover entered, in th
 | `light_changed` | `target`, `lit`, `actor?` |
 | `room_light_changed` | `room`, `level` |
 | `entity_spawned` / `entity_despawned` | `entity` |
+| `condition_applied` / `condition_removed` | `target`, `condition` |
 | `flag_set` | `flag`, `value` |
 | `stage_set` | `arc`, `stage` |
 | `revealed` | `target` or `secret` |
@@ -533,7 +547,7 @@ When a move travels a link, `via` is the id of the link the mover entered, in th
 | `instance_ended` | `ending` |
 | `state_restored` | `from_version`, `to_version`, `reason` |
 
-`moved` is also emitted for entity moves and for `move_entity`, with `steps: 0` for the effect.
+When a move travels a link, `via` is the id of the link the mover entered, in the location it left; `location`, `to`, and `at` describe the arrival, and `from` is the room the mover left. `moved` is also emitted for entity moves and for `move_entity`, with `steps: 0` for the effect.
 
 An event's *actor* is the creature its payload names in `actor`. Events with an actor: `moved`, `item_taken`, `item_dropped`, `item_given`, `item_used`, `ability_used`, `interacted`, `examined`, `searched`, `talked`, `waited`, `improvised`, `choice_offered`, `choice_made`, `action_declared`, `action_voided`, and `attacked`. `door_opened`, `door_closed`, and `light_changed` have an actor when an action caused them and none when an effect did. Every other event has no actor.
 
@@ -541,17 +555,16 @@ Events produced by rules systems, passed through unchanged. Every system emits t
 
 | Type | Payload | Emitted by |
 |---|---|---|
-| `attacked` | `actor`, `target`, system-specific result fields | every system |
-| `check_rolled` | `target`, `outcome`, system-specific fields | every system |
+| `attacked` | `actor`, `target`, system-specific result fields; Quest: `roll`, `outcome`, `damage` | every system |
+| `check_rolled` | `target`, `outcome`, system-specific fields; Quest: `roll` | every system |
 | `healed` | `target`, `amount` | every system |
-| `condition_applied` / `condition_removed` | `target`, `condition` | every system |
 | `died` | `target` | every system |
 | `damaged` | `target`, `amount`, `remaining`, `cause?` | systems with numeric health (Quest) |
 | `resource_changed` | `target`, `resource`, `delta?`, `value` | systems with spendable resources (Quest) |
 
-Triggers MAY match any event type in either table.
+Triggers MAY match any event type in either table. Which events each player receives is defined in [api.md](api.md#event-visibility), and the commits that add or remove characters in [api.md](api.md#party-changes).
 
-`state_restored` is emitted only by the operator operation `restore_instance` (see [api.md](api.md#administrative-operations)). It is not produced by `submit` or `advance`. During replay, a `state_restored` event replaces the replayed state with the state replayed up to `to_version`.
+`state_restored` is emitted only by the operator operation `restore_instance` (see [api.md](api.md#administrative-operations)). It is not produced by `submit` or `advance`. During replay, a `state_restored` commit replaces the replayed state with the state replayed up to `to_version`; see [architecture.md](architecture.md#determinism-and-replay).
 
 ## Error codes
 

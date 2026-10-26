@@ -1,4 +1,4 @@
-// Change role and abilities (SPEC_ISSUES.md#character-rebuild): the system's creation form, filled with
+// Change role and abilities (app-flow.md, Character creation and editor): the system's creation form, filled with
 // the character's choices, for a character that is available and has never joined a game.
 import { notFound } from "next/navigation";
 import { characterRebuildable, getCharacter } from "@/lib/api/characters";

@@ -13,7 +13,7 @@ export interface Diagnostic {
   check: Check;
 }
 
-// SPEC_ISSUES.md#diagnostic-check-ids: the specification names checks in prose only.
+// Check ids (spec/README.md, "Checks" and "Adventure checks").
 export const CHECKS = {
   file: "A file is readable, parses as JSON-compatible YAML, and belongs to the pack layout",
   duplicate_key: "A key is defined once across the files of a merged directory",
@@ -47,7 +47,6 @@ export type Check = keyof typeof CHECKS;
 
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
-// SPEC_ISSUES.md#diagnostic-check-ids: the root path is written `.`.
 /** `a.b[2]["~"]`; the root is `.`. */
 export function formatPath(path: readonly Segment[]): string {
   let out = "";

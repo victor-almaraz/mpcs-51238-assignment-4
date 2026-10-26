@@ -63,7 +63,7 @@ async function instanceOrThrow(store: Store, id: string): Promise<InstanceRecord
   return instance;
 }
 
-// SPEC_ISSUES.md#replay-to-version: replay stops at the first diverging version, which it reports.
+// api.md, Administrative operations (replay_instance): replay stops at the first diverging version.
 /**
  * Replays an instance's commits to `toVersion` (default: latest). `matches_stored` holds when every
  * commit's events reproduce and, at the latest version, the replayed state equals the stored state.

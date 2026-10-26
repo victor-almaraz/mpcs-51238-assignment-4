@@ -168,7 +168,7 @@ triggers:
 | Key | Required | Meaning |
 |---|---|---|
 | `id` | yes | Unique within the adventure. |
-| `on` | yes | Event match. `type` is an event type from [engine.md](engine.md#events). Every other key is optional and matches the payload field of the same name by equality; an omitted key matches any value, so `{ type: died }` matches every `died` event. |
+| `on` | yes | Event match. `type` is an event type from [engine.md](engine.md#events). Every other key is optional and matches the payload field of the same name by equality; an omitted key matches any value, so `{ type: died }` matches every `died` event. `ref` is a content ref and is qualified like any other ref. `item`, `target`, `door`, and `entity`, and `to` on item events, are entity ids. `room`, `from`, and `to` on other events are room ids, in the location named by `location` when the match sets it. |
 | `when` | no | Requirement evaluated against state after the matched event. Requirements about the actor (`has_item`, `location`, `room`, `near`, `illumination`) test the matched event's actor, and are false for events without one. |
 | `effects` | yes | Effects applied when the trigger fires. |
 | `narrate` | no | Text passed to the narrator as a fact to convey. |
@@ -182,6 +182,7 @@ Triggers react only to engine and rules-system events. Triggers never read playe
 2. Within one event, triggers are tested in arc file order (lexicographic by path), then in listed order.
 3. Events produced by fired triggers are tested in a following pass.
 4. Evaluation stops after 3 passes. Events produced by the third pass are committed but not tested.
+5. Evaluation also stops when an effect ends the instance. The remaining effects of the firing trigger are not applied, and no further trigger is tested, on the same event or in a later pass. A trigger that narrates a path's outcome before its ending is therefore listed before the trigger that ends the campaign.
 
 ## locations/*.yaml
 
@@ -199,8 +200,10 @@ Room ids are unique within a location; different locations MAY reuse an id. A ro
 |---|---|
 | `start.room` | `start.location` |
 | A location's `contents` | That location |
-| A trigger's effects and `when` | The location of the matched event's actor |
+| `start.effects` | `start.location` |
+| A trigger's effects and `when` | The location of the matched event's actor; for a `moved` match that sets `location`, that location |
 | Item, ability, and verb effects | The actor's location |
+| An NPC topic's `when` and `effects` | The location of the character who discusses the topic |
 
 Qualify the reference when the room is elsewhere, and in triggers on events without an actor.
 
@@ -215,7 +218,7 @@ A generated location's rooms receive ids `r1` to `rN` in BFS order from the entr
 | `location.<anchor_id>` | The room where that anchor was placed |
 | `location.<link_id>` | The room holding that generated link |
 
-Anchor and link ids of a generated location MUST NOT be `entry`, `boss`, or of the form `r` followed by digits. Triggers about anchored content can also use the anchored entity: `item_taken` with its ref, `defeated`, or `near`. Room-template contents have no ids, so triggers cannot name them.
+The generator returns these aliases with the location; see [generation.md](generation.md#output). Anchor and link ids of a generated location MUST NOT be `entry`, `boss`, or of the form `r` followed by digits. Triggers about anchored content can also use the anchored entity: `item_taken` with its ref, `defeated`, or `near`. Room-template contents have no ids, so triggers cannot name them.
 
 `moved` events carry the room in `to` and the location in `location`. A trigger on arrival in a room matches both: `{ type: moved, location: perpetua_deck, to: mooring }`.
 
@@ -385,10 +388,10 @@ The Content Compiler accepts an adventure directory, or an adventure editor draf
 4. An entity's `system_stats` or a `check` specification fails the system's schema.
 5. A map fails the map checks in [setting-packs.md](setting-packs.md#validation), or a room's area covers a cell of another room, or a passable cell belongs to no room.
 6. A link's `to` names a link that does not exist, or a link's cell is not in a room.
-7. No ending is reachable. Reachability is tested by treating every trigger as able to fire once and every requirement as satisfiable.
+7. No ending is reachable. Reachability is tested by treating every trigger as able to fire once and every requirement as satisfiable, so an ending is reachable when an `end_campaign` effect names it: in `start.effects`, a trigger, an NPC topic, or an effect of the adventure's entities. The automatic ending `lost` is reached without an effect and does not satisfy this check.
 8. A door lock references only flags that no effect can set.
 9. An anchor constraint cannot be met by the generator's room count range, or a generated link names a role the generator cannot produce.
-10. The start room has fewer free cells than the adventure's maximum player count.
+10. The start room of an authored start location has fewer free cells than the adventure's maximum player count, or `players` has a minimum greater than its maximum. A free cell is a cell of the room whose terrain is not `void` and does not obstruct movement, and that no creature, NPC, or movement-obstructing entity placed with `at` or through the legend covers. Placements whose cells are chosen by RNG, and generated start locations, are not checked; an instance whose start room has no free cell for a character fails to start with `requirement_unmet`.
 11. A room reference does not resolve under [Room references](#room-references), or a trigger on an event type without an actor uses an unqualified room reference.
 12. An NPC is placed more than once, across locations and anchors.
 13. An anchor or generated link id is `entry`, `boss`, or `r` followed by digits.

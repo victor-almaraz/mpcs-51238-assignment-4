@@ -101,7 +101,7 @@ This repository holds the specification: documents, JSON Schemas, example settin
 
 The key words MUST, MUST NOT, SHOULD, SHOULD NOT, and MAY are used as defined in RFC 2119.
 
-Schemas are JSON Schema draft 2020-12. Authoring files are YAML restricted to JSON-compatible values; JSON files are accepted wherever YAML is. Identifiers match `^[a-z][a-z0-9_]{0,63}$` unless stated otherwise. Dice expressions use `NdM`, `NdM+K`, or `NdM-K`.
+Schemas are JSON Schema draft 2020-12. Authoring files are YAML restricted to JSON-compatible values. Any pack file MAY instead be JSON, named with `.json` in place of `.yaml`; see [spec/README.md](../spec/README.md#pack-directory). Identifiers match `^[a-z][a-z0-9_]{0,63}$` unless stated otherwise. Dice expressions use `NdM`, `NdM+K`, or `NdM-K`.
 
 ## Repository layout
 

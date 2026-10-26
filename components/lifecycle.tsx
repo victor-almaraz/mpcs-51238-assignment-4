@@ -1,6 +1,6 @@
 // Archiving, unarchiving, deleting, and restoring a campaign, character, or adventure draft, the same
-// way for each (api.md, Campaigns, Characters, Adventure drafts; SPEC_ISSUES.md#campaign-unarchive,
-// #character-draft-archive). Each form posts the record's id in its kind's `field` to the kind's server
+// way for each (api.md, Campaigns, Characters, Adventure drafts; app-flow.md, Characters, Campaigns,
+// and My adventures). Each form posts the record's id in its kind's `field` to the kind's server
 // action. Archiving keeps the record; deleting hides it at once, its owner can restore it for 30 days,
 // and it is erased within 90 days, or with the owner's account.
 import type { ReactNode } from "react";

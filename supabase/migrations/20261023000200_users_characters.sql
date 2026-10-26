@@ -15,7 +15,7 @@ create table users (
   status text not null default 'active' check (status in ('active', 'closing', 'deleted')),
   deletion_requested_at timestamptz,
   terms_accepted_at timestamptz,
-  -- SPEC_ISSUES.md#terms-version: the accepted version, so a changed document asks again.
+  -- The accepted terms version, so a changed document asks again (data-model.md, User).
   terms_version text,
   created_at timestamptz not null default now()
 );

@@ -14,7 +14,7 @@ create table assets (
   provenance text check (provenance is null or char_length(provenance) <= 500),
   uploader_id text references users (id) on delete set null,
   bundle_refs jsonb not null default '[]',
-  -- SPEC_ISSUES.md#asset-delivery: files live in the database; each is at most 1 MB.
+  -- The file's bytes, at most 1 MB (setting-packs.md, Art).
   data bytea not null,
   created_at timestamptz not null default now(),
   removed_at timestamptz,

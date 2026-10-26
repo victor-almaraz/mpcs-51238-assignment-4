@@ -21,19 +21,19 @@ The Parser Adapter generates definitions per input:
 | `attack` | `target_id`, `item_id?` | exploration, combat |
 | `ability` | `ability_id`, `target_id?` | exploration, combat |
 | `use` | `item_id`, `target_id?` | exploration, combat |
-| `interact` | `target_id`, `verb` | exploration |
+| `interact` | `target_id`, `verb` | exploration; combat outside the combat area |
 | `examine` | `target_id?` | exploration, combat |
-| `search` | none | exploration |
-| `take` | `entity_id` | exploration |
-| `drop` | `item_id` | exploration |
-| `give` | `item_id`, `target_id` | exploration |
+| `search` | none | exploration; combat outside the combat area |
+| `take` | `entity_id` | exploration; combat outside the combat area |
+| `drop` | `item_id` | exploration; combat outside the combat area |
+| `give` | `item_id`, `target_id` | exploration; combat outside the combat area |
 | `talk` | `npc_id`, `topic_id?`, `utterance` | exploration, combat |
-| `rest` | `kind` (`short`, `long`) | exploration |
+| `rest` | `kind` (`short`, `long`) | exploration; combat outside the combat area |
 | `wait` | none | exploration, combat |
 | `choose` | `option_id` | exploration, combat; only while the actor has a pending choice |
 | `improvise` | `category`, `intent`, `suggestions` | exploration, combat |
 
-Resolution rules are defined in [engine.md](engine.md#action-resolution).
+Resolution rules are defined in [engine.md](engine.md#action-resolution). `interact`, `search`, `take`, `drop`, `give`, and `rest` are the exploration-only tools: in combat, a character in the combat area cannot use them ([engine.md](engine.md#rounds)).
 
 ### Argument sources
 

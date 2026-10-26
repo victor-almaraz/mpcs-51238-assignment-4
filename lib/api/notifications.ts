@@ -2,8 +2,8 @@
 // Reminders are not stored as records: the Scheduler sends `session_reminder` at each of a member's
 // `reminders.lead_minutes` before an occurrence, unless they answered `no` (api.md, Scheduling). This
 // derives the same moments from the schedules, so the page lists recent and upcoming reminders without
-// a separate table, and reads the Scheduler's marks to tell which past ones it sent. See
-// SPEC_ISSUES.md#notification-records.
+// a separate table, and reads the Scheduler's marks to tell which past ones it sent (api.md, Users,
+// Reminders).
 
 import { occurrencesOf } from "../scheduler/occurrences";
 import type { Store } from "../store";

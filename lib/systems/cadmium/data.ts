@@ -28,7 +28,7 @@ export type ModuleId = (typeof MODULE_IDS)[number];
 
 type Json = null | boolean | number | string | Json[] | { [k: string]: Json };
 
-// SPEC_ISSUES.md#module-schema-fields: module fields are recognized by their description.
+// systems/README.md, "Modules": a module field's description begins with `Module <id>:`.
 const MODULE_FIELD = /^Module ([a-z][a-z0-9_]*):/;
 
 /**

@@ -6,12 +6,12 @@ Cadmium is a virtual tabletop, not a social platform. People play with people th
 
 | Present | Absent by design |
 |---|---|
-| Campaign invitations by single-use code and by invite link | User search, directories, and profiles |
+| Campaign invitations by single-use code and by invite link, both created by the campaign's author | User search, directories, and profiles |
 | Campaign members and their characters | Friends, following, and followers |
 | Play inside a campaign's instances | Messaging outside games |
 | The user's own adventures in their own campaigns | Public or shared adventure listings |
 
-Content is therefore visible only to the people its author invited. Moderation is limited to responding to reports sent to the contact address, as stated in the Terms of Service.
+A user joins a campaign only with an invitation code or through the campaign's invite link; players cannot invite, and no flow invites a specific account. Content is therefore visible only to the people its author invited. Moderation is limited to responding to reports sent to the contact address, as stated in the Terms of Service.
 
 This document maps the web application's pages, navigation, and server boundaries for the reference deployment. It binds the platform-agnostic design ([architecture.md](architecture.md), [api.md](api.md)) to a specific stack.
 
@@ -29,7 +29,7 @@ This document maps the web application's pages, navigation, and server boundarie
 | Push | Web Push with the deployment's own VAPID key pair, through the `web-push` package; a service worker in the client | Session reminders on browsers where the user enables them |
 | Adventure editor | React Flow (`@xyflow/react`), Ajv (`Ajv2020`), `yaml`, Monaco with `monaco-yaml` | Arc graphs, in-browser validation, YAML import and export, advanced YAML view |
 | Maps | HTML canvas, drawn by `lib/map` from views and drafts | The map editor and the play map |
-| Fonts | Libertinus Serif, Serif Display, Sans, Mono (SIL OFL), self-hosted | All text; see [design/foundations.md](design/foundations.md#typography) |
+| Fonts | Self-hosted; in Margin, Libertinus Serif, Serif Display, Sans, Mono (SIL OFL) | All text; see [design/foundations.md](design/foundations.md#typography) and [Design system](design/README.md#substitution) |
 | Icons | Lucide through `lucide-react` (ISC); game-icons.net SVGs (CC BY 3.0) | Interface actions; adventure content |
 | Theme | `design/theme.css` | Tailwind tokens for colour, type, space, and sizes |
 
@@ -41,7 +41,7 @@ This document maps the web application's pages, navigation, and server boundarie
 | Vercel functions have a maximum duration. | Input processing commits before narrating. Narration runs in `after()`, so the response returns once the commit succeeds. |
 | Serverless functions keep no timers between requests. | Round deadlines are stored in state. The scheduler cron job and any request to the instance call `advance` when a deadline has passed. |
 | No analytics, tracking pixels, or marketing cookies. | Vercel Web Analytics and similar tools are not enabled. Only Clerk's session cookies, browser storage for theme and editor backups, and the push service worker are used, as stated in the Privacy Policy. |
-| Cadmium sends no email. | Invitations are codes the inviter shares. Reminders use the user channel and Web Push. Clerk sends its own sign-in emails. |
+| Cadmium sends no email. | Invitations are codes the author shares. Reminders use the user channel and Web Push. Clerk sends its own sign-in emails. |
 | iOS delivers Web Push only to sites added to the Home Screen. | Settings explains Add to Home Screen on iOS before offering browser notifications there. |
 | Groq runs with zero data retention. | Enable Zero Data Retention in the Groq console Data Controls before launch; the Privacy Policy states it. |
 | Fonts and icons load from the application's own domain. | No third-party font or icon CDN is used; font files are subset WOFF2 under `/fonts/`, and icons are bundled per import. |
@@ -60,13 +60,16 @@ Every route except those marked public requires a signed-in user. Clerk middlewa
 | `/invite/[code]` | Invitation | public | Campaign title, inviter, message; Accept and Decline after sign-in | `preview_invitation`, `accept_invitation`, `decline_invitation` |
 | `/join/[code]` | Join by link | public | Campaign title and author; Join | `join_by_link` |
 | `/dashboard` | Dashboard | user | Upcoming sessions, active instances, campaigns, characters | `get_me`, `list_occurrences`, `list_campaigns`, `list_characters` |
-| `/characters/new` | Character creation | user | System picker, then the system's creation form | `list_systems`, `get_system_schema`, `create_character` |
-| `/characters/[id]` | Character editor | owner | Sheet (read-only), name, profile, status, instance | `get_character`, `update_character`, `upload_asset`, `retire_character` |
+| `/characters` | Characters | user | The user's characters, then archived characters and recently deleted characters; see [Characters, Campaigns, and My adventures](#characters-campaigns-and-my-adventures) | `list_characters`, `list_deleted_characters`, `unarchive_character`, `restore_character` |
+| `/characters/new` | Character creation | user | System picker, an optional campaign, then the system's creation form; `?system=` and `?campaign=` preselect | `list_systems`, `get_system_schema`, `list_campaigns`, `create_character` |
+| `/characters/[id]` | Character editor | owner | Sheet (read-only), name, profile, status, instance | `get_character`, `update_character`, `upload_asset`, `retire_character`, `archive_character`, `unarchive_character`, `delete_character` |
+| `/characters/[id]/rebuild` | Change role and abilities | owner, while the character has never played | The system's creation form, filled with the current choices | `rebuild_character` |
+| `/campaigns` | Campaigns | user | Campaigns the user authors and plays in, a field for an invitation code or invite link code, then archived campaigns and the author's recently deleted campaigns | `list_campaigns`, `list_deleted_campaigns`, `unarchive_campaign`, `restore_campaign` |
 | `/campaigns/new` | Campaign creation | user | Title; system, defaulting to Cadmium, with its credit line; module checkboxes, preselected from the materials' required modules; materials | `list_systems`, `list_materials`, `create_campaign` |
 | `/campaigns/[id]` | Campaign overview | members | Description, members, instances, materials | `get_campaign`, `list_instances` |
-| `/campaigns/[id]/edit` | Campaign editor | author | Tabs: Details, Materials, Members, Invitations | `update_campaign`, `set_materials`, `invite`, `list_invitations`, `revoke_invitation`, `rotate_invite_link`, `disable_invite_link`, `remove_member`, `archive_campaign` |
+| `/campaigns/[id]/edit` | Campaign editor | author | Tabs: Details, Materials, Members, Invitations | `update_campaign`, `set_materials`, `invite`, `list_invitations`, `revoke_invitation`, `rotate_invite_link`, `disable_invite_link`, `remove_member`, `archive_campaign`, `unarchive_campaign`, `delete_campaign` |
 | `/library` | Library | user | Settings and example adventures installed with Cadmium, and the user's own published adventures, filtered by system | `list_materials` |
-| `/adventures` | My adventures | user | The user's drafts and published versions | `list_drafts`, `list_materials(owner=me)` |
+| `/adventures` | My adventures | user | The user's drafts and published versions, then archived drafts and recently deleted drafts | `list_drafts`, `list_materials(owner=me)`, `archive_draft`, `unarchive_draft`, `delete_draft`, `list_deleted_drafts`, `restore_draft`, `delete_material` |
 | `/adventures/new` | Adventure creation | user | Id, title, system, required settings, or import from ZIP | `create_draft`, `import_draft` |
 | `/adventures/[draftId]/edit` | Adventure editor | draft owner | See [Adventure editor](#adventure-editor) | `get_draft`, `save_draft`, `validate_draft`, `export_draft` |
 | `/adventures/[draftId]/publish` | Publish | draft owner | Version, diagnostics summary, changes since the last version | `validate_draft`, `publish_draft` |
@@ -74,14 +77,19 @@ Every route except those marked public requires a signed-in user. Clerk middlewa
 | `/instances/[id]/schedule` | Schedule | members | Occurrences, RSVPs, calendar export and subscription; editing for the author | `list_occurrences`, `rsvp`, `schedule_session`, `update_session`, `move_occurrence`, `cancel_session`, `export_calendar`, `get_calendar_feed`, `rotate_calendar_feed` |
 | `/instances/[id]/history` | History | members | Commits with narration, paged | `get_history` |
 | `/instances/[id]/play` | Play | members with a character in the instance | Running interface; see [Play interface](#play-interface) | `get_instance`, `submit_input`, `submit_action`, `advance_round`, instance stream |
-| `/notifications` | Notifications | user | Session reminders | user stream |
+| `/notifications` | Notifications | user | Session reminders of the last 7 days and the next 7, refreshed on `session_reminder` and every minute | `list_reminders`, user stream |
 | `/settings` | Settings | user | See [Settings](#settings) | `update_me`, `get_push_key`, `add_push_subscription`, `list_push_subscriptions`, `remove_push_subscription`, `get_calendar_feed`, `rotate_calendar_feed`, `disable_calendar_feed`, `export_my_data`, `request_account_deletion` |
-| `/terms` | Terms of Service | public | [legal/terms.md](legal/terms.md) | none |
-| `/privacy` | Privacy Policy | public | [legal/privacy.md](legal/privacy.md) | none |
+| `/accept-terms` | Terms acceptance | user | The current Terms of Service and Privacy Policy with **Accept**; for a closing account, **Restore account**; for a suspended account, a notice with the contact address. Every state offers **Export my data** | `get_me`, `accept_terms`, `restore_account`, `export_my_data` |
+| `/terms` | Terms of Service | public | The operator's Terms of Service; see [Legal documents](#legal-documents) | none |
+| `/privacy` | Privacy Policy | public | The operator's Privacy Policy; see [Legal documents](#legal-documents) | none |
 | `/attribution` | Attribution | public | Licences and attributions from [LICENSES.md](../LICENSES.md): rules data, including Quest as the source of Cadmium; Libertinus; Lucide; each game-icons.net artist whose icons ship; and the `credit` of every shipped pack asset | none |
-| `/admin` | Operator console | operator | Materials, instance inspection | `publish_bundle`, `set_listed`, `inspect_instance`, `replay_instance`, `restore_instance` |
+| `/admin` | Operator console | operator | Materials (publish, list or unlist, and delete a version nothing uses), instance inspection | `publish_bundle`, `set_listed`, `delete_bundle`, `inspect_instance`, `replay_instance`, `restore_instance` |
 
-Links to `/terms`, `/privacy`, and `/attribution` appear in the footer of every page. Clerk's sign-up form requires accepting the Terms of Service and Privacy Policy (Clerk's legal-compliance setting); the acceptance is recorded with `accept_terms`. When either document changes, users accept the new version on their next sign-in.
+Links to `/terms`, `/privacy`, and `/attribution` appear in the footer of every page. Clerk's sign-up form requires accepting the Terms of Service and Privacy Policy (Clerk's legal-compliance setting); the acceptance is recorded with `accept_terms`. When either document changes, users accept the new version on their next sign-in: every signed-in page sends a user who has not accepted the current version, whose account is closing, or who is suspended to `/accept-terms`, which returns them to the requested page once the gate no longer applies.
+
+### Legal documents
+
+The Terms of Service and Privacy Policy are the operator's documents. [legal/terms.md](legal/terms.md) and [legal/privacy.md](legal/privacy.md) are templates; a deployment serves its own versions, which state its operator, contact address, retention, and shutdown terms. The terms version that `accept_terms` records identifies the deployment's documents, so a change to either asks every user to accept again. Deletion, retention, and shutdown behaviour is specified in [data-model.md](data-model.md#deletion) and [Scheduled jobs](#scheduled-jobs); a deployment's documents MUST NOT promise more than that behaviour delivers.
 
 ## Navigation
 
@@ -142,16 +150,21 @@ Empty states link to the next action: a user with no characters sees **Create a 
 
 ### Character creation and editor
 
-Creation is a two-step form:
+Creation is a form in steps:
 
 1. Choose a system from `list_systems`.
-2. Fill the system's creation form. The form fields come from the system: for Quest, a role picker, an ability picker limited to `starting_abilities`, and profile questions.
+2. Optionally choose a campaign the character is for, among the user's unarchived campaigns whose instances accept the system's characters ([Compatibility](systems/README.md#compatibility)); a Quest character may be made for a Cadmium campaign.
+3. Fill the system's creation form. The form fields come from the system: for Quest, a role picker, an ability picker limited to `starting_abilities`, and profile questions.
+
+Once a role is chosen, Quest's form offers the role's [quick start](systems/quest.md#starting-abilities), when it has one, as one button that picks the role's six abilities from the first offered setting that tags exactly six abilities for that role alone.
+
+With a campaign chosen, the ability picker offers only the abilities of the campaign's settings, so the character can join its instances, and warns when they are fewer than `starting_abilities`. The server refuses abilities from settings the campaign does not include before it calls `create_character`; `create_character` takes no campaign, and the sheet does not record one. Cadmium's form also shows, as information, the fields of the modules the chosen campaign enables, such as the armor pool and the carrying limit, which the sheet receives when the character joins an instance. `/characters/new?system=<id>&campaign=<id>` preselects both.
 
 The server calls `create_character`; the rules system rolls and builds the sheet. Clients never submit sheet values.
 
-The editor shows the sheet read-only, formatted by the system's `summary` and a system-specific sheet view. Editable fields: name, profile, and portrait. **Upload portrait** takes an image and its alt text, with optional licence, credit, and provenance fields for images made by someone else or with a generative tool. **Remove portrait** deletes it. **Retire** is available when the character is `available` or `dead`.
+The editor shows the sheet read-only, formatted by the system's `summary` and a system-specific sheet view. Editable fields: name, profile, and portrait. **Upload portrait** takes an image and its alt text, with optional licence, credit, and provenance fields for images made by someone else or with a generative tool. **Remove portrait** deletes it. **Retire** is available when the character is `available` or `dead`. **Change role and abilities** is available while the character is `available` and has never joined an instance; it opens `/characters/[id]/rebuild`, the system's creation form filled with the current choices, which calls `rebuild_character`. **Archive** or **Unarchive**, and **Delete character**, confirmed by typing the character's name, are available while the character is not `in_instance`.
 
-Each system provides three UI components, registered by system id: `CreationForm`, `SheetView`, and `StatsEditor` (the adventure editor's form for creature, item, and ability `system_stats`, generated from the system's schemas by default). Adding a system adds these components; no page changes. A system with modules shows module fields only when the campaign, or for character creation the chosen campaign, enables the module; Cadmium's components extend Quest's.
+Each system provides three UI components, registered by system id: `CreationForm`, `SheetView`, and `StatsEditor` (the adventure editor's form for creature, item, ability, and structure `system_stats`, generated from the system's schemas by default). Adding a system adds these components; no page changes. A system with modules shows module fields only when the modules are enabled: by the campaign on campaign pages and in play, by the chosen campaign in character creation, and by the draft's `adventure.system.modules` in the adventure editor. Cadmium's components extend Quest's.
 
 ### Campaign editor
 
@@ -162,11 +175,24 @@ Tabs:
 | Details | Title, description, system (fixed after creation), system version range |
 | Materials | One adventure and its required settings, chosen from the library: installed materials and the author's own adventures, filtered to the campaign's system; incompatible materials are disabled with the reason |
 | Members | Members and roles; **Remove** for players |
-| Invitations | **Create invitation** with a message and a private note; the new code and link with **Copy**, shown once; pending invitations with notes and **Revoke**; invite link with **Copy**, **Rotate**, and **Disable** |
+| Invitations | **Create invitation** with a message and a private note; the new code and link with **Copy**, shown once; pending invitations with notes and **Revoke**; invite link with **Copy**, **Rotate**, and **Disable**, or **Enable invite link** when it is disabled |
 
-**Archive campaign** sits at the bottom of Details.
+The campaign editor is the author's alone, and the Invitations tab is the only place invitations and the invite link are created. Players cannot invite; a player who wants someone to join asks the author.
+
+**Archive campaign**, or **Unarchive campaign** for an archived campaign, and **Delete campaign**, confirmed by typing the campaign's title, sit at the bottom of Details.
 
 Adventure content is authored in the [adventure editor](#adventure-editor). Setting packs are authored as files and published through the operator console.
+
+### Characters, Campaigns, and My adventures
+
+`/characters`, `/campaigns`, and `/adventures` list the user's records, then two further sections:
+
+| Section | Contents |
+|---|---|
+| Archived | Archived records, each with **Unarchive**; for a campaign, only its author sees **Unarchive** |
+| Recently deleted | Records the user deleted less than 30 days ago, from `list_deleted_characters`, `list_deleted_campaigns`, or `list_deleted_drafts`, each with the date it can be restored until and the date it is erased by, and **Restore** |
+
+On `/adventures`, each draft also offers **Archive** and **Delete**, and each published version offers **Delete** (`delete_material`) behind a confirmation; a version a campaign or game uses is refused with the number of each. An archived character cannot join an instance, an archived campaign accepts no new instances, members, or invitations, and an archived draft cannot be published.
 
 ### Instance lobby
 
@@ -186,6 +212,7 @@ Adventure content is authored in the [adventure editor](#adventure-editor). Sett
 - Each occurrence shows time, duration, status (`scheduled`, `moved`, `cancelled`), and RSVPs by member.
 - Members set their RSVP per occurrence.
 - The author creates and edits sessions (start, time zone, duration, weekly recurrence, `auto_resume`, `auto_pause`), moves or cancels one occurrence, or cancels the series.
+- Once the instance has ended, the page lists its sessions under a notice that the game has ended, without RSVP or editing controls.
 - **Add to calendar** downloads `export_calendar`. **Subscribe** shows the user's calendar feed URL from `get_calendar_feed`; when the feed is disabled, it offers **Create feed**, which calls `rotate_calendar_feed`.
 
 ### Settings
@@ -206,7 +233,7 @@ Commits in ascending version order with narration text, grouped by round. Event 
 
 ## Adventure editor
 
-The adventure editor lets authors without programming experience write adventure packs ([adventure-packs.md](adventure-packs.md)) against published setting packs for one rules system. It edits a draft: a single JSON document that maps one-to-one onto the adventure's YAML files. The editor never writes files; export and publish produce them.
+The adventure editor lets authors without programming experience write adventure packs ([adventure-packs.md](adventure-packs.md)) against published setting packs for one rules system. It edits a draft: a single JSON document that maps onto the adventure's YAML files as [spec/README.md](../spec/README.md#adventure-directory) describes, with every entity written to `entities/entities.yaml`. The editor never writes files; export and publish produce them.
 
 ### Draft document
 
@@ -252,7 +279,7 @@ The document's schema is `spec/schema/draft.schema.json`. Records are maps keyed
 | Plot | Graph and rule cards | One graph per arc: stages as nodes, `set_stage` effects as edges. Selecting a stage lists the triggers that act in or leave it as rule cards |
 | Locations | Map editor or form | Authored locations: a map canvas with a palette of the built-in terrain, the settings' terrain, and legend entries; **Paint**, **Fill**, and **Rectangle** tools; **Room** draws a room's area and names it; **Place** puts a template, NPC, or door on a cell, and the inspector edits its id, lock, and hidden flag; **Link** places a link and picks its destination, with **Add return link**. Generated locations: generator form, anchors, links, and a seeded map preview |
 | NPCs | Form | Name, template picker, disposition, topics as cards with a condition builder and brief text, secrets |
-| Items & creatures | Form | Adventure-specific entities; `system_stats` edited with the system's `StatsEditor` |
+| Items & creatures | Form | Adventure-specific entities; `system_stats` of creatures, items, and structures (obstacles and doors) edited with the system's `StatsEditor` |
 
 Every section also offers **Edit as YAML**, which opens the matching file in Monaco with schema completion. Saving the YAML parses it back into the draft; a parse or schema error keeps the YAML open with the error marked.
 
@@ -281,7 +308,7 @@ The editor builds a reference index from the draft and the compiled bundles of t
 
 ### Validation
 
-Validation runs in a Web Worker on every change, debounced, in three layers:
+Validation runs in the browser 400 ms after each edit, in a Web Worker where the bundler can build one and otherwise on the main thread, loading `lib/materials` on the first edit. The edit page loads the compiled bundles of the required settings and reloads them when `requires_settings` changes. Validation has three layers:
 
 | Layer | Checks | Implementation |
 |---|---|---|
@@ -289,7 +316,7 @@ Validation runs in a Web Worker on every change, debounced, in three layers:
 | References | Every id resolves to a record of the expected kind | The reference index |
 | Semantics | Map checks, room coverage, link pairing, ending reachability, lock satisfiability, anchor feasibility, unused flags, overlapping triggers | The shared Content Compiler in `lib/materials` |
 
-Each diagnostic has `{ pointer, severity, code, message }`. The field at `pointer` shows the message inline; the Problems panel lists all diagnostics and jumps to each. The server runs the same compiler for `validate_draft` and `publish_draft`, so the editor and publication agree.
+Each diagnostic has `{ pointer, severity, code, message }`. The field at `pointer` shows the message inline; the Problems panel lists all diagnostics and jumps to each. The server runs the same compiler for `validate_draft` and `publish_draft`, so the editor and publication agree; the diagnostics a save returns replace the browser's.
 
 ### Saving
 
@@ -303,9 +330,9 @@ Each diagnostic has `{ pointer, severity, code, message }`. The field at `pointe
 
 **Playtest** opens a simulator panel that runs the TypeScript engine and rules system in the browser against the draft and the required settings:
 
-- An event palette fires actions as a chosen character: move to a clicked cell or destination, talk with topic, interact, take, attack.
+- An event palette fires actions as a chosen character: move to a destination or to what a clicked cell holds, talk with topic, interact, take, attack. A clicked cell becomes a `move` to the visible entity or door on it, else to the seen link on it, else to the seen room that contains it; a wall, an unseen cell, a cell outside every room, or a cell of the character's own room makes no call and shows a note.
 - A state inspector shows flags, arc stages, inventory, and the map with every entity, including hidden ones, and each door's state.
-- A trace lists, for every action, the triggers that matched, the conditions that failed, and the effects applied.
+- A trace lists, for every action, the triggers that matched, the conditions that failed, and the effects applied. No event records why a matched trigger did not fire, so the trace evaluates each matched trigger's `when` again, part by part, against the state after the action, without rolling checks: a value changed later in the same action is reported as it ended, and a `check` is reported only when no other part failed.
 - **Start from here** begins the simulation from a chosen arc stage and flag values.
 - A party selector simulates up to the adventure's maximum player count.
 - For generated locations, **Preview 20 seeds** draws each generated map and reports anchor and lock failures per seed.
@@ -337,7 +364,7 @@ Publishing fails while any diagnostic has severity `error`. The version must be 
 └──────────────┴──────────────────────────────────────────┴────────────────┘
 ```
 
-The desk column holds the character, map, and party; the page holds the log and input; the margin holds round status and, in playtest and author views, the narrator's trace. On narrow screens the character, map, party, and margin move into sheets opened from a top bar; see [design/screens.md](design/screens.md#play-on-narrow-screens). Visual treatment is in [design/screens.md](design/screens.md#play).
+The desk column holds the character, map, and party; the page holds the log and input; the margin holds round status and, in playtest and author views, the narrator's trace. On narrow screens the character, map, party, and margin move into sheets opened from a top bar; see [design/screens.md](design/screens.md#play-on-narrow-screens). Visual treatment is in [design/screens.md](design/screens.md#play). This layout is Margin's; a [substitute design system](design/README.md#substitution) places the same regions in its own layout.
 
 ### Regions
 
@@ -350,6 +377,8 @@ The desk column holds the character, map, and party; the page holds the log and 
 | Character | View | Portrait, then the system `SheetView` in compact form: health, status, resources, inventory, abilities with costs. The character's currencies follow as coin breakdowns. Clicking an item or ability inserts its name into the input. |
 | Map | View | The seen cells of the current location, room labels, doors, links, visible entities, and the party, drawn as in [design/components.md](design/components.md#maps). The current room is named above it. Clicking an entity, door, link, or room inserts its name into the input. **Expand** opens the map over the page. A list of visible entities with distance and direction serves keyboard and screen-reader use. |
 | Party | View | Other characters' names, rooms, summaries, declared marks; their tokens on the map. |
+
+The page plays one character: the one named by `?character=<id>`, or else the user's first character in the instance's character list. A user with several characters in the instance switches between them from the round status, where each of the user's other characters is a link, labelled **Play as** and the character's name, to `?character=<id>`. Switching loads that character's view afresh.
 
 ### States
 
@@ -376,7 +405,7 @@ The desk column holds the character, map, and party; the page holds the log and 
 | Scheduler | `app/api/cron/scheduler`, invoked by Vercel Cron |
 | Calendar export and feed | `app/api/instances/[id]/calendar.ics` and `app/api/calendar/[secret]/route.ts` route handlers |
 | Web Push | `lib/notifier` sends with `web-push` from the scheduler cron run; `public/sw.js` shows the notification and opens the instance lobby on click |
-| Draft save, validate, publish | Server actions; validation and compilation use `lib/materials`, shared with the editor's Web Worker |
+| Draft save, validate, publish | Server actions; validation and compilation use `lib/materials`, shared with the editor's in-browser validation |
 
 Every server action and route handler checks membership and role itself. The database client used on the server bypasses row-level security, so no query relies on it for authorization.
 
@@ -396,7 +425,7 @@ Every server action and route handler checks membership and role itself. The dat
 | `instance:{instance_id}` | `commit`, `round`, `narration`, `instance_status` | Members, through private channels authorized by membership |
 | `user:{user_id}` | `session_reminder`, `declaration`, `choice`, `action_menu`, `input_rejected` | The user |
 
-Recipient-specific messages travel on the user channel, so the shared instance channel carries only messages every member may see. The `commit` message on the instance channel contains the events visible to every member; each client then refreshes its own view with `get_instance`.
+Recipient-specific messages travel on the user channel, so the shared instance channel carries only messages every member may see. The `commit` message on the instance channel contains the commit's shared events ([api.md](api.md#event-visibility)); each client then refreshes its own view with `get_instance`.
 
 ### Scheduled jobs
 

@@ -54,8 +54,7 @@ export function afterAction(ctx: Ctx): void {
   checkLost(ctx);
 }
 
-// SPEC_ISSUES.md#combat-area-growth: combatants are entities; characters leaving or entering do not grow it.
-/** A room joins the combat area when a combatant enters it (engine.md, "Modes"). */
+/** The room of every combatant joins the combat area; characters never extend it (engine.md, "Modes"). */
 function growCombatArea(ctx: Ctx): void {
   const state = ctx.state;
   if (state.mode !== "combat") return;
@@ -177,7 +176,7 @@ export function orderOf(ctx: Ctx, participants: readonly string[], declarations:
       case "tool_priority": {
         const tool = declarations[id]?.tool ?? "wait";
         const i = k.tools.indexOf(tool);
-        // SPEC_ISSUES.md#quest-tool-priority: tools missing from the list sort after every listed tool.
+        // engine.md, "Ordering policy": tools missing from the list sort after every listed tool.
         return i < 0 ? k.tools.length : i;
       }
     }

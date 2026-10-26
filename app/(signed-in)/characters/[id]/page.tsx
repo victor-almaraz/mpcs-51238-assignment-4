@@ -1,6 +1,6 @@
 // Character editor (app-flow.md, Character creation and editor): the sheet read-only; name and profile
 // editable; Upload portrait and Remove portrait; Archive or Unarchive, Retire when available or dead,
-// and Delete, none while the character is in a game (SPEC_ISSUES.md#character-draft-archive). A detail page
+// and Delete, none while the character is in a game. A detail page
 // (docs/design/README.md, Page layouts): the sheet and details in the main column, the portrait and
 // summary facts in the aside.
 import Link from "next/link";

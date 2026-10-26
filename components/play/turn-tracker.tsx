@@ -88,7 +88,7 @@ export function TurnTracker({ title, instanceId, view, round, characterId, membe
               {meta && <span className="sr-only">, {meta.word}</span>}
             </>
           );
-          // SPEC_ISSUES.md#play-character-switch: the user's other characters switch the page to them.
+          // The user's other characters switch the page to them (app-flow.md, Play interface).
           return (
             <li key={m.id} title={mine.has(m.id) && m.id !== characterId ? `Play as ${m.name}` : meta ? `${m.name}: ${meta.word}` : m.name} className="flex">
               {mine.has(m.id) && m.id !== characterId ? (

@@ -79,7 +79,6 @@ export interface View {
   visible: ViewEntry[];
   party: { id: string; name: string; room: string | null; at: Cell; summary: Summary }[];
   /** What direct controls offer: carried items, abilities, and the NPCs `talk` accepts with their topics. */
-  // SPEC_ISSUES.md#view-direct-play: labels and verbs from parser context, so play works without the parser.
   actions: {
     inventory: { id: string; label: string; art?: ArtSet }[];
     /** `target` is what the ability aims at: the user, a visible entity, a door, or nothing. */

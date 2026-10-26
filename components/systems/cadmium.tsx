@@ -1,7 +1,7 @@
 "use client";
 // Cadmium's creation form (app-flow.md, Character creation and editor; systems/cadmium.md, Components):
 // Quest's steps, with the fields of the modules a chosen campaign enables shown under the Campaign
-// step (SPEC_ISSUES.md#creation-chosen-campaign). `create_character` takes no campaign and builds the
+// step (app-flow.md, Character creation and editor). `create_character` takes no campaign and builds the
 // sheet without modules; the fields say what the sheet holds once the character joins.
 import { creationModuleFields } from "@/lib/systems/cadmium/creation";
 import type { CampaignChoice } from "@/lib/systems/creation";

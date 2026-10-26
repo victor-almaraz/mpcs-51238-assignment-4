@@ -1,4 +1,4 @@
-// Archiving, deleting, and restoring characters and adventure drafts (SPEC_ISSUES.md#character-draft-archive).
+// Archiving, deleting, and restoring characters and adventure drafts (api.md, Characters and Adventure drafts).
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Store } from "../store";

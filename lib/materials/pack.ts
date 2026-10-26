@@ -80,8 +80,8 @@ function parseData(file: string, content: Uint8Array | string, out: Diagnostics)
   return doc.toJS({ maxAliasCount: 100 }) as Json;
 }
 
-// SPEC_ISSUES.md#pack-file-names: `.json` stands in for `.yaml`, and files whose name starts with
-// `.` (such as `.DS_Store`) are ignored.
+// `.json` stands in for `.yaml`, and files whose name starts with `.` (such as `.DS_Store`) are
+// ignored (spec/README.md, "Pack directory").
 function layoutPath(path: string): string {
   return path.endsWith(".json") ? path.slice(0, -".json".length) + ".yaml" : path;
 }

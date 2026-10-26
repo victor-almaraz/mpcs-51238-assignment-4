@@ -24,7 +24,7 @@ const PARTS: readonly Part[] = [
   { key: "arcs", kind: "records", dir: "plot" },
   { key: "locations", kind: "records", dir: "locations" },
   { key: "npcs", kind: "records", dir: "npcs" },
-  // SPEC_ISSUES.md#draft-entity-files: the draft's merged entities map onto one file.
+  // The draft's merged entities map onto one file (spec/README.md, "Adventure directory").
   { key: "entities", kind: "merged", dir: "entities", file: "entities/entities.yaml" },
 ];
 

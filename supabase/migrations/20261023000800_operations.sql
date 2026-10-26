@@ -1,7 +1,7 @@
 -- Operations (api.md, Administrative operations; runbooks/content-reports.md; data-model.md,
 -- Deletion: holds and the shutdown purge). Access as in the store migration: service role only.
 
--- SPEC_ISSUES.md#account-suspension: the Terms allow suspending accounts; the record has no field.
+-- When an operator suspended the account under the Terms (api.md, Conventions).
 alter table users add column suspended_at timestamptz;
 
 -- What operators did, kept as the record a report requires (runbooks/content-reports.md, Records).

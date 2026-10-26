@@ -6,7 +6,7 @@
 -- belong to the role that runs this script (postgres in the Supabase SQL Editor), and cover only objects
 -- that role creates later.
 --
--- Suspension (SPEC_ISSUES.md#account-suspension) leaves a user able to read and export their own data,
+-- Suspension (api.md, Conventions) leaves a user able to read and export their own data,
 -- not to keep receiving live game messages or calendar entries; a soft-deleted campaign's channels close
 -- with it.
 

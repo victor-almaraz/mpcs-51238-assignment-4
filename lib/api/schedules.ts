@@ -67,7 +67,7 @@ function fieldsOf(req: Record<string, unknown>, base: Partial<SessionRecord>): P
 
 /**
  * The session for a change or an answer, and the caller's role. An ended game's sessions are a record:
- * nothing about them changes any more (SPEC_ISSUES.md#ended-instance-schedule).
+ * nothing about them changes any more (api.md, Scheduling).
  */
 async function authorSession(store: Store, user: UserRecord, sessionId: unknown) {
   if (typeof sessionId !== "string") throw new ApiError("invalid_request", "session_id must be a string");
@@ -88,7 +88,7 @@ export async function scheduleSession(store: Store, userId: string | null, input
   return sessionView(session);
 }
 
-// SPEC_ISSUES.md#session-updates: changes apply to the whole series; past occurrences are history only.
+// Changes apply to the whole series (api.md, Scheduling).
 export async function updateSession(store: Store, userId: string | null, input: unknown) {
   const user = await caller(store, userId, "update_session");
   const req = onlyFields(input, ["session_id", ...FIELDS]);
@@ -98,7 +98,7 @@ export async function updateSession(store: Store, userId: string | null, input: 
   return sessionView(await store.putSession({ ...session, ...fieldsOf(req, session) }));
 }
 
-// SPEC_ISSUES.md#session-updates: the schedule page edits a series, which list_occurrences does not describe.
+// The schedule page edits a series, which list_occurrences does not describe.
 /** The instance's sessions that are not cancelled, oldest first, for the author's edit forms. */
 export async function listSessions(store: Store, userId: string | null, instanceId: unknown) {
   const user = await caller(store, userId, "list_occurrences");
@@ -179,7 +179,7 @@ export async function exportCalendar(store: Store, userId: string | null, instan
 
 // Calendar feeds ----------------------------------------------------------------------------------
 
-// SPEC_ISSUES.md#calendar-feed-url: the secret is an HMAC of the user id and feed generation under a
+// api.md, Users, Calendar feed secret: the secret is an HMAC of the user id and feed generation under a
 // deployment key, so get_calendar_feed can show the URL again while only the secret's hash is stored.
 function feedSecret(key: string, userId: string, generation: number): string {
   return createHmac("sha256", key).update(`${userId}:${generation}`).digest("base64url").slice(0, 32);

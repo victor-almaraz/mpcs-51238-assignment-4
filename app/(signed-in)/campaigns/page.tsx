@@ -1,7 +1,7 @@
 // Campaigns hub (docs/design/README.md, Page layouts: Hub): the campaigns the user runs and plays in,
 // New campaign, and the code form for an invitation or invite link; then archived campaigns, with
 // Unarchive for the author, and the author's recently deleted campaigns, with Restore
-// (SPEC_ISSUES.md#campaign-unarchive).
+// (app-flow.md, Characters, Campaigns, and My adventures).
 import { Castle, Plus } from "lucide-react";
 import { ArchivedSection, DeletedSection } from "@/components/lifecycle";
 import { CampaignCard, EnterCode } from "@/components/dashboard/hub";

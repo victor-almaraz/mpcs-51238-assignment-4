@@ -1,4 +1,5 @@
 // Invitations (api.md, Invitations; data-model.md, Invitation): single-use codes, stored only as hashes.
+// Only the campaign's author invites, lists, and revokes invitations.
 
 import { createHash } from "node:crypto";
 import type { Store } from "../store";
@@ -27,7 +28,7 @@ function optionalText(v: unknown, field: string, max: number): string {
 export async function invite(store: Store, userId: string | null, input: unknown, entropy: Entropy = cryptoEntropy) {
   const user = await caller(store, userId, "invite");
   const req = onlyFields(input, ["campaign_id", "instance_id", "message", "note"]);
-  const { campaign } = await membership(store, user, req.campaign_id);
+  const { campaign } = await membership(store, user, req.campaign_id, "author");
   if (campaign.archived) throw new ApiError("conflict", "an archived campaign accepts no invitations");
   if (req.instance_id !== undefined && (typeof req.instance_id !== "string" || !campaign.instance_ids.includes(req.instance_id))) {
     throw new ApiError("invalid_request", "instance_id is not an instance of the campaign");
@@ -45,7 +46,7 @@ export async function invite(store: Store, userId: string | null, input: unknown
   return { invitation, code, url: `/invite/${code}` };
 }
 
-/** What anyone holding the code sees: nothing about members other than the inviter, and no note, which only members see. */
+/** What anyone holding the code sees: nothing about members other than the inviter, and no note, which only the author sees. */
 export async function previewInvitation(store: Store, code: unknown) {
   const i = await store.invitationByHash(codeHash(normalizeCode(code)));
   if (!i) throw new ApiError("not_found", "no such invitation");
@@ -66,7 +67,7 @@ export async function invitationContext(store: Store, userId: string | null, cod
 export async function listInvitations(store: Store, userId: string | null, input: unknown) {
   const user = await caller(store, userId, "list_invitations");
   const req = onlyFields(input, ["campaign_id", "status"]);
-  const { campaign } = await membership(store, user, req.campaign_id);
+  const { campaign } = await membership(store, user, req.campaign_id, "author");
   if (req.status !== undefined && !STATUSES.includes(req.status as string)) throw new ApiError("invalid_request", `status must be one of ${STATUSES.join(", ")}`);
   return store.listInvitations(campaign.id, req.status as string | undefined);
 }
@@ -100,7 +101,6 @@ export async function revokeInvitation(store: Store, userId: string | null, invi
   if (typeof invitationId !== "string") throw new ApiError("invalid_request", "invitation_id must be a string");
   const invitation = await store.getInvitation(invitationId);
   if (!invitation) throw new ApiError("not_found", "no such invitation");
-  const { role } = await membership(store, user, invitation.campaign_id);
-  if (invitation.inviter.user_id !== user.id && role !== "author") throw new ApiError("forbidden", "only the inviter or the author may revoke an invitation");
+  await membership(store, user, invitation.campaign_id, "author");
   if (!(await store.revokeInvitation(invitation.id))) throw new ApiError("conflict", `the invitation is ${invitation.status}`);
 }

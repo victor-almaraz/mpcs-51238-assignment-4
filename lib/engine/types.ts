@@ -80,8 +80,6 @@ export interface LocationState {
   aliases?: Record<string, string>;
 }
 
-// SPEC_ISSUES.md#engine-state-fields: `carrier`, `hostile`, `behavior`, `contents`, `uses`, and
-// `next_entity` are not in data-model.md's example state.
 export interface EntityState {
   ref: string;
   kind: "creature" | "item" | "container" | "fixture" | "obstacle" | "door";

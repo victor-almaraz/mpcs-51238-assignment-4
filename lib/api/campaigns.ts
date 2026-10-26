@@ -110,7 +110,6 @@ export async function archiveCampaign(store: Store, userId: string | null, campa
   return campaignView(await store.archiveCampaign(campaign.id), user.id);
 }
 
-// SPEC_ISSUES.md#campaign-unarchive: api.md archives a campaign with no way back.
 export async function unarchiveCampaign(store: Store, userId: string | null, campaignId: unknown) {
   const user = await caller(store, userId, "unarchive_campaign");
   const { campaign } = await membership(store, user, campaignId, "author");
@@ -118,7 +117,6 @@ export async function unarchiveCampaign(store: Store, userId: string | null, cam
   return campaignView(await store.unarchiveCampaign(campaign.id), user.id);
 }
 
-// SPEC_ISSUES.md#campaign-unarchive: restore_campaign needs the deleted campaign's id, which no list gives.
 /** The caller's campaigns deleted less than 30 days ago, which they can restore, with the dates of each stage. */
 export async function listDeletedCampaigns(store: Store, userId: string | null) {
   const user = await caller(store, userId, "list_deleted_campaigns");

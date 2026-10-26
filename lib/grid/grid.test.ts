@@ -215,7 +215,7 @@ describe("pathfinding", () => {
     expect(findPath([1, 1], [], rules(hall, "chebyshev"))).toBeNull();
   });
 
-  // SPEC_ISSUES.md#footprint-movement: every footprint cell obeys the corner rule.
+  // engine.md, "Distance and adjacency": every footprint cell obeys the corner rule.
   it("does not let any cell of a footprint cut a blocked corner", () => {
     const g = grid(["######", "#..#.#", "#....#", "#....#", "######"]);
     expect(findPath([1, 1], [[2, 2]], rules(g, "chebyshev", [2, 2]))).toEqual([

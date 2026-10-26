@@ -245,7 +245,7 @@ $$;
 
 -- What a scheduler run needs: sessions of instances that have not ended, those instances, and the
 -- members of their campaigns with their reminder settings. Closing and suspended accounts get no
--- reminders (SPEC_ISSUES.md#account-suspension).
+-- reminders (api.md, Conventions).
 create or replace function cadmium_scheduler_snapshot() returns jsonb language sql stable as $$
   with i as (
     select id, status, campaign_id from instances where status <> 'ended' and deleted_at is null

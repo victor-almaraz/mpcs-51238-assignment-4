@@ -37,9 +37,8 @@ export function MaterialPicker({ materials, modules, chosen, enabled, requiredOn
   /** Each module the chosen materials require, with the titles of those that require it. */
   const requiredBy = new Map<string, string[]>();
   for (const m of chosenMaterials) for (const mod of m.modules) requiredBy.set(mod, [...(requiredBy.get(mod) ?? []), m.title]);
-  // SPEC_ISSUES.md#generation-order: the form submits settings in this order. The adventure's own
-  // settings come first, because the generator takes doors and locks from the first setting that
-  // declares them.
+  // The form submits settings in this order. The adventure's required settings come first, because the
+  // generator takes doors and locks from the first setting that declares them (generation.md, "Spec").
   const isNeeded = (s: MaterialOption) => needed.some((r) => r.id === s.id && satisfies(s.version, r.versions));
   // A required setting stays on while it is the only chosen version of that setting in the range.
   const locked = (s: MaterialOption) => isNeeded(s) && picked.includes(key(s)) && settings.filter((o) => o.id === s.id && isNeeded(o) && picked.includes(key(o))).length === 1;

@@ -11,7 +11,7 @@ const BASE32 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 export const cryptoEntropy: Entropy = {
   seed() {
     const [hi, lo] = crypto.getRandomValues(new Uint32Array(2));
-    // SPEC_ISSUES.md#seed-range: below 2^53 so the seed survives JSON.
+    // engine.md, "Random numbers": uniform in [0, 2^53 − 1], so the seed survives JSON.
     return (hi! & 0x1fffff) * 2 ** 32 + lo!;
   },
   id(prefix) {

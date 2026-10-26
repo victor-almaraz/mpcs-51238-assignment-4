@@ -1,7 +1,7 @@
 "use client";
 // Validation in the browser on every change, debounced (app-flow.md, Adventure editor: Validation).
-// SPEC_ISSUES.md#editor-validation-thread: the check runs on the main thread, not in a Web Worker,
-// because Turbopack copies a `new Worker(new URL(...))` target as a raw asset instead of bundling it.
+// The check runs on the main thread, as app-flow.md allows where the bundler cannot build a worker:
+// Turbopack copies a `new Worker(new URL(...))` target as a raw asset instead of bundling it.
 // lib/materials loads on the first edit, in its own chunk, and checks the draft against the required
 // settings' bundles. The server's diagnostics from save_draft stay the authority, so a browser result
 // never replaces a server result for the same or a later edit. If lib/materials cannot load, the

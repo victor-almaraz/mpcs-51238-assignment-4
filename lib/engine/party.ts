@@ -1,7 +1,7 @@
 // Party changes while an instance is paused (api.md, Instances: add_character and remove_character
 // allowed in `paused`; data-model.md, Character: the sheet is copied in on joining and written back on
 // leaving).
-// SPEC_ISSUES.md#party-changes: where a joining character appears, and what leaving removes.
+// Where a joining character appears, and what leaving removes: api.md, Instances, Party changes.
 
 import { Ctx, reject } from "./ctx";
 import { resolveRoom, roomOf } from "./requirements";

@@ -26,6 +26,7 @@ export interface QuestData {
   tiers: { min: number; tier: Tier }[];
   damage: { weapon: number; unarmed: number };
   npc_templates: Record<string, number>;
+  npc_attack: Record<string, number>;
   setbacks: { tough_choice: Setback[]; severe: Setback[]; failure: Setback[] };
   ap_start: number;
   ap_award_per_session: number;

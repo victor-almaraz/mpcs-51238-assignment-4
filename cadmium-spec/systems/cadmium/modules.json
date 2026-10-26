@@ -1,8 +1,5 @@
 {
-  "tune": [
-    "armor.max",
-    "armor.bypass_types"
-  ],
+  "tune": [],
   "armor": {
     "max": 6,
     "bypass_types": [],

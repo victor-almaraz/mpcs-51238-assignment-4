@@ -14,7 +14,7 @@ Do not add code, scripts, build files, or generated artifacts to this repository
 |---|---|
 | `docs/` | Specification documents; start at [docs/README.md](docs/README.md) |
 | `docs/decisions/` | Architecture decision records |
-| `docs/legal/` | Terms of Service and Privacy Policy |
+| `docs/legal/` | Terms of Service and Privacy Policy templates; a deployment serves its operator's own versions ([app-flow.md](docs/app-flow.md#legal-documents)) |
 | `spec/schema/` | JSON Schemas (draft 2020-12) for setting packs, adventure packs, maps, and the editor draft |
 | `spec/examples/` | Example packs; every file validates against its schema |
 | `systems/<id>/` | Rules data (`data.json`), module data (`modules.json`), and JSON Schemas for each rules system |
@@ -68,7 +68,7 @@ A change in one place usually needs changes elsewhere:
 
 1. Every schema passes the JSON Schema 2020-12 meta-schema.
 2. Every file in `spec/examples/` validates against its schema, as listed in [spec/README.md](spec/README.md).
-3. Every YAML block in `docs/` that is a complete pack file validates against its schema. A block introduced by a paragraph that begins `Excerpt of` and names a file in `spec/examples/` is an excerpt: its lines appear in that file in the same order, and its data is contained in the file's data.
+3. Every YAML block in `docs/` and `briefs/` that is a complete pack file validates against its schema. A block is a complete pack file when the paragraph immediately before it names exactly one pack file in code formatting, such as `packs/derelict_station/tables.yaml`, or, when that paragraph names none, when the nearest level-2 heading above the block is a pack file name, such as `entities/*.yaml`. A pack file name is `manifest.yaml`, `conditions.yaml`, `tables.yaml`, `parser.yaml`, `assets.yaml`, `adventure.yaml`, `flags.yaml`, or a `.yaml` file in `abilities/`, `entities/`, `rooms/`, `plot/`, `locations/`, or `npcs/`. Consecutive blocks named by the same heading are parts of one file and validate joined in order, except under `plot/`, `locations/`, and `npcs/`, which hold one record per file. Every other YAML block is a fragment and is not validated. A block introduced by a paragraph that begins `Excerpt of` and names a file in `spec/examples/` is an excerpt: its lines appear in that file in the same order, and its data is contained in the file's data.
 4. Every YAML block that names a file in `spec/examples/` without `Excerpt of` is identical to that file.
 5. Every relative link and heading anchor in Markdown resolves.
 6. The prose passes the rules in [Writing documentation](#writing-documentation).
@@ -85,8 +85,7 @@ A change in one place usually needs changes elsewhere:
 
 | Item | Where |
 |---|---|
-| Quest values to confirm, inherited by Cadmium: `ap_award_per_session`, `npc_templates`, `setbacks`, `spatial` | `systems/quest/data.json`, `systems/cadmium/data.json` |
-| Cadmium module values set by simulation: `armor.max`, `armor.bypass_types` | `systems/cadmium/modules.json` |
+| Quest values to confirm, inherited by Cadmium: `setbacks`, `spatial` | `systems/quest/data.json`, `systems/cadmium/data.json` |
 | Groq zero data retention to confirm before publishing | Privacy Policy section 4 |
 
 ## Implementing the specification
@@ -97,7 +96,7 @@ This section governs agents that build the web application. The application live
 
 1. Create the application repository with the stack in [docs/app-flow.md](docs/app-flow.md#stack): Next.js App Router, TypeScript in strict mode, Clerk, Supabase, Vercel, Groq.
 2. Add this repository as a git submodule at `cadmium-spec/`, pinned to a commit. The application reads schemas, examples, rules data, and `theme.css` from it at build time and copies nothing by hand. Updating the pin is its own change, with the specification diff summarized.
-3. Generate TypeScript types from `cadmium-spec/spec/schema/` and `cadmium-spec/systems/*/` into `lib/bundle/types/` with a JSON Schema code generator, and validate with Ajv (`Ajv2020`) using one registry of every schema. Generated files are never edited.
+3. Generate TypeScript types from `cadmium-spec/spec/schema/` and `cadmium-spec/systems/*/` into `lib/bundle/types/` with a JSON Schema code generator, and validate with Ajv (`Ajv2020`) using one registry of every schema. Generated files are never edited. Any module, including `systems`, MAY import generated types from `lib/bundle/types/` with type-only imports; these add no runtime dependency and are not edges of the module dependency table.
 4. Use Vitest for unit and property tests, Playwright for browser journeys, and run both, plus type checking, linting, and example validation, in CI on every change. A failing gate blocks merging.
 5. Module paths follow [docs/guides/engine-implementation.md](docs/guides/engine-implementation.md#module-boundaries) under `lib/`: `rng`, `grid`, `bundle`, `systems/quest`, `systems/cadmium`, `materials`, `generator`, `engine`, `store`, `coordinator`, `parser`, `narrator`, `broadcast`, `scheduler`, `notifier`, `map`. Imports follow the dependency table there and never point the other way; `rng`, `grid`, `generator`, and `engine` perform no I/O.
 
@@ -119,7 +118,7 @@ Each phase ends with its exit criterion met in CI. Phases 1 and 2 run as paralle
 |---|---|---|
 | 0. Foundations | Repository, submodule, CI gates, generated types, schema registry, fixtures from `spec/examples/` | Every example and every documentation YAML block validates in CI; types compile |
 | 1. Core libraries | `rng`, `grid` [engine 1]; `bundle` [engine 2]; `systems/quest`, `systems/cadmium` [engine 3, app 2]; `materials`, the Content Compiler with its `materials check` and `materials build` command line [app 3] | All test vectors reproduce; both systems meet [conformance](docs/systems/README.md#conformance), with every Quest case run against Cadmium with no module; the compiler accepts every example and rejects a fixture for every listed check with the documented `FILE: PATH: MESSAGE` |
-| 2. Engine | Exploration, rounds and ordering, lighting, containers, triggers [engine 4, 5, 7]; `generator` [engine 6]; command-line harness [engine 8] | The harness plays an adventure to every ending from scripted JSON-line inputs; recorded event logs are kept as golden files; 1,000 generator seeds verify |
+| 2. Engine | Exploration, rounds and ordering, lighting, containers, triggers [engine 4, 5, 7]; `generator` [engine 6]; command-line harness [engine 8] | The harness plays an adventure to every ending from scripted JSON-line inputs; recorded commit logs are kept as golden files; 1,000 generator seeds verify |
 | 3. Persistence and multiplayer | `store` and replay [engine 9]; Clerk, users, characters [app 1, 4]; campaigns, invitations, instances [engine 11, app 5–7]; `coordinator`, `api`, `broadcast` [engine 10] | Replaying every golden log reproduces stored state; two browsers join one instance by code and link and play over the binding |
 | 4. Play without models | Play page, map canvas in `lib/map`, direct actions [app 8] | A full adventure is playable in the browser with direct actions, on wide and narrow screens |
 | 5. Models | Parser evaluation set first, built from the example packs; then `parser` and `narrator` with retry and fallback [engine 13, 14, app 9] | The evaluation set meets its accuracy target; play continues with Groq disabled |
@@ -140,7 +139,7 @@ Phases 4 to 11 keep the harness and golden logs current: every new engine behavi
 | Conformance | `docs/systems/README.md` conformance list, per system and per module combination | Every change |
 | Compiler fixtures | One failing fixture per compilation check in `spec/README.md` and `adventure-packs.md` | Every change |
 | Unit and property tests | Per module, as listed in the engine implementation guide's test strategy | Every change |
-| Golden replays | Harness event logs of every example adventure | Every change |
+| Golden replays | Harness commit logs of every example adventure | Every change |
 | Browser journeys | Playwright: sign-up, campaign, invitation, play, editor, Settings | Every change to `app/` or `components/` |
 | Parser evaluation | Labelled inputs from the example packs, scored per model | On demand and before changing the parser model or prompt |
 | Agent play | Model-driven players completing example adventures through the harness or API | Before each release |

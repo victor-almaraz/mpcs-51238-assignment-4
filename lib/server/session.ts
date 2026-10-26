@@ -53,7 +53,7 @@ async function requestedPath(): Promise<string | null> {
  */
 export async function pageUser(): Promise<UserRecord> {
   const user = await sessionUser();
-  // SPEC_ISSUES.md#account-suspension: a suspended account can only read and export its own data.
+  // A suspended account can only read and export its own data (api.md, Conventions).
   if (!user || user.status !== "active" || user.suspended_at || !termsCurrent(user)) {
     const path = await requestedPath();
     redirect(path && path !== "/dashboard" && !path.startsWith("/accept-terms") ? `/accept-terms?next=${encodeURIComponent(path)}` : "/accept-terms");

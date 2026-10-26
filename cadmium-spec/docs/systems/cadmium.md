@@ -25,7 +25,7 @@ Cadmium is the default system of the specification. It is Quest with optional mo
 | Components | `CreationForm`, `SheetView`, and `StatsEditor` extend Quest's, adding module fields when the campaign enables their module. |
 | Values to confirm | Cadmium inherits Quest's `confirm` list in `data.json`. Only a check against the rulebook removes an entry. |
 
-Module values that playtesting and simulation set are listed in `tune` in `modules.json`.
+`tune` in `modules.json` lists module values that playtesting and simulation are still to set; it is empty. `armor.max` (6, one point above the largest armor loadout of the example setting `lantern_coast`) and `armor.bypass_types` (`[]`) are set by the balance simulation of the exemplar adventure.
 
 ## Module `armor`
 
@@ -37,7 +37,7 @@ Armor is a consumable pool of points that absorbs harm before hit points.
 | Item `system_stats` | `armor`: points, 1–40. |
 | Creature `system_stats` | `armor`: starting pool; `instantiate` sets `{ value: armor, max: armor }`. |
 | Donning | `use_item` on an item with `armor` adds its points to the pool, up to `max`, and returns `consume: true`. Points beyond `max` are lost. With the pool full, `use_item` raises `requirement_unmet`. |
-| Harm | `harm` reduces `armor.value` first and hit points by the remainder. Harm of a type in `bypass_types` (default none) skips the pool. With `absorbs_at_deaths_door` (default true), the pool also absorbs harm at death's door. |
+| Harm | `harm`, and the harm of an attack, reduce `armor.value` first and hit points by the remainder. The pool change emits `resource_changed` first. `damaged` follows only when a remainder reaches hit points, with the remainder as `amount`, so harm the pool absorbs entirely emits no `damaged` and does not trigger `flee_when_harmed`. At death's door, the death roll compares against the remainder. Harm of a type in `bypass_types` (`[]`) skips the pool; rules-system attacks are untyped, so `bypass_types` applies only to typed effect damage. With `absorbs_at_deaths_door` (default true), the pool also absorbs harm at death's door. Structures, and creatures without `armor`, have no pool. |
 | Rest | Rests do not restore armor. |
 | Summary | `summary` reports the pool as the resource `armor`; each change emits `resource_changed`. |
 

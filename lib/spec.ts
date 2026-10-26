@@ -1,5 +1,5 @@
 // Reads documents at build time: the specification's, for the attribution page, and the application's
-// own legal documents in legal/ (SPEC_ISSUES.md#legal-documents).
+// own legal documents in legal/ (app-flow.md, Legal documents).
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 

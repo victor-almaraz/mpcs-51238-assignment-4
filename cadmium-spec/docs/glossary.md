@@ -5,6 +5,7 @@ Terms are used with these meanings throughout the documentation.
 | Term | Definition |
 |---|---|
 | User | A registered person, with auth details, characters, active campaigns, and authored campaigns. |
+| Terms version | The hash that identifies the current text of the Terms of Service and Privacy Policy together; a user accepts it again whenever it changes. See [data-model.md](data-model.md#user). |
 | Character | A user's playable entity, bound to one rules system and holding the attributes that system mandates. |
 | Rules system | A swappable module that decides ruleset-specific outcomes: sheets, checks, attacks, harm, rests, initiative. Implemented: `quest`. |
 | Campaign | What an author prepares: a rules system, members, materials, and invitations. Campaigns hold no play state. |
@@ -20,9 +21,12 @@ Terms are used with these meanings throughout the documentation.
 | Adventure pack | Material that supplies a story: plot, locations, NPCs, and adventure-specific content. |
 | Bundle | The compiled, validated JSON form of a setting pack or adventure pack. |
 | `system_stats` | Rules-system data on a creature, item, or ability, validated against the system's schema. |
+| Rolled ability | An ability whose `system_stats.roll` is `true`: using it calls `check`, and its effects apply only on a passing outcome. See [engine.md](engine.md#action-resolution). |
+| Quick start | A role's six starting abilities that one setting tags for that role alone, offered in character creation as a single choice. See [systems/quest.md](systems/quest.md#starting-abilities). |
 | Sheet | A combatant's rules-system data in instance state: a character sheet, a creature sheet built by `instantiate`, or a structure sheet built by `instantiate_structure`. |
 | State | The authoritative snapshot of an instance's world. |
 | Event | An immutable record of one state change. |
+| Commit | The input that produced one instance version, stored with that version's events; replay re-runs commits. See [data-model.md](data-model.md#commit). |
 | Input | A player's raw natural-language text. |
 | Tool call | The structured action the parser produces from an input. |
 | Parser | The model role that converts an input into a tool call. |
@@ -34,6 +38,7 @@ Terms are used with these meanings throughout the documentation.
 | Ordering policy | A rules system's resolution method and sort keys for a mode. |
 | Declaration | A validated action stored until a simultaneous round closes. |
 | Free tool | A tool that resolves immediately and is never ordered: `examine`, `improvise`, `choose`. |
+| Exploration-only tools | `interact`, `search`, `take`, `drop`, `give`, and `rest`, which a character in the combat area cannot use during combat. See [engine.md](engine.md#rounds). |
 | Pending choice | A decision the rules system asks a player to make mid-resolution, answered with `choose`. |
 | Situation | Roll adjustments the engine derives from conditions and passes to the rules system. |
 | Outcome tier | `critical_failure`, `failure`, `partial`, `success`, or `critical_success`. |
@@ -59,6 +64,8 @@ Terms are used with these meanings throughout the documentation.
 | Namespace | The prefix that identifies a bundle's content in references: a setting pack's declared `namespace`, or an adventure's id. |
 | Ref | A reference to content, written `namespace:key`. |
 | Anchor | A placement that a generated location must satisfy, such as a plot item at a minimum depth. |
+| Weighted selection | Choosing one entry of a weighted table with one die whose faces number the sum of the weights. See [engine.md](engine.md#random-numbers). |
+| Table draw | A draw of `picks` entries from a table, each a weighted selection yielding its `ref` `count` times. See [engine.md](engine.md#random-numbers). |
 | Action-menu mode | A deployment setting in which every character receives selectable actions at each round or turn start. |
 | Operator | A user with `operator: true`, permitted to run administrative operations. |
 | Page (design) | The content column of a screen: forms, rule inserts, graphs, the play log. |
@@ -75,6 +82,7 @@ Terms are used with these meanings throughout the documentation.
 | Push subscription | A browser registered to receive Web Push reminders for a user. |
 | Calendar feed | A user's secret iCalendar URL listing upcoming occurrences, for calendar applications. |
 | Module | An optional part of a rules system that a campaign enables, such as Cadmium's `armor`. |
+| Module field | A schema property whose `description` begins with `Module <id>:`, present only while that module is enabled. See [systems/README.md](systems/README.md#modules). |
 | Cadmium | The default rules system: Quest with optional modules. |
 | Character-scoped flag | A flag with one value per character instead of one for the party. |
 | Currency | A setting's money: integer amounts in a smallest unit, shown as coins of declared denominations. |

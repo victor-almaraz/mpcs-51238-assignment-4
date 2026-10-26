@@ -42,7 +42,7 @@ export async function scheduleSessionAction(_: FormState, form: FormData): Promi
 
 /**
  * Changes a series from the schedule page: title, duration, weekly recurrence, auto-resume and auto-pause,
- * and notes. The change applies to the whole series (SPEC_ISSUES.md#session-updates).
+ * and notes. The change applies to the whole series (api.md, Scheduling).
  */
 export async function updateSessionAction(_: FormState, form: FormData): Promise<FormState> {
   return save((uid) => updateSession(serverStore(), uid, { session_id: str(form, "session_id"), ...sessionFields(form) }), schedulePages(str(form, "instance_id")), "Session saved.");

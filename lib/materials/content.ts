@@ -7,7 +7,7 @@ import type { Diagnostics } from "./pack";
 import { checkStats, type BoundSystem } from "./rules";
 import { isObject, walkEffects, walkRequirement, walkVerbs, type Json, type JsonObject, type Visitor } from "./walk";
 
-// SPEC_ISSUES.md#ref-kinds: the expected kind of each ref is inferred from its use.
+// The kind each ref resolves to is listed in spec/README.md, "Ref kinds".
 /** What a ref must resolve to. `item_table` is a table whose entries are all items. */
 export type RefKind = "entity" | "item" | "door" | "creature" | "table" | "item_table" | "room_template" | "ability" | "asset" | "currency";
 
@@ -165,7 +165,7 @@ export function checkEntity(ctx: ContentContext, key: string, file: string, valu
   const visit = ctx.visitor(file);
   artSites(ctx, file, value, [key]);
   walkVerbs(value.verbs, [key, "verbs"], visit);
-  // SPEC_ISSUES.md#container-locks: containers take `lock`, as engine.md and the schema state.
+  // Doors and containers take `lock` (engine.md, "Containers").
   walkRequirement(value.lock, [key, "lock"], visit);
   if (isObject(value.light) && (value.light.dim as number) < (value.light.bright as number)) {
     out.add(file, [key, "light", "dim"], `dim radius ${String(value.light.dim)} is less than bright radius ${String(value.light.bright)}`, "light");

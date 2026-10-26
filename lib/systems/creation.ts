@@ -1,6 +1,6 @@
 // The campaign a creation form may be filled for (app-flow.md, Character creation and editor: "A system
 // with modules shows module fields only when ... for character creation the chosen campaign, enables the
-// module"; SPEC_ISSUES.md#creation-chosen-campaign). With a campaign chosen, the form offers only the
+// module"). With a campaign chosen, the form offers only the
 // abilities of the campaign's settings, so the character can join its games. `create_character` takes
 // no campaign; the server action checks the abilities against the chosen one.
 

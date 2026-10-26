@@ -12,7 +12,7 @@ Someone writes to [EMAIL] reporting content that breaks the [Terms of Service](.
 ## Procedure
 
 1. Inspect the reported content and the game history around it with `inspect_instance` or the record directly. View nothing unrelated to the report.
-2. If the content appears to be illegal, set `held_at` and `hold_reason` on the records involved and on the account, so neither deletion nor shutdown erases them. Remove the content from other users' view and suspend the account.
+2. If the content appears to be illegal, set `held_at` and `hold_reason` on the records involved and on the account, so neither deletion nor shutdown erases them. Remove the content from other users' view and suspend the account. A suspended user may only read their own account, export their data, and sign out; they receive no messages or reminders ([api.md](../api.md#conventions)).
 3. Contact the University of Chicago's legal counsel, who decides whether to report the content to the police or other authorities. Do not contact authorities or the user before that decision.
 4. When the matter is closed, clear the hold. Purging proceeds as for any deletion.
 

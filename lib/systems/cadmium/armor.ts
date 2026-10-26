@@ -45,7 +45,7 @@ export function armorHarmSheet(target: Combatant, sheet: Sheet, amount: number, 
   const after: Sheet = { ...sheet, armor: { ...p, value } };
   const part = emptyPart();
   part.events.push({ type: "resource_changed", target: target.id, resource: "armor", delta: -absorbed, value });
-  // SPEC_ISSUES.md#armor-events: `damaged` is emitted only for the remainder that reaches hit points.
+  // cadmium.md, "Module armor": `damaged` is emitted only for the remainder that reaches hit points.
   const rest = harmSheet(target, after, amount - absorbed, rng);
   merge(part, rest);
   part.updates[target.id] = rest.updates[target.id] ?? after;

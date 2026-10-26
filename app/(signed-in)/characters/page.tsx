@@ -1,6 +1,6 @@
 // Characters hub (docs/design/README.md, Page layouts: Hub): every character the user owns, grouped
 // by whether it can join a game, with New character; then archived characters, with Unarchive, and
-// recently deleted ones, with Restore (SPEC_ISSUES.md#character-draft-archive).
+// recently deleted ones, with Restore (app-flow.md, Characters, Campaigns, and My adventures).
 import { Plus, Users } from "lucide-react";
 import { CharacterCard, gamesOf, type CharacterItem } from "@/components/dashboard/hub";
 import { ArchivedSection, DeletedSection } from "@/components/lifecycle";

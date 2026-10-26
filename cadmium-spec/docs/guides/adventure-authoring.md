@@ -447,8 +447,9 @@ Create a campaign with the setting and the adventure, start an instance with one
 | Something in a generated room | Place it with an anchor that sets `id`; trigger on events naming that id or its ref. |
 | Fetch quest | Adventure item placed by an anchor; trigger on `item_taken` with its ref. |
 | Information gated by progress | Topic with `when: { stage: [...] }`. |
+| Giving an item to an NPC | `give` reaches characters and containers only. Give the NPC a topic whose `when` is `has_item` and whose effects `remove_item` from the actor and set a flag, as Vantane's `ration` topic does. |
 | Consequences that escalate | `add_flag` on an int flag; later requirements test `gte`. |
 | Coin and shops | A character-scoped `int` flag with `currency`; income with `add_flag` and `target: room`; a shop topic with `when: { flag: purse, gte: 20 }` and effects that subtract the price and give the item. |
 | Ambush | `spawn` hostile creatures and `start_combat` in a trigger effect. |
 | Hidden twist | `secrets` entry released by `reveal` at the dramatic moment. |
-| Multiple endings | Separate triggers with different `when` requirements calling `end_campaign` with different endings. |
+| Multiple endings | Separate triggers with different `when` requirements calling `end_campaign` with different endings. A trigger that narrates an outcome before its ending is listed before the trigger that ends the campaign, because an ending stops trigger evaluation. |

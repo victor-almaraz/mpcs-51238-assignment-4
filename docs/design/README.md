@@ -1,8 +1,8 @@
 # Cadmium pattern library
 
 The interface patterns of this application. They replace the specification's Margin design
-(`cadmium-spec/docs/design/`) for this application; see
-[SPEC_ISSUES.md](../../SPEC_ISSUES.md#design-system). Routes, contents, and behaviour follow
+(`cadmium-spec/docs/design/`) for this application, as `cadmium-spec/docs/design/README.md`,
+Substitution, allows. Routes, contents, and behaviour follow
 `cadmium-spec/docs/app-flow.md`. The patterns follow how comparable tools lay out the
 same tasks; [Sources](#sources) lists them.
 

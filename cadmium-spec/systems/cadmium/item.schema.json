@@ -29,5 +29,5 @@
     }
   },
   "additionalProperties": false,
-  "description": "Fields marked with a module are accepted only when that module is enabled."
+  "description": "A property whose description begins with Module <id>: is accepted only while module <id> is enabled."
 }

@@ -56,9 +56,9 @@ export function compileDraft(draft: unknown, settings: readonly SettingBundle[])
 
 /**
  * A bundle with its asset files, as `materials build` writes it and `publish_bundle` reads it: the
- * bundle's fields, plus `files` mapping each SHA-256 to its type and base64 bytes.
+ * bundle's fields, plus `files` mapping each SHA-256 to its type and base64 bytes (spec/README.md,
+ * "Asset files").
  */
-// SPEC_ISSUES.md#asset-delivery
 export function withFiles(bundle: Bundle, files: CompileResult<Bundle>["files"]): Record<string, unknown> {
   const entries = Object.entries(files ?? {});
   if (entries.length === 0) return bundle as unknown as Record<string, unknown>;

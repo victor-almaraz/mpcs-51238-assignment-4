@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://schema.dungeon-crawler.invalid/v1/systems/cadmium/structure.schema.json",
   "title": "Cadmium structure stats",
-  "description": "Durability of a destructible obstacle or door. Fields marked with a module are accepted only when that module is enabled.",
+  "description": "Durability of a destructible obstacle or door. A property whose description begins with Module <id>: is accepted only while module <id> is enabled.",
   "type": "object",
   "properties": {
     "hp": {

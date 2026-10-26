@@ -3,8 +3,6 @@
 // paragraph right before it names one in backticks ("Create `packs/x/tables.yaml`:"), or, failing
 // that, when its nearest level-2 heading is a pack file name ("## entities/*.yaml"). Blocks named by
 // one section heading are parts of one file, except in one-record-per-file directories.
-// SPEC_ISSUES.md#complete-doc-yaml-blocks: the specification does not say how to tell a complete
-// pack file from a fragment; these rules are the smallest reading that covers the current documents.
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 

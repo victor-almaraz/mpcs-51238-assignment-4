@@ -35,7 +35,7 @@ export function evaluateTriggers(ctx: Ctx): void {
       const event = ctx.events[i]!;
       for (const arc of arcs) {
         for (const trigger of arc.triggers) {
-          // SPEC_ISSUES.md#triggers-after-ending: an ending stops evaluation of this event and later passes.
+          // An ending stops evaluation of this event and later passes (adventure-packs.md, "Evaluation order").
           if (ctx.state.ended) {
             cursors.set(ctx, ctx.events.length);
             return;

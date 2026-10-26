@@ -97,7 +97,7 @@ export async function getInstance(deps: Deps, userId: string | null, input: unkn
   return v ? { instance, view: v } : { instance };
 }
 
-// SPEC_ISSUES.md#cross-system-versions: a Quest character in a Cadmium instance keeps Quest's major version.
+// systems/README.md, "Compatibility": a Quest character in a Cadmium instance is checked against Quest's major version.
 export async function addCharacter(deps: Deps, userId: string | null, input: unknown) {
   const { store } = deps;
   const user = await caller(store, userId, "add_character");
@@ -192,7 +192,7 @@ export async function settingsOf(store: Store, materials: readonly MaterialRef[]
   return (await materialBundles(store, materials.filter((m) => m.kind === "setting"))).map((b) => ({ namespace: b.namespace, title: b.manifest.title }));
 }
 
-// SPEC_ISSUES.md#creation-chosen-campaign: creation for a chosen campaign refuses abilities its games could not use.
+// app-flow.md, Character creation and editor: creation for a chosen campaign refuses abilities its games could not use.
 /** A conflict when `abilities` (refs) need a setting the caller's campaign does not include. */
 export async function checkFitsCampaign(store: Store, userId: string | null, campaignId: unknown, abilities: unknown): Promise<void> {
   const user = await caller(store, userId, "create_character");

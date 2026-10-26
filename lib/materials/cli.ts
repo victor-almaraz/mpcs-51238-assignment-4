@@ -83,7 +83,7 @@ export function main(argv: readonly string[], io: Io = processIo): number {
   } catch (e) {
     return usage(`cannot read directory '${dir}': ${(e as Error).message}`);
   }
-  // SPEC_ISSUES.md#cli-adventure-settings: --setting supplies the bundles an adventure requires.
+  // --setting supplies the bundles an adventure requires (spec/README.md, "Compiler interface").
   const settings: SettingBundle[] = [];
   for (const path of settingPaths) {
     if (!existsSync(path)) return usage(`cannot read setting '${path}'`);

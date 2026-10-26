@@ -100,7 +100,6 @@ describe("campaigns", () => {
   });
 });
 
-// SPEC_ISSUES.md#campaign-unarchive
 describe("archiving and deleting", () => {
   it("stores titles trimmed, and deletes when the typed title matches, spaces aside", async () => {
     const c = await campaign({ title: "  Archive  " });
@@ -172,7 +171,7 @@ describe("joining", () => {
     expect(await previewInvitation(store, secret.toLowerCase())).toMatchObject({ campaign_title: "The Sunken Archive", inviter_display_name: "A", message: "Join us Tuesdays.", status: "pending" });
     expect((await acceptInvitation(store, "user_b", secret)).members.map((m) => m.user_id)).toEqual(["user_a", "user_b"]);
     expect(await code(acceptInvitation(store, "user_c", secret))).toBe("conflict");
-    expect((await listInvitations(store, "user_b", { campaign_id: c.id }))[0]).toMatchObject({ status: "accepted", note: "for Rook" });
+    expect((await listInvitations(store, "user_a", { campaign_id: c.id }))[0]).toMatchObject({ status: "accepted", note: "for Rook" });
     expect(await code(previewInvitation(store, "NO-SUCH-CODE"))).toBe("not_found");
   });
 
@@ -191,13 +190,15 @@ describe("joining", () => {
     expect(await listInvitations(store, "user_a", { campaign_id: c.id, status: "expired" })).toHaveLength(1);
   });
 
-  it("lets only the inviter or the author revoke", async () => {
+  it("lets only the author invite, list, and revoke invitations", async () => {
     const c = await campaign();
     await acceptInvitation(store, "user_b", (await invite(store, "user_a", { campaign_id: c.id }, e)).code);
-    await acceptInvitation(store, "user_c", (await invite(store, "user_a", { campaign_id: c.id }, e)).code);
-    const byB = await invite(store, "user_b", { campaign_id: c.id }, e);
-    expect(await code(revokeInvitation(store, "user_c", byB.invitation.id))).toBe("forbidden");
-    expect(await code(revokeInvitation(store, "user_a", byB.invitation.id))).toBe("ok");
+    const pending = await invite(store, "user_a", { campaign_id: c.id, note: "for C" }, e);
+    expect(await code(invite(store, "user_b", { campaign_id: c.id }, e))).toBe("forbidden");
+    expect(await code(listInvitations(store, "user_b", { campaign_id: c.id }))).toBe("forbidden");
+    expect(await code(revokeInvitation(store, "user_b", pending.invitation.id))).toBe("forbidden");
+    expect(await code(invite(store, "user_c", { campaign_id: c.id }, e))).toBe("not_found");
+    expect(await code(revokeInvitation(store, "user_a", pending.invitation.id))).toBe("ok");
   });
 
   it("admits any number of users by invite link until it is rotated or disabled", async () => {

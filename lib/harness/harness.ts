@@ -7,8 +7,8 @@ import { Rng, type U64 } from "../rng";
 /** One input line: a tool call, an advance, or a view request. */
 export type Input = { actor: string; tool: string; args: Record<string, unknown> } | { advance: true } | { view: string };
 
-// SPEC_ISSUES.md#replay-source: the log records each commit's input, so replay re-runs inputs and
-// compares events and state; the event payloads alone cannot rebuild state.
+// The log records each commit's input, so replay re-runs inputs and compares events and state
+// (architecture.md, "Determinism and replay").
 /** One log line: the start commit, or the commit an input produced. */
 export type LogLine =
   | { version: number; start: { seed: string; characters: JoiningCharacter[] }; events: GameEvent[] }

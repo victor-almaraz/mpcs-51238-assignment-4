@@ -37,8 +37,7 @@ const ACTOR_EVENTS = new Set([
 
 const RESERVED_ID = /^(entry|boss|r[0-9]+)$/;
 const GENERATOR_DEFAULT_ROOMS: [number, number] = [8, 12];
-// SPEC_ISSUES.md#treasure-role: generation.md assigns no room the role `treasure`.
-/** Roles the generator assigns (generation.md, "Roles and depth"). */
+/** Roles the generator assigns (generation.md, "3. Roles and depth"); no room holds `treasure`. */
 const GENERATED_ROLES = new Set(["entry", "boss", "dead_end"]);
 
 interface LocationInfo {
@@ -307,7 +306,7 @@ export function compileAdventure(files: PackFiles, settings: readonly SettingBun
       if (typeof v !== "string") continue;
       const p = [...path, key];
       switch (key) {
-        // SPEC_ISSUES.md#trigger-match-refs: `ref` is a content ref; `item`, `target`, and `door` are entity ids.
+        // `ref` is a content ref; `item`, `target`, `door`, and `entity` are entity ids.
         case "ref":
           sites.push({ file, path: p, ref: v, kind: "entity", check: "ref", set: (q) => (on.ref = q) });
           break;
@@ -362,7 +361,7 @@ export function compileAdventure(files: PackFiles, settings: readonly SettingBun
   }
 
   // npcs/*.yaml
-  // SPEC_ISSUES.md#room-scopes: topic effects resolve rooms in the actor's location.
+  // Topic requirements and effects resolve rooms in the actor's location (adventure-packs.md, "Room references").
   for (const { file, value } of npcs.values()) {
     sites.push({ file, path: ["template"], ref: value.template as string, kind: "creature", check: "npc", set: (q) => (value.template = q) });
     artSites(ctx, file, value, []);
@@ -456,8 +455,7 @@ export function compileAdventure(files: PackFiles, settings: readonly SettingBun
   }
 
   // 10. The start room has a free cell for each player.
-  // SPEC_ISSUES.md#start-free-cells: only fixed placements are known when compiling, and generated
-  // start locations are not checked.
+  // Only fixed placements count, and generated start locations are not checked.
   function checkStartRoom(room: string, parsed: { width: number; height: number; terrain: string[]; placements: { at: readonly [number, number]; ref: string }[] }, owner: Map<number, string>, contents: JsonObject[]): void {
     const blocked = new Set<number>();
     const block = (ref: string, at: readonly [number, number]) => {
@@ -524,7 +522,7 @@ export function compileAdventure(files: PackFiles, settings: readonly SettingBun
   }
 
   // 7. Some ending is reachable: with every trigger able to fire, an end_campaign effect exists.
-  // SPEC_ISSUES.md#ending-reachability: the automatic ending `lost` does not count.
+  // The automatic ending `lost` does not count.
   if (endingsUsed.size === 0 || ![...endingsUsed].some((e) => endings.has(e))) out.add(manifestFile, ["endings"], "no ending is reachable", "ending");
 
   // 8. Door locks that reference only flags reference a flag some effect sets.

@@ -36,3 +36,19 @@ Pages, routes, and behaviour are specified in [app-flow.md](../app-flow.md); thi
 | Explorations | PDFs in `design/explorations/`: alternative palettes, typefaces, and icon sets that were compared. They are reference material, not specification. |
 
 Licences for fonts and icons are listed in [LICENSES.md](../../LICENSES.md).
+
+## Substitution
+
+Margin is the reference design. A deployment MAY replace it with its own design system, documented in the application repository, that lays out the pages and regions of [app-flow.md](../app-flow.md) differently: for example, workspaces that fill the window instead of a page column, inline field errors and a problems list instead of numbered margin notes, and a persistent round and turn tracker instead of round status in the margin. A substitute design system keeps these requirements of Margin:
+
+| Requirement | Source |
+|---|---|
+| Contrast minimums in both modes, for every token | [foundations.md](foundations.md#contrast) |
+| Every status also has a shape, an icon, or a word; a screen with its colour removed loses no information | [foundations.md](foundations.md#rules) |
+| One accent colour for what can be acted on, never decoration; one colour for errors and destructive actions only | [foundations.md](foundations.md#rules) |
+| Reduced motion makes changes instant | [foundations.md](foundations.md#motion) |
+| The interface icon vocabulary | [foundations.md](foundations.md#vocabulary) |
+| Interface copy and voices | [writing.md](writing.md) |
+| Self-hosted fonts and icons, with their licences on the attribution page | [app-flow.md](../app-flow.md#stack-constraints) |
+
+Pages, routes, contents, and behaviour follow [app-flow.md](../app-flow.md) under either design.

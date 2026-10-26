@@ -1,7 +1,7 @@
 // Why a trigger whose event matched did not fire, for the editor's playtest trace (app-flow.md,
 // Adventure editor: Playtest: "the conditions that failed"). Pure and read-only: it evaluates the
 // trigger's `when` against a copy of a state with the engine's own `holds`, part by part, and never
-// rolls; it does not change how the engine evaluates triggers. SPEC_ISSUES.md#playtest-failed-conditions.
+// rolls; it does not change how the engine evaluates triggers. See app-flow.md, Playtest.
 
 import type { Requirement } from "../bundle/types/defs";
 import { Rng } from "../rng";

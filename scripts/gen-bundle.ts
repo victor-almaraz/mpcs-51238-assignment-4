@@ -1,6 +1,6 @@
 // Generates lib/bundle/schemas.generated.ts (the schema index) and lib/bundle/types/*.ts
 // from cadmium-spec/spec/schema and cadmium-spec/systems/*/ (AGENTS.md, Setup step 3), and the
-// version of the application's legal documents in legal/ (SPEC_ISSUES.md#legal-documents).
+// version of the application's legal documents in legal/ (app-flow.md, Legal documents).
 // Generated files are never edited by hand; rerun `pnpm gen` instead.
 import { readdirSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "node:fs";
 import { join, relative, dirname } from "node:path";

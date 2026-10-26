@@ -25,8 +25,8 @@ pnpm materials check --setting cadmium-spec/spec/examples/lantern_coast cadmium-
 ```
 
 `pnpm bundles` builds both bundles for `/admin`. A campaign lists `lantern_coast` before any Quest
-setting, so the holds take their doors and vault from it; see
-[SPEC_ISSUES.md](../../SPEC_ISSUES.md#generation-order). Characters take their abilities from
+setting, so the holds take their doors and vault from it; see the generation pack in
+[generation.md](../../cadmium-spec/docs/generation.md#spec). Characters take their abilities from
 `lantern_coast`, which holds a Quick Start for every role.
 
 ## Places

@@ -1,5 +1,5 @@
-// Rebuilding a character before its first game (SPEC_ISSUES.md#character-rebuild), and creation for a
-// chosen campaign (SPEC_ISSUES.md#creation-chosen-campaign).
+// Rebuilding a character before its first game (api.md, rebuild_character), and creation for a
+// chosen campaign (app-flow.md, Character creation and editor).
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Store } from "../store";

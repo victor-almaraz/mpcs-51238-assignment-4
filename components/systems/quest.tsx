@@ -2,8 +2,8 @@
 // Quest's creation form and sheet view (app-flow.md, Character creation and editor; docs/design/README.md,
 // Character creation): titled steps that can be revisited (System, Campaign, Role, Abilities counted
 // against six, Name and description) beside a summary card with a Change link per choice and the Create
-// button. A chosen campaign limits the abilities to its settings (SPEC_ISSUES.md#creation-chosen-campaign).
-// With `rebuild`, the same form changes an unplayed character's choices (SPEC_ISSUES.md#character-rebuild).
+// button. A chosen campaign limits the abilities to its settings (app-flow.md, Character creation and editor).
+// With `rebuild`, the same form changes an unplayed character's choices (api.md, rebuild_character).
 import { Check } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useFormAction } from "@/components/form-action";

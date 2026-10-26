@@ -1,6 +1,5 @@
 // Replay (architecture.md, "Determinism and replay"; engine.md, `state_restored`): rebuilds state by
 // re-running each commit's input from the start, checking every commit's events.
-// SPEC_ISSUES.md#replay-source: commits record their inputs, since events alone cannot rebuild state.
 
 import { Rng, type U64 } from "../rng";
 import { compareText } from "../systems";

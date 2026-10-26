@@ -167,8 +167,10 @@ torch_icon:
 | `source` | `{ game_icons: author/name }` or `{ file: assets/<name> }`. |
 | `alt` | Text alternative, up to 200 characters. |
 | `license` | SPDX identifier. Default `CC0-1.0`. |
-| `credit` | Attribution, required when the license requires it. |
+| `credit` | Attribution. Required when the license requires attribution: every license whose SPDX identifier begins with `CC-BY`, such as `CC-BY-3.0`, `CC-BY-4.0`, and `CC-BY-SA-4.0`. |
 | `provenance` | For art made with a generative tool: tool, model, date, and prompt id; up to 500 characters. |
+
+game-icons.net publishes its icons under CC BY 3.0, so a `game_icons` asset sets `license: CC-BY-3.0` and a `credit` naming the icon's author, as `torch_icon` does.
 
 Creature, item, container, fixture, obstacle, and door templates, abilities, terrain types, and adventure NPCs carry `art`: a list of refs to assets, at most one of each kind. Refs follow the `namespace:key` grammar, so adventures reuse a setting's art.
 
@@ -177,7 +179,7 @@ Creature, item, container, fixture, obstacle, and door templates, abilities, ter
 | SVG | `icon`, `tile` | 200 KB |
 | PNG, WebP | `portrait`, `tile` | 1 MB; portraits at most 1024 × 1024 px, tiles at most 256 × 256 px |
 
-Models never receive art. Rendering and fallbacks are in [design/components.md](design/components.md#art).
+The compiled bundle names each file by its content hash, and `materials build` carries the bytes beside it; see [spec/README.md](../spec/README.md#asset-files). Models never receive art. Rendering and fallbacks are in [design/components.md](design/components.md#art).
 
 ## entities/*.yaml
 
@@ -201,6 +203,7 @@ security_frame:
 | `behavior` | yes | `aggressive`, `defensive`, `passive`, or `fleeing`. See [engine.md](engine.md#entity-turns). |
 | `footprint` | no | Cells occupied, `[width, height]`, 1–8 each. Default `[1, 1]`. |
 | `flee_when_harmed` | no | Switch to `fleeing` after first taking harm. |
+| `loot` | no | A pick from an item table, `{ table, picks }`. The compiler checks that the table supplies items. The key is reserved: the engine never draws it, and a dead creature keeps what it carries ([engine.md](engine.md#entities-on-the-map)). |
 | `system_stats` | yes | The system's creature statistics. |
 | `tags` | no | `hostile` makes the creature a combat participant. |
 
@@ -252,6 +255,8 @@ control_panel:
     read:
       effects: []
 ```
+
+`contents` is a pick from a table, `{ table, picks }`, or a list of item refs. It is drawn when the container is placed: at instance start for a container in a location, and when an effect or a destruction's `remains` creates it. Each drawn item becomes an item entity held by the container.
 
 Containers and fixtures MAY set `footprint`, `obstructs` (default `[]`), `cover` (default `false`), `light`, and `art`. A container MAY also set `capacity`, which lets characters store items in it with `give` and shows its contents to characters in reach, and `lock`, a requirement for `take` and `give` on it; see [engine.md](engine.md#containers). An altar that blocks movement and shelters those behind it sets `obstructs: [movement]` and `cover: true`.
 
@@ -389,7 +394,7 @@ reactor_room:
 
 ## tables.yaml
 
-Weighted tables drive generation, loot, and starting items.
+Weighted tables supply generated encounters, loot containers, and room labels, container `contents`, and `starting_items`. Every draw from a table is a table draw of weighted selections, as defined in [engine.md](engine.md#random-numbers).
 
 ```yaml
 starting_kit:
@@ -431,7 +436,7 @@ The machine-readable schemas are in `spec/`; see [spec/README.md](../spec/README
 - Every file matches its schema. Unknown keys are errors.
 - The rules system exists and its version satisfies `system.versions`.
 - Every `system_stats` and every `check` specification matches the system's schema.
-- Every reference resolves to an entity, table, or ability of the expected kind, within the pack's namespace.
+- Every reference resolves, within the pack's namespace, to content of the kind listed in [spec/README.md](../spec/README.md#ref-kinds).
 - Every damage type, terrain type, and condition used is declared.
 - `generation.door` and every key of `generation.locks` is a door template; every value of `generation.locks` is an item.
 - Every map has rows of equal length, at most 64 × 64, and only characters defined by the built-in legend or the map's `legend`.

@@ -1,6 +1,6 @@
 -- The store (data-model.md, Records: Instance, Instance character, Event, Input log, Narration, Bundle;
 -- Atomicity). Commits go through cadmium_commit, which writes every item of a commit in one transaction.
--- SPEC_ISSUES.md#replay-source: `commits` records each commit's input so that replay can re-run it.
+-- `commits` records each commit's input so that replay can re-run it (data-model.md, Commit).
 
 create table bundles (
   kind text not null check (kind in ('setting', 'adventure')),
@@ -36,7 +36,7 @@ create table instances (
   modules jsonb not null default '[]',
   materials jsonb not null,
   status text not null default 'lobby' check (status in ('lobby', 'active', 'paused', 'ended')),
-  -- SPEC_ISSUES.md#seed-range: seeds are non-negative and below 2^53.
+  -- Seeds are in [0, 2^53 - 1] (data-model.md, Instance).
   seed bigint not null check (seed >= 0 and seed < 9007199254740992),
   rng_algorithm text not null default 'splitmix64_v1',
   version integer not null default 0,

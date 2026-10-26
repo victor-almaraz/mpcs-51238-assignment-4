@@ -325,8 +325,7 @@ export async function restoreDraft(store: Store, userId: string | null, draftId:
   return d;
 }
 
-// SPEC_ISSUES.md#character-draft-archive: archiving keeps a draft out of the owner's drafts and from
-// publishing; restore_draft needs the deleted draft's id, which no list gives.
+// Archiving keeps a draft from publishing until unarchived (api.md, Adventure drafts).
 export async function archiveDraft(store: Store, userId: string | null, draftId: unknown) {
   const user = await caller(store, userId, "archive_draft");
   const d = await owned(store, user.id, draftId);

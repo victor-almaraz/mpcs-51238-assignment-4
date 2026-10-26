@@ -35,8 +35,8 @@ better than these numbers.
 
 | Question | Finding |
 |---|---|
-| `armor.max` (Cadmium `tune`) | The largest loadout gives 5 points (jerkin and shield). At 4 or 3 the pool wastes points and outcomes worsen; at 6 and 8 they are identical. |
-| `armor.bypass_types` (Cadmium `tune`) | Quest's attacks carry no damage type, so the list never applies to combat. It affects only typed effect damage, such as `fevered` (poison) in the Salinara marsh. |
+| `armor.max` | The largest loadout gives 5 points (jerkin and shield). At 4 or 3 the pool wastes points and outcomes worsen; at 6 and 8 they are identical. |
+| `armor.bypass_types` | Quest's attacks carry no damage type, so the list never applies to combat. It affects only typed effect damage, such as `fevered` (poison) in the Salinara marsh. |
 | One character | The octopus, on every route, wins 30% unarmored and 48% in full armor. The gallery ambush, also on every route, wins 68% and 84%. Passing both, a solo character reaches an ending about one time in five unarmored and two in five in full armor. |
 | Two characters | Every required fight is won at least 98% of the time, even unarmored. |
 | Four characters | Every fight is won; the party barely loses hit points. |
@@ -47,7 +47,7 @@ better than these numbers.
 
 | Value | Proposal | Where |
 |---|---|---|
-| `armor.max` | Keep 6: one point above the largest loadout, room for a creature's dropped shield, and no gain above it | `systems/cadmium/modules.json` ([SPEC_ISSUES.md](../../SPEC_ISSUES.md#armor-tuning)) |
+| `armor.max` | Keep 6: one point above the largest loadout, room for a creature's dropped shield, and no gain above it | `systems/cadmium/modules.json` |
 | `armor.bypass_types` | Keep `[]`, and state that it applies only to typed effect damage | `systems/cadmium/modules.json` |
 | The great octopus | `hp: 6` in `sunken_archive`'s own copy of the template, if one character should usually finish; otherwise the adventure's minimum players becomes 2 | The author's choice; not applied |
 | Weapons and shop prices | No change: the boarding axe (damage 3) helps one character most, and two characters win without it | The draft, section 14.7 |

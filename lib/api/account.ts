@@ -22,7 +22,7 @@ function reminders(v: unknown) {
 export async function updateMe(store: Store, userId: string | null, input: unknown) {
   const user = await caller(store, userId, "update_me");
   const req = onlyFields(input, ["display_name", "email", "timezone", "reminders", "password", "current_password"]);
-  // SPEC_ISSUES.md#binding-gaps: Clerk holds the sign-in address and password.
+  // Clerk holds the sign-in address and password (api.md, Authentication: with an identity provider).
   if (req.email !== undefined || req.password !== undefined || req.current_password !== undefined) throw new ApiError("invalid_request", "change your email address and password in your account settings with the identity provider");
   if (req.display_name !== undefined && (typeof req.display_name !== "string" || req.display_name.trim().length < 1 || req.display_name.length > 40)) throw new ApiError("invalid_request", "display_name must have 1 to 40 characters");
   if (req.timezone !== undefined && (typeof req.timezone !== "string" || !validZone(req.timezone))) throw new ApiError("invalid_request", "timezone must be an IANA time zone name");

@@ -93,7 +93,7 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
   const { instance } = await orNotFound(getInstance(serverDeps(), user.id, { instance_id: id }));
   const campaign = await getCampaign(store, user.id, instance.campaign_id);
   const author = campaign.author_id === user.id;
-  // SPEC_ISSUES.md#ended-instance-schedule: an ended game's sessions stay as a record, closed to answers and changes.
+  // app-flow.md, Schedule: an ended game's sessions stay as a record, closed to answers and changes.
   const ended = instance.status === "ended";
   const names = new Map(campaign.members.map((m) => [m.user_id, m.display_name]));
   const now = requestTime();

@@ -14,7 +14,7 @@ create table scheduled_sessions (
   auto_pause boolean not null default false,
   notes text not null default '' check (char_length(notes) <= 500),
   status text not null default 'scheduled' check (status in ('scheduled', 'cancelled')),
-  -- SPEC_ISSUES.md#session-cancellation: when the series was cancelled; later occurrences are cancelled.
+  -- When the series was cancelled; later occurrences are cancelled (api.md, Scheduling).
   cancelled_at timestamptz,
   created_by text not null references users (id),
   created_at timestamptz not null default now()
@@ -46,8 +46,8 @@ create table scheduler_marks (
   done_at timestamptz not null default now()
 );
 
--- SPEC_ISSUES.md#calendar-feed-url: the feed secret is derived from this generation, so its URL can be
--- shown again while only its hash is stored.
+-- The feed secret is derived from this generation, so its URL can be shown again while only its hash
+-- is stored (api.md, Users, Calendar feed secret).
 alter table users add column calendar_feed_generation integer not null default 0;
 
 -- Set by auto_pause at an occurrence's end while a round is under way: the Coordinator pauses after

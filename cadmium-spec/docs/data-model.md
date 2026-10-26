@@ -58,11 +58,16 @@ A user's characters, active campaigns, and authored campaigns are queries over t
 | `timezone` | string | IANA time zone name, for schedule display; default `UTC` |
 | `reminders` | json | `{ "push": bool, "lead_minutes": [int] }`; default `{ "push": true, "lead_minutes": [1440, 15] }`. Each lead time is 5–10,080 minutes. |
 | `calendar_token_hash` | string | hash of the secret in the user's calendar feed URL; null when the feed is disabled |
+| `calendar_feed_generation` | int | starts at 0; the feed secret derives from it, and replacing the secret increments it |
 | `operator` | bool | grants administrative operations; default false |
 | `status` | string | `active`, `closing`, `deleted` |
 | `deletion_requested_at` | timestamp | set when the user requests deletion; null otherwise |
+| `suspended_at` | timestamp | set when an operator suspends the account under the Terms of Service; null otherwise |
 | `terms_accepted_at` | timestamp | when the user accepted the Terms of Service and Privacy Policy |
+| `terms_version` | string | the version of the two documents the user accepted; null until the user accepts in Cadmium |
 | `created_at` | timestamp | |
+
+The *terms version* identifies the current text of both legal documents: the `fnv1a64` hash ([generation.md](generation.md#interface)) of the UTF-8 bytes of `docs/legal/terms.md`, a NUL byte, and `docs/legal/privacy.md`, written as 16 lowercase hexadecimal digits. Any edit to either document changes it. A user whose `terms_version` differs from the current version accepts again on the next sign-in; an acceptance recorded by the identity provider at sign-up sets `terms_accepted_at` but not `terms_version`.
 
 ### Auth token
 
@@ -102,7 +107,8 @@ An image, stored once by content hash. Pack art and player-uploaded portraits sh
 | `alt` | string | 1–200 characters |
 | `license`, `credit`, `provenance` | string | as declared; for uploads, entered by the uploader |
 | `uploader_id` | id | references User; null for files from packs |
-| `bundle_refs` | json | `[{ bundle_id, key }]` of the bundles that declare it |
+| `bundle_refs` | json | `[{ bundle_id, key }]` of the bundles that declare it, with `bundle_id` as `kind:id@version`; `publish_bundle` adds an entry for each asset a published bundle declares |
+| `data` | bytes | the file's bytes, at most 1 MB |
 | `created_at`, `removed_at` | timestamp | `removed_at` is set when an operator removes it after a report |
 
 SVG files are sanitized on upload: scripts, event attributes, external references, and `foreignObject` are removed. Clients display every asset as an image, never inline. An asset no record refers to is erased by the purge job.
@@ -120,9 +126,11 @@ SVG files are sanitized on upload: scripts, event attributes, external reference
 | `portrait_asset` | string | optional; hash of an Asset of kind `portrait` uploaded by the owner |
 | `status` | string | `available`, `in_instance`, `dead`, `retired` |
 | `instance_id` | id | references Instance; set while `in_instance`, otherwise null |
+| `archived` | bool | default false; hidden from the owner's default lists |
+| `removed_at` | timestamp | set when an operator removes the character after a report; null otherwise |
 | `created_at` | timestamp | |
 
-A character is in at most one instance at a time. While `in_instance`, the authoritative sheet is the copy in instance state; the Character record's `sheet` is written back when the character leaves the instance or the instance ends.
+A character is in at most one instance at a time. A character in an instance cannot be archived, and an archived character cannot join an instance. A removed character is deleted for good: its owner neither lists nor restores it. While `in_instance`, the authoritative sheet is the copy in instance state; the Character record's `sheet` is written back when the character leaves the instance or the instance ends.
 
 ### Campaign
 
@@ -137,6 +145,7 @@ A character is in at most one instance at a time. While `in_instance`, the autho
 | `modules` | string[] | enabled modules of the system; default `[]`. Every material's `system.modules` MUST be a subset. |
 | `invite_link_code` | string | unique, revocable; null when link joining is disabled |
 | `archived` | bool | archived campaigns accept no new instances, members, or invitations |
+| `removed_at` | timestamp | set when an operator removes the campaign after a report; null otherwise. A removed campaign is deleted for good: its author neither lists nor restores it. |
 | `created_at` | timestamp | |
 
 ### Campaign member
@@ -152,15 +161,15 @@ Primary key: `(campaign_id, user_id)`. Each campaign has exactly one member with
 
 ### Invitation
 
-A single-use invitation code. A member creates it and passes the code or its link to the invitee by any means. Cadmium never stores the invitee's contact details.
+A single-use invitation code. The campaign's author creates it and passes the code or its link to the invitee by any means. A user joins a campaign only with an invitation code or the campaign's invite link. Cadmium never stores the invitee's contact details.
 
 | Field | Type | Constraints |
 |---|---|---|
 | `id` | id | primary key |
 | `campaign_id` | id | references Campaign |
-| `inviter_id` | id | references User; a member of the campaign |
-| `note` | string | up to 80 characters; the inviter's reminder of whom the code is for, shown only to campaign members |
-| `invitee_user_id` | id | references User; set when the invitation is accepted |
+| `inviter_id` | id | references User; the campaign's author |
+| `note` | string | up to 80 characters; the author's reminder of whom the code is for, shown only to the author |
+| `invitee_user_id` | id | references User; the user who accepted or declined the invitation |
 | `instance_id` | id | optional; the instance the invitation suggests joining |
 | `message` | string | up to 500 characters, shown to whoever opens the code |
 | `status` | string | `pending`, `accepted`, `declined`, `revoked`, `expired` |
@@ -179,7 +188,7 @@ An invitation is accepted by a signed-in user presenting its code; acceptance bi
 | `bundle_version` | string | version pinned by instances created after this value is set |
 | `position` | int | resolution order for settings; lower first |
 
-Each campaign has one adventure and one or more settings. An `author` bundle is usable only in campaigns whose author is the bundle's publisher. Players reach an adventure only by invitation to such a campaign. Every material's declared system range MUST overlap the campaign's `system_versions`, and the adventure's `requires_settings` MUST be satisfied by the campaign's settings.
+Each campaign has one adventure and one or more settings. An `author` bundle is usable only in campaigns whose author is the bundle's publisher. Players reach an adventure only by invitation to such a campaign. Every material's declared system MUST be one the campaign accepts ([systems/README.md](systems/README.md#compatibility)), its declared range MUST be satisfied by the installed version of that system, and, when it declares the campaign's own system, that installed version MUST also satisfy the campaign's `system_versions`; and the adventure's `requires_settings` MUST be satisfied by the campaign's settings.
 
 ### Instance
 
@@ -192,7 +201,7 @@ Each campaign has one adventure and one or more settings. An `author` bundle is 
 | `modules` | string[] | copied from the campaign at creation; immutable |
 | `materials` | json | `[{ kind, id, version, position }]`, copied from Campaign Material at creation; immutable after the instance leaves `lobby` |
 | `status` | string | `lobby`, `active`, `paused`, `ended` |
-| `seed` | int | immutable |
+| `seed` | int | integer in `[0, 2^53 − 1]`, drawn uniformly by the server at creation; immutable |
 | `rng_algorithm` | string | immutable; `splitmix64_v1` |
 | `version` | int | starts at 0; increments on every commit |
 | `state` | json | see [Instance state](#instance-state) |
@@ -209,7 +218,7 @@ Each campaign has one adventure and one or more settings. An `author` bundle is 
 | `joined_at` | timestamp | |
 | `left_at` | timestamp | null while the character is in the instance |
 
-A character joins only an instance of a campaign whose `system` equals the character's `system`, and whose pinned `system_version` has the same major version as the character's `system_version`.
+A character joins only an instance whose system accepts the character's `system` ([systems/README.md](systems/README.md#compatibility)). A character of the instance's own system joins only when its `system_version` has the same major version as the instance's pinned `system_version`; a character of another accepted system, such as a `quest` character in a `cadmium` instance, joins only when its major version equals that of the installed version of its own system.
 
 ### Scheduled session
 
@@ -228,6 +237,7 @@ A planned sitting of an instance. Sessions are optional; an instance can be play
 | `auto_pause` | bool | pause an `active` instance at each occurrence end; default false |
 | `notes` | string | up to 500 characters |
 | `status` | string | `scheduled` or `cancelled` |
+| `cancelled_at` | timestamp | when the series was cancelled; occurrences after it are cancelled |
 | `created_by` | id | references User |
 | `created_at` | timestamp | |
 
@@ -270,6 +280,19 @@ Primary key: `(session_id, occurrence_start, user_id)`.
 
 Primary key: `(instance_id, seq)`. Events are append-only.
 
+### Commit
+
+The input that produced each committed instance version. Replay re-runs commits; see [architecture.md](architecture.md#determinism-and-replay).
+
+| Field | Type | Constraints |
+|---|---|---|
+| `instance_id` | id | references Instance |
+| `version` | int | the instance version the commit produced; starts at 1 |
+| `input` | json | one of `{ start: { seed, characters } }`, `{ call: { actor, tool, args } }`, `{ advance: true }`, `{ join: { character } }`, `{ leave: { character_id } }`, `{ session_end: { session_id, occurrence_start } }`, `{ restore: { to_version, reason } }` |
+| `created_at` | timestamp | |
+
+Primary key: `(instance_id, version)`. Commits are append-only. `start.seed` is the instance seed as a decimal string; each joining character is `{ id, user_id, sheet }`.
+
 ### Input log
 
 | Field | Type | Constraints |
@@ -310,6 +333,7 @@ An editable adventure pack, edited in the adventure editor ([app-flow.md](app-fl
 | `revision` | int | starts at 1; increments on every save |
 | `diagnostics` | json | diagnostics from the last server validation |
 | `last_published_version` | string | null until first published |
+| `archived` | bool | default false; an archived draft cannot be published |
 | `created_at`, `updated_at` | timestamp | |
 
 A save succeeds only when the submitted `revision` equals the stored one. A published adventure id belongs to its first publisher; publishing under an id owned by another user fails with `conflict`.
@@ -339,7 +363,8 @@ A commit writes these items in one atomic operation:
 1. All events produced by the resolution.
 2. The instance `state`.
 3. The instance `version`, incremented by 1.
-4. The input log `outcome` and `version`.
+4. The Commit recording the input.
+5. The input log `outcome` and `version`.
 
 When a commit removes a character from the instance or ends the instance, the same operation writes the Character `sheet`, `status`, and `instance_id`, and the Instance Character `left_at`.
 
@@ -358,7 +383,7 @@ Purging an account erases:
 - the User row, and the Clerk user through Clerk's API;
 - the user's Characters, Material Drafts, published Bundles, RSVPs, Campaign Member rows, Push Subscriptions, Auth Tokens, and Invitations they created or accepted;
 - Assets the user uploaded, and Assets referred to only by the user's erased bundles;
-- Campaigns the user authored, with their Instances, Events, Input Logs, Narration, and schedules;
+- Campaigns the user authored, with their Instances, Events, Commits, Input Logs, Narration, and schedules;
 - the user's Input Log rows in other users' instances;
 - the user's Instance Character rows in other users' instances, after writing `actor_label: "Former player"` into the payloads of that user's remaining Events.
 
@@ -392,16 +417,21 @@ A record preserved for a report of apparently illegal content carries `held_at` 
     }
   },
   "entities": {
-    "e_d1":      { "ref": "base:hatch", "kind": "door", "location": "dock", "at": [5, 2],
-                   "open": true, "locked": false, "sheet": { "hp": { "value": 6, "max": 6 }, "status": "active", "structure": true } },
+    "_e1":       { "ref": "base:hatch", "kind": "door", "location": "dock", "at": [5, 2],
+                   "open": true, "locked": false, "sheet": { "hp": { "value": 6, "max": 6 }, "status": "active" }, "conditions": [] },
     "lift_door": { "ref": "base:bulkhead", "kind": "door", "location": "dock", "at": [14, 2],
-                   "open": false, "locked": true, "lock": { "flag": "lift_powered" } },
-    "e_drone1":  { "ref": "base:maintenance_drone", "kind": "creature", "location": "dock", "at": [11, 3],
+                   "open": false, "locked": true, "lock": { "flag": "lift_powered" }, "conditions": [] },
+    "_e2":       { "ref": "base:maintenance_drone", "kind": "creature", "location": "dock", "at": [11, 3],
                    "sheet": { "template": "minion", "hp": { "value": 4, "max": 4 }, "damage": 2, "status": "active" },
-                   "conditions": [], "hidden": false }
+                   "behavior": "aggressive", "conditions": [{ "id": "hidden", "remaining": null }] },
+    "_e3":       { "ref": "base:locker", "kind": "container", "location": "dock", "at": [8, 1],
+                   "contents": ["_e4"], "conditions": [] },
+    "_e4":       { "ref": "base:medkit", "kind": "item", "carrier": "_e3", "uses": 2, "conditions": [] },
+    "_e5":       { "ref": "base:wrench", "kind": "item", "carrier": "c_17", "conditions": [] }
   },
   "characters": {
-    "c_17": { "user_id": "u_3", "location": "dock", "at": [3, 2], "sheet": { }, "conditions": [] }
+    "c_17": { "user_id": "u_3", "location": "dock", "at": [3, 2],
+              "sheet": { "inventory": [{ "ref": "base:wrench" }] }, "conditions": [], "items": ["_e5"] }
   },
   "flags": { "alarm_level": 0, "lift_powered": false },
   "character_flags": { "c_17": { "purse": 12 } },
@@ -422,7 +452,8 @@ A record preserved for a report of apparently illegal content carries `held_at` 
   "combat_area": [],
   "combatants": [],
   "improvise_streak": { "c_17": 0 },
-  "ended": null
+  "ended": null,
+  "next_entity": 5
 }
 ```
 
@@ -430,11 +461,13 @@ A record preserved for a report of apparently illegal content carries `held_at` 
 
 Each location holds its compiled map: `rows` with a legend of single terrain ids, the terrain types it uses, rooms with `visited`, links, and `seen`, one string per row with `1` for each cell the party has seen. Entity placements made through a map legend appear in `entities` like any other entity. An entity's room is computed from its anchor cell and is not stored. Light sources carry `light` and `lit`. Cell illumination is computed from rooms and light sources after every action and is not stored.
 
+An entity is placed, with `location` and `at`, or carried, with `carrier` naming the character or container that holds it. A character lists its carried item ids in `items`, in the order acquired, and the engine keeps the sheet's `inventory` equal to their refs. A container lists the item ids it holds in `contents`. An item whose template sets `uses` carries its remaining `uses`, null for unlimited. A creature carries its current `behavior`, which `flee_when_harmed` changes to `fleeing`, and an entity changed by `set_hostile` carries `hostile`, which overrides its template's tag. `hidden` is a condition like any other. An entity created without an id takes the id `_e<n>`, where `n` is `next_entity` after it is incremented. A generated location also holds `aliases`, mapping `entry`, `boss`, anchor ids, and link ids to its room ids, and its rooms carry `role` and `depth`.
+
 `sheet` values are owned by the rules system: character sheets follow the system's `character` schema, creature sheets are produced by the system's `instantiate`, and structure sheets by `instantiate_structure`. `conditions` are engine conditions declared by setting packs.
 
 `combat_area` lists the rooms of the combat area and `combatants` the entity ids taking part in combat; both are empty outside combat. See [engine.md](engine.md#modes).
 
-Under `sequential` resolution, `round.order` holds participant ids in resolution order and `round.turn_index` indexes the current participant. Under `simultaneous` resolution, `round.order` is null until the round closes. `round.initiative` holds the last list returned by the system's `initiative` function and persists according to the policy's `reroll`.
+Under `sequential` resolution, `round.order` holds participant ids in resolution order and `round.turn_index` indexes the current participant. Under `simultaneous` resolution, `round.order` is null until the round closes; on close it holds the resolution order, and `round.turn_index` counts the actions resolved. `round.initiative` holds the last list returned by the system's `initiative` function and persists according to the policy's `reroll`.
 
 `pending_choices` maps a character id to the choice returned by the rules system; see [engine.md](engine.md#pending-choices).
 

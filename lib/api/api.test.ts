@@ -56,7 +56,6 @@ describe("systems", () => {
   it("lists Cadmium first, with its credit, modules, and values to confirm", () => {
     const [cadmium, quest] = listSystems();
     expect(cadmium).toMatchObject({ id: "cadmium", version: "1.0.0", derived_from: "quest", accepts: ["cadmium", "quest"], modules: [{ id: "armor", title: "Armor" }, { id: "stash", title: "Stash" }] });
-    // SPEC_ISSUES.md#quest-values-confirmed: the AP award and NPC hit points are confirmed.
     expect(cadmium!.pending_confirmation).toEqual(["setbacks", "spatial"]);
     expect(quest).toMatchObject({ id: "quest", accepts: ["quest"] });
   });

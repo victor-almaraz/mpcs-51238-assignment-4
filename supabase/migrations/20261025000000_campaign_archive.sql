@@ -1,4 +1,4 @@
--- Unarchiving a campaign, and an author's recently deleted campaigns (SPEC_ISSUES.md#campaign-unarchive).
+-- Unarchiving a campaign, and an author's recently deleted campaigns (api.md, Campaigns).
 -- Access as in the store migration: service role only.
 
 create function cadmium_unarchive_campaign(p_id text) returns jsonb language plpgsql as $$

@@ -38,7 +38,7 @@ Each milestone ends with tests that pass before the next begins.
 | # | Milestone | Exit criteria |
 |---|---|---|
 | 1 | `rng`, `grid` | The test vectors in [engine.md](../engine.md#random-numbers) and [engine.md](../engine.md#test-vectors) reproduce exactly. |
-| 2 | `bundle` | The example bundle from `spec/examples/derelict_station` loads into typed structures. Unknown fields fail. |
+| 2 | `bundle` | The example bundle from `spec/examples/derelict_station` loads into typed structures. Unknown fields fail ([spec/README.md](../../spec/README.md#bundle)). |
 | 3 | Rules systems | Every implemented system meets the [conformance](../systems/README.md#conformance) requirements and its own rule tests. Cadmium passes every Quest case with no module enabled, and its module tests with each module enabled alone and together. |
 | 4 | Engine core, exploration | Maps, rooms, doors, links, movement, line of sight, lighting with `SPATIAL.lighting` both true and false, seen cells, items, conditions, situations, requirements, effects, and every exploration tool work, calling a rules system for checks, harm, and rests. Every error code in [engine.md](../engine.md#error-codes) is producible. |
 | 5 | Rounds and ordering | Both resolution methods, every sort key including `initiative`, rerolls, free tools, pending choices, voided declarations, combat area, approach, cover, structures, and entity behaviors work with each implemented system. |
@@ -78,7 +78,7 @@ harness --help | --version
 | `{ "error": { "code": "not_reachable", "detail": "..." } }` | The engine rejected the input; play continues |
 | `{ "view": { ... } }` | A view |
 
-Engine rejections are data, so the exit status stays 0. A line that is not valid JSON, or not one of the input forms, stops the harness with `harness: line N: MESSAGE` on stderr and exit status 1. `--state` writes the final state as JSON; `--log` writes the event log as JSON lines. `replay` rebuilds state from a log and exits 1 with the first differing version on stderr if it does not match. Scripted scenarios are input files piped to `play`, and their logs are the golden files for replay tests.
+Engine rejections are data, so the exit status stays 0. A line that is not valid JSON, or not one of the input forms, stops the harness with `harness: line N: MESSAGE` on stderr and exit status 1. `--state` writes the final state as JSON. `--log` writes the commit log, one JSON line per commit in the format of [Determinism and replay](../architecture.md#determinism-and-replay): the `start` line, then one `input` line with its `events` for each later commit. `view` lines are not commits and are not logged. `replay` starts the instance from the `start` line, re-runs every logged input in version order, and compares each commit's events with the logged events; at the first version whose input is rejected or whose events differ, it writes `harness: version N: REASON` on stderr and exits 1. A usage error writes the usage text on stderr and exits 2. Scripted scenarios are input files piped to `play`, and their logs are the golden files for replay tests.
 
 ## Conformance checklist
 
@@ -132,7 +132,7 @@ An implementation conforms when every item holds.
 | Ordering | Permutation tests | Submitting the same declarations in every permutation of arrival order produces identical results. |
 | Generator | Seed sweeps | Connectivity, anchor constraints, key reachability, every passable cell in exactly one room, determinism per seed. |
 | Triggers | Scenario tests against small adventure bundles | `once` triggers fire once; pass limit holds; endings reached. |
-| Replay | Golden instances | Recorded event logs replay to recorded states. Store golden instances in the repository and run them on every change. |
+| Replay | Golden commit logs | Re-running the inputs of each recorded commit log reproduces its events. Store the golden logs in the repository and run them on every change. |
 | Parser | Evaluation set: input + context → expected tool call | Accuracy by tool and by `improvise` category. |
 | API | Contract tests against the binding | Status codes, pagination, rate limits, reconnection. |
 

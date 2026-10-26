@@ -1,5 +1,5 @@
 -- Archiving characters and adventure drafts, and an owner's recently deleted characters and drafts
--- (SPEC_ISSUES.md#character-draft-archive). Access as in the store migration: service role only.
+-- (api.md, Characters and Adventure drafts). Access as in the store migration: service role only.
 
 alter table characters add column archived boolean not null default false;
 alter table material_drafts add column archived boolean not null default false;

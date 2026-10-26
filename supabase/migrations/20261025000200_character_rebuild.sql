@@ -1,4 +1,4 @@
--- Rebuilding a character's role and abilities before its first game (SPEC_ISSUES.md#character-rebuild).
+-- Rebuilding a character's role and abilities before its first game (api.md, rebuild_character).
 -- Access as in the store migration: service role only.
 
 -- Makes the named functions callable by the service role only: revokes Postgres's grant to PUBLIC and

@@ -25,7 +25,6 @@ export function partition(width: number, height: number, count: number, minRoom:
   const regions: (Region & { created: number })[] = [{ x: 0, y: 0, w: width, h: height, created: 0 }];
   let created = 1;
   const need = 2 * minRoom + 1;
-  // SPEC_ISSUES.md#bsp-split-candidates: the largest region is taken among those that can split.
   const splittable = (r: Region) => r.w - 2 >= need || r.h - 2 >= need;
   while (regions.length < count) {
     let best = -1;
@@ -39,19 +38,16 @@ export function partition(width: number, height: number, count: number, minRoom:
     const r = regions[best]!;
     const iw = r.w - 2;
     const ih = r.h - 2;
-    // SPEC_ISSUES.md#generator-orderings: on equal sides the RNG picks from [vertical wall, horizontal wall].
     const vertical = iw > ih ? true : ih > iw ? false : rng.pick([true, false]);
     const length = vertical ? r.w : r.h;
     const origin = vertical ? r.x : r.y;
     const lines: number[] = [];
     for (let s = origin + minRoom + 1; s <= origin + length - 2 - minRoom; s++) lines.push(s);
     const s = rng.pick(lines);
-    // SPEC_ISSUES.md#generator-orderings: the west or north child is created first.
     const a = vertical ? { x: r.x, y: r.y, w: s - r.x + 1, h: r.h } : { x: r.x, y: r.y, w: r.w, h: s - r.y + 1 };
     const b = vertical ? { x: s, y: r.y, w: r.x + r.w - s, h: r.h } : { x: r.x, y: s, w: r.w, h: r.y + r.h - s };
     regions.splice(best, 1, { ...a, created: created++ }, { ...b, created: created++ });
   }
-  // SPEC_ISSUES.md#generator-orderings: before renumbering, room ids follow row-major order of the region's top-left cell.
   return regions.map(({ x, y, w, h }) => ({ x, y, w, h })).sort((p, q) => p.y - q.y || p.x - q.x);
 }
 
@@ -123,7 +119,6 @@ export function connect(count: number, adjs: readonly Adjacency[], loopRatio: nu
   }
   if (tree.size !== count - 1) throw new AttemptFailed("the rooms are not connected");
   const rest = adjs.filter((adj) => !tree.has(adj));
-  // SPEC_ISSUES.md#generator-orderings: `round` rounds halves up.
   const loops = Math.round(loopRatio * rest.length);
   const selected = new Set(tree);
   for (let i = 0; i < loops; i++) {
@@ -160,7 +155,6 @@ export interface Layout {
  * Step 2.5 and step 3: doorways, the entry, BFS depth and renumbering, roles, and doorway ownership.
  */
 export function assignRoles(regions: readonly Region[], selected: readonly Adjacency[], width: number, height: number, rng: Rng): Layout {
-  // SPEC_ISSUES.md#generator-orderings: doorways are chosen for selected adjacencies in `(a, b)` order.
   const chosen = selected.map((adj) => ({ adj, cell: rng.pick(adj.cells) }));
 
   const touching = regions.map((_, i) => i).filter((i) => {
@@ -205,13 +199,11 @@ export function assignRoles(regions: readonly Region[], selected: readonly Adjac
   });
   doorways.sort((p, q) => p.cell[1] - q.cell[1] || p.cell[0] - q.cell[0]);
 
-  // SPEC_ISSUES.md#generated-room-roles: roles accumulate; a room may hold several.
   const roles = order.map(() => new Set<RoomRole>());
   roles[0]!.add("entry");
   doors.forEach((n, i) => n === 1 && roles[i]!.add("dead_end"));
   const max = Math.max(...depth);
   const deepest = depth.map((_, i) => i).filter((i) => depth[i] === max);
-  // SPEC_ISSUES.md#generator-orderings: the RNG breaks a tie only when several rooms share the maximum depth.
   const boss = deepest.length > 1 ? rng.pick(deepest) : deepest[0]!;
   roles[boss]!.add("boss");
 

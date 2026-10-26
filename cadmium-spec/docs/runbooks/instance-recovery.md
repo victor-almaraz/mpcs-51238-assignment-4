@@ -69,7 +69,7 @@
    ```
 
 3. If `matches_stored` is `true`, the state follows from the events. The report reflects game rules or narration, not corruption. Review the event history with `get_history` and compare against the narration. If narration contradicted events, record the case for the narrator evaluation set. Resume the instance.
-4. If `matches_stored` is `false`, find the first diverging version by replaying with `to_version` at decreasing values until replayed and stored states agree. Record that version as `last_good`.
+4. If `matches_stored` is `false`, `diverges_at` is the first version that does not reproduce. Record the version before it, `diverges_at − 1`, as `last_good`.
 5. Restore:
 
    ```

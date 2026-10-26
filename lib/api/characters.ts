@@ -67,7 +67,6 @@ function buildSheet(systemId: unknown, name: string, choices: unknown, entropy: 
   return { system, sheet };
 }
 
-// SPEC_ISSUES.md#character-rebuild: the sheet is otherwise read-only after creation.
 /** Whether the caller may rebuild the character's role and abilities: available, and never in a game. */
 export async function characterRebuildable(store: Store, userId: string | null, characterId: unknown): Promise<boolean> {
   const user = await caller(store, userId, "get_character");
@@ -211,7 +210,6 @@ export function effectSentences(effects: PackEffect[], conditions: Record<string
  * Abilities the creation form offers for a system: those of the listed settings it accepts
  * (systems/README.md, Compatibility: Cadmium also accepts Quest settings).
  */
-// SPEC_ISSUES.md#starting-abilities-supply: Quest needs six abilities; the example settings define two.
 export async function abilityOptions(store: Store, systemId: string): Promise<AbilityOption[]> {
   const settings = await store.listedBundles<import("../bundle/setting").SettingBundle>("setting", accepted(systemId));
   return settings.flatMap((s) =>
@@ -250,8 +248,7 @@ export async function restoreCharacter(store: Store, userId: string | null, char
   return characterView(c);
 }
 
-// SPEC_ISSUES.md#character-draft-archive: archiving keeps a character out of the owner's lists and out
-// of games; restore_character needs the deleted character's id, which no list gives.
+// Archiving keeps a character out of games until unarchived (api.md, Characters).
 export async function archiveCharacter(store: Store, userId: string | null, characterId: unknown) {
   const user = await caller(store, userId, "archive_character");
   const c = await owned(store, user.id, characterId);

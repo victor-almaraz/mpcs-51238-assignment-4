@@ -73,7 +73,6 @@ export function footprintOf(c: Content, e: EntityState): Footprint {
 }
 
 /** Whether a creature or character still occupies cells: status other than `dead`. */
-// SPEC_ISSUES.md#dead-creatures: dead creatures and characters stay in place but do not occupy cells.
 export function occupies(sheetStatus: string | undefined): boolean {
   return sheetStatus !== "dead";
 }

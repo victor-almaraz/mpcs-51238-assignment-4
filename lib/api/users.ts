@@ -23,19 +23,17 @@ export async function caller(store: Store, userId: string | null, operation: str
   if (userId === null) throw new ApiError("unauthenticated", "sign in first");
   const user = await store.getUser(userId);
   if (!user || user.status === "deleted") throw new ApiError("unauthenticated", "the account does not exist");
-  // SPEC_ISSUES.md#account-suspension: a suspended account may still read and export its own data.
+  // A suspended account may still read and export its own data (api.md, Conventions).
   if (user.suspended_at && !["get_me", "export_my_data", "logout"].includes(operation)) throw new ApiError("forbidden", "the account is suspended");
   if (user.status === "closing" && !["get_me", "restore_account", "export_my_data", "logout"].includes(operation)) {
     throw new ApiError("forbidden", "the account is being deleted");
   }
-  // SPEC_ISSUES.md#terms-gate-recovery: restoring and exporting do not wait for the terms.
   if (!termsCurrent(user) && !["get_me", "accept_terms", "restore_account", "export_my_data", "logout"].includes(operation)) {
     throw new ApiError("forbidden", "accept the current Terms of Service and Privacy Policy first");
   }
   return user;
 }
 
-// SPEC_ISSUES.md#active-campaigns: active means not archived and not deleted, in any role.
 /** get_me: the user, their characters, the campaigns they belong to that are not archived, and those they author. */
 export async function getMe(store: Store, userId: string | null) {
   const user = await caller(store, userId, "get_me");

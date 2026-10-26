@@ -19,9 +19,20 @@ The engine, data model, API, and material formats treat the system as a paramete
 
 A campaign accepts characters, setting packs, and adventure packs whose system matches its own, with one extension: a `cadmium` campaign also accepts those declared for `quest`. A `quest` campaign accepts only `quest`. A pack's `system.modules` lists the modules it requires; a campaign accepts the pack only when it enables every one of them.
 
+Version checks use the installed version of the system a declaration names:
+
+| Declaration | Accepted when |
+|---|---|
+| A pack for the campaign's own system | The installed version of the system satisfies both the pack's range and the campaign's `system_versions`. |
+| A pack for another accepted system, such as `quest` in a `cadmium` campaign | The installed version of the declared system satisfies the pack's range. The campaign's `system_versions` is not compared with it. |
+| A character for the instance's own system | The character's `system_version` has the major version of the instance's pinned `system_version`. |
+| A character for another accepted system | The character's `system_version` has the major version of the installed version of its own system. |
+
 ## Modules
 
 A module is an optional part of a system that a campaign enables. A system lists its modules in `MODULES`. `configure(modules)` returns the system with those modules enabled, and the engine uses only the configured system for an instance. Module fields in schemas, module behaviour in functions, and module data apply only while the module is enabled. With no module enabled, a system with modules behaves as documented without them.
+
+A *module field* is a schema property whose `description` begins with `Module <id>:`, such as `Module armor:`. The schemas of a configured system are the full schemas with the module fields of every disabled module removed. A configured schema keeps the full schema's `$id`, so a validator compiles each module configuration in a registry of its own.
 
 ## Contract
 
@@ -62,6 +73,10 @@ A system module exposes these names. Every function is pure: it does not mutate 
 | `pay_cost(sheet, cost)` | sheet | Deduct an ability cost. Raises `RulesError` with code `requirement_unmet` when unaffordable. |
 | `can_carry(combatant, inventory)` | bool | Whether the character may hold `inventory`, the list of `{ ref, stats }` it would hold after a take, give, drop, or use. The engine calls it for every change to a character's inventory. |
 | `use_item(combatant, item, rng)` | Resolution or null | Rules effect of using a held item, `{ ref, stats }`. Null means none. A resolution MAY set `consume: true` to remove the item. Raises `RulesError` with `requirement_unmet` to refuse the use. |
+
+### Ability statistics
+
+The engine reads two fields of an ability's `system_stats`. It passes `cost` to `pay_cost`. When `roll` is `true`, the ability is rolled: the engine calls `check` with the empty check specification `{}`, and applies the ability's effects only on a passing outcome; see [engine.md](../engine.md#action-resolution). A system with rolled abilities defines `roll` as a boolean in its `ability` schema. Every other field of `system_stats` belongs to the system.
 
 ### Types
 
@@ -112,7 +127,7 @@ Each system keeps rule numbers in `systems/<id>/data.json`. Values whose source 
 A system implementation conforms when:
 
 - Every name in the contract exists.
-- Every schema in `SCHEMAS` is a valid JSON Schema draft 2020-12, and `STANDARD_CHECKS.search` validates against `SCHEMAS.check`.
+- Every schema in `SCHEMAS` is a valid JSON Schema draft 2020-12, and `STANDARD_CHECKS.search` and the empty specification `{}` validate against `SCHEMAS.check`.
 - `create_character` output validates against `SCHEMAS.character` and is identical for identical arguments and seed.
 - `instantiate` and `instantiate_structure` return sheets with status `active`.
 - Repeated `harm` to a structure makes its status leave `active` without a `died` event.

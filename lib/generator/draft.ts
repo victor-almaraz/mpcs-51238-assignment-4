@@ -155,9 +155,7 @@ export class Draft {
     return placed;
   }
 
-  // SPEC_ISSUES.md#placement-free-cells: a cell is free for an entity when its terrain is passable,
-  // it holds no movement-obstructing entity and no link, it holds no creature when the entity is a
-  // creature, and it holds nothing when the entity obstructs movement.
+  // generation.md, "7. Population": a cell free for a placement.
   #free(cell: Cell, room: number, what: Occupancy): boolean {
     if (this.roomOf(cell) !== room || this.terrainBlocks(cell)) return false;
     if (this.links.has(this.#key(cell))) return false;
@@ -225,7 +223,6 @@ export class Draft {
     const passableDoor = (d: Placed): boolean => {
       const lock = d.lock ?? d.templateLock;
       if (lock === undefined) return true;
-      // SPEC_ISSUES.md#verification-passability: only `has_item` locks open in verification.
       return "has_item" in lock && typeof lock.has_item === "string" && keys.has(lock.has_item);
     };
     const steps: Cell[] =
@@ -236,7 +233,6 @@ export class Draft {
     for (;;) {
       const mask = new Uint8Array(this.width * this.height);
       for (let i = 0; i < mask.length; i++) mask[i] = this.terrainBlocks([i % this.width, Math.floor(i / this.width)]) ? 1 : 0;
-      // SPEC_ISSUES.md#verification-passability: creatures do not block access.
       for (const o of [...this.entities, ...this.doors]) {
         if (o.obstructs && !(o.kind === "door" && passableDoor(o))) for (const c of footprintCells(o.at, o.footprint)) mask[this.#key(c)] = 1;
       }

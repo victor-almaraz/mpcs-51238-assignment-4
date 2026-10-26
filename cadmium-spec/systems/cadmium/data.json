@@ -8,8 +8,6 @@
     "data_license": "CC BY 4.0; see NOTICE"
   },
   "confirm": [
-    "ap_award_per_session",
-    "npc_templates",
     "setbacks",
     "spatial"
   ],
@@ -57,6 +55,11 @@
     "commoner": 2,
     "minion": 4,
     "boss": 10
+  },
+  "npc_attack": {
+    "commoner": 1,
+    "minion": 2,
+    "boss": 4
   },
   "setbacks": {
     "tough_choice": [
