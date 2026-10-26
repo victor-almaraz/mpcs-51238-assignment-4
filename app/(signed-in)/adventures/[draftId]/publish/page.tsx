@@ -2,6 +2,7 @@
 // since the last published version with the suggested increment (runbooks/content-publishing.md).
 import { Upload } from "lucide-react";
 import { ActionForm } from "@/components/action-form";
+import { ArchivedNotice } from "@/components/draft-lifecycle";
 import { getDraft, validateDraft } from "@/lib/api/drafts";
 import { publishDraftAction } from "@/lib/server/draft-actions";
 import { orNotFound } from "@/lib/server/pages";
@@ -67,7 +68,9 @@ export default async function Publish({ params }: { params: Promise<{ draftId: s
         description={`${draft.last_published_version ? `Last published: ${draft.last_published_version}.` : "Not published yet."} Suggested: a ${s.increment} version (${s.why}).`}
       />
       <div className="flex flex-col gap-6">
-        {errors.length > 0 ? (
+        {draft.archived ? (
+          <ArchivedNotice draftId={draftId} />
+        ) : errors.length > 0 ? (
           <Notice tone="danger" title={`Fix ${errors.length} problem${errors.length === 1 ? "" : "s"} to publish.`}>
             {problems(errors.slice(0, 20))}
             <ButtonLink href={`/adventures/${draftId}/edit`} size="sm" className="mt-3">

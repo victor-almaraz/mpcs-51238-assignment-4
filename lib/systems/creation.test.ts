@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { creationModuleFields } from "./cadmium/creation";
-import { campaignChoices, chosenCampaign } from "./creation";
+import { campaignChoices, chosenCampaign, quickStartFor } from "./creation";
 
 const campaigns = [
   { id: "k1", title: "Lantern", system: "cadmium", modules: ["stash", "armor"], archived: false },
@@ -43,5 +43,25 @@ describe("creationModuleFields", () => {
   it("shows only the enabled module", () => {
     expect(creationModuleFields(["armor"]).map((f) => f.module)).toEqual(["armor"]);
     expect(creationModuleFields(["stash"]).map((f) => f.module)).toEqual(["stash"]);
+  });
+});
+
+describe("quickStartFor", () => {
+  const six = (setting: string, role: string) => Array.from({ length: 6 }, (_, i) => ({ ref: `${setting}:${role}_${i}`, roles: [role], setting }));
+
+  it("is one setting's six abilities for the role alone", () => {
+    expect(quickStartFor("invoker", six("Quick Start", "invoker"), 6)).toEqual(six("Quick Start", "invoker").map((a) => a.ref));
+  });
+
+  it("ignores another setting's ability for the same role, such as the Fantasy example's invoker prayer", () => {
+    const abilities = [{ ref: "crypt:smite", roles: ["invoker"], setting: "Sunless Crypt" }, ...six("Quick Start", "invoker")];
+    expect(quickStartFor("invoker", abilities, 6)).toHaveLength(6);
+    expect(quickStartFor("invoker", abilities, 6)).not.toContain("crypt:smite");
+  });
+
+  it("leaves out abilities shared with another role, and is empty when no setting has exactly six", () => {
+    const shared = [...six("Quick Start", "wizard").slice(0, 5), { ref: "q:both", roles: ["wizard", "magician"], setting: "Quick Start" }];
+    expect(quickStartFor("wizard", shared, 6)).toEqual([]);
+    expect(quickStartFor("ranger", six("Quick Start", "wizard"), 6)).toEqual([]);
   });
 });

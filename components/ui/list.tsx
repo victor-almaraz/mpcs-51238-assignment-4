@@ -26,7 +26,8 @@ export function ListRow({ title, href, meta, badge, actions, icon }: { title: Re
           {meta && <div className="text-caption text-muted">{meta}</div>}
         </div>
       </div>
-      {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+      {/* Stacked under the title on compact screens, the actions start on its edge, past the icon. */}
+      {actions && <div className={cx("flex shrink-0 flex-wrap items-center gap-2", icon ? "pl-7 sm:pl-0" : undefined)}>{actions}</div>}
     </li>
   );
 }

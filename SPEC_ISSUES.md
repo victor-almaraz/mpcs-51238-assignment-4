@@ -1157,3 +1157,17 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** `unarchive_campaign` (author; `conflict` unless archived) clears `archived`. `list_deleted_campaigns` returns the caller's campaigns deleted less than 30 days ago, each with `restorable_until` and `erased_by`. The Campaigns page lists archived campaigns with Unarchive and recently deleted ones with Restore; the campaign editor offers Unarchive and Delete campaign. Migration `20261025000000_campaign_archive` adds the two SQL functions.
 
 **Proposed resolution.** Add `unarchive_campaign` and `list_deleted_campaigns` to api.md's Campaigns operations and the HTTP binding, and the archived and deleted lists to app-flow.md's Campaigns hub and Campaign editor.
+
+## character-draft-archive
+
+| Field | Value |
+|---|---|
+| Document | `docs/api.md`; `docs/app-flow.md`; `docs/data-model.md` |
+| Section | Characters (`delete_character`, `restore_character`); Adventure drafts (`delete_draft`, `restore_draft`); Character editor; My adventures |
+| Marker | `lib/api/characters.ts`; `lib/api/drafts.ts` |
+
+**Problem.** Campaigns can be archived and unarchived ([campaign-unarchive](#campaign-unarchive)); characters and adventure drafts cannot, so the only way to put one aside is to delete it. `restore_character` and `restore_draft` take the id of a deleted record, but no operation lists deleted characters or drafts, so the interface cannot offer the restore that the 30-day recovery stage promises.
+
+**Implemented.** Characters and material drafts have an `archived` boolean, returned in the character and draft objects, and `list_characters` and `list_drafts` take `archived?` as `list_campaigns` does. `archive_character` and `unarchive_character` (owner; `conflict` when already in that state, and archiving a character in an instance is a `conflict`): an archived character cannot join an instance (`add_character` is a `conflict`). `archive_draft` and `unarchive_draft` (owner): an archived draft cannot be published (`publish_draft` is a `conflict`). `list_deleted_characters` and `list_deleted_drafts` return the caller's records deleted less than 30 days ago, each with `restorable_until` and `erased_by`. HTTP: `POST /v1/characters/{id}/archive` and `/unarchive`, `GET /v1/characters/deleted`, and the same under `/v1/drafts`; also `POST /v1/campaigns/{id}/unarchive` and `GET /v1/campaigns/deleted`. The Characters and My adventures pages list archived records with Unarchive and recently deleted ones with Restore; the character page offers Archive or Unarchive, and Delete character confirmed by its name. Migration `20261025000100_character_draft_archive` adds the columns and SQL functions.
+
+**Proposed resolution.** Add the `archived` field to data-model.md's Character and Material draft, the six operations and the `archived?` list parameter to api.md and its HTTP binding, and the archived and deleted lists to app-flow.md's Characters hub, Character editor, and My adventures.

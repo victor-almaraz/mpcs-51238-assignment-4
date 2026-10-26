@@ -6,6 +6,7 @@ import { Rng } from "../rng";
 import { RulesError, type RulesSystem } from "../systems";
 import type { CharacterRecord, Store } from "../store";
 import { cryptoEntropy, type Entropy } from "./entropy";
+import { withStages } from "./deletion";
 import { ApiError, onlyFields } from "./errors";
 import { accepted, systemOrThrow } from "./systems";
 import { caller } from "./users";
@@ -30,7 +31,7 @@ export function characterSummaryView(c: CharacterRecord) {
 
 /** The character object as its owner sees it, with the sheet. */
 export function characterView(c: CharacterRecord) {
-  return { ...characterSummaryView(c), sheet: c.sheet };
+  return { ...characterSummaryView(c), archived: c.archived, sheet: c.sheet };
 }
 
 const NAME = (v: unknown): string => {
@@ -72,13 +73,14 @@ export async function getCharacter(store: Store, userId: string | null, characte
 
 export async function listCharacters(store: Store, userId: string | null, input: unknown = {}) {
   const user = await caller(store, userId, "list_characters");
-  const req = onlyFields(input, ["system", "status", "limit", "cursor"]);
+  const req = onlyFields(input, ["system", "status", "archived", "limit", "cursor"]);
   const limit = req.limit === undefined ? 20 : req.limit;
   if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > 100) throw new ApiError("invalid_request", "limit must be 1 to 100");
   for (const f of ["system", "status", "cursor"] as const) {
     if (req[f] !== undefined && typeof req[f] !== "string") throw new ApiError("invalid_request", `${f} must be a string`);
   }
-  const page = await store.listCharacters(user.id, { system: req.system as string | undefined, status: req.status as string | undefined, limit: limit + 1, after: req.cursor as string | undefined });
+  if (req.archived !== undefined && typeof req.archived !== "boolean") throw new ApiError("invalid_request", "archived must be a boolean");
+  const page = await store.listCharacters(user.id, { system: req.system as string | undefined, status: req.status as string | undefined, archived: req.archived as boolean | undefined, limit: limit + 1, after: req.cursor as string | undefined });
   const items = page.slice(0, limit);
   return { items: items.map((c) => characterView(c)), next_cursor: page.length > limit ? items.at(-1)!.id : null };
 }
@@ -202,4 +204,29 @@ export async function restoreCharacter(store: Store, userId: string | null, char
   const c = await store.restoreCharacter(characterId);
   if (!c) throw new ApiError("conflict", "the character was deleted more than 30 days ago");
   return characterView(c);
+}
+
+// SPEC_ISSUES.md#character-draft-archive: archiving keeps a character out of the owner's lists and out
+// of games; restore_character needs the deleted character's id, which no list gives.
+export async function archiveCharacter(store: Store, userId: string | null, characterId: unknown) {
+  const user = await caller(store, userId, "archive_character");
+  const c = await owned(store, user.id, characterId);
+  if (c.archived) throw new ApiError("conflict", "the character is already archived");
+  if (c.status === "in_instance") throw new ApiError("conflict", "the character is in a game; take it out of the game first");
+  const archived = await store.setCharacterArchived(c.id, true);
+  if (!archived) throw new ApiError("conflict", "the character joined a game; take it out of the game first");
+  return characterView(archived);
+}
+
+export async function unarchiveCharacter(store: Store, userId: string | null, characterId: unknown) {
+  const user = await caller(store, userId, "unarchive_character");
+  const c = await owned(store, user.id, characterId);
+  if (!c.archived) throw new ApiError("conflict", "the character is not archived");
+  return characterView((await store.setCharacterArchived(c.id, false))!);
+}
+
+/** The caller's characters deleted less than 30 days ago, which they can restore, with the dates of each stage. */
+export async function listDeletedCharacters(store: Store, userId: string | null) {
+  const user = await caller(store, userId, "list_deleted_characters");
+  return (await store.deletedCharacters(user.id)).map(withStages);
 }

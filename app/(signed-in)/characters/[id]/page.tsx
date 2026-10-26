@@ -1,5 +1,6 @@
 // Character editor (app-flow.md, Character creation and editor): the sheet read-only; name and profile
-// editable; Upload portrait and Remove portrait; Retire when available or dead. A detail page
+// editable; Upload portrait and Remove portrait; Archive or Unarchive, Retire when available or dead,
+// and Delete, none while the character is in a game (SPEC_ISSUES.md#character-draft-archive). A detail page
 // (docs/design/README.md, Page layouts): the sheet and details in the main column, the portrait and
 // summary facts in the aside.
 import { notFound } from "next/navigation";
@@ -11,7 +12,8 @@ import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
 import { systemUi } from "@/components/systems";
 import { StatusBadge } from "@/components/ui/badge";
-import { Card, Panel } from "@/components/ui/card";
+import { ArchivedNotice, ArchiveForm, DeleteCharacterForm, RetireForm } from "@/components/character-lifecycle";
+import { Card, DangerZone, Panel } from "@/components/ui/card";
 import { elementSymbol } from "@/components/ui/tile";
 import { Page, PageHeader, Section, WithAside } from "@/components/ui/page";
 import { CharacterEditor } from "./editor";
@@ -34,9 +36,11 @@ export default async function CharacterPage({ params }: { params: Promise<{ id: 
   const profile = (character.sheet.profile ?? {}) as Record<string, string>;
   const portrait = character.portrait ? await store.assetMeta(character.portrait) : undefined;
   const system = systemView(character.system);
+  const inGame = character.status === "in_instance";
   return (
     <Page>
-      <PageHeader crumbs={[{ label: "Characters", href: "/characters" }]} title={character.name} status={<StatusBadge status={character.status} />} description={`${system.title} · ${character.summary.health}`} />
+      <PageHeader crumbs={[{ label: "Characters", href: "/characters" }]} title={character.name} status={<StatusBadge status={character.archived ? "archived" : character.status} />} description={`${system.title} · ${character.summary.health}`} />
+      {character.archived && <ArchivedNotice characterId={character.id} className="mb-6" />}
       <WithAside
         aside={
           <Panel title="Portrait" className="gap-4">
@@ -59,7 +63,22 @@ export default async function CharacterPage({ params }: { params: Promise<{ id: 
             </Card>
           </Section>
         )}
-        <CharacterEditor id={character.id} name={character.name} profile={profile} editable={character.status !== "in_instance"} retirable={character.status === "available" || character.status === "dead"} />
+        <CharacterEditor id={character.id} name={character.name} profile={profile} editable={!inGame} />
+        <div className="mt-10 flex flex-col gap-6">
+          {!character.archived && !inGame && (
+            <Panel title="Archive character">
+              <ArchiveForm characterId={character.id} />
+            </Panel>
+          )}
+          {(character.status === "available" || character.status === "dead") && (
+            <DangerZone id="retire" title="Retire character">
+              <RetireForm characterId={character.id} />
+            </DangerZone>
+          )}
+          <DangerZone id="danger-zone" title="Delete character">
+            {inGame ? <p className="text-muted">The character is in a game. Take it out of the game to delete it.</p> : <DeleteCharacterForm characterId={character.id} name={character.name} />}
+          </DangerZone>
+        </div>
       </WithAside>
     </Page>
   );

@@ -5,6 +5,7 @@ import { AdminError } from "../coordinator/admin";
 import * as coordinator from "../coordinator/instance";
 import { processInput } from "../coordinator/inputs";
 import type { AdventureBundle } from "../bundle/adventure";
+import type { SettingBundle } from "../bundle/setting";
 import { satisfies } from "../materials/semver";
 import type { InstanceView, Store, UserRecord } from "../store";
 import { SYSTEMS } from "../systems";
@@ -111,6 +112,12 @@ export async function addCharacter(deps: Deps, userId: string | null, input: unk
   if (major(character.system_version) !== major(against)) throw new ApiError("system_mismatch", `the character is for ${character.system} ${character.system_version}, not ${against}`);
   if (instance.status !== "lobby" && instance.status !== "paused") throw new ApiError("conflict", `characters join an instance in the lobby or paused; this one is ${instance.status}`);
   if (character.status !== "available") throw new ApiError("conflict", `the character is ${character.status.replace("_", " ")}`);
+  if (character.archived) throw new ApiError("conflict", `${character.name} is archived; unarchive the character to bring it to a game`);
+  const missing = await missingSettings(store, instance, character.sheet);
+  if (missing.length > 0) {
+    const from = missing.join(" and ");
+    throw new ApiError("conflict", `${character.name} uses abilities or items from ${from}, which this game does not include. The campaign's author can add ${from} under Materials; games created after that can use ${character.name}.`);
+  }
   if (!(await store.joinInstance(instance.id, character.id, user.id))) throw new ApiError("conflict", "the character is no longer available");
   if (instance.status === "paused") {
     try {
@@ -121,6 +128,26 @@ export async function addCharacter(deps: Deps, userId: string | null, input: unk
     }
   }
   return (await store.instanceView(instance.id))!;
+}
+
+/**
+ * The settings a character's abilities and items come from that the instance's pinned materials lack,
+ * by title; empty when the materials supply every ref. The engine checks the same refs when the
+ * character joins the game (systems/quest.md, Character creation); checking in the lobby names the
+ * setting the campaign is missing instead of failing at Start.
+ */
+async function missingSettings(store: Store, instance: InstanceView, sheet: Record<string, unknown>): Promise<string[]> {
+  const refs = [...((sheet.abilities as string[] | undefined) ?? []), ...((sheet.inventory as { ref: string }[] | undefined) ?? []).map((i) => i.ref)];
+  const supplied = new Set<string>();
+  for (const m of instance.materials) {
+    const b = await store.getBundle(m.kind, m.id, m.version);
+    if (!b) continue;
+    for (const key of [...Object.keys(b.entities), ...(b.kind === "setting" ? Object.keys(b.abilities) : [])]) supplied.add(`${b.namespace}:${key}`);
+  }
+  const namespaces = [...new Set(refs.filter((r) => !supplied.has(r)).map((r) => r.slice(0, r.indexOf(":"))))];
+  if (namespaces.length === 0) return [];
+  const listed = await store.listedBundles<SettingBundle>("setting", accepted(instance.system));
+  return namespaces.map((ns) => listed.find((b) => b.namespace === ns)?.manifest.title ?? `the '${ns}' setting`);
 }
 
 /** Takes a character out: directly in the lobby, through the coordinator once started. */
@@ -160,6 +187,11 @@ export async function startInstance(deps: Deps, userId: string | null, instanceI
   const joining = await Promise.all(
     instance.characters.map(async (c) => {
       const record = (await deps.store.getCharacter(c.id))!;
+      const missing = await missingSettings(deps.store, instance, record.sheet);
+      if (missing.length > 0) {
+        const from = missing.join(" and ");
+        throw new ApiError("conflict", `${record.name} uses abilities or items from ${from}, which this game does not include. Take ${record.name} out of the lobby, or add ${from} to the campaign's materials and create a new game.`);
+      }
       return { id: c.id, user_id: c.user_id, sheet: record.sheet };
     }),
   );

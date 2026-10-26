@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { uploadAsset } from "../api/assets";
-import { createCharacter, retireCharacter, updateCharacter } from "../api/characters";
+import { archiveCharacter, createCharacter, deleteCharacter, getCharacter, restoreCharacter, retireCharacter, unarchiveCharacter, updateCharacter } from "../api/characters";
 import { acceptTerms } from "../api/users";
 import { attempt, safeNext, type FormState } from "./forms";
 import { serverStore } from "./supabase";
@@ -41,6 +41,45 @@ export async function retireCharacterAction(_: FormState, form: FormData): Promi
   if ("error" in r) return { error: r.error };
   revalidatePath(`/characters/${String(id)}`);
   return { error: null };
+}
+
+function refreshCharacter(id: unknown): FormState {
+  revalidatePath(`/characters/${String(id)}`);
+  revalidatePath("/characters");
+  return { error: null };
+}
+
+export async function archiveCharacterAction(_: FormState, form: FormData): Promise<FormState> {
+  const id = form.get("character_id");
+  const r = await attempt((uid) => archiveCharacter(serverStore(), uid, id));
+  return "error" in r ? { error: r.error } : refreshCharacter(id);
+}
+
+export async function unarchiveCharacterAction(_: FormState, form: FormData): Promise<FormState> {
+  const id = form.get("character_id");
+  const r = await attempt((uid) => unarchiveCharacter(serverStore(), uid, id));
+  return "error" in r ? { error: r.error } : refreshCharacter(id);
+}
+
+/** Deletes the character once its name is typed. Returns to the Characters page, which lists it under Recently deleted. */
+export async function deleteCharacterAction(_: FormState, form: FormData): Promise<FormState> {
+  const id = form.get("character_id");
+  const r = await attempt(async (uid) => {
+    const c = await getCharacter(serverStore(), uid, id);
+    if (form.get("confirm") !== c.name) return { mismatch: true };
+    await deleteCharacter(serverStore(), uid, id);
+    return { mismatch: false };
+  });
+  if ("error" in r) return { error: r.error };
+  if (r.ok.mismatch) return { error: "Type the character's name exactly to delete it." };
+  revalidatePath("/characters");
+  redirect("/characters");
+}
+
+export async function restoreCharacterAction(_: FormState, form: FormData): Promise<FormState> {
+  const id = form.get("character_id");
+  const r = await attempt((uid) => restoreCharacter(serverStore(), uid, id));
+  return "error" in r ? { error: r.error } : refreshCharacter(id);
 }
 
 /** Upload portrait: stores the image, then sets it on the character (app-flow.md, Character editor). */

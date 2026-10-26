@@ -4,9 +4,9 @@
 // invitation; a campaign the demo user joined; and an adventure draft.
 
 import { join } from "node:path";
-import { abilityOptions, createCharacter, updateCharacter } from "../api/characters";
+import { abilityOptions, archiveCharacter, createCharacter, deleteCharacter, updateCharacter } from "../api/characters";
 import { archiveCampaign, createCampaign, deleteCampaign, joinByLink, rotateInviteLink } from "../api/campaigns";
-import { importDraft } from "../api/drafts";
+import { archiveDraft, createDraft, deleteDraft, importDraft } from "../api/drafts";
 import type { Entropy } from "../api/entropy";
 import { addCharacter, createInstance, startInstance, submitAction } from "../api/instances";
 import { invite } from "../api/invitations";
@@ -18,6 +18,7 @@ import { zip } from "../export/zip";
 import { compileAdventure, compileSetting, formatDiagnostic } from "../materials";
 import { readPackDir } from "../materials/fs";
 import type { Store } from "../store";
+import { quickStartFor } from "../systems/creation";
 
 export const DEMO_USERS = [
   { id: "user_demo", email: "vera@example.org", display_name: "Vera Lindqvist", operator: true },
@@ -71,7 +72,9 @@ export async function seedDemo(store: Store, now = new Date()): Promise<DemoWorl
 
   // Characters.
   const options = await abilityOptions(store, "cadmium");
-  const six = (role: string) => options.filter((a) => a.roles.includes(role)).slice(0, 6).map((a) => a.ref);
+  // Each character is the role's Quick Start, from Quest Quick Start, which the campaigns below include.
+  const starter = options.filter((a) => a.ref.startsWith("starter:"));
+  const six = (role: string) => quickStartFor(role, starter, 6);
   const wren = await createCharacter(store, "user_demo", { system: "cadmium", name: "Wren Halloway", choices: { role: "fighter", abilities: six("fighter") } }, e);
   await updateCharacter(store, "user_demo", { character_id: wren.id, profile: { description: "A former lamplighter from Salinara who still counts the beacons as she walks." } });
   await createCharacter(store, "user_demo", { system: "quest", name: "Rook", choices: { role: "spy", abilities: six("spy") } }, e);
@@ -125,11 +128,20 @@ export async function seedDemo(store: Store, now = new Date()): Promise<DemoWorl
   const files = [...pack({ example: "sunken_archive" })].map(([name, data]) => ({ name: `sunken_archive/${name}`, data }));
   const draft = await importDraft(store, "user_demo", zip(files), e).catch((x) => void console.error("draft", (x as Error).message));
 
-  // Last, so the ids above stay the same: an archived campaign and a recently deleted one.
+  // Last, so the ids above stay the same: an archived and a recently deleted campaign, character, and draft.
   const past = await createCampaign(store, "user_demo", { title: "Summer in Vessaro", description: "A finished summer campaign.", system: "cadmium", system_versions: "^1.0", modules: ["armor", "stash"], materials }, e);
   await archiveCampaign(store, "user_demo", past.id);
   const dropped = await createCampaign(store, "user_demo", { title: "Test table", description: "A campaign made to try things out.", system: "cadmium", system_versions: "^1.0", modules: ["armor", "stash"], materials }, e);
   await deleteCampaign(deps, "user_demo", { campaign_id: dropped.id, confirm: dropped.title });
+  const oldTam = await createCharacter(store, "user_demo", { system: "cadmium", name: "Old Tam", choices: { role: "doctor", abilities: six("doctor") } }, e);
+  await archiveCharacter(store, "user_demo", oldTam.id);
+  const tryout = await createCharacter(store, "user_demo", { system: "cadmium", name: "Test character", choices: { role: "magician", abilities: six("magician") } }, e);
+  await deleteCharacter(store, "user_demo", tryout.id);
+  const notes = { system: "cadmium", requires_settings: [{ id: "lantern_coast", versions: "^1.0" }] };
+  const shelved = await createDraft(store, "user_demo", { ...notes, material_id: "fog_bell", title: "The Fog Bell" }, e);
+  await archiveDraft(store, "user_demo", shelved.id);
+  const scrap = await createDraft(store, "user_demo", { ...notes, material_id: "scratch", title: "Scratch pad" }, e);
+  await deleteDraft(store, "user_demo", scrap.id);
 
   return { campaign: campaign.id, game: game.id, lobby: lobby.id, character: wren.id, draft: draft ? draft.draft.id : null, invitation, link };
 }

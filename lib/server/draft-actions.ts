@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { SettingBundle } from "../bundle/setting";
-import { createDraft, deleteDraft, getDraft, importDraft, publishDraft, requiredSettings, saveDraft, validateDraft } from "../api/drafts";
+import { archiveDraft, createDraft, deleteDraft, getDraft, importDraft, publishDraft, requiredSettings, restoreDraft, saveDraft, unarchiveDraft, validateDraft } from "../api/drafts";
 import { attempt, type FormState } from "./forms";
 import { serverStore } from "./supabase";
 
@@ -74,9 +74,28 @@ export async function publishDraftAction(_: FormState, form: FormData): Promise<
   redirect("/adventures");
 }
 
+/** Delete, Archive, Unarchive, and Restore, which change the My adventures page and the draft's own pages. */
+function onAdventures(op: (store: ReturnType<typeof serverStore>, userId: string | null, draftId: unknown) => Promise<unknown>) {
+  return async (form: FormData): Promise<FormState> => {
+    const r = await attempt((uid) => op(serverStore(), uid, str(form, "draft_id")));
+    if ("error" in r) return r;
+    revalidatePath("/adventures", "layout");
+    return { error: null };
+  };
+}
+
 export async function deleteDraftAction(_: FormState, form: FormData): Promise<FormState> {
-  const r = await attempt((uid) => deleteDraft(serverStore(), uid, str(form, "draft_id")));
-  if ("error" in r) return r;
-  revalidatePath("/adventures");
-  return { error: null };
+  return onAdventures(deleteDraft)(form);
+}
+
+export async function archiveDraftAction(_: FormState, form: FormData): Promise<FormState> {
+  return onAdventures(archiveDraft)(form);
+}
+
+export async function unarchiveDraftAction(_: FormState, form: FormData): Promise<FormState> {
+  return onAdventures(unarchiveDraft)(form);
+}
+
+export async function restoreDraftAction(_: FormState, form: FormData): Promise<FormState> {
+  return onAdventures(restoreDraft)(form);
 }

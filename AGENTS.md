@@ -18,8 +18,8 @@ Identity comes from Clerk. A Clerk user id is the primary key of `users`, and ev
 | Table | Holds | Belongs to |
 |---|---|---|
 | `users` | Display name, time zone, reminder settings, terms acceptance, operator flag, account status | Itself: `id` is the Clerk user id |
-| `characters` | A character's system, name, sheet, portrait, and status | `owner_id` |
-| `material_drafts` | Adventure drafts in the editor: the document, revision, and diagnostics | `owner_id` |
+| `characters` | A character's system, name, sheet, portrait, status, and whether it is archived | `owner_id` |
+| `material_drafts` | Adventure drafts in the editor: the document, revision, diagnostics, and whether it is archived | `owner_id` |
 | `push_subscriptions` | Browsers that receive reminders | `user_id` |
 | `asset_uploads` | Portrait uploads, per uploader | `user_id` |
 | `rsvps` | A member's answer to one session occurrence | `user_id` |

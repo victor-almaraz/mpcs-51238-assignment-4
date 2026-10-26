@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { shutdownPhase } from "../ops/shutdown";
 
 import { uploadAsset } from "./assets";
-import { createCharacter, deleteCharacter, getCharacter, listCharacters, restoreCharacter, retireCharacter, updateCharacter } from "./characters";
+import { archiveCharacter, createCharacter, deleteCharacter, getCharacter, listCharacters, listDeletedCharacters, restoreCharacter, retireCharacter, unarchiveCharacter, updateCharacter } from "./characters";
 import {
   archiveCampaign,
   createCampaign,
@@ -16,10 +16,12 @@ import {
   joinByLink,
   leaveCampaign,
   listCampaigns,
+  listDeletedCampaigns,
   removeMember,
   restoreCampaign,
   rotateInviteLink,
   setMaterials,
+  unarchiveCampaign,
   updateCampaign,
 } from "./campaigns";
 import { ApiError, type ApiErrorCode } from "./errors";
@@ -43,7 +45,7 @@ import {
 import { acceptInvitation, declineInvitation, invite, listInvitations, previewInvitation, revokeInvitation } from "./invitations";
 import { listMaterials } from "./materials";
 import { addPushSubscription, exportMyData, getPushKey, listPushSubscriptions, removePushSubscription, requestAccountDeletion, restoreAccount, updateMe } from "./account";
-import { createDraft, deleteDraft, exportDraft, getDraft, importDraft, listDrafts, publishDraft, restoreDraft, saveDraft, validateDraft } from "./drafts";
+import { archiveDraft, createDraft, deleteDraft, exportDraft, getDraft, importDraft, listDeletedDrafts, listDrafts, publishDraft, restoreDraft, saveDraft, unarchiveDraft, validateDraft } from "./drafts";
 import { calendarFeed, cancelSession, disableCalendarFeed, exportCalendar, getCalendarFeed, listOccurrences, moveOccurrence, rotateCalendarFeed, rsvp, scheduleSession, updateSession } from "./schedules";
 import { getSystemSchema, listSystems } from "./systems";
 import { acceptTerms, caller, getMe } from "./users";
@@ -139,7 +141,9 @@ const ROUTES: Route[] = [
   // Adventure drafts
   ["POST", "/drafts", async (c) => created({ draft: await createDraft(c.deps.store, c.user, c.body) })],
   ["POST", "/drafts/import", async (c) => created(await importDraft(c.deps.store, c.user, c.raw))],
-  ["GET", "/drafts", async (c) => ok(await listDrafts(c.deps.store, c.user, queryInput(c.query, ["limit"])))],
+  ["GET", "/drafts", async (c) => ok(await listDrafts(c.deps.store, c.user, queryInput(c.query, ["limit"], ["archived"])))],
+  // SPEC_ISSUES.md#character-draft-archive
+  ["GET", "/drafts/deleted", async (c) => ok({ drafts: await listDeletedDrafts(c.deps.store, c.user) })],
   ["GET", "/drafts/:draft_id", async (c) => ok({ draft: await getDraft(c.deps.store, c.user, c.params.draft_id) })],
   ["PUT", "/drafts/:draft_id", async (c) => ok(await saveDraft(c.deps.store, c.user, { ...c.body, draft_id: c.params.draft_id }))],
   ["POST", "/drafts/:draft_id/validate", async (c) => ok({ diagnostics: await validateDraft(c.deps.store, c.user, c.params.draft_id) })],
@@ -147,6 +151,8 @@ const ROUTES: Route[] = [
   ["POST", "/drafts/:draft_id/publish", async (c) => created({ material: await publishDraft(c.deps.store, c.user, { ...c.body, draft_id: c.params.draft_id }) })],
   ["DELETE", "/drafts/:draft_id", async (c) => ok(await deleteDraft(c.deps.store, c.user, c.params.draft_id))],
   ["POST", "/drafts/:draft_id/restore", async (c) => ok({ draft: await restoreDraft(c.deps.store, c.user, c.params.draft_id) })],
+  ["POST", "/drafts/:draft_id/archive", async (c) => ok({ draft: await archiveDraft(c.deps.store, c.user, c.params.draft_id) })],
+  ["POST", "/drafts/:draft_id/unarchive", async (c) => ok({ draft: await unarchiveDraft(c.deps.store, c.user, c.params.draft_id) })],
   // Assets: the bytes by hash, immutable (api.md, get_asset).
   [
     "GET",
@@ -160,11 +166,14 @@ const ROUTES: Route[] = [
   ],
   // Characters
   ["POST", "/characters", async (c) => created({ character: await createCharacter(c.deps.store, c.user, c.body) })],
-  ["GET", "/characters", async (c) => ok(await listCharacters(c.deps.store, c.user, queryInput(c.query, ["limit"])))],
+  ["GET", "/characters", async (c) => ok(await listCharacters(c.deps.store, c.user, queryInput(c.query, ["limit"], ["archived"])))],
+  ["GET", "/characters/deleted", async (c) => ok({ characters: await listDeletedCharacters(c.deps.store, c.user) })],
   ["GET", "/characters/:character_id", async (c) => ok({ character: await getCharacter(c.deps.store, c.user, c.params.character_id) })],
   ["PATCH", "/characters/:character_id", async (c) => ok({ character: await updateCharacter(c.deps.store, c.user, { ...c.body, character_id: c.params.character_id }) })],
   ["DELETE", "/characters/:character_id", async (c) => (await deleteCharacter(c.deps.store, c.user, c.params.character_id), none())],
   ["POST", "/characters/:character_id/restore", async (c) => ok({ character: await restoreCharacter(c.deps.store, c.user, c.params.character_id) })],
+  ["POST", "/characters/:character_id/archive", async (c) => ok({ character: await archiveCharacter(c.deps.store, c.user, c.params.character_id) })],
+  ["POST", "/characters/:character_id/unarchive", async (c) => ok({ character: await unarchiveCharacter(c.deps.store, c.user, c.params.character_id) })],
   [
     "POST",
     "/assets",
@@ -182,12 +191,15 @@ const ROUTES: Route[] = [
   ["POST", "/campaigns", async (c) => created({ campaign: await createCampaign(c.deps.store, c.user, c.body) })],
   ["GET", "/campaigns", async (c) => ok(await listCampaigns(c.deps.store, c.user, queryInput(c.query, ["limit"], ["archived"])))],
   ["POST", "/campaigns/join", async (c) => ok({ campaign: await joinByLink(c.deps.store, c.user, c.body.invite_link_code) })],
+  // SPEC_ISSUES.md#campaign-unarchive
+  ["GET", "/campaigns/deleted", async (c) => ok({ campaigns: await listDeletedCampaigns(c.deps.store, c.user) })],
   ["GET", "/campaigns/:campaign_id", async (c) => ok({ campaign: await getCampaign(c.deps.store, c.user, c.params.campaign_id) })],
   ["PATCH", "/campaigns/:campaign_id", async (c) => ok({ campaign: await updateCampaign(c.deps.store, c.user, { ...c.body, campaign_id: c.params.campaign_id }) })],
   ["DELETE", "/campaigns/:campaign_id", async (c) => (await deleteCampaign(c.deps, c.user, { ...c.body, campaign_id: c.params.campaign_id }), none())],
   ["POST", "/campaigns/:campaign_id/restore", async (c) => ok({ campaign: await restoreCampaign(c.deps.store, c.user, c.params.campaign_id) })],
   ["PUT", "/campaigns/:campaign_id/materials", async (c) => ok({ campaign: await setMaterials(c.deps.store, c.user, { ...c.body, campaign_id: c.params.campaign_id }) })],
   ["POST", "/campaigns/:campaign_id/archive", async (c) => ok({ campaign: await archiveCampaign(c.deps.store, c.user, c.params.campaign_id) })],
+  ["POST", "/campaigns/:campaign_id/unarchive", async (c) => ok({ campaign: await unarchiveCampaign(c.deps.store, c.user, c.params.campaign_id) })],
   ["DELETE", "/campaigns/:campaign_id/members/me", async (c) => (await leaveCampaign(c.deps, c.user, c.params.campaign_id), none())],
   ["DELETE", "/campaigns/:campaign_id/members/:user_id", async (c) => (await removeMember(c.deps, c.user, { campaign_id: c.params.campaign_id, user_id: c.params.user_id }), none())],
   ["POST", "/campaigns/:campaign_id/invite-link", async (c) => ok(await rotateInviteLink(c.deps.store, c.user, c.params.campaign_id))],

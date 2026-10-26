@@ -5,7 +5,6 @@
 import { Archive, Castle, Plus, Trash2 } from "lucide-react";
 import { RestoreForm, UnarchiveForm } from "@/components/campaign-lifecycle";
 import { formatWhen } from "@/components/when";
-import { StatusBadge } from "@/components/ui/badge";
 import { List, ListRow } from "@/components/ui/list";
 import { CampaignCard, EnterCode } from "@/components/dashboard/hub";
 import { ButtonLink } from "@/components/ui/button";
@@ -81,7 +80,6 @@ export default async function Campaigns() {
                 icon={<Archive {...ICON_DENSE} />}
                 title={c.title}
                 href={`/campaigns/${c.id}`}
-                badge={<StatusBadge status="archived" />}
                 meta={c.author_id === user.id ? "You run it" : "You play in it"}
                 actions={c.author_id === user.id ? <UnarchiveForm campaignId={c.id} title={c.title} /> : undefined}
               />

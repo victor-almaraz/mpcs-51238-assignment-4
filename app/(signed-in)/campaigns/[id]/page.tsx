@@ -144,7 +144,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
           )
         }
       />
-      {campaign.archived && <ArchivedNotice campaignId={campaign.id} author={author} />}
+      {campaign.archived && <ArchivedNotice campaignId={campaign.id} author={author} className="mb-6" />}
       <WithAside
         aside={
           <>
