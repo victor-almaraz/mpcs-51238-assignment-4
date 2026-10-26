@@ -1,6 +1,6 @@
 # Cadmium
 
-The web application for Cadmium, a multiplayer text dungeon crawler run by software. The specification lives in [`cadmium-spec/`](cadmium-spec/); start with [`cadmium-spec/AGENTS.md`](cadmium-spec/AGENTS.md) and [`cadmium-spec/docs/README.md`](cadmium-spec/docs/README.md). The specification is the requirement. Changes to `cadmium-spec/` are specification changes and follow its own rules; see [Specification version](#specification-version).
+The web application for Cadmium, a multiplayer text dungeon crawler run by software. The specification lives in [`cadmium-spec/`](cadmium-spec/); start with [`cadmium-spec/AGENTS.md`](cadmium-spec/AGENTS.md) and [`cadmium-spec/docs/README.md`](cadmium-spec/docs/README.md). The specification is a working draft that changes with the product: where it is silent or wrong, the code and the specification change together; see [Specification version](#specification-version).
 
 The work is planned in [SPRINTS.md](SPRINTS.md). Gaps in the specification found during implementation are recorded in [SPEC_ISSUES.md](SPEC_ISSUES.md).
 

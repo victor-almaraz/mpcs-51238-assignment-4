@@ -103,13 +103,13 @@ This section governs agents that build the web application. The application live
 
 ### Rules for implementing agents
 
-- The specification is the requirement. Do not invent behaviour it does not state, and do not deviate from behaviour it does state.
-- When the specification is silent, contradictory, or impossible to implement as written, stop on that point. Record it in `SPEC_ISSUES.md` in the application repository with the document, the section, the problem, and a proposed resolution; implement the smallest behaviour that keeps tests passing and mark it with a comment naming the issue. The issue is resolved by a change to this repository, after which the marker is removed.
+- The specification describes the intended product and is a working draft. Build what it states; where it is silent, contradictory, impossible, or wrong for the product, decide what serves the product, and change the specification to match in the same change as the code, or remove the passage.
+- A gap left open is recorded in `SPEC_ISSUES.md` in the application repository with the document, the section, the problem, and the resolution, and the code is marked with a comment naming the issue. The entry and its markers are removed once the specification says the same as the code.
 - Tests come from the specification first: test vectors, conformance lists, compilation checks, and documented examples become test cases before the code they test.
 - Determinism is a requirement, not an optimization. Engine, generator, and rules-system code read no clock, randomness, or environment other than their arguments.
 - Models appear only behind `parser` and `narrator`. No test outside the parser evaluation depends on a model.
 - One task, one module, one change. A change that touches several modules states why.
-- Never weaken a test to pass it. A test that encodes a specification requirement changes only when the specification changes.
+- Never weaken a test to pass it. A test that encodes a specification requirement changes together with the specification.
 
 ### Phases
 

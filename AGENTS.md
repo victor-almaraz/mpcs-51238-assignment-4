@@ -8,7 +8,7 @@ Context for agents working in this repository: the Cadmium web application, a mu
 - Work on a branch. Run `pnpm check` (generated files, types, lint, tests, build) before every commit; there is no CI service, and Vercel runs only the build.
 - Node.js runs through pnpm (`devEngines.runtime` in `package.json`): use `pnpm <script>` or `pnpm exec`, never a global `node`.
 - Keys live in `.env.local`, which agents must not read or write. `.claude/settings.local.json` denies `Read` and `Edit` of `./.env` and `./.env.*`. Variable names are in [README.md](README.md#configuration).
-- `cadmium-spec/` is the specification. A change there is a specification change and follows its own rules; see [README.md](README.md#specification-version).
+- `cadmium-spec/` is the specification, a working draft that changes with the product. When it is silent, contradictory, or wrong for the product, decide, and update it (or remove the passage) in the same change as the code; don't leave code waiting on it. See [README.md](README.md#specification-version).
 - New migrations go in `supabase/migrations/`; the project owner applies them, and `/api/health` reports each one.
 
 ## Data model
