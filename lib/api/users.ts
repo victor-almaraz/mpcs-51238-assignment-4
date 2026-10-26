@@ -35,10 +35,11 @@ export async function caller(store: Store, userId: string | null, operation: str
   return user;
 }
 
+// SPEC_ISSUES.md#active-campaigns: active means not archived and not deleted, in any role.
+/** get_me: the user, their characters, the campaigns they belong to that are not archived, and those they author. */
 export async function getMe(store: Store, userId: string | null) {
   const user = await caller(store, userId, "get_me");
-  const characters = await store.listCharacters(user.id, { limit: 100 });
-  return { user: userView(user), character_ids: characters.map((c) => c.id), active_campaign_ids: [] as string[], authored_campaign_ids: [] as string[] };
+  return { user: userView(user), ...(await store.userIds(user.id)) };
 }
 
 export async function acceptTerms(store: Store, userId: string | null, version: unknown) {

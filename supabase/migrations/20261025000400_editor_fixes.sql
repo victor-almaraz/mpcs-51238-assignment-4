@@ -25,18 +25,4 @@ create function cadmium_setting_dependents(p_id text) returns jsonb language sql
        where b.kind = 'adventure' and b.listed and jsonb_typeof(r) = 'object' and r->>'id' = p_id), '[]'::jsonb));
 $$;
 
-do $$
-declare
-  f regprocedure;
-begin
-  for f in select p.oid::regprocedure from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-           where n.nspname = 'public' and p.proname in ('cadmium_set_draft_material', 'cadmium_setting_dependents') loop
-    execute format('revoke execute on function %s from public', f);
-    if exists (select 1 from pg_roles where rolname = 'anon') then
-      execute format('revoke execute on function %s from anon, authenticated', f);
-    end if;
-    if exists (select 1 from pg_roles where rolname = 'service_role') then
-      execute format('grant execute on function %s to service_role', f);
-    end if;
-  end loop;
-end $$;
+select cadmium_service_only(array['cadmium_set_draft_material', 'cadmium_setting_dependents']);

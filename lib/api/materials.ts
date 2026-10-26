@@ -30,6 +30,12 @@ export async function listMaterials(store: Store, userId: string | null, input: 
   return list.map(materialView);
 }
 
+/** The version range a new campaign or draft declares for `version`: its major and minor version, as `^1.2`. */
+export function defaultRange(version: string): string {
+  const [major, minor] = version.split(".");
+  return `^${major}.${minor}`;
+}
+
 /**
  * Whether a declaration for `system` with version range `range` fits a campaign of `campaignSystem`
  * with range `campaignRange`: the system is accepted, and the installed version of the declared system
@@ -70,20 +76,22 @@ function refsOf(input: unknown): MaterialRef[] {
 export async function checkMaterials(store: Store, campaign: CampaignTerms, input: unknown, opts: { requireUsable: boolean }): Promise<MaterialRef[]> {
   const refs = refsOf(input);
   const seen = new Set<string>();
-  const records: MaterialRecord[] = [];
   for (const r of refs) {
     const key = `${r.kind}:${r.id}`;
     if (seen.has(key)) throw new ApiError("invalid_request", `${r.kind} ${r.id} is listed twice`);
     seen.add(key);
-    const m = await store.material(r.kind, r.id, r.version);
+  }
+  const found = await Promise.all(refs.map((r) => store.material(r.kind, r.id, r.version)));
+  const records = refs.map((r, i): MaterialRecord => {
+    const m = found[i];
     const usable = m && (m.origin === "operator" ? m.listed || !opts.requireUsable : m.publisher_id === campaign.author_id);
     if (!m || !usable) throw new ApiError("invalid_request", `no material ${r.kind} ${r.id} ${r.version} is available`);
     const mismatch = fits(m.system, m.system_versions, campaign.system, campaign.system_versions);
     if (mismatch) throw new ApiError("system_mismatch", `${r.kind} ${r.id}: ${mismatch}`);
     const missing = m.manifest.system.modules.filter((mod) => !campaign.modules.includes(mod));
     if (missing.length > 0) throw new ApiError("system_mismatch", `${r.kind} ${r.id} requires the module${missing.length > 1 ? "s" : ""} ${missing.join(", ")}`);
-    records.push(m);
-  }
+    return m;
+  });
   const adventures = records.filter((m) => m.kind === "adventure");
   const settings = records.filter((m) => m.kind === "setting");
   if (adventures.length !== 1) throw new ApiError("invalid_request", "a campaign has exactly one adventure");

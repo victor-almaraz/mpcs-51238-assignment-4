@@ -1,7 +1,7 @@
 // Invitations (api.md, Invitations; data-model.md, Invitation): single-use codes, stored only as hashes.
 
 import { createHash } from "node:crypto";
-import type { InvitationRecord, Store } from "../store";
+import type { Store } from "../store";
 import { campaignView, membership, normalizeCode } from "./campaigns";
 import { cryptoEntropy, type Entropy } from "./entropy";
 import { ApiError, onlyFields } from "./errors";
@@ -16,14 +16,6 @@ export function codeHash(code: string): string {
 /** An invitation code: four groups of five base32 characters (100 bits). */
 function invitationCode(entropy: Entropy): string {
   return entropy.code(20).replace(/(.{5})(?=.)/g, "$1-");
-}
-
-/** The invitation object; `note` only for campaign members. */
-export function invitationView(i: InvitationRecord, member: true): InvitationRecord;
-export function invitationView(i: InvitationRecord, member: false): Omit<InvitationRecord, "note">;
-export function invitationView(i: InvitationRecord, member: boolean): InvitationRecord | Omit<InvitationRecord, "note"> {
-  const { note, ...rest } = i;
-  return member ? { ...rest, note } : rest;
 }
 
 function optionalText(v: unknown, field: string, max: number): string {
@@ -50,10 +42,10 @@ export async function invite(store: Store, userId: string | null, input: unknown
     note: optionalText(req.note, "note", 80),
     token_hash: codeHash(code),
   });
-  return { invitation: invitationView(invitation, true), code, url: `/invite/${code}` };
+  return { invitation, code, url: `/invite/${code}` };
 }
 
-/** What anyone holding the code sees; nothing about members other than the inviter. */
+/** What anyone holding the code sees: nothing about members other than the inviter, and no note, which only members see. */
 export async function previewInvitation(store: Store, code: unknown) {
   const i = await store.invitationByHash(codeHash(normalizeCode(code)));
   if (!i) throw new ApiError("not_found", "no such invitation");
@@ -76,7 +68,7 @@ export async function listInvitations(store: Store, userId: string | null, input
   const req = onlyFields(input, ["campaign_id", "status"]);
   const { campaign } = await membership(store, user, req.campaign_id);
   if (req.status !== undefined && !STATUSES.includes(req.status as string)) throw new ApiError("invalid_request", `status must be one of ${STATUSES.join(", ")}`);
-  return (await store.listInvitations(campaign.id, req.status as string | undefined)).map((i) => invitationView(i, true));
+  return store.listInvitations(campaign.id, req.status as string | undefined);
 }
 
 async function respond(store: Store, userId: string | null, code: unknown, accept: boolean) {

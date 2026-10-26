@@ -24,3 +24,11 @@ export function onlyFields(input: unknown, allowed: readonly string[]): Record<s
   }
   return input as Record<string, unknown>;
 }
+
+/** A rejection handler that reports not_found with `detail`, as for the record that led to the lookup, and rethrows anything else. */
+export const notFoundAs =
+  (detail: string) =>
+  (e: unknown): never => {
+    if (e instanceof ApiError && e.code === "not_found") throw new ApiError("not_found", detail);
+    throw e;
+  };

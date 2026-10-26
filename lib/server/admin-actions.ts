@@ -3,18 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { applyReport, inspectInstance, publishBundle, replayInstance, restoreInstance, setListed } from "../api/admin";
 import { serverDeps } from "./coordinator";
-import { attempt, type FormState } from "./forms";
+import { attempt, save, str, type FormState } from "./forms";
 
-const str = (form: FormData, name: string) => {
-  const v = form.get(name);
-  return typeof v === "string" ? v : undefined;
-};
-
-/** The console again, with a confirmation of what was done. */
-function done(saved: string): FormState {
-  revalidatePath("/admin");
-  return { error: null, saved };
-}
+/** The console again. */
+const consolePage = () => revalidatePath("/admin");
 
 export async function publishAction(_: FormState, form: FormData): Promise<FormState> {
   const file = form.get("bundle");
@@ -26,23 +18,25 @@ export async function publishAction(_: FormState, form: FormData): Promise<FormS
     return { error: "The bundle is not JSON." };
   }
   const r = await attempt((uid) => publishBundle(serverDeps().store, uid, { kind: str(form, "kind"), bundle }));
-  return "error" in r ? r : done(`Published ${r.ok.kind} ${r.ok.id} ${r.ok.version}.`);
+  if ("error" in r) return { error: r.error };
+  consolePage();
+  return { error: null, saved: `Published ${r.ok.kind} ${r.ok.id} ${r.ok.version}.` };
 }
 
 export async function listedAction(_: FormState, form: FormData): Promise<FormState> {
   const listed = str(form, "listed") === "true";
-  const r = await attempt((uid) => setListed(serverDeps().store, uid, { kind: str(form, "kind"), id: str(form, "id"), version: str(form, "version"), listed }));
-  return "error" in r ? r : done(`${listed ? "Listed" : "Unlisted"} ${str(form, "id")} ${str(form, "version")}.`);
+  return save((uid) => setListed(serverDeps().store, uid, { kind: str(form, "kind"), id: str(form, "id"), version: str(form, "version"), listed }), consolePage, `${listed ? "Listed" : "Unlisted"} ${str(form, "id")} ${str(form, "version")}.`);
 }
 
 export async function restoreAction(_: FormState, form: FormData): Promise<FormState> {
-  const r = await attempt((uid) => restoreInstance(serverDeps().store, uid, { instance_id: str(form, "instance_id"), to_version: Number(str(form, "to_version")), reason: str(form, "reason") }));
-  return "error" in r ? r : done(`Restored the game to version ${str(form, "to_version")}.`);
+  return save((uid) => restoreInstance(serverDeps().store, uid, { instance_id: str(form, "instance_id"), to_version: Number(str(form, "to_version")), reason: str(form, "reason") }), consolePage, `Restored the game to version ${str(form, "to_version")}.`);
 }
 
 export async function reportAction(_: FormState, form: FormData): Promise<FormState> {
   const r = await attempt((uid) => applyReport(serverDeps(), uid, { action: str(form, "action"), kind: str(form, "kind"), id: str(form, "id"), reason: str(form, "reason") }));
-  return "error" in r ? r : done(r.ok);
+  if ("error" in r) return { error: r.error };
+  consolePage();
+  return { error: null, saved: r.ok };
 }
 
 export type Inspection = {
@@ -59,7 +53,7 @@ export async function inspectAction(_: Inspection, form: FormData): Promise<Insp
   if ("error" in r) return { error: r.error };
   const i = r.ok;
   const replay = await attempt((uid) => replayInstance(store, uid, { instance_id: i.id })).catch((e: Error) => ({ error: e.message }));
-  revalidatePath("/admin");
+  consolePage();
   return {
     error: null,
     instance: { id: i.id, name: i.name, status: i.status, version: i.version, state: i.state },

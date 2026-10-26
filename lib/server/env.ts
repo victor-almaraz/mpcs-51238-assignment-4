@@ -9,13 +9,11 @@ const NAMES = {
 
 export type Setting = keyof typeof NAMES;
 
-export class ConfigError extends Error {}
-
-/** The named setting; throws ConfigError when it is unset or empty. */
+/** The named setting; throws when it is unset or empty. */
 export function setting(name: Setting): string {
   const variable = NAMES[name];
   const value = process.env[variable];
-  if (value === undefined || value.trim() === "") throw new ConfigError(`${variable} is not set`);
+  if (value === undefined || value.trim() === "") throw new Error(`${variable} is not set`);
   return value;
 }
 

@@ -7,10 +7,10 @@
 
 import { occurrencesOf } from "../scheduler/occurrences";
 import type { Store } from "../store";
+import { DAY } from "./deletion";
 import { ApiError, onlyFields } from "./errors";
 import { caller } from "./users";
 
-const DAY = 86_400_000;
 /** The longest lead time update_me accepts (api.md, Users: reminders). */
 const MAX_LEAD_MINUTES = 10_080;
 

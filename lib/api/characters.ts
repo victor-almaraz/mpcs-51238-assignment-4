@@ -3,11 +3,13 @@
 
 import Ajv2020, { type ValidateFunction } from "ajv/dist/2020.js";
 import { Rng } from "../rng";
+import { capitalize } from "../text";
 import { RulesError, type RulesSystem } from "../systems";
 import type { CharacterRecord, Store } from "../store";
 import { cryptoEntropy, type Entropy } from "./entropy";
 import { withStages } from "./deletion";
 import { ApiError, onlyFields } from "./errors";
+import { paged, pageOf } from "./paging";
 import { accepted, systemOrThrow } from "./systems";
 import { caller } from "./users";
 
@@ -107,30 +109,35 @@ export async function getCharacter(store: Store, userId: string | null, characte
 export async function listCharacters(store: Store, userId: string | null, input: unknown = {}) {
   const user = await caller(store, userId, "list_characters");
   const req = onlyFields(input, ["system", "status", "archived", "limit", "cursor"]);
-  const limit = req.limit === undefined ? 20 : req.limit;
-  if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > 100) throw new ApiError("invalid_request", "limit must be 1 to 100");
-  for (const f of ["system", "status", "cursor"] as const) {
+  const { limit, cursor } = pageOf(req);
+  for (const f of ["system", "status"] as const) {
     if (req[f] !== undefined && typeof req[f] !== "string") throw new ApiError("invalid_request", `${f} must be a string`);
   }
   if (req.archived !== undefined && typeof req.archived !== "boolean") throw new ApiError("invalid_request", "archived must be a boolean");
-  const page = await store.listCharacters(user.id, { system: req.system as string | undefined, status: req.status as string | undefined, archived: req.archived as boolean | undefined, limit: limit + 1, after: req.cursor as string | undefined });
-  const items = page.slice(0, limit);
-  return { items: items.map((c) => characterView(c)), next_cursor: page.length > limit ? items.at(-1)!.id : null };
+  const rows = await store.listCharacters(user.id, { system: req.system as string | undefined, status: req.status as string | undefined, archived: req.archived as boolean | undefined, limit: limit + 1, after: cursor });
+  return paged(rows, limit, characterView);
 }
 
 export async function updateCharacter(store: Store, userId: string | null, input: unknown) {
   const user = await caller(store, userId, "update_character");
   const req = onlyFields(input, ["character_id", "name", "profile", "portrait"]);
   const c = await owned(store, user.id, req.character_id);
-  if (req.portrait !== undefined) {
-    // A portrait hash the user uploaded, or null to remove it.
-    if (req.portrait !== null) {
-      const a = typeof req.portrait === "string" ? await store.assetMeta(req.portrait) : undefined;
-      if (!a || a.kind !== "portrait" || a.removed_at || !(await store.uploadedBy(a.hash, user.id))) throw new ApiError("invalid_request", "portrait must be the hash of a portrait you uploaded");
-    }
-    await store.setPortrait(c.id, req.portrait as string | null);
-    if (req.name === undefined && req.profile === undefined) return characterView((await store.getCharacter(c.id))!);
+  // A portrait hash the user uploaded, or null to remove it. The portrait is not on the sheet, so it can
+  // change while the character is in an instance.
+  if (req.portrait !== undefined && req.portrait !== null) {
+    const a = typeof req.portrait === "string" ? await store.assetMeta(req.portrait) : undefined;
+    if (!a || a.kind !== "portrait" || a.removed_at || !(await store.uploadedBy(a.hash, user.id))) throw new ApiError("invalid_request", "portrait must be the hash of a portrait you uploaded");
   }
+  // Without a portrait, the request edits the sheet, even when it changes nothing.
+  const edit = req.portrait === undefined || req.name !== undefined || req.profile !== undefined ? editedSheet(c, req) : undefined;
+  let updated = c;
+  if (req.portrait !== undefined) updated = (await store.setPortrait(c.id, req.portrait as string | null))!;
+  if (edit) updated = (await store.updateCharacter(c.id, edit.name, edit.sheet))!;
+  return characterView(updated);
+}
+
+/** The sheet with the request's name and profile, checked against the system's character sheet. */
+function editedSheet(c: CharacterRecord, req: Record<string, unknown>): { name: string; sheet: CharacterRecord["sheet"] } {
   // While the character is in an instance, the instance holds the authoritative sheet.
   if (c.status === "in_instance") throw new ApiError("conflict", "the character is in an instance");
   const name = req.name === undefined ? c.name : NAME(req.name);
@@ -142,7 +149,7 @@ export async function updateCharacter(store: Store, userId: string | null, input
   const known = Object.keys((system.SCHEMAS.character as { properties?: object }).properties ?? {});
   const base = Object.fromEntries(Object.entries(sheet).filter(([k]) => known.includes(k)));
   if (!sheetValidator(system)(base)) throw new ApiError("invalid_request", "the profile does not fit the system's character sheet");
-  return characterView((await store.updateCharacter(c.id, name, sheet))!);
+  return { name, sheet };
 }
 
 export async function retireCharacter(store: Store, userId: string | null, characterId: unknown) {
@@ -195,7 +202,7 @@ export function effectSentences(effects: PackEffect[], conditions: Record<string
       case "spawn":
         return "Brings a creature or object into play.";
       default:
-        return `${String(name).replaceAll("_", " ")}.`.replace(/^./, (c) => c.toUpperCase());
+        return capitalize(`${String(name).replaceAll("_", " ")}.`);
     }
   });
 }

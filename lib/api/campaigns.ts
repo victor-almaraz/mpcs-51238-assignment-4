@@ -5,8 +5,8 @@ import type { CampaignRecord, Store, UserRecord } from "../store";
 import { cryptoEntropy, type Entropy } from "./entropy";
 import { withStages } from "./deletion";
 import { ApiError, onlyFields } from "./errors";
-import { setStatus } from "../coordinator/instance";
-import { coordinated, takeOut, type Deps } from "./instances";
+import { paged, pageOf } from "./paging";
+import { endAny, takeOut, type Deps } from "./instances";
 import { checkMaterials } from "./materials";
 import { systemOrThrow } from "./systems";
 import { caller } from "./users";
@@ -70,12 +70,9 @@ export async function listCampaigns(store: Store, userId: string | null, input: 
   const req = onlyFields(input, ["role", "archived", "limit", "cursor"]);
   if (req.role !== undefined && req.role !== "author" && req.role !== "player") throw new ApiError("invalid_request", "role must be author or player");
   if (req.archived !== undefined && typeof req.archived !== "boolean") throw new ApiError("invalid_request", "archived must be a boolean");
-  const limit = req.limit === undefined ? 20 : req.limit;
-  if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > 100) throw new ApiError("invalid_request", "limit must be 1 to 100");
-  if (req.cursor !== undefined && typeof req.cursor !== "string") throw new ApiError("invalid_request", "cursor must be a string");
-  const page = await store.listCampaigns(user.id, { role: req.role as Role | undefined, archived: req.archived as boolean | undefined, limit: limit + 1, after: req.cursor as string | undefined });
-  const items = page.slice(0, limit);
-  return { items: items.map((c) => campaignView(c, user.id)), next_cursor: page.length > limit ? items.at(-1)!.id : null };
+  const { limit, cursor } = pageOf(req);
+  const rows = await store.listCampaigns(user.id, { role: req.role as Role | undefined, archived: req.archived as boolean | undefined, limit: limit + 1, after: cursor });
+  return paged(rows, limit, (c) => campaignView(c, user.id));
 }
 
 export async function getCampaign(store: Store, userId: string | null, campaignId: unknown) {
@@ -162,16 +159,16 @@ export async function deleteCampaign(deps: Deps, userId: string | null, input: u
   const req = onlyFields(input, ["campaign_id", "confirm"]);
   const { campaign } = await membership(deps.store, user, req.campaign_id, "author");
   if (typeof req.confirm !== "string" || req.confirm.trim() !== campaign.title.trim()) throw new ApiError("invalid_request", "type the campaign's title exactly as shown to delete it");
+  await endGames(deps, campaign);
+  await deps.store.deleteCampaign(campaign.id);
+}
+
+/** Ends every game of the campaign, whatever its state. */
+export async function endGames(deps: Deps, campaign: CampaignRecord): Promise<void> {
   for (const id of campaign.instance_ids) {
     const instance = await deps.store.instanceView(id);
-    if (!instance) continue;
-    if (instance.status === "active" || instance.status === "paused") await coordinated(setStatus(deps, id, "ended"));
-    else if (instance.status === "lobby") {
-      for (const c of instance.characters) await deps.store.leaveInstance(id, c.id);
-      await deps.store.setInstanceStatus(id, instance.version, "ended", null);
-    }
+    if (instance) await endAny(deps, instance);
   }
-  await deps.store.deleteCampaign(campaign.id);
 }
 
 export async function restoreCampaign(store: Store, userId: string | null, campaignId: unknown) {

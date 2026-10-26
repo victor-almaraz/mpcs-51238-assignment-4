@@ -6,10 +6,10 @@ import { sunkenBundles } from "../harness/scenarios";
 import { openWhenClosed, shutdownPhase } from "../ops/shutdown";
 import type { Store } from "../store";
 import type { testDb } from "../store/testing/pglite";
-import { applyReport, endGame, hold, inspectInstance, listBundles, operatorLog, publishBundle, removeAssetContent, removeCharacterContent, replayInstance, setListed, settingDependents, suspend } from "./admin";
+import { applyReport, endGame, hold, inspectInstance, listBundles, operatorLog, publishBundle, removeAssetContent, removeCampaignContent, removeCharacterContent, replayInstance, setListed, settingDependents, suspend } from "./admin";
 import { createDraft } from "./drafts";
-import { createCampaign, joinByLink, rotateInviteLink } from "./campaigns";
-import { createCharacter, getCharacter } from "./characters";
+import { createCampaign, joinByLink, listDeletedCampaigns, restoreCampaign, rotateInviteLink } from "./campaigns";
+import { createCharacter, deleteCharacter, getCharacter, listDeletedCharacters, restoreCharacter } from "./characters";
 import type { Entropy } from "./entropy";
 import { handle } from "./http";
 import { addCharacter, createInstance, startInstance, type Deps } from "./instances";
@@ -85,6 +85,27 @@ describe("reports", () => {
     await endGame(deps, "user_op", { instance_id: instance.id, reason: "report of 22 October" });
     expect((await store.instanceView(instance.id))!.status).toBe("ended");
     expect((await operatorLog(store, "user_op")).map((l) => l.action).reverse()).toEqual(["inspect_instance", "hold", "remove_character", "suspend", "end_game"]);
+  });
+});
+
+describe("removal", () => {
+  it("removes content for good: its owner neither lists nor restores it, even when they deleted it first", async () => {
+    const { k, instance, rook } = await game();
+    await removeCharacterContent(deps, "user_op", { character_id: rook.id, reason: "report" });
+    const spare = await createCharacter(store, "user_b", { system: "quest", name: "Spare", choices: { role: "spy", abilities: SIX } }, e);
+    await deleteCharacter(store, "user_b", spare.id);
+    await removeCharacterContent(deps, "user_op", { character_id: spare.id, reason: "report" });
+    expect(await listDeletedCharacters(store, "user_b")).toEqual([]);
+    expect(await code(restoreCharacter(store, "user_b", rook.id))).toBe("not_found");
+    expect(await code(restoreCharacter(store, "user_b", spare.id))).toBe("not_found");
+
+    await removeCampaignContent(deps, "user_op", { campaign_id: k.id, reason: "report" });
+    expect((await store.instanceView(instance.id))!.status).toBe("ended");
+    expect(await listDeletedCampaigns(store, "user_a")).toEqual([]);
+    expect(await code(restoreCampaign(store, "user_a", k.id))).toBe("not_found");
+    expect(await code(removeCampaignContent(deps, "user_op", { campaign_id: "k_nothing", reason: "report" }))).toBe("not_found");
+    expect(await code(removeCharacterContent(deps, "user_op", { character_id: "ch_nothing", reason: "report" }))).toBe("not_found");
+    expect((await operatorLog(store, "user_op")).map((l) => l.action).reverse()).toEqual(["remove_character", "remove_character", "remove_campaign"]);
   });
 });
 

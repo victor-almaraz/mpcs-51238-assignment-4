@@ -1,6 +1,7 @@
 // Health check: whether the server is configured and each migration's functions are reachable. Anyone
 // gets the overall status; the operator, with `Authorization: Bearer $CRON_SECRET`, gets each setting's
 // and each migration's state. Reports states only, never values or error details.
+import { hasCronSecret } from "@/lib/server/cron";
 import { configured } from "@/lib/server/env";
 import { serviceClient, supabaseRpc } from "@/lib/server/supabase";
 
@@ -28,31 +29,28 @@ const PROBES: [migration: string, fn: string, args: Record<string, unknown>][] =
   ["20261025000500_account_fixes", "cadmium_reminder_marks", { p_user: "health", p_keys: [] }],
 ];
 
-/** Whether the caller presented the cron secret, and so may see the details. */
-function operator(request: Request): boolean {
-  const secret = process.env.CRON_SECRET;
-  return !!secret && request.headers.get("authorization") === `Bearer ${secret}`;
-}
-
 export async function GET(request: Request) {
-  const detailed = operator(request);
+  // The operator, presenting the cron secret, sees the details.
+  const detailed = hasCronSecret(request);
   const settings = { ...configured(), webPush: !!process.env.VAPID_PUBLIC_KEY?.trim() && !!process.env.VAPID_PRIVATE_KEY?.trim() };
   if (!settings.supabaseUrl || !settings.supabaseServiceRoleKey) {
     return Response.json(detailed ? { status: "unconfigured", database: "unconfigured", settings } : { status: "unconfigured" }, { status: 503 });
   }
   const rpc = supabaseRpc(serviceClient());
-  const migrations: Record<string, "applied" | "missing" | "error"> = {};
-  for (const [name, fn, args] of PROBES) {
-    try {
-      await rpc.call(fn, args);
-      migrations[name] = "applied";
-    } catch (e) {
-      // PGRST202: PostgREST found no such function, so the database answered but the migration is missing.
-      const code = (e as { code?: string }).code;
-      if (code !== "PGRST202") console.error(`health ${fn}:`, e);
-      migrations[name] = code === "PGRST202" ? "missing" : "error";
-    }
-  }
+  const probed = await Promise.all(
+    PROBES.map(async ([name, fn, args]): Promise<[string, "applied" | "missing" | "error"]> => {
+      try {
+        await rpc.call(fn, args);
+        return [name, "applied"];
+      } catch (e) {
+        // PGRST202: PostgREST found no such function, so the database answered but the migration is missing.
+        const code = (e as { code?: string }).code;
+        if (code !== "PGRST202") console.error(`health ${fn}:`, e);
+        return [name, code === "PGRST202" ? "missing" : "error"];
+      }
+    }),
+  );
+  const migrations = Object.fromEntries(probed);
   const all = Object.values(migrations).every((m) => m === "applied");
   const status = all ? "ok" : "incomplete";
   return Response.json(detailed ? { status, database: "ok", schema: all ? "applied" : "incomplete", migrations, settings } : { status }, { status: all ? 200 : 503 });

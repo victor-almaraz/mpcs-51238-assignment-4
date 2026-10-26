@@ -6,12 +6,12 @@ import { MAX_OCCURRENCES, occurrencesBetween, occurrencesOf, type Occurrence, ty
 import { validZone } from "../scheduler/zone";
 import type { Rsvp, Schedules, Store, UserRecord } from "../store";
 import { membership } from "./campaigns";
+import { DAY } from "./deletion";
 import { cryptoEntropy, type Entropy } from "./entropy";
-import { ApiError, onlyFields } from "./errors";
+import { ApiError, notFoundAs, onlyFields } from "./errors";
 import { instanceOf } from "./instances";
 import { caller } from "./users";
 
-const DAY = 86_400_000;
 const FIELDS = ["starts_at", "timezone", "duration_minutes", "title", "recurrence", "auto_resume", "auto_pause", "notes"] as const;
 
 /** The scheduled session object of api.md. */
@@ -73,9 +73,7 @@ async function authorSession(store: Store, user: UserRecord, sessionId: unknown)
   if (typeof sessionId !== "string") throw new ApiError("invalid_request", "session_id must be a string");
   const session = await store.getSession(sessionId);
   if (!session) throw new ApiError("not_found", "no such session");
-  const { instance, role } = await instanceOf(store, user, session.instance_id).catch(() => {
-    throw new ApiError("not_found", "no such session");
-  });
+  const { instance, role } = await instanceOf(store, user, session.instance_id).catch(notFoundAs("no such session"));
   if (instance.status === "ended") throw new ApiError("conflict", "the instance has ended");
   return { session, instance, role };
 }
@@ -206,15 +204,13 @@ export function calendarFeedKey(env: Record<string, string | undefined> = proces
 
 export async function getCalendarFeed(store: Store, userId: string | null, config: FeedConfig) {
   const user = await caller(store, userId, "get_calendar_feed");
-  const record = (await store.getUser(user.id))!;
-  if (!record.calendar_token_hash) return { url: null };
-  return { url: feedUrl(config, feedSecret(config.key, user.id, record.calendar_feed_generation ?? 0)) };
+  if (!user.calendar_token_hash) return { url: null };
+  return { url: feedUrl(config, feedSecret(config.key, user.id, user.calendar_feed_generation ?? 0)) };
 }
 
 export async function rotateCalendarFeed(store: Store, userId: string | null, config: FeedConfig) {
   const user = await caller(store, userId, "rotate_calendar_feed");
-  const current = (await store.getUser(user.id))!.calendar_feed_generation ?? 0;
-  const secret = feedSecret(config.key, user.id, current + 1);
+  const secret = feedSecret(config.key, user.id, (user.calendar_feed_generation ?? 0) + 1);
   await store.setCalendarFeed(user.id, feedHash(secret));
   return { url: feedUrl(config, secret) };
 }

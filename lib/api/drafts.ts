@@ -12,15 +12,16 @@ import { plotWarnings } from "../materials/plot";
 import { compareVersions, parseVersion, satisfies } from "../materials/semver";
 import type { DraftRecord, Store } from "../store";
 import { SYSTEMS } from "../systems";
+import { plural } from "../text";
 import { cryptoEntropy, type Entropy } from "./entropy";
 import { withStages } from "./deletion";
 import { ApiError, onlyFields } from "./errors";
-import { materialView } from "./materials";
+import { paged, pageOf } from "./paging";
+import { defaultRange, materialView } from "./materials";
 import { systemOrThrow } from "./systems";
 import { caller } from "./users";
 
 const ID = /^[a-z][a-z0-9_]{0,63}$/;
-const DAY = 86_400_000;
 /** The largest draft document save_draft accepts, as JSON. */
 const MAX_DRAFT = 2_000_000;
 /** An imported archive's limits: files, and their unpacked size together (a ZIP bomb stops here). */
@@ -56,12 +57,8 @@ function requirements(v: unknown): { id: string; versions: string }[] {
 export async function requiredSettings(store: Store, draft: Record<string, unknown>): Promise<SettingBundle[]> {
   const reqs = ((draft.adventure as { requires_settings?: { id: string; versions: string }[] } | undefined)?.requires_settings ?? []).filter((r) => r && typeof r.id === "string");
   const all = (await store.allBundles()).filter((b) => b.kind === "setting" && b.origin === "operator" && b.listed);
-  const out: SettingBundle[] = [];
-  for (const r of reqs) {
-    const fit = all.filter((b) => b.id === r.id && typeof r.versions === "string" && satisfies(b.version, r.versions)).sort((a, b) => compareVersions(parseVersion(b.version)!, parseVersion(a.version)!))[0];
-    if (fit) out.push((await store.getBundle("setting", fit.id, fit.version)) as SettingBundle);
-  }
-  return out;
+  const fits = reqs.flatMap((r) => all.filter((b) => b.id === r.id && typeof r.versions === "string" && satisfies(b.version, r.versions)).sort((a, b) => compareVersions(parseVersion(b.version)!, parseVersion(a.version)!)).slice(0, 1));
+  return Promise.all(fits.map(async (fit) => (await store.getBundle("setting", fit.id, fit.version)) as SettingBundle));
 }
 
 /**
@@ -82,7 +79,7 @@ async function followId(store: Store, d: DraftRecord, id: unknown): Promise<void
   try {
     await store.setDraftMaterial(d.id, id);
   } catch (e) {
-    if ((e as { code?: string }).code === "23505") throw new ApiError("conflict", `another of your drafts already has the adventure id ${id}; choose a different id`);
+    if ((e as { code?: string }).code === "23505") throw new ApiError("invalid_request", `another of your drafts already has the adventure id ${id}; choose a different id`);
     throw e;
   }
 }
@@ -93,7 +90,6 @@ export async function createDraft(store: Store, userId: string | null, input: un
   if (typeof req.material_id !== "string" || !ID.test(req.material_id)) throw new ApiError("invalid_request", "material_id must be a lowercase identifier");
   if (typeof req.title !== "string" || req.title.trim() === "" || req.title.length > 80) throw new ApiError("invalid_request", "title must have 1 to 80 characters");
   const system = systemOrThrow(req.system);
-  const [major, minor] = system.VERSION.split(".");
   const document = {
     adventure: {
       format_version: 2,
@@ -101,7 +97,7 @@ export async function createDraft(store: Store, userId: string | null, input: un
       id: req.material_id,
       version: "0.1.0",
       title: req.title,
-      system: { id: system.ID, versions: `^${major}.${minor}` },
+      system: { id: system.ID, versions: defaultRange(system.VERSION) },
       requires_settings: requirements(req.requires_settings),
       players: [1, 4],
       start: { location: "", room: "", effects: [] },
@@ -168,12 +164,9 @@ export async function importDraft(store: Store, userId: string | null, archive: 
 export async function listDrafts(store: Store, userId: string | null, input: unknown = {}) {
   const user = await caller(store, userId, "list_drafts");
   const req = onlyFields(input, ["archived", "limit", "cursor"]);
-  const limit = req.limit ?? 20;
-  if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > 100) throw new ApiError("invalid_request", "limit must be 1 to 100");
+  const { limit, cursor } = pageOf(req);
   if (req.archived !== undefined && typeof req.archived !== "boolean") throw new ApiError("invalid_request", "archived must be a boolean");
-  const page = await store.listDrafts(user.id, limit + 1, req.cursor as string | undefined, req.archived as boolean | undefined);
-  const items = page.slice(0, limit);
-  return { items: items.map(draftSummary), next_cursor: page.length > limit ? items.at(-1)!.id : null };
+  return paged(await store.listDrafts(user.id, limit + 1, cursor, req.archived as boolean | undefined), limit, draftSummary);
 }
 
 export async function getDraft(store: Store, userId: string | null, draftId: unknown) {
@@ -181,6 +174,7 @@ export async function getDraft(store: Store, userId: string | null, draftId: unk
   return owned(store, user.id, draftId);
 }
 
+/** save_draft, with the diagnostics it stored, which the editor shows. */
 export async function saveDraft(store: Store, userId: string | null, input: unknown) {
   const user = await caller(store, userId, "save_draft");
   const req = onlyFields(input, ["draft_id", "document", "revision"]);
@@ -195,9 +189,10 @@ export async function saveDraft(store: Store, userId: string | null, input: unkn
   if (JSON.stringify(document).length > MAX_DRAFT) throw new ApiError("invalid_request", "the draft is larger than 2 MB");
   const title = typeof a.title === "string" && a.title.trim() !== "" ? a.title.slice(0, 80) : d.title;
   await followId(store, d, a.id);
-  const saved = await store.saveDraft(d.id, req.revision, document, title, await diagnose(store, document));
+  const diagnostics = await diagnose(store, document);
+  const saved = await store.saveDraft(d.id, req.revision, document, title, diagnostics);
   if (!saved) throw new ApiError("conflict", "the draft was saved elsewhere; reload it or keep yours as a new draft");
-  return saved;
+  return { ...saved, diagnostics };
 }
 
 export async function validateDraft(store: Store, userId: string | null, draftId: unknown) {
@@ -237,7 +232,7 @@ export async function publishDraft(store: Store, userId: string | null, input: u
   const r = compileDraft(document, settings);
   if (!r.ok || !r.bundle) {
     await store.setDraftDiagnostics(d.id, toDraftDiagnostics(r.diagnostics));
-    throw new ApiError("invalid_request", `the draft has ${r.diagnostics.length} problem${r.diagnostics.length === 1 ? "" : "s"}`);
+    throw new ApiError("invalid_request", `the draft has ${plural(r.diagnostics.length, "problem")}`);
   }
   const system = SYSTEMS[r.bundle.manifest.system.id];
   if (!system || !satisfies(system.VERSION, r.bundle.manifest.system.versions)) throw new ApiError("system_mismatch", `no installed ${r.bundle.manifest.system.id} version satisfies ${r.bundle.manifest.system.versions}`);
@@ -314,7 +309,7 @@ export async function deleteDraft(store: Store, userId: string | null, draftId: 
   const user = await caller(store, userId, "delete_draft");
   const d = await owned(store, user.id, draftId);
   await store.deleteDraft(d.id);
-  return { restorable_until: new Date(Date.now() + 30 * DAY).toISOString() };
+  return { restorable_until: withStages((await store.deletedDraft(d.id))!).restorable_until };
 }
 
 export async function restoreDraft(store: Store, userId: string | null, draftId: unknown) {

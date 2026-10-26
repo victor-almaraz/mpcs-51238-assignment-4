@@ -10,6 +10,7 @@ import type { Store } from "../store";
 import type { testDb } from "../store/testing/pglite";
 import { createCampaign } from "./campaigns";
 import { createCharacter } from "./characters";
+import { DAY } from "./deletion";
 import { copyDraft, createDraft, deleteDraft, exportDraft, getDraft, importDraft, listDrafts, publishDraft, publishSuggestion, restoreDraft, saveDraft, validateDraft } from "./drafts";
 import type { Entropy } from "./entropy";
 import { addCharacter, createInstance, startInstance, submitAction, type Deps } from "./instances";
@@ -167,7 +168,8 @@ describe("drafts", () => {
 
   it("deletes a draft and restores it within 30 days", async () => {
     const d = await fresh();
-    await deleteDraft(store, "user_a", d.id);
+    const { restorable_until } = await deleteDraft(store, "user_a", d.id);
+    expect(Date.parse(restorable_until) - Date.parse((await store.deletedDraft(d.id))!.deleted_at)).toBe(30 * DAY);
     expect(await code(getDraft(store, "user_a", d.id))).toBe("not_found");
     expect((await restoreDraft(store, "user_a", d.id)).id).toBe(d.id);
   });
@@ -182,12 +184,13 @@ describe("drafts", () => {
     await fresh("user_a", "taken");
     const renamed = (doc: Record<string, unknown>, id: string) => ({ ...doc, adventure: { ...(doc.adventure as object), id } });
     const doc = threeRooms(d.document);
-    expect(await code(saveDraft(store, "user_a", { draft_id: d.id, document: renamed(doc, "taken"), revision: 1 }))).toBe("conflict");
+    // The author fixes this by changing the id, so it is not the save conflict the editor stops for.
+    expect(await code(saveDraft(store, "user_a", { draft_id: d.id, document: renamed(doc, "taken"), revision: 1 }))).toBe("invalid_request");
     await expect(saveDraft(store, "user_a", { draft_id: d.id, document: renamed(doc, "taken"), revision: 1 })).rejects.toMatchObject({ detail: expect.stringContaining("choose a different id") });
     expect((await getDraft(store, "user_a", d.id)).material_id).toBe("three_rooms");
 
-    await saveDraft(store, "user_a", { draft_id: d.id, document: renamed(doc, "crossing_hall"), revision: 1 });
-    expect((await getDraft(store, "user_a", d.id)).material_id).toBe("crossing_hall");
+    const saved = await saveDraft(store, "user_a", { draft_id: d.id, document: renamed(doc, "crossing_hall"), revision: 1 });
+    expect(await getDraft(store, "user_a", d.id)).toMatchObject({ material_id: "crossing_hall", diagnostics: saved.diagnostics });
     expect((await publishDraft(store, "user_a", { draft_id: d.id, version: "1.0.0" })).id).toBe("crossing_hall");
     expect((await saveDraft(store, "user_a", { draft_id: d.id, document: renamed(doc, "crossing_hall"), revision: 2 })).revision).toBe(3);
     expect(await code(saveDraft(store, "user_a", { draft_id: d.id, document: renamed(doc, "elsewhere"), revision: 3 }))).toBe("invalid_request");

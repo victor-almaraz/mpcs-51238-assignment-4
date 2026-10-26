@@ -35,7 +35,7 @@ describe("attempt", () => {
   it("refuses without running the operation once the limit is reached", async () => {
     wait = 2500;
     const run = vi.fn(async () => "done");
-    expect(await attempt(run)).toEqual({ error: "Too many requests; try again in 3 seconds." });
+    expect(await attempt(run)).toEqual({ error: "Too many requests; try again in 3 seconds.", code: "rate_limited" });
     expect(run).not.toHaveBeenCalled();
   });
 

@@ -6,13 +6,14 @@
 import { loadSettingBundle, type SettingBundle } from "../bundle/setting";
 import { loadAdventureBundle, type AdventureBundle } from "../bundle/adventure";
 import { AdminError, replayInstance as replay, restoreInstance as restore } from "../coordinator/admin";
-import { leaveParty, setStatus } from "../coordinator/instance";
+import { leaveParty } from "../coordinator/instance";
 import { sha256 } from "../export/sha256";
 import { satisfies } from "../materials/semver";
 import type { Store, UserRecord } from "../store";
 import { SYSTEMS } from "../systems";
+import { endGames } from "./campaigns";
 import { ApiError, onlyFields } from "./errors";
-import { coordinated, type Deps } from "./instances";
+import { coordinated, endAny, type Deps } from "./instances";
 import { caller } from "./users";
 
 export async function operator(store: Store, userId: string | null, operation: string): Promise<UserRecord> {
@@ -132,9 +133,13 @@ export async function restoreInstance(store: Store, userId: string | null, input
 type Kind = "user" | "character" | "campaign";
 const KINDS: Kind[] = ["user", "character", "campaign"];
 
+// Each report action has an operation, which checks the operator, and the action itself, which takes
+// the operator already checked, as the Reports form does once for whichever action it applies.
+
 /** Sets a hold on a record and its owner, so neither deletion nor shutdown erases them. */
-export async function hold(store: Store, userId: string | null, input: unknown) {
-  const user = await operator(store, userId, "hold");
+export const hold = async (store: Store, userId: string | null, input: unknown) => holdBy(store, await operator(store, userId, "hold"), input);
+
+async function holdBy(store: Store, user: UserRecord, input: unknown) {
   const req = onlyFields(input, ["kind", "id", "reason"]);
   if (!KINDS.includes(req.kind as Kind) || typeof req.id !== "string") throw new ApiError("invalid_request", "kind (user, character, campaign) and id are required");
   const reason = text(req.reason, "reason");
@@ -142,64 +147,68 @@ export async function hold(store: Store, userId: string | null, input: unknown) 
   await store.logOperation(user.id, "hold", `${req.kind as string}:${req.id}`, reason);
 }
 
-export async function release(store: Store, userId: string | null, input: unknown) {
-  const user = await operator(store, userId, "release_hold");
+export const release = async (store: Store, userId: string | null, input: unknown) => releaseBy(store, await operator(store, userId, "release_hold"), input);
+
+async function releaseBy(store: Store, user: UserRecord, input: unknown) {
   const req = onlyFields(input, ["kind", "id", "note"]);
   if (!KINDS.includes(req.kind as Kind) || typeof req.id !== "string") throw new ApiError("invalid_request", "kind and id are required");
   if (!(await store.setHold(req.kind as Kind, req.id, null))) throw new ApiError("not_found", "no such record");
   await store.logOperation(user.id, "release_hold", `${req.kind as string}:${req.id}`, typeof req.note === "string" ? req.note : "");
 }
 
-export async function suspend(store: Store, userId: string | null, input: unknown) {
-  const user = await operator(store, userId, "suspend");
+export const suspend = async (store: Store, userId: string | null, input: unknown) => suspendBy(store, await operator(store, userId, "suspend"), input);
+
+async function suspendBy(store: Store, user: UserRecord, input: unknown) {
   const req = onlyFields(input, ["user_id", "suspended", "reason"]);
   if (typeof req.user_id !== "string" || typeof req.suspended !== "boolean") throw new ApiError("invalid_request", "user_id and suspended are required");
   if (!(await store.setSuspended(req.user_id, req.suspended))) throw new ApiError("not_found", "no such user");
   await store.logOperation(user.id, req.suspended ? "suspend" : "unsuspend", `user:${req.user_id}`, typeof req.reason === "string" ? req.reason : "");
 }
 
-/** Removes a character from every user's view, taking it out of a running game first. */
-export async function removeCharacterContent(deps: Deps, userId: string | null, input: unknown) {
-  const user = await operator(deps.store, userId, "remove_content");
+/**
+ * Removes a character from every user's view for good, taking it out of a running game first. Its
+ * owner cannot restore it, even when they had deleted it first.
+ */
+export const removeCharacterContent = async (deps: Deps, userId: string | null, input: unknown) => removeCharacterBy(deps, await operator(deps.store, userId, "remove_content"), input);
+
+async function removeCharacterBy(deps: Deps, user: UserRecord, input: unknown) {
   const req = onlyFields(input, ["character_id", "reason"]);
   if (typeof req.character_id !== "string") throw new ApiError("invalid_request", "character_id is required");
   const reason = text(req.reason, "reason");
   const c = await deps.store.getCharacter(req.character_id);
-  if (!c) throw new ApiError("not_found", "no such character");
-  if (c.instance_id) {
+  if (c?.instance_id) {
     const i = await deps.store.instanceView(c.instance_id);
     if (i && (i.status === "active" || i.status === "paused")) await coordinated(leaveParty(deps, i.id, c.id));
   }
-  await deps.store.removeCharacter(c.id);
-  await deps.store.logOperation(user.id, "remove_character", `character:${c.id}`, reason);
+  if (!(await deps.store.removeCharacter(req.character_id))) throw new ApiError("not_found", "no such character");
+  await deps.store.logOperation(user.id, "remove_character", `character:${req.character_id}`, reason);
 }
 
 /** Ends a game (runbooks/content-reports.md: remove content, end games, or suspend accounts). */
-export async function endGame(deps: Deps, userId: string | null, input: unknown) {
-  const user = await operator(deps.store, userId, "end_game");
+export const endGame = async (deps: Deps, userId: string | null, input: unknown) => endGameBy(deps, await operator(deps.store, userId, "end_game"), input);
+
+async function endGameBy(deps: Deps, user: UserRecord, input: unknown) {
   const req = onlyFields(input, ["instance_id", "reason"]);
   if (typeof req.instance_id !== "string") throw new ApiError("invalid_request", "instance_id is required");
   const reason = text(req.reason, "reason");
   const i = await deps.store.instanceView(req.instance_id);
   if (!i) throw new ApiError("not_found", "no such instance");
-  if (i.status === "lobby") {
-    for (const c of i.characters) await deps.store.leaveInstance(i.id, c.id);
-    await deps.store.setInstanceStatus(i.id, i.version, "ended", null);
-  } else if (i.status !== "ended") await coordinated(setStatus(deps, i.id, "ended"));
+  await endAny(deps, i);
   await deps.store.logOperation(user.id, "end_game", `instance:${i.id}`, reason);
 }
 
-/** Removes a campaign from every user's view; its games end. */
-export async function removeCampaignContent(deps: Deps, userId: string | null, input: unknown) {
-  const user = await operator(deps.store, userId, "remove_content");
+/** Removes a campaign from every user's view for good; its games end. Its author cannot restore it. */
+export const removeCampaignContent = async (deps: Deps, userId: string | null, input: unknown) => removeCampaignBy(deps, await operator(deps.store, userId, "remove_content"), input);
+
+async function removeCampaignBy(deps: Deps, user: UserRecord, input: unknown) {
   const req = onlyFields(input, ["campaign_id", "reason"]);
   if (typeof req.campaign_id !== "string") throw new ApiError("invalid_request", "campaign_id is required");
-  const k = await deps.store.getCampaign(req.campaign_id);
-  if (!k) throw new ApiError("not_found", "no such campaign");
   const reason = text(req.reason, "reason");
-  for (const id of k.instance_ids) await endGame(deps, userId, { instance_id: id, reason });
-  await deps.store.deleteCampaign(k.id);
-  await deps.store.logOperation(user.id, "remove_campaign", `campaign:${k.id}`, reason);
+  // A deleted campaign's games ended when it was deleted.
+  const k = await deps.store.getCampaign(req.campaign_id);
+  if (k) await endGames(deps, k);
+  if (!(await deps.store.removeCampaign(req.campaign_id))) throw new ApiError("not_found", "no such campaign");
+  await deps.store.logOperation(user.id, "remove_campaign", `campaign:${req.campaign_id}`, reason);
 }
 
 export async function operatorLog(store: Store, userId: string | null) {
@@ -208,8 +217,9 @@ export async function operatorLog(store: Store, userId: string | null) {
 }
 
 /** Removes a reported image: it stops being served, and clients fall back (runbooks/content-reports.md, Images). */
-export async function removeAssetContent(store: Store, userId: string | null, input: unknown) {
-  const user = await operator(store, userId, "remove_content");
+export const removeAssetContent = async (store: Store, userId: string | null, input: unknown) => removeAssetBy(store, await operator(store, userId, "remove_content"), input);
+
+async function removeAssetBy(store: Store, user: UserRecord, input: unknown) {
   const req = onlyFields(input, ["hash", "reason"]);
   const reason = text(req.reason, "reason");
   if (typeof req.hash !== "string" || !(await store.removeAsset(req.hash))) throw new ApiError("not_found", "no such asset");
@@ -236,7 +246,7 @@ const KIND_WORDS: Record<ReportKind, string> = { user: "a user", character: "a c
  * confirmation to show.
  */
 export async function applyReport(deps: Deps, userId: string | null, input: unknown): Promise<string> {
-  await operator(deps.store, userId, "report");
+  const user = await operator(deps.store, userId, "report");
   const req = onlyFields(input, ["action", "kind", "id", "reason"]);
   const action = REPORT_ACTIONS[req.action as ReportAction] ? (req.action as ReportAction) : null;
   if (!action) throw new ApiError("invalid_request", "choose an action");
@@ -247,13 +257,13 @@ export async function applyReport(deps: Deps, userId: string | null, input: unkn
   const id = req.id.trim();
   const reason = req.reason;
   const target = `${KIND_WORDS[kind].replace(/^an? /, "")} ${id}`;
-  if (action === "hold") await hold(deps.store, userId, { kind, id, reason });
-  else if (action === "release") await release(deps.store, userId, { kind, id, note: reason });
-  else if (action === "suspend" || action === "unsuspend") await suspend(deps.store, userId, { user_id: id, suspended: action === "suspend", reason: text(reason, "reason") });
-  else if (action === "end") await endGame(deps, userId, { instance_id: id, reason });
-  else if (kind === "character") await removeCharacterContent(deps, userId, { character_id: id, reason });
-  else if (kind === "campaign") await removeCampaignContent(deps, userId, { campaign_id: id, reason });
-  else await removeAssetContent(deps.store, userId, { hash: id, reason });
+  if (action === "hold") await holdBy(deps.store, user, { kind, id, reason });
+  else if (action === "release") await releaseBy(deps.store, user, { kind, id, note: reason });
+  else if (action === "suspend" || action === "unsuspend") await suspendBy(deps.store, user, { user_id: id, suspended: action === "suspend", reason: text(reason, "reason") });
+  else if (action === "end") await endGameBy(deps, user, { instance_id: id, reason });
+  else if (kind === "character") await removeCharacterBy(deps, user, { character_id: id, reason });
+  else if (kind === "campaign") await removeCampaignBy(deps, user, { campaign_id: id, reason });
+  else await removeAssetBy(deps.store, user, { hash: id, reason });
   const done = { hold: "Held", release: "Released the hold on", remove: "Removed", end: "Ended", suspend: "Suspended", unsuspend: "Lifted the suspension of" }[action];
   return `${done} ${target}.`;
 }

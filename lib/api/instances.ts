@@ -9,9 +9,10 @@ import type { SettingBundle } from "../bundle/setting";
 import { satisfies } from "../materials/semver";
 import type { InstanceView, MaterialRef, Store, UserRecord } from "../store";
 import { SYSTEMS } from "../systems";
+import { plural, sentence } from "../text";
 import { membership } from "./campaigns";
 import { cryptoEntropy, type Entropy } from "./entropy";
-import { ApiError, onlyFields } from "./errors";
+import { ApiError, notFoundAs, onlyFields } from "./errors";
 import { accepted } from "./systems";
 import { caller } from "./users";
 
@@ -35,9 +36,7 @@ export async function instanceOf(store: Store, user: UserRecord, instanceId: unk
   if (typeof instanceId !== "string") throw new ApiError("invalid_request", "instance_id must be a string");
   const instance = await store.instanceView(instanceId);
   if (!instance) throw new ApiError("not_found", "no such instance");
-  const { role } = await membership(store, user, instance.campaign_id).catch(() => {
-    throw new ApiError("not_found", "no such instance");
-  });
+  const { role } = await membership(store, user, instance.campaign_id).catch(notFoundAs("no such instance"));
   return { instance, role };
 }
 
@@ -113,9 +112,10 @@ export async function addCharacter(deps: Deps, userId: string | null, input: unk
   if (instance.status !== "lobby" && instance.status !== "paused") throw new ApiError("conflict", `characters join an instance in the lobby or paused; this one is ${instance.status}`);
   if (character.status !== "available") throw new ApiError("conflict", `the character is ${character.status.replace("_", " ")}`);
   if (character.archived) throw new ApiError("conflict", `${character.name} is archived; unarchive the character to bring it to a game`);
-  const [, max] = await playerRange(store, instance);
-  if (instance.characters.length >= max) throw new ApiError("conflict", `the adventure takes at most ${max} character${max === 1 ? "" : "s"}, and this game has ${instance.characters.length}`);
-  const missing = await missingSettings(store, instance.materials, instance.system, sheetRefs(character.sheet));
+  const bundles = await materialBundles(store, instance.materials);
+  const [, max] = playersOf(instance, bundles);
+  if (instance.characters.length >= max) throw new ApiError("conflict", `the adventure takes at most ${plural(max, "character")}, and this game has ${instance.characters.length}`);
+  const missing = await missingSettings(store, supplied(bundles), instance.system, sheetRefs(character.sheet));
   if (missing.length > 0) {
     const from = missing.join(" and ");
     throw new ApiError("conflict", `${character.name} uses abilities or items from ${from}, which this game does not include. The campaign's author can add ${from} under Materials; games created after that can use ${character.name}.`);
@@ -136,14 +136,31 @@ export async function addCharacter(deps: Deps, userId: string | null, input: unk
 const sheetRefs = (sheet: Record<string, unknown>) => [...((sheet.abilities as string[] | undefined) ?? []), ...((sheet.inventory as { ref: string }[] | undefined) ?? []).map((i) => i.ref)];
 
 /** The settings, by title, that a character with `sheet` needs and the instance lacks; empty when it can join. */
-export const missingFor = (store: Store, instance: InstanceView, sheet: Record<string, unknown>) => missingSettings(store, instance.materials, instance.system, sheetRefs(sheet));
+export const missingFor = async (store: Store, instance: InstanceView, sheet: Record<string, unknown>) => missingSettings(store, supplied(await materialBundles(store, instance.materials)), instance.system, sheetRefs(sheet));
 
-/** The fewest and most characters the instance's pinned adventure takes (adventure-packs.md, `players`). */
-export async function playerRange(store: Store, instance: InstanceView): Promise<[number, number]> {
+type Bundle = SettingBundle | AdventureBundle;
+
+/** The bundles of `materials`, in order; one that is no longer installed is left out. */
+async function materialBundles(store: Store, materials: readonly MaterialRef[]): Promise<Bundle[]> {
+  return (await Promise.all(materials.map((m) => store.getBundle(m.kind, m.id, m.version)))).filter((b) => b !== undefined);
+}
+
+/** The ability and item refs `bundles` supply. */
+function supplied(bundles: readonly Bundle[]): Set<string> {
+  return new Set(bundles.flatMap((b) => [...Object.keys(b.entities), ...(b.kind === "setting" ? Object.keys(b.abilities) : [])].map((key) => `${b.namespace}:${key}`)));
+}
+
+/** The fewest and most characters the instance's pinned adventure, among `bundles`, takes (adventure-packs.md, `players`). */
+function playersOf(instance: InstanceView, bundles: readonly Bundle[]): [number, number] {
   const adventure = instance.materials.find((m) => m.kind === "adventure")!;
-  const bundle = (await store.getBundle("adventure", adventure.id, adventure.version)) as AdventureBundle | undefined;
+  const bundle = bundles.find((b): b is AdventureBundle => b.kind === "adventure" && b.id === adventure.id && b.version === adventure.version);
   if (!bundle) throw new ApiError("unavailable", `adventure ${adventure.id} ${adventure.version} is not installed`);
   return bundle.manifest.players;
+}
+
+/** The fewest and most characters the instance's pinned adventure takes. */
+export async function playerRange(store: Store, instance: InstanceView): Promise<[number, number]> {
+  return playersOf(instance, await materialBundles(store, instance.materials.filter((m) => m.kind === "adventure")));
 }
 
 /**
@@ -157,19 +174,14 @@ export async function instanceRoster(store: Store, userId: string | null, instan
 }
 
 /**
- * The settings `refs` (ability and item refs) come from that `materials` lack, by title; empty when the
- * materials supply every ref. The engine checks a character's refs against its instance's pinned
- * materials when the character joins the game (systems/quest.md, Character creation); checking in the
- * lobby, and at creation for a chosen campaign, names the missing setting instead of failing at Start.
+ * The settings `refs` (ability and item refs) come from that are not `have`, the refs a game's materials
+ * supply, by title; empty when they supply every ref. The engine checks a character's refs against its
+ * instance's pinned materials when the character joins the game (systems/quest.md, Character creation);
+ * checking in the lobby, and at creation for a chosen campaign, names the missing setting instead of
+ * failing at Start.
  */
-async function missingSettings(store: Store, materials: readonly MaterialRef[], system: string, refs: readonly string[]): Promise<string[]> {
-  const supplied = new Set<string>();
-  for (const m of materials) {
-    const b = await store.getBundle(m.kind, m.id, m.version);
-    if (!b) continue;
-    for (const key of [...Object.keys(b.entities), ...(b.kind === "setting" ? Object.keys(b.abilities) : [])]) supplied.add(`${b.namespace}:${key}`);
-  }
-  const namespaces = [...new Set(refs.filter((r) => !supplied.has(r)).map((r) => r.slice(0, r.indexOf(":"))))];
+async function missingSettings(store: Store, have: ReadonlySet<string>, system: string, refs: readonly string[]): Promise<string[]> {
+  const namespaces = [...new Set(refs.filter((r) => !have.has(r)).map((r) => r.slice(0, r.indexOf(":"))))];
   if (namespaces.length === 0) return [];
   const listed = await store.listedBundles<SettingBundle>("setting", accepted(system));
   return namespaces.map((ns) => listed.find((b) => b.namespace === ns)?.manifest.title ?? `the '${ns}' setting`);
@@ -177,12 +189,7 @@ async function missingSettings(store: Store, materials: readonly MaterialRef[], 
 
 /** The settings among `materials`, by namespace and title: a character whose abilities come from these can join their games. */
 export async function settingsOf(store: Store, materials: readonly MaterialRef[]): Promise<{ namespace: string; title: string }[]> {
-  const out: { namespace: string; title: string }[] = [];
-  for (const m of materials.filter((m) => m.kind === "setting")) {
-    const b = await store.getBundle(m.kind, m.id, m.version);
-    if (b) out.push({ namespace: b.namespace, title: b.manifest.title });
-  }
-  return out;
+  return (await materialBundles(store, materials.filter((m) => m.kind === "setting"))).map((b) => ({ namespace: b.namespace, title: b.manifest.title }));
 }
 
 // SPEC_ISSUES.md#creation-chosen-campaign: creation for a chosen campaign refuses abilities its games could not use.
@@ -191,7 +198,7 @@ export async function checkFitsCampaign(store: Store, userId: string | null, cam
   const user = await caller(store, userId, "create_character");
   const { campaign } = await membership(store, user, campaignId);
   const refs = Array.isArray(abilities) ? abilities.filter((a): a is string => typeof a === "string") : [];
-  const missing = await missingSettings(store, campaign.materials, campaign.system, refs);
+  const missing = await missingSettings(store, supplied(await materialBundles(store, campaign.materials)), campaign.system, refs);
   if (missing.length > 0) {
     throw new ApiError("conflict", `Some of these abilities come from ${missing.join(" and ")}, which ${campaign.title} does not include, so the character could not join its games. Choose abilities from its settings, or choose no campaign.`);
   }
@@ -210,6 +217,14 @@ export async function takeOut(deps: Deps, instance: InstanceView, characterId: s
   }
 }
 
+/** Ends a game in any state: in the lobby its characters leave directly; one already ended stays so. */
+export async function endAny(deps: Deps, instance: InstanceView): Promise<void> {
+  if (instance.status === "lobby") {
+    for (const c of instance.characters) await deps.store.leaveInstance(instance.id, c.id);
+    await deps.store.setInstanceStatus(instance.id, instance.version, "ended", null);
+  } else if (instance.status !== "ended") await coordinated(coordinator.setStatus(deps, instance.id, "ended"));
+}
+
 export async function removeCharacter(deps: Deps, userId: string | null, input: unknown) {
   const user = await caller(deps.store, userId, "remove_character");
   const req = onlyFields(input, ["instance_id", "character_id"]);
@@ -220,7 +235,7 @@ export async function removeCharacter(deps: Deps, userId: string | null, input: 
   if (instance.status !== "lobby" && instance.status !== "paused") throw new ApiError("conflict", `characters leave an instance in the lobby or paused; this one is ${instance.status}`);
   // A paused game keeps its minimum, so it can resume; the lobby's party is checked at Start.
   const [min] = instance.status === "paused" ? await playerRange(deps.store, instance) : [0];
-  if (instance.characters.length - 1 < min) throw new ApiError("conflict", `the adventure needs at least ${min} character${min === 1 ? "" : "s"}, so ${entry.name} cannot leave until another character joins; the author can also end the game`);
+  if (instance.characters.length - 1 < min) throw new ApiError("conflict", `the adventure needs at least ${plural(min, "character")}, so ${entry.name} cannot leave until another character joins; the author can also end the game`);
   await takeOut(deps, instance, entry.id);
   return (await deps.store.instanceView(instance.id))!;
 }
@@ -235,13 +250,15 @@ async function authorInstance(deps: Deps, userId: string | null, operation: stri
 export async function startInstance(deps: Deps, userId: string | null, instanceId: unknown) {
   const instance = await authorInstance(deps, userId, "start_instance", instanceId);
   if (instance.status !== "lobby") throw new ApiError("conflict", `the instance is ${instance.status}, not in the lobby`);
-  const [min, max] = await playerRange(deps.store, instance);
+  const bundles = await materialBundles(deps.store, instance.materials);
+  const [min, max] = playersOf(instance, bundles);
   const n = instance.characters.length;
   if (n < min || n > max) throw new ApiError("conflict", `the adventure takes ${min} to ${max} characters; the instance has ${n}`);
+  const have = supplied(bundles);
   const joining = await Promise.all(
     instance.characters.map(async (c) => {
       const record = (await deps.store.getCharacter(c.id))!;
-      const missing = await missingSettings(deps.store, instance.materials, instance.system, sheetRefs(record.sheet));
+      const missing = await missingSettings(deps.store, have, instance.system, sheetRefs(record.sheet));
       if (missing.length > 0) {
         const from = missing.join(" and ");
         throw new ApiError("conflict", `${record.name} uses abilities or items from ${from}, which this game does not include. Take ${record.name} out of the lobby, or add ${from} to the campaign's materials and create a new game.`);
@@ -311,7 +328,7 @@ export async function actWithOutcome(deps: Deps, userId: string | null, input: u
   if ("rejected" in outcome) {
     await store.rejectInput(id);
     const current = (await store.instanceView(instance.id))!;
-    await deps.broadcast.send(`user:${user.id}`, [{ type: "input_rejected", instance_id: instance.id, version: current.version, input_id: id, reason: outcome.rejected.code, detail: outcome.rejected.text }]).catch(() => undefined);
+    await coordinator.send(deps, `user:${user.id}`, [{ type: "input_rejected", instance_id: instance.id, version: current.version, input_id: id, reason: outcome.rejected.code, detail: outcome.rejected.text }]);
     return { accepted: true, input_id: id, rejected: outcome.rejected.text };
   }
   return { accepted: true, input_id: id };
@@ -338,11 +355,6 @@ export async function submitInput(deps: Deps, userId: string | null, input: unkn
   const { accepted, input_id } = await inputWithOutcome(deps, userId, input, entropy);
   return { accepted, input_id };
 }
-
-const sentence = (s: string) => {
-  const t = s.charAt(0).toUpperCase() + s.slice(1);
-  return /[.!?]$/.test(t) ? t : `${t}.`;
-};
 
 /** A sentence for an input that failed outside the engine, such as a parser that threw. */
 const NOT_PROCESSED = "Your input could not be processed. Try again, or use the actions.";
@@ -373,7 +385,7 @@ export async function inputWithOutcome(deps: Deps, userId: string | null, input:
     const reason = e instanceof ApiError ? (e.extra.engine_code as string | undefined) ?? e.code : "unavailable";
     // An engine rejection's detail is already a sentence for the player (coordinator/rejections.ts).
     const text = !(e instanceof ApiError) ? NOT_PROCESSED : current.status !== "active" ? "The game is not running." : sentence(e.detail);
-    await deps.broadcast.send(`user:${user.id}`, [{ type: "input_rejected", instance_id: instance.id, version: current.version, input_id: id, reason, detail: text }]).catch(() => undefined);
+    await coordinator.send(deps, `user:${user.id}`, [{ type: "input_rejected", instance_id: instance.id, version: current.version, input_id: id, reason, detail: text }]);
     if (!(e instanceof ApiError)) throw e;
     return { accepted: true, input_id: id, rejected: text };
   }

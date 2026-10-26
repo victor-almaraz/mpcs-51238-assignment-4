@@ -28,6 +28,7 @@ import type { Entropy } from "./entropy";
 import { addCharacter, createInstance, getInstance, listInstances, removeCharacter, type Deps } from "./instances";
 import { acceptInvitation, declineInvitation, invite, listInvitations, previewInvitation, revokeInvitation } from "./invitations";
 import { listMaterials } from "./materials";
+import { getMe } from "./users";
 import { code, entropy, richSetting, SIX, SUNKEN, variant, world } from "./testing/fixtures";
 
 let db: Awaited<ReturnType<typeof testDb>>;
@@ -107,6 +108,22 @@ describe("archiving and deleting", () => {
     await expect(deleteCampaign(deps, "user_a", { campaign_id: c.id, confirm: "Archiv" })).rejects.toThrow("type the campaign's title exactly as shown");
     await deleteCampaign(deps, "user_a", { campaign_id: c.id, confirm: " Archive " });
     expect(await code(getCampaign(store, "user_a", c.id))).toBe("not_found");
+  });
+
+  it("lists in get_me the campaigns a user belongs to that are not archived, and those they author", async () => {
+    const mine = await campaign();
+    const theirs = await createCampaign(store, "user_b", { title: "Theirs", system: "quest", system_versions: "^1.0", materials: SUNKEN }, e);
+    await joinByLink(store, "user_a", (await rotateInviteLink(store, "user_b", theirs.id, e)).invite_link_code);
+    const old = await campaign({ title: "Old" });
+    await archiveCampaign(store, "user_a", old.id);
+    const gone = await campaign({ title: "Gone" });
+    await deleteCampaign(deps, "user_a", { campaign_id: gone.id, confirm: "Gone" });
+    const rook = await character("user_a");
+    const me = await getMe(store, "user_a");
+    expect(me.active_campaign_ids.sort()).toEqual([mine.id, theirs.id].sort());
+    expect(me.authored_campaign_ids.sort()).toEqual([mine.id, old.id].sort());
+    expect(me.character_ids).toEqual([rook.id]);
+    expect(await getMe(store, "user_c")).toMatchObject({ character_ids: [], active_campaign_ids: [], authored_campaign_ids: [] });
   });
 
   it("unarchives a campaign for its author only, and lists it as archived until then", async () => {

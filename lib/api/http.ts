@@ -50,8 +50,6 @@ import { calendarFeed, calendarFeedKey, cancelSession, disableCalendarFeed, expo
 import { getSystemSchema, listSystems } from "./systems";
 import { acceptTerms, caller, getMe } from "./users";
 
-export { RATE_LIMIT };
-
 const STATUS: Record<ApiErrorCode, number> = {
   unauthenticated: 401,
   forbidden: 403,
@@ -145,7 +143,14 @@ const ROUTES: Route[] = [
   // SPEC_ISSUES.md#character-draft-archive
   ["GET", "/drafts/deleted", async (c) => ok({ drafts: await listDeletedDrafts(c.deps.store, c.user) })],
   ["GET", "/drafts/:draft_id", async (c) => ok({ draft: await getDraft(c.deps.store, c.user, c.params.draft_id) })],
-  ["PUT", "/drafts/:draft_id", async (c) => ok(await saveDraft(c.deps.store, c.user, { ...c.body, draft_id: c.params.draft_id }))],
+  [
+    "PUT",
+    "/drafts/:draft_id",
+    async (c) => {
+      const { revision, saved_at } = await saveDraft(c.deps.store, c.user, { ...c.body, draft_id: c.params.draft_id });
+      return ok({ revision, saved_at });
+    },
+  ],
   ["POST", "/drafts/:draft_id/validate", async (c) => ok({ diagnostics: await validateDraft(c.deps.store, c.user, c.params.draft_id) })],
   ["GET", "/drafts/:draft_id/export.zip", async (c) => ({ status: 200, file: { type: "application/zip", ...(await exportDraft(c.deps.store, c.user, c.params.draft_id)) } })],
   ["POST", "/drafts/:draft_id/publish", async (c) => created({ material: await publishDraft(c.deps.store, c.user, { ...c.body, draft_id: c.params.draft_id }) })],

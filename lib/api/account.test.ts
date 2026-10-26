@@ -124,9 +124,9 @@ describe("holds", () => {
     await deleteCharacter(store, "user_b", rook.id);
     await store.putAsset({ hash: "a".repeat(64), kind: "portrait", mime: "image/png", alt: "Reported", uploader_id: "user_b" }, new Uint8Array([1, 2, 3]), null);
     await store.setHold("user", "user_b", "report");
-    expect([await store.purgeDrafts(later), await store.purgeContent(later)]).toEqual([0, { characters: 0, assets: 0 }]);
+    expect(await store.purgeContent(later)).toEqual({ characters: 0, drafts: 0, assets: 0 });
     await store.setHold("user", "user_b", null);
-    expect([await store.purgeDrafts(later), await store.purgeContent(later)]).toEqual([1, { characters: 1, assets: 1 }]);
+    expect(await runPurge(store, async () => undefined, later)).toMatchObject({ characters: 1, drafts: 1, assets: 1 });
   });
 
   it("releases a user only when none of their records is held, and leaves other records' holds", async () => {
@@ -183,9 +183,9 @@ describe("deletion", () => {
     const { k, instance, rook, own } = await lives();
     await requestAccountDeletion(store, "user_b", { confirm: "B" });
     const erased: string[] = [];
-    expect(await runPurge(store, async (id) => void erased.push(id))).toEqual({ users: 0, campaigns: 0, identity_errors: [] });
+    expect(await runPurge(store, async (id) => void erased.push(id))).toMatchObject({ users: 0, campaigns: 0, identity_errors: [] });
     await db.query("update users set deletion_requested_at = now() - interval '91 days' where id = 'user_b'");
-    expect(await runPurge(store, async (id) => void erased.push(id))).toEqual({ users: 1, campaigns: 0, identity_errors: [] });
+    expect(await runPurge(store, async (id) => void erased.push(id))).toMatchObject({ users: 1, campaigns: 0, identity_errors: [] });
     expect(erased).toEqual(["user_b"]);
     expect(await store.getUser("user_b")).toBeUndefined();
     expect(await store.getCharacter(rook.id)).toBeUndefined();
@@ -225,7 +225,7 @@ describe("deletion", () => {
     const failing = async () => {
       throw new Error("provider unavailable");
     };
-    expect(await runPurge(store, failing)).toEqual({ users: 1, campaigns: 0, identity_errors: [{ user_id: "user_b", message: "provider unavailable" }] });
+    expect(await runPurge(store, failing)).toMatchObject({ users: 1, campaigns: 0, identity_errors: [{ user_id: "user_b", message: "provider unavailable" }] });
     expect(await store.getUser("user_b")).toBeUndefined();
   });
 
