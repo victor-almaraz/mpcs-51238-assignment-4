@@ -2,23 +2,22 @@
 //   pnpm sim [--runs N] [--seed S] [--out FILE]
 // Runs every encounter for each party size and loadout, sweeps `armor.max`, and writes a Markdown
 // report (default tools/sim/REPORT.md). Seeds run from S; a fight is reproduced by its encounter,
-// configuration, and seed (see run.ts).
+// configuration, and seed (see run.ts). Exits 2 on a usage error.
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { arg, int } from "../../scripts/lib";
 import { ENCOUNTERS } from "./encounters";
 import { sweep, type Config, type Summary } from "./run";
 
-const arg = (name: string, fallback: string) => {
-  const i = process.argv.indexOf(`--${name}`);
-  return i > 0 && process.argv[i + 1] ? process.argv[i + 1]! : fallback;
-};
-const runs = Number(arg("runs", "50"));
-const seed = Number(arg("seed", "1"));
+const runs = int("--runs", arg("runs", "50"), 1);
+const seed = int("--seed", arg("seed", "1"));
 const out = arg("out", join(process.cwd(), "tools/sim/REPORT.md"));
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 const num = (x: number) => x.toFixed(1);
-const row = (label: string, s: Summary) => `| ${label} | ${pct(s.winRate)} | ${num(s.hpLost)} | ${num(s.armorUsed)} | ${num(s.rounds)} | ${pct(s.deathsDoorRate)} | ${pct(s.deathRate)} |`;
+/** A summary's table cells, from Win to Dead. */
+const cells = (s: Summary) => `${pct(s.winRate)} | ${num(s.hpLost)} | ${num(s.armorUsed)} | ${num(s.rounds)} | ${pct(s.deathsDoorRate)} | ${pct(s.deathRate)}`;
+const row = (label: string, s: Summary) => `| ${label} | ${cells(s)} |`;
 const HEAD = "| Party | Win | HP lost | Armor used | Rounds | Death's door | Dead |\n|---|---|---|---|---|---|---|";
 
 const lines = [
@@ -44,7 +43,7 @@ for (const id of ["octopus", "gallery", "rivals_waiting", "ward"]) {
   const e = ENCOUNTERS.find((x) => x.id === id)!;
   for (const armorMax of [3, 4, 6, 8]) {
     const s = sweep(e, { party: 2, loadout: "full", armorMax }, runs, seed);
-    lines.push(`| ${id} | ${armorMax} | ${pct(s.winRate)} | ${num(s.hpLost)} | ${num(s.armorUsed)} | ${num(s.rounds)} | ${pct(s.deathsDoorRate)} | ${pct(s.deathRate)} |`);
+    lines.push(`| ${id} | ${armorMax} | ${cells(s)} |`);
   }
 }
 lines.push("");
@@ -54,7 +53,7 @@ const octopus = ENCOUNTERS.find((x) => x.id === "octopus")!;
 for (const hp of [6, 8, 10])
   for (const [party, loadout] of [[1, "unarmored"], [1, "full"], [2, "unarmored"]] as const) {
     const s = sweep({ ...octopus, override: { hp } }, { party, loadout, armorMax: 6 }, runs, seed);
-    lines.push(`| ${hp} | ${party}, ${loadout} | ${pct(s.winRate)} | ${num(s.hpLost)} | ${num(s.armorUsed)} | ${num(s.rounds)} | ${pct(s.deathsDoorRate)} | ${pct(s.deathRate)} |`);
+    lines.push(`| ${hp} | ${party}, ${loadout} | ${cells(s)} |`);
   }
 lines.push("");
 writeFileSync(out, lines.join("\n"));

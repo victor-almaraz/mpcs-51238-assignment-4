@@ -1,11 +1,14 @@
 // Short ability descriptions that ship beside the application's own packs (materials/<pack>/descriptions.yaml),
-// keyed by ref. Packs have no description field, so these reach only the creation form and the sheet.
+// keyed by ref. A pack's namespace comes from materials/<pack>/pack/manifest.yaml, or, for a directory without
+// a pack, from the specification's example of that name (docs/spec/spec/examples/<pack>/manifest.yaml).
+// Packs have no description field, so these reach only the creation form and the sheet.
 
-import { readFileSync, readdirSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { parse } from "yaml";
 
 const MATERIALS = join(process.cwd(), "materials");
+const EXAMPLES = join(process.cwd(), "docs/spec/spec/examples");
 
 let cache: Map<string, string> | undefined;
 
@@ -19,10 +22,15 @@ export function abilityDescriptions(): Map<string, string> {
     } catch {
       continue; // This pack ships no descriptions.
     }
-    const { namespace } = parse(readFileSync(join(MATERIALS, pack, "pack", "manifest.yaml"), "utf8"), { version: "1.2" }) as { namespace: string };
+    const { namespace } = parse(readFileSync(manifestOf(pack), "utf8"), { version: "1.2" }) as { namespace: string };
     for (const [key, line] of Object.entries(parse(text, { version: "1.2" }) as Record<string, string>)) cache.set(`${namespace}:${key}`, line);
   }
   return cache;
+}
+
+function manifestOf(pack: string): string {
+  const own = join(MATERIALS, pack, "pack", "manifest.yaml");
+  return existsSync(own) ? own : join(EXAMPLES, pack, "manifest.yaml");
 }
 
 /** `options` with each ability's description, where one ships. */

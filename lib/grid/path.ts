@@ -87,7 +87,7 @@ function canStep(from: Cell, step: Cell, rules: MoveRules): boolean {
   if (!inRange(to)) return false;
   if (!footprintCells(to, footprint).every(rules.open)) return false;
   if (step[0] === 0 || step[1] === 0) return true;
-  // SPEC_ISSUES.md#footprint-movement: every footprint cell obeys the corner rule.
+  // engine.md, "Distance and adjacency": every footprint cell obeys the corner rule.
   return footprintCells(from, footprint).every(
     ([x, y]) => !rules.blocksMovement([x + step[0], y]) && !rules.blocksMovement([x, y + step[1]]),
   );
@@ -113,7 +113,7 @@ function dijkstra(start: Cell, rules: MoveRules, isGoal: (k: number) => boolean,
     for (const step of steps) {
       if (!canStep(here, step, rules)) continue;
       const next: Cell = [here[0] + step[0], here[1] + step[1]];
-      // SPEC_ISSUES.md#footprint-movement: the cost is the new anchor cell's terrain cost.
+      // engine.md, "Pathfinding": the cost is the new anchor cell's terrain cost.
       const nc = c + rules.cost(next);
       if (nc > limit) continue;
       const nk = key(next);
@@ -196,8 +196,7 @@ export function walk(path: readonly Cell[], rules: WalkRules): Walk {
     spent = next;
     if (rules.free(cell)) last = { index: i, spent };
     if (i === path.length - 1) break;
-    // SPEC_ISSUES.md#stopping-on-occupied-cells: an early stop on a cell that is not free ends on
-    // the last free cell before it.
+    // engine.md, "Movement": an early stop on a cell that is not free ends on the last free cell before it.
     if (rules.stopAt?.(cell, i)) return { ...last, stopped: "early" };
   }
   return { ...last, stopped: last.index === path.length - 1 ? "arrived" : "short" };

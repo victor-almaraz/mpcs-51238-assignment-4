@@ -6,9 +6,10 @@ import { sunkenBundles } from "../harness/scenarios";
 import { openWhenClosed, shutdownPhase } from "../ops/shutdown";
 import type { Store } from "../store";
 import type { testDb } from "../store/testing/pglite";
-import { endGame, hold, inspectInstance, listBundles, operatorLog, publishBundle, removeCharacterContent, replayInstance, setListed, suspend } from "./admin";
-import { createCampaign, joinByLink, rotateInviteLink } from "./campaigns";
-import { createCharacter, getCharacter } from "./characters";
+import { applyReport, deleteBundle, endGame, hold, inspectInstance, listBundles, operatorLog, publishBundle, removeAssetContent, removeCampaignContent, removeCharacterContent, replayInstance, setListed, settingDependents, suspend } from "./admin";
+import { createDraft } from "./drafts";
+import { createCampaign, joinByLink, listDeletedCampaigns, restoreCampaign, rotateInviteLink } from "./campaigns";
+import { createCharacter, deleteCharacter, getCharacter, listDeletedCharacters, restoreCharacter } from "./characters";
 import type { Entropy } from "./entropy";
 import { handle } from "./http";
 import { addCharacter, createInstance, startInstance, type Deps } from "./instances";
@@ -40,6 +41,22 @@ async function game() {
 }
 
 describe("materials", () => {
+  it("deletes a bundle version nothing uses, and keeps one a campaign or game uses", async () => {
+    const setting = variant(richSetting(), { version: "3.2.0" });
+    await publishBundle(store, "user_op", { kind: "setting", bundle: setting });
+    expect(await code(deleteBundle(store, "user_a", { kind: "setting", id: "derelict_station", version: "3.2.0" }))).toBe("not_found");
+    await deleteBundle(store, "user_op", { kind: "setting", id: "derelict_station", version: "3.2.0" });
+    expect(await store.getBundle("setting", "derelict_station", "3.2.0")).toBeUndefined();
+    expect(await code(deleteBundle(store, "user_op", { kind: "setting", id: "derelict_station", version: "3.2.0" }))).toBe("not_found");
+
+    const { k, instance } = await game();
+    await expect(deleteBundle(store, "user_op", { kind: "setting", id: "derelict_station", version: "3.0.0" })).rejects.toThrow("used by 1 campaign and 1 game");
+    await db.query("delete from campaign_materials where campaign_id = $1", [k.id]);
+    await expect(deleteBundle(store, "user_op", { kind: "setting", id: "derelict_station", version: "3.0.0" })).rejects.toThrow("used by 1 game");
+    expect(instance.id).toBeTruthy();
+    expect((await operatorLog(store, "user_op")).map((l) => l.action)).toContain("delete_bundle");
+  });
+
   it("is not found for non-operators", async () => {
     expect(await code(listBundles(store, "user_a"))).toBe("not_found");
   });
@@ -84,6 +101,59 @@ describe("reports", () => {
     await endGame(deps, "user_op", { instance_id: instance.id, reason: "report of 22 October" });
     expect((await store.instanceView(instance.id))!.status).toBe("ended");
     expect((await operatorLog(store, "user_op")).map((l) => l.action).reverse()).toEqual(["inspect_instance", "hold", "remove_character", "suspend", "end_game"]);
+  });
+});
+
+describe("removal", () => {
+  it("removes content for good: its owner neither lists nor restores it, even when they deleted it first", async () => {
+    const { k, instance, rook } = await game();
+    await removeCharacterContent(deps, "user_op", { character_id: rook.id, reason: "report" });
+    const spare = await createCharacter(store, "user_b", { system: "quest", name: "Spare", choices: { role: "spy", abilities: SIX } }, e);
+    await deleteCharacter(store, "user_b", spare.id);
+    await removeCharacterContent(deps, "user_op", { character_id: spare.id, reason: "report" });
+    expect(await listDeletedCharacters(store, "user_b")).toEqual([]);
+    expect(await code(restoreCharacter(store, "user_b", rook.id))).toBe("not_found");
+    expect(await code(restoreCharacter(store, "user_b", spare.id))).toBe("not_found");
+
+    await removeCampaignContent(deps, "user_op", { campaign_id: k.id, reason: "report" });
+    expect((await store.instanceView(instance.id))!.status).toBe("ended");
+    expect(await listDeletedCampaigns(store, "user_a")).toEqual([]);
+    expect(await code(restoreCampaign(store, "user_a", k.id))).toBe("not_found");
+    expect(await code(removeCampaignContent(deps, "user_op", { campaign_id: "k_nothing", reason: "report" }))).toBe("not_found");
+    expect(await code(removeCharacterContent(deps, "user_op", { character_id: "ch_nothing", reason: "report" }))).toBe("not_found");
+    expect((await operatorLog(store, "user_op")).map((l) => l.action).reverse()).toEqual(["remove_character", "remove_character", "remove_campaign"]);
+  });
+});
+
+describe("report checks", () => {
+  it("refuses a blank reason before acting, and writes nothing to the log", async () => {
+    const { instance, rook } = await game();
+    expect(await code(removeCharacterContent(deps, "user_op", { character_id: rook.id, reason: "   " }))).toBe("invalid_request");
+    expect((await getCharacter(store, "user_b", rook.id)).id).toBe(rook.id);
+    expect(await code(endGame(deps, "user_op", { instance_id: instance.id, reason: " " }))).toBe("invalid_request");
+    expect((await store.instanceView(instance.id))!.status).toBe("active");
+    expect(await code(removeAssetContent(store, "user_op", { hash: "nothing", reason: "" }))).toBe("invalid_request");
+    expect(await operatorLog(store, "user_op")).toEqual([]);
+  });
+
+  it("applies each report action only to its kinds of record, and says what it did", async () => {
+    const { instance, rook } = await game();
+    await expect(applyReport(deps, "user_op", { action: "hold", kind: "instance", id: instance.id, reason: "report" })).rejects.toMatchObject({ code: "invalid_request", detail: "Hold applies to a user, a character, or a campaign" });
+    expect(await code(applyReport(deps, "user_op", { action: "remove", kind: "user", id: "user_b", reason: "report" }))).toBe("invalid_request");
+    expect(await code(applyReport(deps, "user_op", { action: "suspend", kind: "character", id: rook.id, reason: "report" }))).toBe("invalid_request");
+    expect(await code(applyReport(deps, "user_op", { action: "nonsense", kind: "user", id: "user_b", reason: "report" }))).toBe("invalid_request");
+    expect(await applyReport(deps, "user_op", { action: "hold", kind: "character", id: rook.id, reason: "report" })).toBe(`Held character ${rook.id}.`);
+    expect(await applyReport(deps, "user_op", { action: "end", kind: "instance", id: instance.id, reason: "report" })).toBe(`Ended game ${instance.id}.`);
+    expect((await store.instanceView(instance.id))!.status).toBe("ended");
+    expect(await code(applyReport(deps, "user_a", { action: "hold", kind: "user", id: "user_b", reason: "report" }))).toBe("not_found");
+  });
+
+  it("counts the drafts and adventures that only a setting version serves", async () => {
+    await createDraft(store, "user_a", { material_id: "mine", title: "Mine", system: "quest", requires_settings: [{ id: "derelict_station", versions: "^3.0" }] }, e);
+    expect(await settingDependents(store, "user_op", { id: "derelict_station", version: "3.0.0" })).toEqual({ drafts: 1, adventures: 1 });
+    await publishBundle(store, "user_op", { kind: "setting", bundle: variant(richSetting(), { version: "3.2.0" }) });
+    expect(await settingDependents(store, "user_op", { id: "derelict_station", version: "3.0.0" })).toEqual({ drafts: 0, adventures: 1 });
+    expect(await code(settingDependents(store, "user_a", { id: "derelict_station", version: "3.0.0" }))).toBe("not_found");
   });
 });
 

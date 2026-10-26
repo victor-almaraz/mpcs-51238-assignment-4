@@ -110,3 +110,72 @@ export function content(doc: Doc): Omit<Doc, "editor"> {
   void editor;
   return structuredClone(rest);
 }
+
+/**
+ * `value` with every ref into namespace `from` (a string `from:key`) pointing into `to` instead: what
+ * the adventure's own entities are placed and named by after its id changes.
+ */
+export function renameNamespace<T>(value: T, from: string, to: string): T {
+  const prefix = `${from}:`;
+  const walk = (v: unknown): unknown =>
+    typeof v === "string"
+      ? v.startsWith(prefix) && /^[a-z0-9_]/.test(v.slice(prefix.length))
+        ? `${to}:${v.slice(prefix.length)}`
+        : v
+      : Array.isArray(v)
+        ? v.map(walk)
+        : v !== null && typeof v === "object"
+          ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)]))
+          : v;
+  return walk(value) as T;
+}
+
+/** A record other parts of the draft can refer to. */
+export type UseTarget = { kind: "flag" | "location" | "npc" | "arc" | "entity" | "ending"; id: string };
+
+/**
+ * Where the draft refers to `t`, outside the record itself and the editor's metadata: how many
+ * references, and the records that hold them, in words ("arc crossing", "location hall").
+ */
+export function usesOf(doc: Doc, t: UseTarget): { count: number; places: string[] } {
+  const { id } = t;
+  const own = `${doc.adventure.id}:${id}`;
+  const refers = (key: string, v: unknown): boolean => {
+    switch (t.kind) {
+      case "flag":
+        return key === "flag" && v === id;
+      case "location":
+        return (key === "location" && v === id) || (key === "room" && typeof v === "string" && v.startsWith(`${id}.`));
+      case "npc":
+        return ((key === "npc" || key === "target" || key === "defeated") && v === id) || (key === "secret" && typeof v === "string" && v.startsWith(`${id}.`));
+      case "arc":
+        return (key === "arc" && v === id) || (key === "stage" && Array.isArray(v) && v[0] === id);
+      case "entity":
+        return v === own || ((key === "ref" || key === "has_item" || key === "template") && v === id);
+      case "ending":
+        return key === "ending" && v === id;
+    }
+  };
+  const self = { flag: "flags", location: "locations", npc: "npcs", arc: "arcs", entity: "entities", ending: "" }[t.kind];
+  const places = new Map<string, number>();
+  const place = (path: string[]): string => {
+    const [top, key] = path;
+    if (top === "adventure") return "the start";
+    return `${{ arcs: "arc", locations: "location", npcs: "NPC", entities: "entity", flags: "flag" }[top!] ?? top} ${key}`;
+  };
+  const walk = (v: unknown, path: string[]) => {
+    if (Array.isArray(v)) return v.forEach((x, i) => walk(x, [...path, String(i)]));
+    if (v === null || typeof v !== "object") return;
+    for (const [k, x] of Object.entries(v)) {
+      if (refers(k, x)) places.set(place(path), (places.get(place(path)) ?? 0) + 1);
+      if (!(k === "stage" && Array.isArray(x))) walk(x, [...path, k]);
+    }
+  };
+  for (const top of ["adventure", "flags", "arcs", "locations", "npcs", "entities"] as const) {
+    for (const [key, record] of Object.entries(top === "adventure" ? { start: doc.adventure.start } : doc[top])) {
+      if (top === self && key === id) continue;
+      walk(record, [top, key]);
+    }
+  }
+  return { count: [...places.values()].reduce((a, b) => a + b, 0), places: [...places.keys()] };
+}

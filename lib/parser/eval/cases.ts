@@ -5,10 +5,10 @@
 // context, and attempts to instruct the parser.
 
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ParserHints } from "../../bundle/types/parser";
-import { replay, speedOf, toolsFor, view, type Bundles, type State } from "../../engine";
-import { commitOf } from "../../harness/harness";
+import { speedOf, toolsFor, view, type Bundles, type State } from "../../engine";
+import { replay, type LogLine } from "../../harness/harness";
 import { exemplarBundles, sunkenBundles } from "../../harness/scenarios";
 import { parserContext, toolDefinitions, type ParserContext, type ToolDefinition } from "../context";
 
@@ -162,8 +162,8 @@ const ROWS: Row[] = [
 export const STATE_CHANGING = new Set(["move", "attack", "ability", "use", "interact", "take", "drop", "give", "rest", "choose"]);
 
 function stateAt(place: Place): State {
-  const log = readFileSync(join(process.cwd(), "lib/harness/golden", `${place.run}.log.jsonl`), "utf8").trim().split("\n");
-  const r = replay(bundlesOf(place), log.map((l) => commitOf(JSON.parse(l))), place.version);
+  const log = readFileSync(fileURLToPath(new URL(`../../harness/golden/${place.run}.log.jsonl`, import.meta.url)), "utf8").trim().split("\n");
+  const r = replay(bundlesOf(place), log.map((l) => JSON.parse(l) as LogLine), place.version);
   if (!r.ok) throw new Error(`${place.run}@${place.version}: ${r.reason}`);
   const s = structuredClone(r.state);
   place.patch?.(s);

@@ -3,6 +3,8 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 import { ApiError } from "../api/errors";
 
+export { defaultRange } from "../api/materials";
+
 /** The operation's result; the 404 page when it fails with not_found (app-flow.md, Redirect rules). */
 export async function orNotFound<T>(p: Promise<T>): Promise<T> {
   try {
@@ -20,12 +22,6 @@ export function decoded(segment: string): string {
   } catch {
     return segment;
   }
-}
-
-/** The default system version range for a new campaign: the installed major and minor version. */
-export function defaultRange(version: string): string {
-  const [major, minor] = version.split(".");
-  return `^${major}.${minor}`;
 }
 
 /** The site's origin for absolute links, from the request. */

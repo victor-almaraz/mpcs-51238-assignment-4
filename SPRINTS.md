@@ -1,12 +1,12 @@
 # Sprints
 
-The work in `cadmium-spec/AGENTS.md` ("Phases") split into sprints that each fit one working session. Each sprint names the specification sections it implements, the modules it touches, and an exit criterion that is checked by tests before the sprint closes.
+The work in `docs/spec/AGENTS.md` ("Phases") split into sprints that each fit one working session. Each sprint names the specification sections it implements, the modules it touches, and an exit criterion that is checked by tests before the sprint closes.
 
 ## Working agreement
 
-- Start every sprint by reading `cadmium-spec/AGENTS.md` and the "Read" column of the sprint. The specification is the requirement.
+- Start every sprint by reading `docs/spec/AGENTS.md` and the "Read" column of the sprint. The specification is the requirement.
 - A sprint closes when `pnpm check` passes (generated files current, type checking, linting, tests, build) and its exit criterion holds. There is no CI service: Vercel deploys from GitHub and runs only the build, so `pnpm check` runs locally before every commit.
-- Gaps or contradictions in the specification go to `SPEC_ISSUES.md` with a matching `SPEC_ISSUES.md#<anchor>` comment in code.
+- Gaps or contradictions in the specification are fixed in the specification in the same change as the code; a gap left open goes to `SPEC_ISSUES.md` with a matching `SPEC_ISSUES.md#<anchor>` comment in code.
 - Each sprint ends with a commit and a handoff note in [Status](#status): what was done, what is open, and anything the next sprint needs to know.
 - Sprints run in order. Within a phase, a sprint depends only on earlier sprints.
 
@@ -44,7 +44,6 @@ The work in `cadmium-spec/AGENTS.md` ("Phases") split into sprints that each fit
 
 | Needed by sprint | Item |
 |---|---|
-| 0 | Git URL of the specification repository, to replace the vendored `cadmium-spec/` with a submodule pinned at `54f4adcdffe5bf3c8547a5c89a9f55fefbeb2fef` |
 | 10 | Supabase project (URL, anon and service keys) |
 | 11 | Clerk application (publishable and secret keys, webhook secret) |
 | 13 | Vercel project linked to the repository |
@@ -53,13 +52,13 @@ The work in `cadmium-spec/AGENTS.md` ("Phases") split into sprints that each fit
 
 ## Status
 
-All fourteen migrations are applied to the remote database (rebuilt from `supabase/fresh.sql` on 2026-10-24; `20261025000000_campaign_archive` and `20261025000100_character_draft_archive` applied on 2026-10-25).
+The database is built from the final set of twelve migrations (`supabase/migrations/20261027…`), one per domain, each creating its tables and functions in their final form. `pnpm db:fresh` writes `supabase/fresh.sql`, which deletes every Cadmium table and function and applies the set in one transaction; the owner rebuilds the remote database from it (not yet done). The rebuild deletes all data: afterwards the owner signs in again (which recreates their user), sets their operator flag again, and publishes the five `pnpm bundles` files at `/admin` again, Lantern Coast 1.1.0 included. Clerk's account self-deletion is turned off, so accounts are deleted only through Settings and its 30-day stage.
 
 ### Sprint 0: Foundations — closed
 
 Done:
 
-- Next.js App Router shell with TypeScript strict, Tailwind importing `cadmium-spec/design/theme.css`; `pnpm build` passes.
+- Next.js App Router shell with TypeScript strict, Tailwind importing `docs/spec/design/theme.css`; `pnpm build` passes.
 - Node 24 pinned through pnpm `devEngines.runtime`; run tools with `pnpm exec` or `pnpm <script>`.
 - TypeScript 6 (typescript-eslint does not support TypeScript 7).
 - `scripts/gen-bundle.ts` generates `lib/bundle/schemas.generated.ts` (schema index and rules data) and `lib/bundle/types/` from all 28 schemas.
@@ -71,7 +70,7 @@ Done:
 
 Open:
 
-- `cadmium-spec/` is a vendored copy of `cadmium-spec.zip`, not a submodule; see External prerequisites.
+- `docs/spec/` holds the specification, kept in this repository rather than as a submodule.
 - Playwright is deferred to sprint 14, the first sprint with browser journeys.
 
 ### Sprint 1: Random numbers and grid — closed
@@ -81,7 +80,7 @@ Done:
 - `lib/rng`: `draw` (`splitmix64_v1`), `Rng` with `next`, `die` (rejection sampling), `roll` (`NdM±K`), and `pick`; `parseDice`; `fnv1a64` for generator location seeds. The three draw vectors and the five d20 rolls reproduce; rejection on a 3-sided die consumes counters.
 - `lib/grid`: `parseMap` and `TerrainGrid` (built-in and declared terrain, cells outside the map are `void`); `distance`, `footprintDistance`, `adjacent` with the corner rule, footprint adjacency and overlap; `line`, `sightLine`, `sees`, `footprintSees`; `direction` labels; `findPath` (Dijkstra, `(cost, y, x)` frontier, documented neighbour order, footprints), `reachable`, and `walk` (allowance, last free cell, early stops).
 - Every geometry vector in engine.md passes. fast-check properties: sight is symmetric, paths never cut a blocked corner, and `findPath` cost equals the cheapest reachable cost.
-- `SPEC_ISSUES.md`: `seed-range`, `footprint-movement`, `stopping-on-occupied-cells`, each with markers.
+- Specification gaps recorded in `SPEC_ISSUES.md`, since folded into the specification: `seed-range`, `footprint-movement`, `stopping-on-occupied-cells`, each with markers.
 
 Notes for sprint 2 and later:
 
@@ -97,7 +96,7 @@ Done:
 - `lib/systems/quest`: every contract name, reading `data.json` and the six schemas from the specification. Tiers, setbacks (tough choice as a pending choice, failure, severe), attacks by tier, harm with death's door, healing, rests, AP costs and the session award, creature and structure sheets, reach, speed, senses, summary, and ordering.
 - `lib/systems/index.ts`: the `SYSTEMS` registry.
 - `lib/systems/testing/conformance.ts`: every item of the conformance list as a suite taking a system. `testing/quest-cases.ts`: every rule in quest.md as a suite taking a system, including the api.md partial-hit example.
-- `SPEC_ISSUES.md`: `systems-generated-types`, `quest-tool-priority`, `quest-setbacks`, `quest-event-payloads`, `quest-creation-items`.
+- Specification gaps recorded in `SPEC_ISSUES.md`, since folded into the specification: `systems-generated-types`, `quest-tool-priority`, `quest-setbacks`, `quest-event-payloads`, `quest-creation-items`.
 
 Notes for sprint 3 and later:
 
@@ -115,7 +114,7 @@ Done:
 - `schemasFor(modules)`: the schemas with disabled module fields removed.
 - Quest's `attack` takes its harm function through `attackWith`, so `armor` reaches attack damage.
 - Tests: conformance for Cadmium and for `armor`, `stash`, and both; every Quest case against Cadmium; a property test that Cadmium with no module returns Quest's results; schema superset and module-field tests; module rule tests.
-- `SPEC_ISSUES.md`: `module-schema-fields`, `armor-events`.
+- Specification gaps recorded in `SPEC_ISSUES.md`, since folded into the specification: `module-schema-fields`, `armor-events`.
 
 Phase 1's systems criterion holds. Notes for sprint 4:
 
@@ -130,7 +129,7 @@ Done:
 - `lib/materials/cli.ts`: `materials check|build [--json] [-o FILE] [--] DIR`, exit statuses 0, 1, and 2, atomic `-o`.
 - `lib/bundle/setting.ts`: `SettingBundle` types, built-in terrain and conditions, and `loadSettingBundle`, which fails on unknown fields.
 - `lib/materials/testing/fixtures.ts`: 57 fixtures, at least one for every check id, each asserting its exact `FILE: PATH: MESSAGE`, including both examples in spec/README.md.
-- `SPEC_ISSUES.md`: `diagnostic-check-ids`, `pack-file-names`, `attribution-licenses`, `ref-kinds`, `bundle-format`.
+- Specification gaps recorded in `SPEC_ISSUES.md`, since folded into the specification: `diagnostic-check-ids`, `pack-file-names`, `attribution-licenses`, `ref-kinds`, `bundle-format`.
 
 Notes for sprint 5:
 
@@ -147,7 +146,7 @@ Done:
 - `lib/bundle/adventure.ts`: `AdventureBundle` (arcs in file order, `requires_settings[].resolved`, flag `scope` and trigger `once` defaults) and `loadAdventureBundle`.
 - `compileDraft` compiles an editor draft through the same code; `materials --setting PATH` supplies required settings.
 - Fixtures: the guide's `sunken_archive` assembled from its YAML blocks compiles cleanly; 41 adventure fixtures each assert an exact diagnostic; every check id has a fixture.
-- `SPEC_ISSUES.md`: `cli-adventure-settings`, `trigger-match-refs`, `container-locks`, `treasure-role`, `ending-reachability`, `start-free-cells`, `room-scopes`, `draft-entity-files`.
+- Specification gaps recorded in `SPEC_ISSUES.md`, since folded into the specification: `cli-adventure-settings`, `trigger-match-refs`, `container-locks`, `treasure-role`, `ending-reachability`, `start-free-cells`, `room-scopes`, `draft-entity-files`.
 
 Phase 1 is complete. Notes for sprint 6:
 
@@ -177,7 +176,7 @@ Done:
   - Pending choices, triggers, endings, effects, requirements, conditions, and situations are covered.
   - Lighting is tested with `SPATIAL.lighting` true and false.
   - Views, determinism, and input immutability are covered.
-- `SPEC_ISSUES.md`: `engine-state-fields`, `dead-creatures`, `container-contents`, `weighted-tables`, `effect-events`, `ability-roll`, `outside-combat-area`.
+- Specification gaps recorded in `SPEC_ISSUES.md`, since folded into the specification: `engine-state-fields`, `dead-creatures`, `container-contents`, `weighted-tables`, `effect-events`, `ability-roll`, `outside-combat-area`.
 
 Already in place for sprint 7:
 
@@ -198,7 +197,7 @@ Done:
   - Determinism, room templates, lighting, and the documented errors.
 - `lib/engine/start.ts` generates every generated location at instance start and stores its aliases. Engine and generator share `pickWeighted`.
 - `lib/engine/adventure.test.ts`: the guide's `sunken_archive` starts, powers its lift with the keycard, and travels into the generated archive.
-- `SPEC_ISSUES.md`: 17 generator entries, from `generator-attempt-seeds` to `verification-passability`; `treasure-role` and `weighted-tables` extended.
+- Specification gaps recorded in `SPEC_ISSUES.md`, since folded into the specification: 17 generator entries, from `generator-attempt-seeds` to `verification-passability`; `treasure-role` and `weighted-tables` extended.
 
 Notes for sprints 7 and 9:
 
@@ -209,7 +208,7 @@ Notes for sprints 7 and 9:
 
 Done:
 
-- The combat area grows when a combatant entity enters a room (`SPEC_ISSUES.md#combat-area-growth`).
+- The combat area grows when a combatant entity enters a room (`combat-area-growth`).
 - `lib/engine/combat.test.ts`: 28 tests with Quest variants for sequential resolution, initiative, and no approach. They cover:
   - mode changes at the next round, and characters-first ordering;
   - combat end by defeat and by leaving;
@@ -227,7 +226,7 @@ Engine milestones 4 to 7 are met. Sprint 9 adds the command-line harness, script
 Done:
 
 - Triggers are part of sprint 6's engine (`lib/engine/triggers.ts`). The scenarios exercise them on both adventures.
-- `lib/harness/harness.ts`: `begin`, `step`, `play`, and `replay` over JSON lines. Rejections are data. A malformed line raises `HarnessError` with its line number. The log records each commit's input and events (`SPEC_ISSUES.md#replay-source`).
+- `lib/harness/harness.ts`: `begin`, `step`, `play`, and `replay` over JSON lines. Rejections are data. A malformed line raises `HarnessError` with its line number. The log records each commit's input and events (`replay-source`).
 - `lib/harness/cli.ts`:
   - `harness play --bundle FILE... --seed N --character ID=SHEET_FILE... [--state FILE] [--log FILE]` and `harness replay --bundle FILE... LOG`.
   - Exit status 0, 1 (malformed line, or a replay mismatch naming the version), or 2 (usage).
@@ -260,7 +259,7 @@ Done:
   - Every golden scenario stored commit by commit replays to the stored state.
   - Restore, play continuing after a restore, and undoing a restore.
   - Divergence reported at the right version.
-- `SPEC_ISSUES.md`: `replay-to-version`; `replay-source` extended.
+- Specification gaps recorded in `SPEC_ISSUES.md`, since folded into the specification: `replay-to-version`; `replay-source` extended.
 
 Notes for sprints 11 to 13:
 
@@ -284,7 +283,7 @@ Done:
 - `lib/api`: `get_me`, `accept_terms`, `list_systems`, `get_system_schema`, `create_character`, `get_character`, `list_characters`, `update_character`, `retire_character`, with the terms gate and the error codes of api.md. Sheets are built by the rules system from the player's choices and a server seed.
 - Pages: `/accept-terms` (the terms gate), the dashboard's Characters list, `/characters/new` (system picker, then Quest's sentence form with abilities counted against six), and `/characters/[id]` (sheet, name and profile, Retire). Creation and sheet components are registered by system id in `components/systems`.
 - Tests: `lib/api/api.test.ts` and `lib/api/identity.test.ts`.
-- `SPEC_ISSUES.md`: `terms-version`, `starting-abilities-supply`.
+- Specification gaps recorded in `SPEC_ISSUES.md`, since folded into the specification: `terms-version`, `starting-abilities-supply`.
 
 Open:
 
@@ -299,7 +298,7 @@ Done:
 - `lib/api`: `list_materials`; `create_campaign`, `list_campaigns`, `get_campaign`, `update_campaign`, `set_materials`, `archive_campaign`, `leave_campaign`, `remove_member`, `rotate_invite_link`, `disable_invite_link`, `join_by_link`; `invite`, `preview_invitation`, `list_invitations`, `accept_invitation`, `decline_invitation`, `revoke_invitation`; `create_instance`, `list_instances`, `get_instance`, `add_character`, `remove_character`. Material checks cover usability (listed operator bundles and the author's own), system and version compatibility, required modules, one adventure, and `requires_settings`.
 - Pages: `/campaigns/new`, `/campaigns/[id]`, `/campaigns/[id]/edit` (Details, Materials, Members, Invitations), `/invite/[code]`, `/join/[code]`, `/instances/[id]` (lobby: party, Add my character), and the dashboard's Active instances and Campaigns sections with a code field. `/accept-terms?next=` returns to an invitation after acceptance.
 - Tests: `lib/api/campaigns.test.ts` (16): joining by code and by link, two characters in one instance, version pinning across `set_materials`, `system_mismatch` for materials and characters, archived campaigns, revocation rights, expiry.
-- `SPEC_ISSUES.md`: `cross-system-versions`.
+- Specification gaps recorded in `SPEC_ISSUES.md`, since folded into the specification: `cross-system-versions`.
 
 Open:
 
@@ -317,7 +316,7 @@ Done:
 - `lib/broadcast`: Supabase Realtime broadcast from the server; browser subscriptions on private channels with a sequencer that delivers in version order and backfills gaps from `get_history`.
 - Lobby: Start, Pause, Resume, End for the author; Enter game when active.
 - Tests: `lib/api/play.test.ts` (12), `lib/api/http.test.ts` (3), `lib/broadcast/sequencer.test.ts` (3).
-- `SPEC_ISSUES.md`: `party-changes`, `commit-event-visibility`, `binding-gaps`.
+- Specification gaps recorded in `SPEC_ISSUES.md`, since folded into the specification: `party-changes`, `commit-event-visibility`, `binding-gaps`.
 
 Open:
 
@@ -335,9 +334,9 @@ Done:
 - `lib/narrator/template.ts`: template narration of shared events, stored and broadcast as `narration` after each commit; declarations are not narrated.
 - Messages: Realtime when the channel connects; otherwise the client polls `get_history` every 4 seconds through the same sequencer.
 - Tests: `sunken_escaped` and `sunken_lost` played to their endings through `submit_action` alone; template narration; map plan.
-- `SPEC_ISSUES.md`: `view-direct-play`.
+- Specification gaps recorded in `SPEC_ISSUES.md`, since folded into the specification: `view-direct-play`.
 
-- Hostile creatures carry `hostile: true` in the view, and the map rings them in `danger` ([view-direct-play](SPEC_ISSUES.md#view-direct-play)).
+- Hostile creatures carry `hostile: true` in the view, and the map rings them in `danger` (`view-direct-play`).
 Open:
 
 - Playwright journeys in `pnpm check` need Playwright and its browsers installed (`pnpm add -D @playwright/test`, then `pnpm exec playwright install chromium`).
@@ -375,9 +374,9 @@ Done:
 - `lib/scheduler/run.ts` and `app/api/cron/scheduler` (Bearer `CRON_SECRET`): reminders on the user channel at each lead time unless the member answered `no`; `auto_resume` at the start; `session_end` for every character at the end, committed and replayable (Quest awards 5 AP); `auto_pause` after the round under way closes; the deadline sweep; invitation expiry.
 - Pages: `/instances/[id]/schedule` (occurrences by week in the user's time zone, RSVPs, the author's create, move, and cancel controls, Add to calendar, Subscribe), Upcoming sessions on the dashboard with RSVP buttons, and the next session in the lobby.
 - Tests: `lib/scheduler/occurrences.test.ts` (6, Berlin and New York transitions), `lib/api/schedules.test.ts` (7).
-- `SPEC_ISSUES.md`: `session-cancellation`, `session-updates`, `calendar-feed-url`.
+- Specification gaps recorded in `SPEC_ISSUES.md`, since folded into the specification: `session-cancellation`, `session-updates`, `calendar-feed-url`.
 
-- `/notifications` lists recent and upcoming session reminders, derived from schedules by the Scheduler's rules, refreshed by `session_reminder` on the user channel and every minute ([notification-records](SPEC_ISSUES.md#notification-records)). No migration.
+- `/notifications` lists recent and upcoming session reminders, derived from schedules by the Scheduler's rules, refreshed by `session_reminder` on the user channel and every minute (`notification-records`). No migration.
 Open:
 
 - Done: Web Push sends reminders through `web-push` (polish pass), and the VAPID key pair is set (the project owner, by 2026-10-25).
@@ -409,7 +408,7 @@ Done:
 - `/instances/[id]/history`: commits with narration grouped by round, event details per commit, paged by `after_version`; the dashboard lists finished games, and the lobby links to history.
 - Shutdown (`SHUTDOWN_AT`): a banner with the date and Export my data from 14 days before; from the time itself, every page but `/terms`, `/privacy`, and `/attribution` shows the closed notice (with `CONTACT_EMAIL`), sign-in stops, and the binding answers `unavailable`; 90 days after, the daily purge erases every record that is not held.
 - Tests: `lib/api/admin.test.ts` (6).
-- `SPEC_ISSUES.md`: `account-suspension`.
+- Specification gaps recorded in `SPEC_ISSUES.md`, since folded into the specification: `account-suspension`.
 
 Open:
 
@@ -419,7 +418,7 @@ Open:
 
 Done:
 
-- Checked `systems/quest/data.json` and `docs/systems/quest.md` against the Quest Creators Resource v1.01 (CC BY 4.0). At the project owner's direction, three rules now follow the Creators Resource: a regroup restores HP up to half the maximum (`SPEC_ISSUES.md#quest-regroup`), creatures default to their template's attack rating, commoner 1, minion 2, boss 4 (`#quest-npc-attack`), and a creature's tough choice deals half damage, rounded up (`#quest-npc-tough-choice`). The AP award (5) and NPC hit points (2, 4, 10) are confirmed and no longer reported as pending (`#quest-values-confirmed`). The golden logs of the two lost scenarios were regenerated; both still end `lost`.
+- Checked `systems/quest/data.json` and `docs/systems/quest.md` against the Quest Creators Resource v1.01 (CC BY 4.0). At the project owner's direction, three rules now follow the Creators Resource: a regroup restores HP up to half the maximum (`quest-regroup`), creatures default to their template's attack rating, commoner 1, minion 2, boss 4 (`#quest-npc-attack`), and a creature's tough choice deals half damage, rounded up (`#quest-npc-tough-choice`). The AP award (5) and NPC hit points (2, 4, 10) are confirmed and no longer reported as pending (`#quest-values-confirmed`). The golden logs of the two lost scenarios were regenerated; both still end `lost`.
 - `materials/quest_starter`: a setting pack with each role's six quick-start abilities (name, learning path, cost; the short description as a comment), its `NOTICE`, and a README on the mechanics written for Cadmium. Character creation offers a role's quick start in one click; new campaigns include every setting by default; `/attribution` shows the pack's notice.
 - `pnpm bundles` writes the bundles to publish on a fresh deployment to `bundles/`.
 - Tests: `lib/api/starter.test.ts` (10), and updated Quest cases.
@@ -438,7 +437,7 @@ Done:
 - The editor: Overview (title, description, required settings with ranges, players, start, endings), Flags (types, ranges, values, initial values, uses; deleting a flag in use is blocked), Plot (arcs, stages, initial stage; triggers as YAML), Locations (the map editor: Paint, Fill, Rectangle, Room, Place with id and hidden, Link with destination and Add return link, Select, resize; generated locations as YAML), NPCs (name, template, disposition, topics with brief and condition, secrets), Items & creatures (YAML), Edit as YAML for every section, the Problems panel jumping to its section, autosave 2 seconds after the last edit, a backup in IndexedDB, Undo and Redo, snapshots, Export, and Publish.
 - Tests: `lib/api/drafts.test.ts` (6, including a three-room, one-arc adventure published and played to its ending), `lib/materials/draft-io.test.ts` (2).
 
-- Items & creatures is a form: each entity's `system_stats` is edited with the system's `StatsEditor`, generated from its schema (structures included; module fields when the draft enables the module), with YAML for what the form does not cover. Drafts are validated in the browser 400 ms after each edit with the same compiler the server runs, on the main thread rather than in a Web Worker ([editor-validation-thread](SPEC_ISSUES.md#editor-validation-thread)); a save's result still wins ([editor-stats](SPEC_ISSUES.md#editor-stats)). Not yet checked in a browser.
+- Items & creatures is a form: each entity's `system_stats` is edited with the system's `StatsEditor`, generated from its schema (structures included; module fields when the draft enables the module), with YAML for what the form does not cover. Drafts are validated in the browser 400 ms after each edit with the same compiler the server runs, on the main thread rather than in a Web Worker (`editor-validation-thread`); a save's result still wins (`editor-stats`). Not yet checked in a browser.
 Open:
 
 - Edit as YAML is a text area: Monaco with `monaco-yaml` needs installing.
@@ -453,8 +452,8 @@ Done:
 - `components/editor/playtest.tsx`: the engine and rules system in the browser against the draft and its required settings: a party of up to the maximum players, a seed, Start from here with chosen stages and flags, an event palette (move, examine, attack, take, interact verbs, talk with topics, choices, search, wait, advance), a trace of the triggers each action fired and those that matched without firing, flag and stage changes, template narration, a state inspector with every entity including hidden ones and door states, the maps with every entity, and Preview 20 seeds for generated locations.
 - Tests: `lib/materials/plot.test.ts` (2), and an unreachable ending reported before publishing in `lib/api/drafts.test.ts`.
 
-- The playtest trace names the failing part of a matched trigger's `when`, with current values (`lib/engine/why.ts`, [playtest-failed-conditions](SPEC_ISSUES.md#playtest-failed-conditions)).
-- A click on the playtest map moves to what the cell holds: a visible entity or door, else a seen link, else the seen room ([playtest-click-cell](SPEC_ISSUES.md#playtest-click-cell)).
+- The playtest trace names the failing part of a matched trigger's `when`, with current values (`lib/engine/why.ts`, `playtest-failed-conditions`).
+- A click on the playtest map moves to what the cell holds: a visible entity or door, else a seen link, else the seen room (`playtest-click-cell`).
 Open:
 
 - The graph is SVG, not React Flow (`@xyflow/react` needs installing); effects reorder with buttons rather than by drag.
@@ -469,7 +468,7 @@ Done:
 - The sheet view shows the armor pool.
 - No engine change was needed: the modules, currency flags, containers, and item use from earlier sprints compose.
 
-- Cadmium's creation form offers an optional "For campaign" choice and shows the modules that campaign enables (the armor pool, the carrying limit) as information; `create_character` is unchanged ([creation-chosen-campaign](SPEC_ISSUES.md#creation-chosen-campaign)).
+- Cadmium's creation form offers an optional "For campaign" choice and shows the modules that campaign enables (the armor pool, the carrying limit) as information; `create_character` is unchanged (`creation-chosen-campaign`).
 Open:
 
 - A Cadmium adventure cannot require a Quest setting (adventure-packs.md: every required setting binds the adventure's system); campaigns add Quest settings themselves.
@@ -479,7 +478,7 @@ Open:
 Done:
 
 - `lib/export/sha256.ts`: SHA-256 in plain TypeScript, so the compiler hashes the same in the browser and on the server.
-- The compiler adds `hash` and `mime` to each file asset; `materials build` and `pnpm bundles` write the files beside the bundle (`SPEC_ISSUES.md#asset-delivery`).
+- The compiler adds `hash` and `mime` to each file asset; `materials build` and `pnpm bundles` write the files beside the bundle (spec/README.md, Asset files).
 - `supabase/migrations/20261023001000_assets.sql`: the Asset record by content hash, with bundle references, credits, removal, and holds. `publish_bundle` checks and stores each file; `GET /v1/assets/{hash}` serves it as an image with immutable caching and a content policy against scripts; an operator can remove an asset from the console, after which clients fall back.
 - Views carry art by kind for visible entities, NPCs, inventory, abilities, and terrain (`lib/engine/view.ts`); parser and narrator contexts carry none.
 - Maps draw terrain tiles under the light overlays and entity portraits or icons inside their footprint, keeping the aspect ratio, falling back to the plain shapes while an image loads or when it is missing; the map's text view lists each image's alt text. Inventory and ability lists show icons with a default mark otherwise. `/attribution` lists the credit of every shipped pack asset.
@@ -512,8 +511,8 @@ Open:
 - The scheduler and the purge report failures instead of discarding them; the status colours are cadmium red deep, yellow deep, and green.
 - `pnpm audit:ui` also audits the editor's arc graph and YAML view, and `--screens REGEX` audits a subset.
 - Character creation and the character page explain roles and abilities behind info icons, for Quest and Cadmium.
-- Campaigns: the hub lists archived campaigns with Unarchive and recently deleted ones with Restore; the editor offers Unarchive and Delete campaign (title confirmed). Migration `20261025000000_campaign_archive` adds `cadmium_unarchive_campaign` and `cadmium_deleted_campaigns` ([campaign-unarchive](SPEC_ISSUES.md#campaign-unarchive)). The Privacy Policy (both copies) states how archived and deleted campaigns are kept, and its effective date and `TERMS_VERSION` change, so users accept it again.
-- Characters and adventure drafts are archived, unarchived, deleted, and restored as campaigns are ([character-draft-archive](SPEC_ISSUES.md#character-draft-archive)): the Characters and My adventures pages list archived and recently deleted records, the character page offers Archive and Delete character (name confirmed), an archived character cannot join a game, and an archived draft cannot be published. `components/lifecycle.tsx` holds the forms all three share. Migration `20261025000100_character_draft_archive` adds the `archived` columns and the SQL functions. The Privacy Policy (both copies) covers archived and deleted characters and drafts.
+- Campaigns: the hub lists archived campaigns with Unarchive and recently deleted ones with Restore; the editor offers Unarchive and Delete campaign (title confirmed). Migration `20261025000000_campaign_archive` adds `cadmium_unarchive_campaign` and `cadmium_deleted_campaigns` (`campaign-unarchive`). The Privacy Policy (both copies) states how archived and deleted campaigns are kept, and its effective date and `TERMS_VERSION` change, so users accept it again.
+- Characters and adventure drafts are archived, unarchived, deleted, and restored as campaigns are (`character-draft-archive`): the Characters and My adventures pages list archived and recently deleted records, the character page offers Archive and Delete character (name confirmed), an archived character cannot join a game, and an archived draft cannot be published. `components/lifecycle.tsx` holds the forms all three share. Migration `20261025000100_character_draft_archive` adds the `archived` columns and the SQL functions. The Privacy Policy (both copies) covers archived and deleted characters and drafts.
 - Assignment 4: `AGENTS.md` at the root holds the data model and access rules, and `pnpm e2e` (`e2e/isolation.e2e.ts`) signs two Clerk test users in and checks that neither can list or open the other's drafts. It passes against the deployment's Supabase project with the bundles published.
 
 Open:
@@ -523,19 +522,19 @@ Open:
 
 Built from the author's campaign draft, supplied separately and not committed.
 
-- `cadmium-spec/spec/examples/lantern_coast`: the setting for Cadmium with `armor` and `stash`. It adds the floret currency, sea and shore terrain (with `window` and `low_wall`, which block movement but not sight), people and creatures, goods with `armor` and `slots`, chests with `capacity`, the `vault_door` lock-and-key pair, and the `registry_vault` room template.
-- `cadmium-spec/spec/examples/sunken_archive`: the adventure, 1.0.0. It has 13 locations (one generated), 33 NPCs, six arcs with 76 triggers, and the endings `escaped` (six variants), `archive_sealed` (two), and `lost`. `docs/exemplar/sunken_archive.md` maps the brief's coverage list to the pack, reports the schema and semantic passes, gives a walkthrough per ending, and lists departures from the draft.
+- `docs/spec/spec/examples/lantern_coast`: the setting for Cadmium with `armor` and `stash`. It adds the floret currency, sea and shore terrain (with `window` and `low_wall`, which block movement but not sight), people and creatures, goods with `armor` and `slots`, chests with `capacity`, the `vault_door` lock-and-key pair, and the `registry_vault` room template.
+- `docs/spec/spec/examples/sunken_archive`: the adventure, 1.0.0. It has 13 locations (one generated), 33 NPCs, six arcs with 76 triggers, and the endings `escaped` (six variants), `archive_sealed` (two), and `lost`. `docs/exemplar/sunken_archive.md` maps the brief's coverage list to the pack, reports the schema and semantic passes, gives a walkthrough per ending, and lists departures from the draft.
 - Scripted runs reach every ending: the golden scenarios `exemplar_escaped` (contract path), `exemplar_archive_sealed` (rumor path), and `exemplar_lost`. `lib/harness/exemplar.test.ts` covers room-wide rewards, purchases and affordability, stash capacity, the strongbox lock, the fog bank's lit-lamp lock, `item_given`, `set_hostile`, and NPCs moved between locations, and checks the coverage list against the pack files.
 - `tools/sim` (`pnpm sim`): seeded, replayable Monte Carlo fights of the exemplar's twelve encounters through the engine, sweeping party size, loadout, `armor.max`, and the octopus's hit points; it writes `tools/sim/REPORT.md`. One character finishes about one time in five to two in five, because of the octopus and the gallery ambush; two or more win every required fight. Tests: `tools/sim/sim.test.ts` (4).
-- `pnpm bundles` publishes `lantern_coast` and the exemplar in place of the guide adventure. The campaign material picker lists an adventure's required settings first ([generation-order](SPEC_ISSUES.md#generation-order)).
+- `pnpm bundles` publishes `lantern_coast` and the exemplar in place of the guide adventure. The campaign material picker lists an adventure's required settings first (`generation-order`).
 - Fixed: the compiler read `to` in a trigger's `on` as a room for every event type. On item events it is the recipient's entity id.
 
-- Path codas for `escaped` and `archive_sealed` keyed on `path`, listed before the endings ([triggers-after-ending](SPEC_ISSUES.md#triggers-after-ending)); a ration given to the keeper (topic `ration`, flag `keeper_fed`) opens her `ring` and `plan` topics.
+- Path codas for `escaped` and `archive_sealed` keyed on `path`, listed before the endings (adventure-packs.md, Evaluation order); a ration given to the keeper (topic `ration`, flag `keeper_fed`) opens her `ring` and `plan` topics.
 - The draft's lore of section 14.10 appears as background in topic text: six new topics and seven extended briefs.
 Open:
 
 - Agent-driven runs (`pnpm agent:run`, which reads `GROQ_API_KEY` from `.env.local`): `lost` reaches its ending in 8 turns and replays. `escaped` did not converge: after 51 turns in about 4.5 hours the player model was acting on later steps of its route guide (the holds, the hatch) while still on the quay, the parser answered most of them with `improvise`, and Groq's limits had grown to waits of up to 22 minutes. The run was stopped; `archive_sealed` did not start. The route guide needs to give the player only the next step, or the run needs a paid Groq tier. A Groq player model writes free text from a description of the view and a route guide per ending (`lib/agent/goals.ts`); the Groq parser turns it into a call with the Coordinator's retry and fallback; each run's turns and replayable log go to `agent-runs/`. `lib/agent/run.test.ts` checks the loop with a scripted parser.
-- The balance values in `tools/sim/README.md` wait for the designers' target ranges; the packs keep the draft's values. The proposed Cadmium values are in [armor-tuning](SPEC_ISSUES.md#armor-tuning).
+- The balance values in `tools/sim/README.md` wait for the designers' target ranges; the packs keep the draft's values. The proposed Cadmium values are in `armor-tuning`.
 
 Done meanwhile: the play page shows `action_menu` suggestions as chips.
 

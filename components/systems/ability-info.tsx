@@ -3,8 +3,7 @@
 // creation forms and the sheet view, behind info icons. Text derives from the ability's data and the system's numbers;
 // a description shows only where the pack ships one.
 import type { AbilityOption } from "@/lib/api/characters";
-
-const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+import { capitalize, plural } from "@/lib/text";
 
 function target(a: AbilityOption): string {
   if (a.target === "self") return "On yourself";
@@ -14,12 +13,12 @@ function target(a: AbilityOption): string {
 }
 
 /** Cost, roll, target, and learning path, as short facts. */
-export function abilityFacts(a: AbilityOption): string[] {
-  return [`${a.cost} AP`, ...(a.roll ? ["Rolls the d20"] : []), target(a), ...(a.path ? [`${sentence(a.path)} path`] : [])];
+function abilityFacts(a: AbilityOption): string[] {
+  return [`${a.cost} AP`, ...(a.roll ? ["Rolls the d20"] : []), target(a), ...(a.path ? [`${capitalize(a.path)} path`] : [])];
 }
 
 /** What the ability does: its effects, or that the narrator decides. */
-export function abilityOutcome(a: AbilityOption): string {
+function abilityOutcome(a: AbilityOption): string {
   if (a.effects.length === 0) return "No fixed effect: the narrator describes what happens.";
   return `${a.effects.join(" ")}${a.roll ? " Only when the roll succeeds." : ""}`;
 }
@@ -39,8 +38,8 @@ export function AbilityDetails({ a }: { a: AbilityOption }) {
 export function roleSummary(role: string, abilities: AbilityOption[]): string {
   const own = abilities.filter((a) => a.roles.includes(role));
   if (own.length === 0) return "No installed abilities name this role.";
-  const paths = [...new Set(own.map((a) => a.path).filter((p): p is string => !!p))].map(sentence);
-  return `${paths.length > 0 ? `Paths: ${paths.join(", ")}. ` : ""}${own.length} suggested abilit${own.length === 1 ? "y" : "ies"}.`;
+  const paths = [...new Set(own.map((a) => a.path).filter((p): p is string => !!p))].map(capitalize);
+  return `${paths.length > 0 ? `Paths: ${paths.join(", ")}. ` : ""}${plural(own.length, "suggested ability", "suggested abilities")}.`;
 }
 
 /** The rules a new player needs before choosing, with the system's own numbers. */

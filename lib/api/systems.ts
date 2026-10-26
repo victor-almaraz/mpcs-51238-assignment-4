@@ -21,10 +21,6 @@ const PRESENTATION: Readonly<Record<string, { title: string; derived_from: strin
   },
 };
 
-// SPEC_ISSUES.md#quest-values-confirmed: the Quest Creators Resource states these values ("earn 5 AP
-// at the conclusion of each session"; commoner 2, minion 4, boss 10 HP).
-const CONFIRMED: ReadonlySet<string> = new Set(["ap_award_per_session", "npc_templates"]);
-
 export function systemOrThrow(id: unknown): RulesSystem {
   const system = typeof id === "string" ? SYSTEMS[id] : undefined;
   if (!system) throw new ApiError("invalid_request", `unknown rules system '${String(id)}'`);
@@ -35,7 +31,7 @@ export function systemView(id: string) {
   const s = SYSTEMS[id]!;
   const p = PRESENTATION[id]!;
   // Rule values not yet checked against the rulebook (systems/README.md, "Data and confirmation").
-  const confirm = ((SYSTEM_DATA[id]?.data as { confirm?: string[] } | undefined)?.confirm ?? []).filter((v) => !CONFIRMED.has(v));
+  const confirm = ((SYSTEM_DATA[id]?.data as { confirm?: string[] } | undefined)?.confirm ?? []);
   return {
     id: s.ID,
     version: s.VERSION,

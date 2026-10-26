@@ -143,8 +143,8 @@ export function startInstance(input: StartInput): Result {
   const rng = new Rng(seed, 0);
   const ctx = new Ctx(state, c, rng, applyEffects);
   try {
-    // SPEC_ISSUES.md#location-order: locations, then their contents, in ascending location id, the
-    // order of the files in `locations/`. Bundle key order is not kept by storage (jsonb sorts keys).
+    // engine.md, "Instance start": locations, then their contents, in ascending location id. Bundle key
+    // order is not kept by storage (jsonb sorts keys).
     const placements: [string, readonly Placement[]][] = [];
     for (const id of Object.keys(c.adventure.locations).sort()) {
       const def = c.adventure.locations[id]!;

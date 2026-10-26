@@ -1,11 +1,9 @@
 // Characters hub (docs/design/README.md, Page layouts: Hub): every character the user owns, grouped
 // by whether it can join a game, with New character; then archived characters, with Unarchive, and
-// recently deleted ones, with Restore (SPEC_ISSUES.md#character-draft-archive).
-import { Archive, Plus, Trash2, Users } from "lucide-react";
-import { RestoreForm, UnarchiveForm } from "@/components/character-lifecycle";
+// recently deleted ones, with Restore (app-flow.md, Characters, Campaigns, and My adventures).
+import { Plus, Users } from "lucide-react";
 import { CharacterCard, gamesOf, type CharacterItem } from "@/components/dashboard/hub";
-import { formatWhen } from "@/components/when";
-import { List, ListRow } from "@/components/ui/list";
+import { ArchivedSection, DeletedSection } from "@/components/lifecycle";
 import { ButtonLink } from "@/components/ui/button";
 import { CardGrid } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -30,8 +28,9 @@ export default async function Characters() {
     listCharacters(store, user.id, { archived: false, limit: 100 }),
     listCharacters(store, user.id, { archived: true, limit: 100 }),
     listDeletedCharacters(store, user.id),
-    listCampaigns(store, user.id, { archived: false, limit: 100 }),
+    listCampaigns(store, user.id, { limit: 100 }),
   ]);
+  // Every campaign's games, archived campaigns' included, so a character in any game is shown in it by name.
   const where = new Map((await gamesOf(store, user.id, campaigns.items)).map((i) => [i.id, i.name]));
   const newCharacter = (
     <ButtonLink href="/characters/new" variant="primary" icon={<Plus {...ICON_DENSE} />}>
@@ -61,39 +60,8 @@ export default async function Characters() {
           );
         })
       )}
-      <Section id="archived" title={`Archived (${archived.items.length})`} description="Archived characters keep their sheets and portraits, and cannot join games.">
-        {archived.items.length === 0 ? (
-          <EmptyState icon={<Archive {...ICON} />}>No archived characters. Archive a character from its page; you can unarchive it here.</EmptyState>
-        ) : (
-          <List>
-            {archived.items.map((c) => (
-              <ListRow
-                key={c.id}
-                icon={<Archive {...ICON_DENSE} />}
-                title={c.name}
-                href={`/characters/${c.id}`}
-                meta={`${systemView(c.system).title} · ${c.summary.health}`}
-                actions={<UnarchiveForm characterId={c.id} name={c.name} />}
-              />
-            ))}
-          </List>
-        )}
-      </Section>
-      {deleted.length > 0 && (
-        <Section id="deleted" title={`Recently deleted (${deleted.length})`} description="Deleted characters are hidden. You can restore one for 30 days; within 90 days it is erased with its portrait.">
-          <List>
-            {deleted.map((c) => (
-              <ListRow
-                key={c.id}
-                icon={<Trash2 {...ICON_DENSE} />}
-                title={c.name}
-                meta={`Deleted ${formatWhen(c.deleted_at, user.timezone)} · restore until ${formatWhen(c.restorable_until, user.timezone)}`}
-                actions={<RestoreForm characterId={c.id} name={c.name} />}
-              />
-            ))}
-          </List>
-        </Section>
-      )}
+      <ArchivedSection kind="character" items={archived.items.map((c) => ({ id: c.id, title: c.name, href: `/characters/${c.id}`, meta: `${systemView(c.system).title} · ${c.summary.health}` }))} />
+      <DeletedSection kind="character" items={deleted.map((c) => ({ ...c, title: c.name }))} timezone={user.timezone} />
     </Page>
   );
 }

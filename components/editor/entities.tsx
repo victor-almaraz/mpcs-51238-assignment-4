@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Select, TextInput } from "@/components/ui/field";
 import { statsKindOf } from "@/lib/materials/stats-form";
-import { denseArea, denseSelect, NewId, Panel, RemoveButton } from "./controls";
+import { DeleteButton, denseArea, denseSelect, NewId, Panel } from "./controls";
 import { type Doc } from "./doc";
 import { EditorField, fieldId, InlineProblems, problemProps, useProblems } from "./problems";
 
@@ -110,7 +110,7 @@ export function EntitiesSection({ doc, edit }: { doc: Doc; edit: (f: (d: Doc) =>
                 </h3>
                 <p className="font-mono text-caption text-muted">{key}</p>
               </div>
-              <RemoveButton label={`Delete ${key}`} onClick={() => edit((d) => void delete d.entities[key])} />
+              <DeleteButton dense label={`Delete ${key}`} name={t.label || key} doc={doc} target={{ kind: "entity", id: key }} onDelete={() => edit((d) => void delete d.entities[key])} />
             </div>
             <InlineProblems problems={here} />
             <div className="grid gap-4 @xl:grid-cols-[12rem_minmax(0,1fr)]">

@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Context for agents working in this repository: the Cadmium web application, a multiplayer text dungeon crawler. It implements the specification in [`cadmium-spec/`](cadmium-spec/); read [`cadmium-spec/AGENTS.md`](cadmium-spec/AGENTS.md) for the rules that govern implementing it. The work plan and handoff notes are in [SPRINTS.md](SPRINTS.md); gaps in the specification are in [SPEC_ISSUES.md](SPEC_ISSUES.md).
+Context for agents working in this repository: the Cadmium web application, a multiplayer text dungeon crawler. It implements the specification in [`docs/spec/`](docs/spec/); read [`docs/spec/AGENTS.md`](docs/spec/AGENTS.md) for the rules that govern implementing it. The work plan and handoff notes are in [SPRINTS.md](SPRINTS.md); gaps in the specification still open are in [SPEC_ISSUES.md](SPEC_ISSUES.md).
 
 ## Working rules
 
@@ -8,7 +8,7 @@ Context for agents working in this repository: the Cadmium web application, a mu
 - Work on a branch. Run `pnpm check` (generated files, types, lint, tests, build) before every commit; there is no CI service, and Vercel runs only the build.
 - Node.js runs through pnpm (`devEngines.runtime` in `package.json`): use `pnpm <script>` or `pnpm exec`, never a global `node`.
 - Keys live in `.env.local`, which agents must not read or write. `.claude/settings.local.json` denies `Read` and `Edit` of `./.env` and `./.env.*`. Variable names are in [README.md](README.md#configuration).
-- `cadmium-spec/` is the specification. A change there is a specification change and follows its own rules; see [README.md](README.md#specification-version).
+- `docs/spec/` is the specification, a working draft that changes with the product. When it is silent, contradictory, or wrong for the product, decide, and update it (or remove the passage) in the same change as the code; don't leave code waiting on it. See [README.md](README.md#specification-version).
 - New migrations go in `supabase/migrations/`; the project owner applies them, and `/api/health` reports each one.
 
 ## Data model
@@ -36,7 +36,7 @@ Identity comes from Clerk. A Clerk user id is the primary key of `users`, and ev
 | `assets` | Art and portraits by content hash | `uploader_id` |
 | `operator_log`, `rate_windows`, `scheduler_marks`, `cadmium_migrations` | Operator actions, rate limits, scheduler bookkeeping, applied migrations | The service |
 
-The full schema is in `supabase/migrations/`; [`cadmium-spec/docs/data-model.md`](cadmium-spec/docs/data-model.md) specifies every record.
+The full schema is in `supabase/migrations/`; [`docs/spec/docs/data-model.md`](docs/spec/docs/data-model.md) specifies every record.
 
 ### Access
 
@@ -58,4 +58,4 @@ The parser and narrator call Groq (`lib/models/groq.ts`) from the server only. T
 |---|---|
 | `pnpm test` | Vitest: unit tests, test vectors, compiler fixtures, golden replays, specification validation, the API against an in-memory Postgres |
 | `pnpm e2e` | Playwright against `next dev` with real Clerk sign-in, using `.env.local`. It needs the bundles published at `/admin` (a draft requires a setting), writes to the Supabase project those keys name, and deletes its drafts afterwards |
-| `pnpm audit:ui` | The design and accessibility audit of the demo screens |
+| `pnpm audit:ui` | The design, spacing, and accessibility audit of the demo screens; exits 1 on any finding |

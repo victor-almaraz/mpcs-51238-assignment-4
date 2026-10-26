@@ -28,6 +28,7 @@ import type { Entropy } from "./entropy";
 import { addCharacter, createInstance, getInstance, listInstances, removeCharacter, type Deps } from "./instances";
 import { acceptInvitation, declineInvitation, invite, listInvitations, previewInvitation, revokeInvitation } from "./invitations";
 import { listMaterials } from "./materials";
+import { getMe } from "./users";
 import { code, entropy, richSetting, SIX, SUNKEN, variant, world } from "./testing/fixtures";
 
 let db: Awaited<ReturnType<typeof testDb>>;
@@ -99,8 +100,31 @@ describe("campaigns", () => {
   });
 });
 
-// SPEC_ISSUES.md#campaign-unarchive
 describe("archiving and deleting", () => {
+  it("stores titles trimmed, and deletes when the typed title matches, spaces aside", async () => {
+    const c = await campaign({ title: "  Archive  " });
+    expect(c.title).toBe("Archive");
+    await expect(deleteCampaign(deps, "user_a", { campaign_id: c.id, confirm: "Archiv" })).rejects.toThrow("type the campaign's title exactly as shown");
+    await deleteCampaign(deps, "user_a", { campaign_id: c.id, confirm: " Archive " });
+    expect(await code(getCampaign(store, "user_a", c.id))).toBe("not_found");
+  });
+
+  it("lists in get_me the campaigns a user belongs to that are not archived, and those they author", async () => {
+    const mine = await campaign();
+    const theirs = await createCampaign(store, "user_b", { title: "Theirs", system: "quest", system_versions: "^1.0", materials: SUNKEN }, e);
+    await joinByLink(store, "user_a", (await rotateInviteLink(store, "user_b", theirs.id, e)).invite_link_code);
+    const old = await campaign({ title: "Old" });
+    await archiveCampaign(store, "user_a", old.id);
+    const gone = await campaign({ title: "Gone" });
+    await deleteCampaign(deps, "user_a", { campaign_id: gone.id, confirm: "Gone" });
+    const rook = await character("user_a");
+    const me = await getMe(store, "user_a");
+    expect(me.active_campaign_ids.sort()).toEqual([mine.id, theirs.id].sort());
+    expect(me.authored_campaign_ids.sort()).toEqual([mine.id, old.id].sort());
+    expect(me.character_ids).toEqual([rook.id]);
+    expect(await getMe(store, "user_c")).toMatchObject({ character_ids: [], active_campaign_ids: [], authored_campaign_ids: [] });
+  });
+
   it("unarchives a campaign for its author only, and lists it as archived until then", async () => {
     const c = await campaign();
     await joinByLink(store, "user_b", (await rotateInviteLink(store, "user_a", c.id, e)).invite_link_code);
@@ -147,7 +171,7 @@ describe("joining", () => {
     expect(await previewInvitation(store, secret.toLowerCase())).toMatchObject({ campaign_title: "The Sunken Archive", inviter_display_name: "A", message: "Join us Tuesdays.", status: "pending" });
     expect((await acceptInvitation(store, "user_b", secret)).members.map((m) => m.user_id)).toEqual(["user_a", "user_b"]);
     expect(await code(acceptInvitation(store, "user_c", secret))).toBe("conflict");
-    expect((await listInvitations(store, "user_b", { campaign_id: c.id }))[0]).toMatchObject({ status: "accepted", note: "for Rook" });
+    expect((await listInvitations(store, "user_a", { campaign_id: c.id }))[0]).toMatchObject({ status: "accepted", note: "for Rook" });
     expect(await code(previewInvitation(store, "NO-SUCH-CODE"))).toBe("not_found");
   });
 
@@ -166,13 +190,15 @@ describe("joining", () => {
     expect(await listInvitations(store, "user_a", { campaign_id: c.id, status: "expired" })).toHaveLength(1);
   });
 
-  it("lets only the inviter or the author revoke", async () => {
+  it("lets only the author invite, list, and revoke invitations", async () => {
     const c = await campaign();
     await acceptInvitation(store, "user_b", (await invite(store, "user_a", { campaign_id: c.id }, e)).code);
-    await acceptInvitation(store, "user_c", (await invite(store, "user_a", { campaign_id: c.id }, e)).code);
-    const byB = await invite(store, "user_b", { campaign_id: c.id }, e);
-    expect(await code(revokeInvitation(store, "user_c", byB.invitation.id))).toBe("forbidden");
-    expect(await code(revokeInvitation(store, "user_a", byB.invitation.id))).toBe("ok");
+    const pending = await invite(store, "user_a", { campaign_id: c.id, note: "for C" }, e);
+    expect(await code(invite(store, "user_b", { campaign_id: c.id }, e))).toBe("forbidden");
+    expect(await code(listInvitations(store, "user_b", { campaign_id: c.id }))).toBe("forbidden");
+    expect(await code(revokeInvitation(store, "user_b", pending.invitation.id))).toBe("forbidden");
+    expect(await code(invite(store, "user_c", { campaign_id: c.id }, e))).toBe("not_found");
+    expect(await code(revokeInvitation(store, "user_a", pending.invitation.id))).toBe("ok");
   });
 
   it("admits any number of users by invite link until it is rotated or disabled", async () => {

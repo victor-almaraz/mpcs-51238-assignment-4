@@ -1,0 +1,34 @@
+# The Invoker's abilities on the Lantern Coast: oaths and prayers kept by beacon light.
+
+beacon_oath:
+  label: Beacon Oath
+  target: self
+  system_stats: { roles: [invoker], path: invocation, cost: { ap: 0 } }
+  effects: []
+vigil_prayer:
+  label: Vigil Prayer
+  target: self
+  system_stats: { roles: [invoker], path: invocation, cost: { ap: 2 } }
+  effects: []
+lamplit_gaze:
+  label: Lamplit Gaze
+  target: entity
+  system_stats: { roles: [invoker], path: inquiries, cost: { ap: 1 } }
+  effects: []
+storm_bell:
+  label: Storm Bell
+  target: entity
+  system_stats: { roles: [invoker], path: wrath, cost: { ap: 2 }, roll: true }
+  effects:
+    - damage: { target: target, amount: 2, type: physical }
+warming_word:
+  label: Warming Word
+  target: entity
+  system_stats: { roles: [invoker], path: wards, cost: { ap: 1 } }
+  effects:
+    - remove_condition: { target: target, condition: chilled }
+salt_ward:
+  label: Salt Ward
+  target: self
+  system_stats: { roles: [invoker], path: wards, cost: { ap: 1 } }
+  effects: []

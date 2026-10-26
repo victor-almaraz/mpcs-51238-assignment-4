@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/systems/cadmium/check.schema.json",
+  "title": "Cadmium check specification",
+  "description": "Quest rolls an unmodified d20 for every check. The specification carries tags only. A property whose description begins with Module <id>: is accepted only while module <id> is enabled.",
+  "type": "object",
+  "properties": {
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,35 @@
+# The Doctor's abilities on the Lantern Coast: salt cures, marsh fevers, and the drowned.
+
+salt_poultice:
+  label: Salt Poultice
+  target: entity
+  system_stats: { roles: [doctor], path: healing, cost: { ap: 1 } }
+  effects:
+    - heal: { target: target, amount: 2 }
+fever_draught:
+  label: Fever Draught
+  target: entity
+  system_stats: { roles: [doctor], path: healing, cost: { ap: 1 } }
+  effects:
+    - remove_condition: { target: target, condition: fevered }
+bitter_lancet:
+  label: Bitter Lancet
+  target: entity
+  system_stats: { roles: [doctor], path: harm, cost: { ap: 1 }, roll: true }
+  effects:
+    - apply_condition: { target: target, condition: fevered }
+drowned_sense:
+  label: Drowned Sense
+  target: self
+  system_stats: { roles: [doctor], path: necromancy, cost: { ap: 0 } }
+  effects: []
+ease_the_senses:
+  label: Ease the Senses
+  target: entity
+  system_stats: { roles: [doctor], path: perception, cost: { ap: 1 } }
+  effects: []
+read_the_drowned:
+  label: Read the Drowned
+  target: entity
+  system_stats: { roles: [doctor], path: examination, cost: { ap: 1 } }
+  effects: []

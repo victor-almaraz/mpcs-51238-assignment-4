@@ -14,7 +14,7 @@ import { createCharacter } from "./characters";
 import type { Entropy } from "./entropy";
 import { handle } from "./http";
 import { addCharacter, createInstance, endInstance, pauseInstance, startInstance, submitAction, type Deps } from "./instances";
-import { calendarFeed, cancelSession, disableCalendarFeed, exportCalendar, getCalendarFeed, listOccurrences, moveOccurrence, rotateCalendarFeed, rsvp, scheduleSession, updateSession } from "./schedules";
+import { calendarFeed, cancelSession, disableCalendarFeed, exportCalendar, getCalendarFeed, listOccurrences, listSessions, moveOccurrence, rotateCalendarFeed, rsvp, scheduleSession, updateSession } from "./schedules";
 import { code, entropy, richSetting, SIX, SUNKEN, world } from "./testing/fixtures";
 
 let db: Awaited<ReturnType<typeof testDb>>;
@@ -84,6 +84,22 @@ describe("scheduling", () => {
     await cancelSession(store, "user_a", { session_id: s.id }, new Date("2026-11-05T00:00:00Z"));
     const list = await listOccurrences(store, "user_a", { instance_id: instance.id, from: "2026-10-19T00:00:00Z", to: "2026-11-20T00:00:00Z" });
     expect(list.filter((o) => o.session_id === s.id).map((o) => o.status)).toEqual(["scheduled", "moved", "cancelled", "cancelled", "cancelled"]);
+  });
+
+  it("lists the series the author edits, and applies an edit of its form's fields to the series", async () => {
+    const { instance } = await table();
+    const s = await weekly(instance.id);
+    const once = await weekly(instance.id, { title: "One-off", recurrence: null, starts_at: "2026-10-21T18:00:00Z" });
+    expect((await listSessions(store, "user_b", instance.id)).map((x) => x.id)).toEqual([s.id, once.id]);
+    // The schedule page's edit form sends every field it shows.
+    const edited = await updateSession(store, "user_a", { session_id: s.id, title: "Fortnightly", duration_minutes: 120, recurrence: { freq: "weekly", interval: 2, count: 3 }, auto_resume: false, auto_pause: true, notes: "Bring dice." });
+    expect(edited).toMatchObject({ title: "Fortnightly", duration_minutes: 120, recurrence: { interval: 2, count: 3 }, auto_resume: false, auto_pause: true, notes: "Bring dice." });
+    expect(Date.parse(edited.starts_at)).toBe(Date.parse(s.starts_at));
+    const list = await listOccurrences(store, "user_a", { instance_id: instance.id, from: "2026-10-19T00:00:00Z", to: "2026-12-01T00:00:00Z" });
+    expect(list.filter((o) => o.session_id === s.id).map((o) => o.starts_at)).toEqual(["2026-10-20T18:00:00Z", "2026-11-03T19:00:00Z", "2026-11-17T19:00:00Z"]);
+    expect(await code(updateSession(store, "user_b", { session_id: s.id, title: "Mine" }))).toBe("forbidden");
+    await cancelSession(store, "user_a", { session_id: once.id });
+    expect((await listSessions(store, "user_a", instance.id)).map((x) => x.id)).toEqual([s.id]);
   });
 
   it("exports iCalendar and serves a feed with alarms at the member's lead times", async () => {

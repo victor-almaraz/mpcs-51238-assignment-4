@@ -3,7 +3,8 @@
 // doors, links, visible entities, and the party on a canvas; clicking picks an entity, door, link, or
 // room, and the pick is outlined. Zoom and centring have buttons, and the list view names every target
 // (what is in sight and the ways on, with distance and direction), so the map needs no pointer (WCAG
-// 2.5.7). The map fits its pane the first time the pane is shown.
+// 2.5.7). The map fits its pane, again whenever the pane changes size, until the player zooms; when the
+// fitted map leaves room under it, the lists fill that room.
 import { useEffect, useMemo, useRef, useState } from "react";
 import { List, LocateFixed, ZoomIn, ZoomOut } from "lucide-react";
 import type { View } from "@/lib/engine";
@@ -22,6 +23,8 @@ const MAX_ZOOM = 64;
 const STEP = 4;
 /** The padding around the canvas in its scroller, in pixels. */
 const INSET = 16;
+/** The height in pixels that must be free under the fitted map before the lists show there. */
+const ROOM_FOR_LISTS = 160;
 
 function cssColor(token: Token): string {
   return getComputedStyle(document.documentElement).getPropertyValue(`--color-${token}`).trim() || "#888";
@@ -85,9 +88,12 @@ export function MapPanel({ view, onPick, portraits = {}, selected = null, headin
   const scroller = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(16);
   const [list, setList] = useState(false);
-  // Centre on the character after the next draw: at first, after a zoom, and after the first fit.
+  // Centre on the character after the next draw: at first, after a zoom, and after each fit.
   const centreNext = useRef(true);
-  const fitted = useRef(false);
+  // Whether the player has zoomed, which stops the map refitting to its pane.
+  const zoomed = useRef(false);
+  const region = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState({ w: 0, h: 0 });
   const p = useMemo(() => plan(view, zoom, new Set(view.visible.filter((e) => e.hostile).map((e) => e.id)), portraits), [view, zoom, portraits]);
   const [loaded, setLoaded] = useState(0);
   useEffect(() => {
@@ -121,24 +127,28 @@ export function MapPanel({ view, onPick, portraits = {}, selected = null, headin
     }
   }, [p, loaded, list, characterId]);
 
-  // The first time the pane has a size (it may start hidden on small screens), fit the map to it.
+  // Whenever the pane has a new size (it may start hidden on small screens), fit the map to it.
   const cols = view.map.rows[0]?.length ?? 0;
   const rows = view.map.rows.length;
   useEffect(() => {
-    const el = scroller.current;
-    if (!el || fitted.current || cols === 0 || rows === 0) return;
+    const el = region.current;
+    if (!el || cols === 0 || rows === 0) return;
     const ro = new ResizeObserver(() => {
-      if (fitted.current || el.clientWidth === 0 || el.clientHeight === 0) return;
-      fitted.current = true;
+      if (el.clientWidth === 0 || el.clientHeight === 0) return;
+      setSize({ w: el.clientWidth, h: el.clientHeight });
+      if (zoomed.current) return;
       const fit = Math.floor(Math.min((el.clientWidth - 2 * INSET) / cols, (el.clientHeight - 2 * INSET) / rows));
       centreNext.current = true;
       setZoom(Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, fit)));
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [cols, rows, list]);
+  }, [cols, rows]);
+  // A map wider than the pane's shape leaves room under it, which the lists take.
+  const listsBelow = !list && size.h - (p.height + 2 * INSET) >= ROOM_FOR_LISTS;
 
   const zoomBy = (d: number) => {
+    zoomed.current = true;
     centreNext.current = true;
     setZoom((z) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z + d)));
   };
@@ -182,33 +192,43 @@ export function MapPanel({ view, onPick, portraits = {}, selected = null, headin
           />
         </div>
       </div>
-      {list ? (
-        <div className="relative flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-2">
-          <TargetList title="In sight" entries={view.visible} selected={selected} onPick={onPick} />
-          <TargetList title="Ways on" entries={view.destinations} selected={selected} onPick={onPick} />
-        </div>
-      ) : (
-        <div ref={scroller} className="relative min-h-0 flex-1 overflow-auto bg-desk">
-          <div className="flex min-h-full w-max min-w-full items-center justify-center" style={{ padding: INSET }}>
-            <div className="relative shrink-0 shadow-[0_0_0_1px_var(--color-rule)]">
-              <canvas
-                ref={canvas}
-                role="img"
-                aria-label={`Map of ${place}. Use List view to pick a target with the keyboard.`}
-                className="block cursor-pointer"
-                onClick={(e) => {
-                  const r = e.currentTarget.getBoundingClientRect();
-                  const hit = hitAt(p, e.clientX - r.left, e.clientY - r.top);
-                  if (hit) onPick(hit.id, hit.label);
-                }}
-              />
-              {outlines.map((h, i) => (
-                <span key={i} aria-hidden="true" className="pointer-events-none absolute rounded-[2px] outline-2 outline-offset-1 outline-accent" style={{ left: h.x, top: h.y, width: h.w, height: h.h }} />
-              ))}
-            </div>
+      <div ref={region} className="relative flex min-h-0 flex-1 flex-col">
+        {list ? (
+          <div className="relative flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-2">
+            <TargetList title="In sight" entries={view.visible} selected={selected} onPick={onPick} />
+            <TargetList title="Ways on" entries={view.destinations} selected={selected} onPick={onPick} />
           </div>
-        </div>
-      )}
+        ) : (
+          <>
+            <div ref={scroller} className={cx("relative min-h-0 overflow-auto bg-desk", listsBelow ? "shrink-0" : "flex-1")}>
+              <div className="flex min-h-full w-max min-w-full items-center justify-center" style={{ padding: INSET }}>
+                <div className="relative shrink-0 shadow-[0_0_0_1px_var(--color-rule)]">
+                  <canvas
+                    ref={canvas}
+                    role="img"
+                    aria-label={`Map of ${place}. Use List view to pick a target with the keyboard.`}
+                    className="block cursor-pointer"
+                    onClick={(e) => {
+                      const r = e.currentTarget.getBoundingClientRect();
+                      const hit = hitAt(p, e.clientX - r.left, e.clientY - r.top);
+                      if (hit) onPick(hit.id, hit.label);
+                    }}
+                  />
+                  {outlines.map((h, i) => (
+                    <span key={i} aria-hidden="true" className="pointer-events-none absolute rounded-[2px] outline-2 outline-offset-1 outline-accent" style={{ left: h.x, top: h.y, width: h.w, height: h.h }} />
+                  ))}
+                </div>
+              </div>
+            </div>
+            {listsBelow && (
+              <div className="relative flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto border-t border-rule p-2">
+                <TargetList title="In sight" entries={view.visible} selected={selected} onPick={onPick} />
+                <TargetList title="Ways on" entries={view.destinations} selected={selected} onPick={onPick} />
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,17 +1,20 @@
 "use client";
 // Quest's creation form and sheet view (app-flow.md, Character creation and editor; docs/design/README.md,
-// Character creation): titled steps that can be revisited (System, Role, Abilities counted against six,
-// Name and description) beside a summary card with a Change link per choice and the Create button.
+// Character creation): titled steps that can be revisited (System, Campaign, Role, Abilities counted
+// against six, Name and description) beside a summary card with a Change link per choice and the Create
+// button. A chosen campaign limits the abilities to its settings (app-flow.md, Character creation and editor).
+// With `rebuild`, the same form changes an unplayed character's choices (api.md, rebuild_character).
 import { Check } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useFormAction } from "@/components/form-action";
 import type { AbilityOption } from "@/lib/api/characters";
-import { quickStartFor, type CampaignChoice } from "@/lib/systems/creation";
-import { createCharacterAction } from "@/lib/server/actions";
+import { abilitiesFor, chosenCampaign, quickStartFor, type CampaignChoice } from "@/lib/systems/creation";
+import { createCharacterAction, rebuildCharacterAction } from "@/lib/server/actions";
 import type { FormState } from "@/lib/server/forms";
+import { capitalize, plural } from "@/lib/text";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button, ButtonLink } from "@/components/ui/button";
-import { Choice, Field, TextInput, described } from "@/components/ui/field";
+import { Choice, Field, Select, TextInput, described } from "@/components/ui/field";
 import { ICON_DENSE } from "@/components/ui/icon-button";
 import { DescriptionList } from "@/components/ui/list";
 import { Notice } from "@/components/ui/notice";
@@ -24,7 +27,7 @@ export interface CreationProps {
   roles: string[];
   abilities: AbilityOption[];
   count: number;
-  /** The caller's campaigns of this system, for a system with modules; Quest has none and ignores them. */
+  /** The caller's campaigns whose games take this system's characters. */
   campaigns?: CampaignChoice[];
   /** The campaign chosen on arrival, such as from a campaign's page. */
   campaign?: string;
@@ -36,19 +39,19 @@ export interface CreationProps {
   /** The system's starting hit points and AP, for the new-player notes. */
   hp?: number;
   ap?: number;
+  /** An existing, unplayed character whose choices the form changes instead of creating one. */
+  rebuild?: { id: string; name: string; role: string; abilities: string[]; manner?: string; look?: string };
 }
 
 /** A choice in the summary card, with the step that changes it. */
-export interface SummaryRow {
+interface SummaryRow {
   label: string;
   value: ReactNode;
   href: string;
 }
 
-const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
 /** A titled, numbered step of the creation page; Change links in the summary lead to its id. */
-export function CreationStep({ n, id, title, done, status, children }: { n: number; id: string; title: string; done: boolean; status?: ReactNode; children: ReactNode }) {
+function CreationStep({ n, id, title, done, status, children }: { n: number; id: string; title: string; done: boolean; status?: ReactNode; children: ReactNode }) {
   return (
     <section id={id} aria-labelledby={`${id}-title`} className="rounded-card border border-rule bg-page p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
@@ -69,15 +72,27 @@ export function CreationStep({ n, id, title, done, status, children }: { n: numb
 }
 
 /**
- * Quest's form. `children` are a derived system's extra steps, shown after Name and description, and
- * `summary` their rows in the summary card; they carry no `name`, so `create_character` receives only
- * Quest's choices.
+ * Quest's form. `campaignDetails` adds a derived system's notes on the chosen campaign, such as the
+ * fields its modules add; they carry no `name`, so `create_character` receives only Quest's choices.
  */
-export function QuestCreationForm({ system, roles, abilities, count, systemTitle, systemCredit, systemHref = "/characters/new", hp = 10, ap = 10, children, summary = [] }: CreationProps & { children?: ReactNode; summary?: SummaryRow[] }) {
-  const [state, form, pending] = useFormAction<FormState>(createCharacterAction, { error: null });
-  const [name, setName] = useState("");
-  const [role, setRole] = useState("");
-  const [chosen, setChosen] = useState<string[]>([]);
+export function QuestCreationForm({ system, roles, abilities: all, count, campaigns = [], campaign: initialCampaign, systemTitle, systemCredit, systemHref = "/characters/new", hp = 10, ap = 10, rebuild, campaignDetails }: CreationProps & { campaignDetails?: (c: CampaignChoice) => ReactNode }) {
+  const [state, form, pending] = useFormAction<FormState>(rebuild ? rebuildCharacterAction : createCharacterAction, { error: null });
+  const [name, setName] = useState(rebuild?.name ?? "");
+  const [role, setRole] = useState(rebuild?.role ?? "");
+  const [campaignId, setCampaignId] = useState(chosenCampaign(campaigns, initialCampaign)?.id ?? "");
+  // A rebuilt character's abilities that are still offered: one from a setting no longer listed has no checkbox to clear it.
+  const [chosen, setChosen] = useState<string[]>(() => {
+    const offered = new Set(abilitiesFor(all, chosenCampaign(campaigns, initialCampaign)).map((a) => a.ref));
+    return (rebuild?.abilities ?? []).filter((r) => offered.has(r));
+  });
+  const campaign = chosenCampaign(campaigns, campaignId);
+  // With a campaign chosen, only its settings' abilities, so the character can join its games.
+  const abilities = abilitiesFor(all, campaign);
+  function chooseCampaign(id: string) {
+    setCampaignId(id);
+    const offered = new Set(abilitiesFor(all, chosenCampaign(campaigns, id)).map((a) => a.ref));
+    setChosen((c) => c.filter((r) => offered.has(r)));
+  }
   // Roles are informational (systems/quest.md, Character creation): matching abilities come first.
   const suited = role ? abilities.filter((a) => a.roles.includes(role)) : [];
   const others = role ? abilities.filter((a) => !a.roles.includes(role)) : abilities;
@@ -85,13 +100,13 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
   const missing = [
     name.trim() === "" && "a name",
     role === "" && "a role",
-    chosen.length < count && `${count - chosen.length} more abilit${count - chosen.length === 1 ? "y" : "ies"}`,
+    chosen.length < count && plural(count - chosen.length, "more ability", "more abilities"),
   ].filter(Boolean) as string[];
   const short = abilities.length < count;
   const toggle = (ref: string) => setChosen((c) => (c.includes(ref) ? c.filter((r) => r !== ref) : [...c, ref]));
   // The role's quick start: one setting's abilities for this role alone, when it has exactly `count`.
   const quickStart = role ? quickStartFor(role, abilities, count) : [];
-  const label = new Map(abilities.map((a) => [a.ref, a.label]));
+  const label = new Map(all.map((a) => [a.ref, a.label]));
   const muted = (s: string) => <span className="text-muted">{s}</span>;
 
   const abilityChoices = (list: AbilityOption[]) => (
@@ -121,15 +136,19 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
 
   const rows: SummaryRow[] = [
     { label: "System", value: systemTitle ?? system, href: systemHref },
-    { label: "Role", value: role ? sentence(role) : muted("Not chosen"), href: "#step-role" },
+    { label: "Role", value: role ? capitalize(role) : muted("Not chosen"), href: "#step-role" },
     { label: "Abilities", value: chosen.length === 0 ? muted(`None of ${count}`) : `${chosen.map((r) => label.get(r) ?? r).join(", ")} (${chosen.length} of ${count})`, href: "#step-abilities" },
     { label: "Name", value: name.trim() || muted("Not given"), href: "#step-name" },
-    ...summary,
   ];
+  if (campaigns.length > 0) rows.splice(1, 0, { label: "Campaign", value: campaign?.title ?? "Any campaign", href: "#step-campaign" });
+  // Steps are numbered in order; the Campaign step appears only with campaigns to choose from.
+  let step = 0;
+  const next = () => ++step;
 
   return (
     <form {...form}>
       <input type="hidden" name="system" value={system} />
+      {rebuild && <input type="hidden" name="character_id" value={rebuild.id} />}
       <WithAside
         aside={
           <div className="flex flex-col gap-4 rounded-card border border-rule bg-page p-4 lg:sticky lg:top-[calc(var(--size-topbar)+24px)]">
@@ -153,7 +172,7 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
               </Notice>
             )}
             <Button type="submit" variant="primary" disabled={missing.length > 0 || pending} aria-describedby={missing.length > 0 ? "creation-missing" : undefined} className="w-full">
-              {pending ? "Creating…" : "Create character"}
+              {rebuild ? (pending ? "Saving…" : "Save role and abilities") : pending ? "Creating…" : "Create character"}
             </Button>
             {missing.length > 0 && (
               <p id="creation-missing" className="text-caption text-muted">
@@ -164,20 +183,42 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
         }
       >
         <div className="flex flex-col gap-6">
-          <CreationStep n={1} id="step-system" title="System" done>
+          <CreationStep n={next()} id="step-system" title="System" done>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
                 <p className="text-heading font-semibold text-ink">{systemTitle ?? system}</p>
                 {systemCredit && <p className="text-caption text-muted">{systemCredit}</p>}
+                {rebuild && <p className="text-caption text-muted">An existing character keeps its system.</p>}
               </div>
-              <ButtonLink href={systemHref} size="sm">
-                Change system
-              </ButtonLink>
+              {!rebuild && (
+                <ButtonLink href={systemHref} size="sm" className="self-start">
+                  Change system
+                </ButtonLink>
+              )}
             </div>
           </CreationStep>
 
-          <CreationStep n={2} id="step-role" title="Role" done={role !== ""}>
-            <WithInfo label={`New to ${systemTitle ?? sentence(system)}? The rules in brief`} info={<RulesPrimer hp={hp} ap={ap} count={count} cadmium={system === "cadmium"} />} className="mb-3">
+          {campaigns.length > 0 && (
+            <CreationStep n={next()} id="step-campaign" title="Campaign" done>
+              <div className="flex max-w-form flex-col gap-4">
+                <Field id="creation-campaign" label="Campaign" hint="Offers only the abilities of the campaign's settings, so the character can join its games. The character is not tied to it." optional>
+                  <Select {...described("creation-campaign", { hint: true })} name="campaign" value={campaignId} onChange={(e) => chooseCampaign(e.target.value)}>
+                    <option value="">Any campaign</option>
+                    {campaigns.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.title}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+                {campaign && <p className="text-caption text-muted">{campaign.settings.length > 0 ? `Its settings: ${campaign.settings.map((x) => x.title).join(", ")}.` : `${campaign.title} has no settings.`}</p>}
+                {campaign && campaignDetails?.(campaign)}
+              </div>
+            </CreationStep>
+          )}
+
+          <CreationStep n={next()} id="step-role" title="Role" done={role !== ""}>
+            <WithInfo label={`New to ${systemTitle ?? capitalize(system)}? The rules in brief`} info={<RulesPrimer hp={hp} ap={ap} count={count} cadmium={system === "cadmium"} />} className="mb-3">
               <p id="step-role-hint" className="pt-2 text-caption text-muted">
                 The role puts its abilities first in the next step; any ability can still be chosen.
               </p>
@@ -185,14 +226,14 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
             <div role="radiogroup" aria-labelledby="step-role-title" aria-describedby="step-role-hint" className="grid items-start gap-2 sm:grid-cols-2 xl:grid-cols-4">
               {roles.map((r) => (
                 <WithInfo key={r} label={`About the ${r}`} info={roleSummary(r, abilities)} className="rounded-control border border-rule px-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft">
-                  <Choice type="radio" name="role" value={r} checked={role === r} onChange={() => setRole(r)} label={sentence(r)} />
+                  <Choice type="radio" name="role" value={r} checked={role === r} onChange={() => setRole(r)} label={capitalize(r)} />
                 </WithInfo>
               ))}
             </div>
           </CreationStep>
 
           <CreationStep
-            n={3}
+            n={next()}
             id="step-abilities"
             title="Abilities"
             done={chosen.length === count}
@@ -216,7 +257,9 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
               )}
               {short && (
                 <Notice tone="warning">
-                  The installed settings offer {abilities.length} abilit{abilities.length === 1 ? "y" : "ies"}; this system needs {count}.
+                  {campaign
+                    ? `${campaign.title}'s settings offer ${plural(abilities.length, "ability", "abilities")}; a character needs ${count}. Its author can add a setting with abilities under Materials, or choose Any campaign.`
+                    : `The installed settings offer ${plural(abilities.length, "ability", "abilities")}; this system needs ${count}.`}
                 </Notice>
               )}
               {!role && <p className="text-caption text-muted">Choose a role to see the abilities suggested for it first.</p>}
@@ -242,21 +285,19 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
             </div>
           </CreationStep>
 
-          <CreationStep n={4} id="step-name" title="Name and description" done={name.trim() !== ""}>
+          <CreationStep n={next()} id="step-name" title="Name and description" done={name.trim() !== ""}>
             <div className="flex max-w-form flex-col gap-4">
               <Field id="creation-name" label="Name">
                 <TextInput {...described("creation-name")} name="name" maxLength={40} value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" />
               </Field>
               <Field id="creation-manner" label="How you work" hint={'Finishes "I …", such as "work unseen".'} optional>
-                <TextInput {...described("creation-manner", { hint: true })} name="profile.manner" maxLength={200} placeholder="work unseen" />
+                <TextInput {...described("creation-manner", { hint: true })} name="profile.manner" maxLength={200} placeholder="work unseen" defaultValue={rebuild?.manner} />
               </Field>
               <Field id="creation-look" label="How you look" hint={'Finishes "I look …", such as "tall and scarred".'} optional>
-                <TextInput {...described("creation-look", { hint: true })} name="profile.look" maxLength={200} placeholder="tall and scarred" />
+                <TextInput {...described("creation-look", { hint: true })} name="profile.look" maxLength={200} placeholder="tall and scarred" defaultValue={rebuild?.look} />
               </Field>
             </div>
           </CreationStep>
-
-          {children}
         </div>
       </WithAside>
     </form>
@@ -268,7 +309,7 @@ export function QuestSheetView({ sheet, labels, abilities }: { sheet: Record<str
   const known = new Map((abilities ?? []).map((a) => [a.ref, a]));
   const s = sheet as { role: string; hp: { value: number; max: number }; ap: number; abilities: string[]; inventory: { ref: string }[]; status: string; armor?: { value: number; max: number } };
   const items: [ReactNode, ReactNode][] = [
-    ["Role", sentence(s.role)],
+    ["Role", capitalize(s.role)],
     [
       "Health",
       <span key="hp" className="tabular">
@@ -292,7 +333,8 @@ export function QuestSheetView({ sheet, labels, abilities }: { sheet: Record<str
       known.size === 0 ? (
         s.abilities.map((a) => labels[a] ?? a).join(", ")
       ) : (
-        <ul key="abilities" className="flex flex-col">
+        // Each row is as tall as its info button; the first label lines up with the term beside it.
+        <ul key="abilities" className="-mt-1.5 flex flex-col">
           {s.abilities.map((ref) => {
             const a = known.get(ref);
             return (

@@ -10,10 +10,11 @@ import type { Store } from "../store";
 import type { testDb } from "../store/testing/pglite";
 import { createCampaign } from "./campaigns";
 import { createCharacter } from "./characters";
-import { createDraft, deleteDraft, exportDraft, getDraft, importDraft, listDrafts, publishDraft, restoreDraft, saveDraft, validateDraft } from "./drafts";
+import { DAY } from "./deletion";
+import { copyDraft, createDraft, deleteDraft, exportDraft, getDraft, importDraft, listDrafts, publishDraft, publishSuggestion, restoreDraft, saveDraft, validateDraft } from "./drafts";
 import type { Entropy } from "./entropy";
 import { addCharacter, createInstance, startInstance, submitAction, type Deps } from "./instances";
-import { listMaterials } from "./materials";
+import { deleteMaterial, listMaterials } from "./materials";
 import { code, entropy, SIX, world } from "./testing/fixtures";
 
 let db: Awaited<ReturnType<typeof testDb>>;
@@ -105,6 +106,20 @@ describe("drafts", () => {
     expect(await store.instanceView(instance.id)).toMatchObject({ status: "ended", ending: "won" });
   });
 
+  it("lets the author delete a published version nothing uses, and keeps one a campaign uses", async () => {
+    const d = await fresh();
+    await saveDraft(store, "user_a", { draft_id: d.id, document: threeRooms(d.document), revision: 1 });
+    await publishDraft(store, "user_a", { draft_id: d.id, version: "1.0.0" });
+    const ref = { kind: "adventure", id: "three_rooms", version: "1.0.0" };
+    expect(await code(deleteMaterial(store, "user_b", ref))).toBe("not_found");
+    await createCampaign(store, "user_a", { title: "Crossing", system: "quest", system_versions: "^1.0", materials: [{ kind: "setting", id: "derelict_station", version: "3.0.0" }, ref] }, e);
+    await expect(deleteMaterial(store, "user_a", ref)).rejects.toThrow("used by 1 campaign");
+    await publishDraft(store, "user_a", { draft_id: d.id, version: "1.1.0" });
+    await deleteMaterial(store, "user_a", { ...ref, version: "1.1.0" });
+    expect((await listMaterials(store, "user_a", { owner: "me" })).map((m) => m.version)).toEqual(["1.0.0"]);
+    expect(await code(deleteMaterial(store, "user_a", { kind: "setting", id: "derelict_station", version: "3.0.0" }))).toBe("invalid_request");
+  });
+
   it("reports an unreachable ending before publishing, and publishes with the warning", async () => {
     const d = await fresh();
     const doc = threeRooms(d.document) as { adventure: { endings: Record<string, { label: string }> } };
@@ -167,8 +182,66 @@ describe("drafts", () => {
 
   it("deletes a draft and restores it within 30 days", async () => {
     const d = await fresh();
-    await deleteDraft(store, "user_a", d.id);
+    const { restorable_until } = await deleteDraft(store, "user_a", d.id);
+    expect(Date.parse(restorable_until) - Date.parse((await store.deletedDraft(d.id))!.deleted_at)).toBe(30 * DAY);
     expect(await code(getDraft(store, "user_a", d.id))).toBe("not_found");
     expect((await restoreDraft(store, "user_a", d.id)).id).toBe(d.id);
+  });
+
+  it("asks for a required setting in plain words", async () => {
+    const r = createDraft(store, "user_a", { material_id: "bare", title: "Bare", system: "quest", requires_settings: [] }, e);
+    await expect(r).rejects.toMatchObject({ code: "invalid_request", detail: expect.not.stringContaining("requires_settings") });
+  });
+
+  it("follows the document's adventure id until the first publication, then keeps it fixed", async () => {
+    const d = await fresh();
+    await fresh("user_a", "taken");
+    const renamed = (doc: Record<string, unknown>, id: string) => ({ ...doc, adventure: { ...(doc.adventure as object), id } });
+    const doc = threeRooms(d.document);
+    // The author fixes this by changing the id, so it is not the save conflict the editor stops for.
+    expect(await code(saveDraft(store, "user_a", { draft_id: d.id, document: renamed(doc, "taken"), revision: 1 }))).toBe("invalid_request");
+    await expect(saveDraft(store, "user_a", { draft_id: d.id, document: renamed(doc, "taken"), revision: 1 })).rejects.toMatchObject({ detail: expect.stringContaining("choose a different id") });
+    expect((await getDraft(store, "user_a", d.id)).material_id).toBe("three_rooms");
+
+    const saved = await saveDraft(store, "user_a", { draft_id: d.id, document: renamed(doc, "crossing_hall"), revision: 1 });
+    expect(await getDraft(store, "user_a", d.id)).toMatchObject({ material_id: "crossing_hall", diagnostics: saved.diagnostics });
+    expect((await publishDraft(store, "user_a", { draft_id: d.id, version: "1.0.0" })).id).toBe("crossing_hall");
+    expect((await saveDraft(store, "user_a", { draft_id: d.id, document: renamed(doc, "crossing_hall"), revision: 2 })).revision).toBe(3);
+    expect(await code(saveDraft(store, "user_a", { draft_id: d.id, document: renamed(doc, "elsewhere"), revision: 3 }))).toBe("invalid_request");
+  });
+
+  it("reports placements left in the namespace of an old adventure id", async () => {
+    const d = await fresh();
+    const doc = threeRooms(d.document) as ReturnType<typeof threeRooms> & { entities: Record<string, unknown> };
+    doc.entities = { lamp: { kind: "item", label: "lamp" } };
+    (doc.locations.hall.map as Record<string, unknown>).contents = [{ ref: "old_name:lamp", at: [2, 2] }];
+    await saveDraft(store, "user_a", { draft_id: d.id, document: doc, revision: 1 });
+    expect(await validateDraft(store, "user_a", d.id)).toContainEqual(expect.objectContaining({ severity: "error", message: expect.stringContaining("old_name:lamp") }));
+  });
+
+  it("keeps a conflicting copy as a new draft under a free id, with its own refs renamed", async () => {
+    const d = await fresh();
+    const doc = threeRooms(d.document) as ReturnType<typeof threeRooms> & { entities: Record<string, unknown> };
+    doc.entities = { lamp: { kind: "item", label: "lamp" } };
+    (doc.locations.hall.map as Record<string, unknown>).contents = [{ ref: "three_rooms:lamp", at: [2, 2] }];
+    (doc.adventure as unknown as { requires_settings: unknown[] }).requires_settings = [];
+    const first = await copyDraft(store, "user_a", { document: doc, title: "Three Rooms (copy)" }, e);
+    expect(first).toMatchObject({ material_id: "three_rooms_copy", title: "Three Rooms (copy)" });
+    expect(((first.document.locations as typeof doc.locations).hall.map as unknown as { contents: { ref: string }[] }).contents[0]!.ref).toBe("three_rooms_copy:lamp");
+    expect((first.document.adventure as { id: string }).id).toBe("three_rooms_copy");
+    expect((await copyDraft(store, "user_a", { document: doc }, e)).material_id).toBe("three_rooms_copy_2");
+  });
+
+  it("suggests a version past the newest published one of the id, whichever draft published it", async () => {
+    const d = await fresh();
+    expect(await publishSuggestion(store, "user_a", d.id)).toMatchObject({ latest: null, version: "1.0.0" });
+    await saveDraft(store, "user_a", { draft_id: d.id, document: threeRooms(d.document), revision: 1 });
+    await publishDraft(store, "user_a", { draft_id: d.id, version: "1.4.0" });
+    await deleteDraft(store, "user_a", d.id);
+    const again = await fresh();
+    await saveDraft(store, "user_a", { draft_id: again.id, document: threeRooms(again.document), revision: 1 });
+    const s = await publishSuggestion(store, "user_a", again.id);
+    expect(s).toMatchObject({ latest: "1.4.0", increment: "patch", version: "1.4.1" });
+    expect((await publishDraft(store, "user_a", { draft_id: again.id, version: s.version })).version).toBe("1.4.1");
   });
 });

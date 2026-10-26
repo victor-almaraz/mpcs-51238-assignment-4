@@ -8,6 +8,7 @@ import type { ParseResult } from "../parser/adapter";
 import { pinnedBundles } from "./admin";
 import { CoordinatorError, catchUp, commit, load, requireStatus, rngFor, serialized, type Deps } from "./instance";
 import { menuOptions, valid } from "./menus";
+import { rejectionText } from "./rejections";
 
 type Call = { tool: string; args: Record<string, unknown> };
 
@@ -15,7 +16,7 @@ type Call = { tool: string; args: Record<string, unknown> };
 const RETRYABLE = new Set(["invalid_call", "unknown_id", "not_reachable", "requirement_unmet"]);
 
 /** `improvise` with category `unclear` and a valid suggestion, for inputs the parser could not turn into a valid call. */
-export function fallbackCall(state: State, bundles: Bundles, actor: string, text: string, error: EngineError | null): Call {
+function fallbackCall(state: State, bundles: Bundles, actor: string, text: string, error: EngineError | null): Call {
   const preferred = error?.code === "not_your_turn" ? ["examine"] : ["move", "examine", "interact", "take", "wait"];
   const options = menuOptions(state, bundles, actor, 12);
   const suggestion = options.find((o) => preferred.includes(o.tool)) ?? options[0];
@@ -92,7 +93,7 @@ export async function processInput(deps: Deps, instanceId: string, actor: string
       outcome = "fallback";
       result = submit(fresh.state!, bundles, actor, used, rngFor(fresh, fresh.state!));
     }
-    if (!result.ok) throw new CoordinatorError("conflict", result.error.detail, result.error.code);
+    if (!result.ok) throw new CoordinatorError("conflict", rejectionText(fresh.state!, bundles, result.error), result.error.code);
     const c = await commit(deps, fresh, bundles, result, { call: { actor, tool: used.tool, args: used.args } }, { actor, inputLog, outcome });
     return { version: c.version, outcome };
   });

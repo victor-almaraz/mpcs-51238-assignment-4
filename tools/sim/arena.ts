@@ -2,12 +2,9 @@
 // camp on its gear; the creatures wait across an open field. The instance ends `won` when combat
 // ends, and `lost` when no character is active.
 
-import { join } from "node:path";
 import type { Bundles } from "../../lib/engine";
-import { compileAdventure, compileSetting, formatDiagnostic } from "../../lib/materials";
-import { readPackDir } from "../../lib/materials/fs";
-import type { SettingBundle } from "../../lib/bundle/setting";
-import { CADMIUM } from "../../lib/systems/cadmium";
+import { exemplarBundles } from "../../lib/harness/scenarios";
+import { compileAdventure, mustCompile } from "../../lib/materials";
 import type { Encounter } from "./encounters";
 
 export interface Loadout {
@@ -23,16 +20,6 @@ export const LOADOUTS: Record<string, Loadout> = {
   axe: { id: "axe", items: ["coast:boarding_axe"] },
   axe_full: { id: "axe_full", items: ["coast:boarding_axe", "coast:leather_jerkin", "coast:round_shield"] },
 };
-
-let coast: SettingBundle | undefined;
-function setting(): SettingBundle {
-  if (!coast) {
-    const r = compileSetting(readPackDir(join(process.cwd(), "cadmium-spec/spec/examples/lantern_coast")));
-    if (!r.bundle) throw new Error(r.diagnostics.map(formatDiagnostic).join("\n"));
-    coast = r.bundle;
-  }
-  return coast;
-}
 
 const ROWS = ["##################", "#................#", "#................#", "#................#", "#................#", "#................#", "##################"];
 /** Creature anchor cells across the field, room for 2 × 2 footprints. */
@@ -57,7 +44,7 @@ export function arena(encounter: Encounter, loadout: Loadout, party: number): Bu
   const foes = encounter.creatures.map((t, i) => `    - { id: foe_${i}, ref: "${ref(t)}", at: [${SPOTS[i]![0]}, ${SPOTS[i]![1]}] }`);
   const copies = encounter.override
     ? Object.fromEntries([...new Set(encounter.creatures)].map((t) => {
-        const template = setting().entities[t] as { system_stats: Record<string, unknown> };
+        const template = exemplarBundles().settings[0]!.entities[t] as { system_stats: Record<string, unknown> };
         return [t, { ...template, system_stats: { ...template.system_stats, ...encounter.override } }];
       }))
     : undefined;
@@ -114,9 +101,9 @@ triggers:
   ]);
   // JSON is YAML 1.2.
   if (copies) files.set("entities/foes.yaml", JSON.stringify(copies));
-  const r = compileAdventure(files, [setting()]);
-  if (!r.bundle) throw new Error(`arena ${key}:\n${r.diagnostics.map(formatDiagnostic).join("\n")}`);
-  const bundles: Bundles = { system: CADMIUM.configure(["armor", "stash"]), settings: [setting()], adventure: r.bundle };
+  // The exemplar's system and setting: Cadmium with armor and stash, on lantern_coast.
+  const { system, settings } = exemplarBundles();
+  const bundles: Bundles = { system, settings, adventure: mustCompile(compileAdventure(files, settings), `arena ${key}`) };
   cache.set(key, bundles);
   return bundles;
 }

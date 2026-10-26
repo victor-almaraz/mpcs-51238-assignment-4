@@ -63,7 +63,7 @@ const text = (content: Uint8Array | string): string =>
 const bytes = (content: Uint8Array | string): Uint8Array => (typeof content === "string" ? new TextEncoder().encode(content) : content);
 
 /** Parses JSON-compatible YAML 1.2: only `true` and `false` are booleans, dates are strings. */
-export function parseData(file: string, content: Uint8Array | string, out: Diagnostics): Json | undefined {
+function parseData(file: string, content: Uint8Array | string, out: Diagnostics): Json | undefined {
   let source: string;
   try {
     source = text(content);
@@ -80,8 +80,8 @@ export function parseData(file: string, content: Uint8Array | string, out: Diagn
   return doc.toJS({ maxAliasCount: 100 }) as Json;
 }
 
-// SPEC_ISSUES.md#pack-file-names: `.json` stands in for `.yaml`, and files whose name starts with
-// `.` (such as `.DS_Store`) are ignored.
+// `.json` stands in for `.yaml`, and files whose name starts with `.` (such as `.DS_Store`) are
+// ignored (spec/README.md, "Pack directory").
 function layoutPath(path: string): string {
   return path.endsWith(".json") ? path.slice(0, -".json".length) + ".yaml" : path;
 }

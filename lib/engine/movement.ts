@@ -124,7 +124,7 @@ export function walk(ctx: Ctx, mover: Body, path: readonly Cell[], allowance: nu
       }
     }
   }
-  // SPEC_ISSUES.md#stopping-on-occupied-cells: the mover ends on the last free cell reached.
+  // engine.md, "Movement": the mover ends on the last free cell reached.
   setAt(path[last]!);
   for (let i = 1; i <= last; i++) markVisited(ctx, mover, path[i]!);
   return { steps: last, stopped, reachedEnd: last === path.length - 1 };

@@ -15,19 +15,19 @@ the culprit to someone with access to both the Reliquary and the Salvors' Concor
 | Endings | `escaped`, `archive_sealed`, `lost` |
 | Size | 13 locations (12 authored, 1 generated), 33 NPCs, 6 arcs, 76 triggers |
 
-The packs are the specification's examples `cadmium-spec/spec/examples/sunken_archive` and
-`cadmium-spec/spec/examples/lantern_coast`, in the brief's layout. This report holds the brief's
+The packs are the specification's examples `docs/spec/spec/examples/sunken_archive` and
+`docs/spec/spec/examples/lantern_coast`, in the brief's layout. This report holds the brief's
 schema and semantic passes and a walkthrough per ending. The adventure authoring guide and
 `docs/adventure-packs.md` quote the packs' files; a test checks every quotation.
 
 ```bash
-pnpm materials check --setting cadmium-spec/spec/examples/lantern_coast cadmium-spec/spec/examples/sunken_archive
+pnpm materials check --setting docs/spec/spec/examples/lantern_coast docs/spec/spec/examples/sunken_archive
 ```
 
 `pnpm bundles` builds both bundles for `/admin`. A campaign lists `lantern_coast` before any Quest
-setting, so the holds take their doors and vault from it; see
-[SPEC_ISSUES.md](../../SPEC_ISSUES.md#generation-order). The campaign also adds the Quest Quick Start
-for abilities.
+setting, so the holds take their doors and vault from it; see the generation pack in
+[generation.md](../spec/docs/generation.md#spec). Characters take their abilities from
+`lantern_coast`, which holds a Quick Start for every role.
 
 ## Places
 

@@ -8,7 +8,7 @@ import { CadmiumStatsEditor, QuestStatsEditor } from "./stats-editor";
 
 export type { StatsEditorProps } from "./stats-editor";
 
-export const SYSTEM_UI = {
+const SYSTEM_UI = {
   quest: { CreationForm: QuestCreationForm, SheetView: QuestSheetView, StatsEditor: QuestStatsEditor },
   cadmium: { CreationForm: CadmiumCreationForm, SheetView: QuestSheetView, StatsEditor: CadmiumStatsEditor },
 } as const;

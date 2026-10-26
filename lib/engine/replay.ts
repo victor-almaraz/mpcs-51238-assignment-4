@@ -1,8 +1,8 @@
 // Replay (architecture.md, "Determinism and replay"; engine.md, `state_restored`): rebuilds state by
 // re-running each commit's input from the start, checking every commit's events.
-// SPEC_ISSUES.md#replay-source: commits record their inputs, since events alone cannot rebuild state.
 
 import { Rng, type U64 } from "../rng";
+import { compareText } from "../systems";
 import { advance, join, leave, sessionEnd, startInstance, submit } from "./index";
 import type { Bundles, GameEvent, JoiningCharacter, Result, State } from "./types";
 
@@ -25,7 +25,7 @@ export interface Commit {
 /** JSON with object keys sorted at every level, so values read back from a store compare equal. */
 export function canonical(value: unknown): string {
   return JSON.stringify(value, (_key, v: unknown) =>
-    v !== null && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v as Record<string, unknown>).sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))) : v,
+    v !== null && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v as Record<string, unknown>).sort(([a], [b]) => compareText(a, b))) : v,
   );
 }
 

@@ -15,7 +15,7 @@ import { TERMS_VERSION } from "../api/terms";
 import { MemoryBroadcaster } from "../broadcast";
 import { DEFAULT_TIMEOUTS, type Deps } from "../coordinator/instance";
 import { zip } from "../export/zip";
-import { compileAdventure, compileSetting, formatDiagnostic } from "../materials";
+import { compileAdventure, compileSetting, mustCompile, type Bundle, type CompileResult } from "../materials";
 import { readPackDir } from "../materials/fs";
 import type { Store } from "../store";
 import { quickStartFor } from "../systems/creation";
@@ -34,12 +34,20 @@ function counting(): Entropy {
 
 // Each read starts from a fixed folder, so the bundler traces only those folders.
 type Pack = { materials: string } | { example: string };
-const pack = (p: Pack) => ("materials" in p ? readPackDir(join(process.cwd(), "materials", p.materials, "pack")) : readPackDir(join(process.cwd(), "cadmium-spec", "spec", "examples", p.example)));
+const pack = (p: Pack) => ("materials" in p ? readPackDir(join(process.cwd(), "materials", p.materials, "pack")) : readPackDir(join(process.cwd(), "docs/spec", "spec", "examples", p.example)));
 
-function setting(p: Pack) {
-  const r = compileSetting(pack(p));
-  if (!r.bundle) throw new Error(`${JSON.stringify(p)}: ${r.diagnostics.map(formatDiagnostic).join("; ")}`);
-  return r.bundle;
+/** The packs an operator publishes on a fresh deployment (runbooks/content-publishing.md): settings in material order, then the exemplar adventure. */
+const PUBLISHED: { settings: Pack[]; adventure: Pack } = {
+  settings: [{ example: "derelict_station" }, { example: "sunless_crypt" }, { materials: "quest_starter" }, { example: "lantern_coast" }],
+  adventure: { example: "sunken_archive" },
+};
+
+/** The published packs compiled, each with its asset files: the settings, then the adventure against them. Throws on a pack with errors. */
+export function compilePublished(): { bundle: Bundle; files: CompileResult<Bundle>["files"] }[] {
+  const settings = PUBLISHED.settings.map((p) => compileSetting(pack(p)));
+  const bundles = settings.map((r, i) => mustCompile(r, JSON.stringify(PUBLISHED.settings[i])));
+  const adventure = compileAdventure(pack(PUBLISHED.adventure), bundles);
+  return [...settings.map((r, i) => ({ bundle: bundles[i]!, files: r.files })), { bundle: mustCompile(adventure, JSON.stringify(PUBLISHED.adventure)), files: adventure.files }];
 }
 
 /** Ids and codes the demo index links to. */
@@ -51,6 +59,8 @@ export interface DemoWorld {
   draft: string | null;
   invitation: string;
   link: string;
+  archivedCampaign: string;
+  archivedCharacter: string;
 }
 
 export async function seedDemo(store: Store, now = new Date()): Promise<DemoWorld> {
@@ -63,12 +73,7 @@ export async function seedDemo(store: Store, now = new Date()): Promise<DemoWorl
   }
 
   // Materials, as an operator publishes them.
-  const coast = setting({ example: "lantern_coast" });
-  const settings = [setting({ example: "derelict_station" }), setting({ example: "sunless_crypt" }), setting({ materials: "quest_starter" }), coast];
-  for (const b of settings) await store.putBundle(b, { origin: "operator" });
-  const exemplar = compileAdventure(pack({ example: "sunken_archive" }), [coast]);
-  if (!exemplar.bundle) throw new Error(exemplar.diagnostics.map(formatDiagnostic).join("; "));
-  await store.putBundle(exemplar.bundle, { origin: "operator" });
+  for (const { bundle } of compilePublished()) await store.putBundle(bundle, { origin: "operator" });
 
   // Characters.
   const options = await abilityOptions(store, "cadmium");
@@ -84,7 +89,7 @@ export async function seedDemo(store: Store, now = new Date()): Promise<DemoWorl
 
   // The exemplar campaign, authored by the demo user.
   const materials = [
-    { kind: "setting", id: "lantern_coast", version: "1.0.0" },
+    { kind: "setting", id: "lantern_coast", version: "1.1.0" },
     { kind: "setting", id: "quest_starter", version: "1.0.0" },
     { kind: "adventure", id: "sunken_archive", version: "1.0.0" },
   ];
@@ -125,7 +130,7 @@ export async function seedDemo(store: Store, now = new Date()): Promise<DemoWorl
   await joinByLink(store, "user_demo", (await rotateInviteLink(store, "user_ari", theirs.id, e)).invite_link_code!);
 
   // An adventure draft: the exemplar itself, imported as an author would.
-  const files = [...pack({ example: "sunken_archive" })].map(([name, data]) => ({ name: `sunken_archive/${name}`, data }));
+  const files = [...pack(PUBLISHED.adventure)].map(([name, data]) => ({ name: `sunken_archive/${name}`, data }));
   const draft = await importDraft(store, "user_demo", zip(files), e).catch((x) => void console.error("draft", (x as Error).message));
 
   // Last, so the ids above stay the same: an archived and a recently deleted campaign, character, and draft.
@@ -143,5 +148,5 @@ export async function seedDemo(store: Store, now = new Date()): Promise<DemoWorl
   const scrap = await createDraft(store, "user_demo", { ...notes, material_id: "scratch", title: "Scratch pad" }, e);
   await deleteDraft(store, "user_demo", scrap.id);
 
-  return { campaign: campaign.id, game: game.id, lobby: lobby.id, character: wren.id, draft: draft ? draft.draft.id : null, invitation, link };
+  return { campaign: campaign.id, game: game.id, lobby: lobby.id, character: wren.id, draft: draft ? draft.draft.id : null, invitation, link, archivedCampaign: past.id, archivedCharacter: oldTam.id };
 }

@@ -193,7 +193,6 @@ function apply(ctx: Ctx, name: string, args: Args, scope: Scope): void {
     case "give_item":
       for (const id of targets(ctx, args.target, scope)) {
         if (!state.characters[id]) continue;
-        // SPEC_ISSUES.md#effect-events: give_item creates the item and emits entity_spawned.
         const item = ctx.createEntity(args.ref as string, { location: state.characters[id].location, at: state.characters[id].at });
         ctx.emit({ type: "entity_spawned", entity: item });
         carry(ctx, item, id);

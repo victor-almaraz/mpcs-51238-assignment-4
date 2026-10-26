@@ -37,7 +37,7 @@ export type StatsField =
 
 type Schema = Record<string, unknown>;
 
-// SPEC_ISSUES.md#module-schema-fields: module fields are recognized by their description.
+// systems/README.md, "Modules": a module field's description begins with `Module <id>:`.
 const MODULE_FIELD = /^Module ([a-z][a-z0-9_]*):\s*/;
 
 const isObject = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === "object" && !Array.isArray(v);

@@ -16,13 +16,12 @@ import { listInstances } from "@/lib/api/instances";
 import { systemView } from "@/lib/api/systems";
 import { enterCodeAction } from "@/lib/server/campaign-actions";
 import type { serverStore } from "@/lib/server/supabase";
+import { plural } from "@/lib/text";
 
 export type CampaignItem = Awaited<ReturnType<typeof listCampaigns>>["items"][number];
 export type CharacterItem = Awaited<ReturnType<typeof listCharacters>>["items"][number];
 export type DraftItem = Awaited<ReturnType<typeof listDrafts>>["items"][number];
 export type GameItem = Awaited<ReturnType<typeof listInstances>>[number] & { campaign: string };
-
-export const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
 /** Every game (instance) of the given campaigns, with its campaign's title. */
 export async function gamesOf(store: ReturnType<typeof serverStore>, userId: string, campaigns: CampaignItem[]): Promise<GameItem[]> {
@@ -30,7 +29,8 @@ export async function gamesOf(store: ReturnType<typeof serverStore>, userId: str
 }
 
 /** Opens an invitation or invite-link code (or a pasted link) on its own page. */
-export function EnterCode({ id = "code" }: { id?: string }) {
+export function EnterCode() {
+  const id = "code";
   const hint = "Paste the code or link from an invitation.";
   return (
     <ActionForm action={enterCodeAction} className="flex flex-col gap-3 rounded-card border border-rule bg-page p-4">
@@ -42,7 +42,7 @@ export function EnterCode({ id = "code" }: { id?: string }) {
         <Field id={id} label="Invitation or invite link code" hint={hint} className="min-w-0 flex-1">
           <TextInput name="code" required autoComplete="off" spellCheck={false} className="font-mono text-code" {...described(id, { hint })} />
         </Field>
-        <Button type="submit" className="h-10">
+        <Button type="submit" className="h-10 self-start sm:self-auto">
           Open
         </Button>
       </div>
@@ -85,7 +85,7 @@ export function DraftCard({ draft: d }: { draft: DraftItem }) {
       href={`/adventures/${d.id}/edit`}
       title={d.title}
       tile={<ElementTile symbol={elementSymbol(d.title)} tone="neutral" size="sm" />}
-      badge={d.problems > 0 ? <Badge tone="danger">{plural(d.problems, "problem")}</Badge> : undefined}
+      badge={d.problems > 0 ? <Badge tone="warning">{plural(d.problems, "problem")}</Badge> : undefined}
       meta={d.last_published_version ? `Published ${d.last_published_version}` : "Not published"}
     />
   );

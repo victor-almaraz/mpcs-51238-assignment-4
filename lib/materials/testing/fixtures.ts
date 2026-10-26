@@ -8,7 +8,7 @@ import { readPackDir } from "../fs";
 
 const HERE = fileURLToPath(new URL(".", import.meta.url));
 
-export const EXAMPLES = join(HERE, "../../../cadmium-spec/spec/examples");
+export const EXAMPLES = join(HERE, "../../../docs/spec/spec/examples");
 
 export type Files = Map<string, Uint8Array | string>;
 

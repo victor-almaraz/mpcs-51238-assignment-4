@@ -6,12 +6,12 @@ import { MAX_OCCURRENCES, occurrencesBetween, occurrencesOf, type Occurrence, ty
 import { validZone } from "../scheduler/zone";
 import type { Rsvp, Schedules, Store, UserRecord } from "../store";
 import { membership } from "./campaigns";
+import { DAY } from "./deletion";
 import { cryptoEntropy, type Entropy } from "./entropy";
-import { ApiError, onlyFields } from "./errors";
+import { ApiError, notFoundAs, onlyFields } from "./errors";
 import { instanceOf } from "./instances";
 import { caller } from "./users";
 
-const DAY = 86_400_000;
 const FIELDS = ["starts_at", "timezone", "duration_minutes", "title", "recurrence", "auto_resume", "auto_pause", "notes"] as const;
 
 /** The scheduled session object of api.md. */
@@ -67,15 +67,13 @@ function fieldsOf(req: Record<string, unknown>, base: Partial<SessionRecord>): P
 
 /**
  * The session for a change or an answer, and the caller's role. An ended game's sessions are a record:
- * nothing about them changes any more (SPEC_ISSUES.md#ended-instance-schedule).
+ * nothing about them changes any more (api.md, Scheduling).
  */
 async function authorSession(store: Store, user: UserRecord, sessionId: unknown) {
   if (typeof sessionId !== "string") throw new ApiError("invalid_request", "session_id must be a string");
   const session = await store.getSession(sessionId);
   if (!session) throw new ApiError("not_found", "no such session");
-  const { instance, role } = await instanceOf(store, user, session.instance_id).catch(() => {
-    throw new ApiError("not_found", "no such session");
-  });
+  const { instance, role } = await instanceOf(store, user, session.instance_id).catch(notFoundAs("no such session"));
   if (instance.status === "ended") throw new ApiError("conflict", "the instance has ended");
   return { session, instance, role };
 }
@@ -90,7 +88,7 @@ export async function scheduleSession(store: Store, userId: string | null, input
   return sessionView(session);
 }
 
-// SPEC_ISSUES.md#session-updates: changes apply to the whole series; past occurrences are history only.
+// Changes apply to the whole series (api.md, Scheduling).
 export async function updateSession(store: Store, userId: string | null, input: unknown) {
   const user = await caller(store, userId, "update_session");
   const req = onlyFields(input, ["session_id", ...FIELDS]);
@@ -98,6 +96,18 @@ export async function updateSession(store: Store, userId: string | null, input: 
   if (role !== "author") throw new ApiError("forbidden", "only the campaign's author may change sessions");
   if (session.status === "cancelled") throw new ApiError("conflict", "the session is cancelled");
   return sessionView(await store.putSession({ ...session, ...fieldsOf(req, session) }));
+}
+
+// The schedule page edits a series, which list_occurrences does not describe.
+/** The instance's sessions that are not cancelled, oldest first, for the author's edit forms. */
+export async function listSessions(store: Store, userId: string | null, instanceId: unknown) {
+  const user = await caller(store, userId, "list_occurrences");
+  const { instance } = await instanceOf(store, user, instanceId);
+  const { sessions } = await store.schedules([instance.id]);
+  return sessions
+    .filter((s) => s.status === "scheduled")
+    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
+    .map(sessionView);
 }
 
 /** The occurrence of a session that started at `occurrenceStart`, or invalid_request. */
@@ -169,7 +179,7 @@ export async function exportCalendar(store: Store, userId: string | null, instan
 
 // Calendar feeds ----------------------------------------------------------------------------------
 
-// SPEC_ISSUES.md#calendar-feed-url: the secret is an HMAC of the user id and feed generation under a
+// api.md, Users, Calendar feed secret: the secret is an HMAC of the user id and feed generation under a
 // deployment key, so get_calendar_feed can show the URL again while only the secret's hash is stored.
 function feedSecret(key: string, userId: string, generation: number): string {
   return createHmac("sha256", key).update(`${userId}:${generation}`).digest("base64url").slice(0, 32);
@@ -184,17 +194,23 @@ export interface FeedConfig {
 
 const feedUrl = (c: FeedConfig, secret: string) => `${c.origin}/v1/calendar/${secret}.ics`;
 
+/**
+ * The key calendar feed secrets derive from, or undefined when calendar feeds are not configured. Only
+ * its own variable: a feed URL must not depend on, or change with, any other secret.
+ */
+export function calendarFeedKey(env: Record<string, string | undefined> = process.env): string | undefined {
+  return env.CALENDAR_FEED_KEY?.trim() || undefined;
+}
+
 export async function getCalendarFeed(store: Store, userId: string | null, config: FeedConfig) {
   const user = await caller(store, userId, "get_calendar_feed");
-  const record = (await store.getUser(user.id))!;
-  if (!record.calendar_token_hash) return { url: null };
-  return { url: feedUrl(config, feedSecret(config.key, user.id, record.calendar_feed_generation ?? 0)) };
+  if (!user.calendar_token_hash) return { url: null };
+  return { url: feedUrl(config, feedSecret(config.key, user.id, user.calendar_feed_generation ?? 0)) };
 }
 
 export async function rotateCalendarFeed(store: Store, userId: string | null, config: FeedConfig) {
   const user = await caller(store, userId, "rotate_calendar_feed");
-  const current = (await store.getUser(user.id))!.calendar_feed_generation ?? 0;
-  const secret = feedSecret(config.key, user.id, current + 1);
+  const secret = feedSecret(config.key, user.id, (user.calendar_feed_generation ?? 0) + 1);
   await store.setCalendarFeed(user.id, feedHash(secret));
   return { url: feedUrl(config, secret) };
 }

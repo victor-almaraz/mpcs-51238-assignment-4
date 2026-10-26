@@ -4,9 +4,18 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { cx } from "./cx";
 
+/**
+ * The content container. Every page shares the hub's content edge; a form or prose page narrows only
+ * its column (docs/design/README.md, Page widths). The last block's bottom margin is dropped, so every
+ * page ends the same distance above the footer.
+ */
 export function Page({ width = "page", children, className }: { width?: "page" | "form" | "prose"; children: ReactNode; className?: string }) {
-  const max = { page: "max-w-page", form: "max-w-form", prose: "max-w-prose" }[width];
-  return <div className={cx("mx-auto w-full px-4 py-8 sm:px-6", max, className)}>{children}</div>;
+  const column = { page: undefined, form: "max-w-form", prose: "max-w-prose" }[width];
+  return (
+    <div className={cx("mx-auto w-full max-w-page px-4 pt-8 pb-12 sm:px-6 [&>*:last-child]:mb-0", className)}>
+      {column ? <div className={cx(column, "[&>*:last-child]:mb-0")}>{children}</div> : children}
+    </div>
+  );
 }
 
 export interface Crumb {
@@ -63,11 +72,14 @@ export function Section({ title, description, actions, children, className, id }
   );
 }
 
-/** A main column with an aside beside it on expanded screens, under it otherwise. */
+/**
+ * A main column with an aside beside it on expanded screens, under it otherwise, one section's
+ * distance below the main column's last block.
+ */
 export function WithAside({ children, aside }: { children: ReactNode; aside: ReactNode }) {
   return (
-    <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
-      <div className="min-w-0">{children}</div>
+    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-8">
+      <div className="min-w-0 [&>*:last-child]:mb-0">{children}</div>
       <aside className="flex min-w-0 flex-col gap-6">{aside}</aside>
     </div>
   );

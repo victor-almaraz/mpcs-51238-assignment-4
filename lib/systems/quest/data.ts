@@ -1,12 +1,12 @@
 // Quest rules data and schemas, read from the specification at build time (docs/systems/quest.md).
 
-import data from "../../../cadmium-spec/systems/quest/data.json";
-import ability from "../../../cadmium-spec/systems/quest/ability.schema.json";
-import character from "../../../cadmium-spec/systems/quest/character.schema.json";
-import check from "../../../cadmium-spec/systems/quest/check.schema.json";
-import creature from "../../../cadmium-spec/systems/quest/creature.schema.json";
-import item from "../../../cadmium-spec/systems/quest/item.schema.json";
-import structure from "../../../cadmium-spec/systems/quest/structure.schema.json";
+import data from "../../../docs/spec/systems/quest/data.json";
+import ability from "../../../docs/spec/systems/quest/ability.schema.json";
+import character from "../../../docs/spec/systems/quest/character.schema.json";
+import check from "../../../docs/spec/systems/quest/check.schema.json";
+import creature from "../../../docs/spec/systems/quest/creature.schema.json";
+import item from "../../../docs/spec/systems/quest/item.schema.json";
+import structure from "../../../docs/spec/systems/quest/structure.schema.json";
 import type { Tier } from "../contract";
 
 export interface Setback {
@@ -26,6 +26,7 @@ export interface QuestData {
   tiers: { min: number; tier: Tier }[];
   damage: { weapon: number; unarmed: number };
   npc_templates: Record<string, number>;
+  npc_attack: Record<string, number>;
   setbacks: { tough_choice: Setback[]; severe: Setback[]; failure: Setback[] };
   ap_start: number;
   ap_award_per_session: number;

@@ -13,8 +13,9 @@ import { uploadAsset } from "./assets";
 import { createCharacter, deleteCharacter, getCharacter, restoreCharacter, updateCharacter } from "./characters";
 import type { Entropy } from "./entropy";
 import { handle } from "./http";
-import type { Deps } from "./instances";
-import { code, entropy, SIX, world } from "./testing/fixtures";
+import { createCampaign } from "./campaigns";
+import { addCharacter, createInstance, removeCharacter, type Deps } from "./instances";
+import { code, entropy, SIX, SUNKEN, world } from "./testing/fixtures";
 
 let db: Awaited<ReturnType<typeof testDb>>;
 let store: Store;
@@ -47,6 +48,19 @@ describe("portraits", () => {
     const res = await get(asset.hash);
     expect(res.status).toBe(200);
     expect(new Uint8Array(await res.arrayBuffer())).toEqual(IMAGE);
+  });
+
+  it("changes the portrait of a character in a game, and refuses a sheet edit there before changing anything", async () => {
+    const asset = await uploadAsset(store, "user_a", { kind: "portrait", alt: "A wary spy." }, IMAGE);
+    const c = await rook();
+    const k = await createCampaign(store, "user_a", { title: "Archive", system: "quest", system_versions: "^1.0", materials: SUNKEN }, e);
+    const lobby = await createInstance(store, "user_a", { campaign_id: k.id, name: "Lobby" }, e);
+    await addCharacter(deps, "user_a", { instance_id: lobby.id, character_id: c.id });
+    expect(await code(updateCharacter(store, "user_a", { character_id: c.id, name: "Renamed", portrait: asset.hash }))).toBe("conflict");
+    expect(await getCharacter(store, "user_a", c.id)).toMatchObject({ name: "Rook", portrait: null });
+    expect(await updateCharacter(store, "user_a", { character_id: c.id, portrait: asset.hash })).toMatchObject({ name: "Rook", portrait: asset.hash });
+    await removeCharacter(deps, "user_a", { instance_id: lobby.id, character_id: c.id });
+    expect(await updateCharacter(store, "user_a", { character_id: c.id, name: "Renamed", portrait: null })).toMatchObject({ name: "Renamed", portrait: null });
   });
 
   it("rejects other kinds, types, sizes, and other users' uploads", async () => {
@@ -94,6 +108,6 @@ describe("portraits", () => {
     expect((await restoreCharacter(store, "user_a", d.id)).id).toBe(d.id);
     await deleteCharacter(store, "user_a", d.id);
     await db.query("update characters set deleted_at = now() - interval '91 days' where id = $1", [d.id]);
-    expect(await store.purgeContent(new Date())).toEqual({ characters: 1, assets: 1 });
+    expect(await store.purgeContent(new Date())).toEqual({ characters: 1, drafts: 0, assets: 1 });
   });
 });

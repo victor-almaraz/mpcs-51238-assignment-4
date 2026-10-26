@@ -1,10 +1,13 @@
 // Dashboard (app-flow.md, "Dashboard"; docs/design/README.md, Screens: Dashboard): a hub. Needs you,
-// the next session with RSVP, your games, then campaigns, characters, and adventures.
+// the next session with RSVP, your games, then campaigns, characters, and adventures. Sessions and games
+// come from all the user's campaigns, archived ones included, as reminders and the calendar feed do;
+// a game of an archived campaign is marked so. The campaign cards show unarchived campaigns.
 import Link from "next/link";
-import { DateTile, ElementTile, elementSymbol } from "@/components/ui/tile";
-import { ArrowRight, BookOpen, CalendarClock, CalendarDays, Castle, Check, CircleAlert, Gamepad2, History, Play, Plus, Users } from "lucide-react";
-import { ActionForm } from "@/components/action-form";
-import { CampaignCard, CharacterCard, DraftCard, EnterCode, gamesOf, plural, type GameItem } from "@/components/dashboard/hub";
+import { ElementTile, elementSymbol } from "@/components/ui/tile";
+import { ArrowRight, BookOpen, CalendarClock, CalendarDays, Castle, CircleAlert, Gamepad2, History, Play, Plus, Users } from "lucide-react";
+import { CampaignCard, CharacterCard, DraftCard, EnterCode, gamesOf, type GameItem } from "@/components/dashboard/hub";
+import { NextSession } from "@/components/next-session";
+import { Rsvp, answerOf, type Response } from "@/components/rsvp";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { ButtonLink, buttonClass } from "@/components/ui/button";
 import { Card, CardGrid } from "@/components/ui/card";
@@ -12,22 +15,18 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ICON, ICON_DENSE, IconLink } from "@/components/ui/icon-button";
 import { List, ListRow } from "@/components/ui/list";
 import { Page, PageHeader, Section } from "@/components/ui/page";
-import { cx } from "@/components/ui/cx";
 import { formatWhen } from "@/components/when";
 import { listCampaigns } from "@/lib/api/campaigns";
 import { listCharacters } from "@/lib/api/characters";
 import { listOccurrences } from "@/lib/api/schedules";
 import { listDrafts } from "@/lib/api/drafts";
-import { rsvpAction } from "@/lib/server/schedule-actions";
 import { requestTime } from "@/lib/server/pages";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
+import { plural } from "@/lib/text";
 
 /** How many cards each grid shows here; the hub pages list the rest. */
 const SHOWN = 6;
-const RESPONSES = ["yes", "maybe", "no"] as const;
-type Response = (typeof RESPONSES)[number];
-const RSVP = "inline-flex h-8 min-w-16 items-center justify-center gap-1.5 rounded-control border px-3 text-label font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-55";
 
 interface Upcoming {
   session_id: string;
@@ -39,29 +38,6 @@ interface Upcoming {
   mine: Response | undefined;
 }
 
-/** Yes, Maybe, No for one occurrence; the current answer is pressed and ticked. */
-function Rsvp({ o, label }: { o: Upcoming; label: string }) {
-  return (
-    <div role="group" aria-label={label} className="flex flex-wrap items-start gap-1">
-      {RESPONSES.map((r) => {
-        const pressed = o.mine === r;
-        return (
-          <ActionForm key={r} action={rsvpAction}>
-            <input type="hidden" name="instance_id" value={o.instance.id} />
-            <input type="hidden" name="session_id" value={o.session_id} />
-            <input type="hidden" name="occurrence_start" value={o.occurrence_start} />
-            <input type="hidden" name="response" value={r} />
-            <button type="submit" aria-pressed={pressed} className={cx(RSVP, pressed ? "border-accent bg-accent-soft text-accent" : "border-border bg-page text-ink hover:bg-desk")}>
-              {pressed && <Check {...ICON_DENSE} />}
-              {r[0]!.toUpperCase() + r.slice(1)}
-            </button>
-          </ActionForm>
-        );
-      })}
-    </div>
-  );
-}
-
 function SectionAll({ href, label }: { href: string; label: string }) {
   return (
     <Link href={href} className={buttonClass("quiet", "sm")}>
@@ -71,7 +47,7 @@ function SectionAll({ href, label }: { href: string; label: string }) {
   );
 }
 
-function GameCard({ game: i, userId }: { game: GameItem; userId: string }) {
+function GameCard({ game: i, userId, archived }: { game: GameItem; userId: string; archived: boolean }) {
   const mine = i.characters.filter((c) => c.user_id === userId).map((c) => c.name);
   const action = i.status === "active" ? { href: `/instances/${i.id}/play`, label: "Continue", icon: <Play {...ICON_DENSE} /> } : { href: `/instances/${i.id}`, label: i.status === "lobby" ? "Open lobby" : "Open", icon: <ArrowRight {...ICON_DENSE} /> };
   return (
@@ -96,7 +72,10 @@ function GameCard({ game: i, userId }: { game: GameItem; userId: string }) {
             </p>
           </div>
         </div>
-        <StatusBadge status={i.status} />
+        <div className="flex shrink-0 flex-wrap justify-end gap-1">
+          {archived && <Badge>Archived campaign</Badge>}
+          <StatusBadge status={i.status} />
+        </div>
       </div>
       <div className="mt-auto">
         <ButtonLink href={action.href} size="sm" icon={action.icon} aria-label={`${action.label}: ${i.name}`}>
@@ -110,11 +89,12 @@ function GameCard({ game: i, userId }: { game: GameItem; userId: string }) {
 export default async function Dashboard() {
   const user = await pageUser();
   const store = serverStore();
-  const [characters, campaigns] = await Promise.all([listCharacters(store, user.id, { archived: false, limit: 100 }), listCampaigns(store, user.id, { archived: false, limit: 100 })]);
-  const instances = await gamesOf(store, user.id, campaigns.items);
+  const [characters, every, drafts] = await Promise.all([listCharacters(store, user.id, { archived: false, limit: 100 }), listCampaigns(store, user.id, { limit: 100 }), listDrafts(store, user.id, { archived: false, limit: 20 })]);
+  const campaigns = { items: every.items.filter((c) => !c.archived) };
+  const archived = new Set(every.items.filter((c) => c.archived).map((c) => c.id));
+  const instances = await gamesOf(store, user.id, every.items);
   const active = instances.filter((i) => i.status !== "ended");
   const finished = instances.filter((i) => i.status === "ended");
-  const drafts = await listDrafts(store, user.id, { archived: false, limit: 20 });
   const where = new Map(instances.map((i) => [i.id, i.name]));
   // The next 7 days across all instances (app-flow.md, Dashboard: Upcoming sessions).
   const now = requestTime();
@@ -124,7 +104,7 @@ export default async function Dashboard() {
     .flat()
     .filter((o) => o.status !== "cancelled")
     .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
-    .map((o) => ({ ...o, mine: RESPONSES.find((r) => o.rsvps[r].includes(user.id)) }));
+    .map((o) => ({ ...o, mine: answerOf(o, user.id) }));
   const [next, ...later] = upcoming;
   const live = next && next.instance.status === "active" && Date.parse(next.starts_at) <= now && now < Date.parse(next.ends_at);
   const unanswered = upcoming.filter((o) => !o.mine);
@@ -145,7 +125,7 @@ export default async function Dashboard() {
                 title={`RSVP for ${o.instance.name}`}
                 href={`/instances/${o.instance.id}/schedule`}
                 meta={`${when(o)} · ${o.instance.campaign}`}
-                actions={<Rsvp o={o} label={`RSVP for ${o.instance.name}, ${when(o)}`} />}
+                actions={<Rsvp instanceId={o.instance.id} occurrence={o} mine={o.mine} label={`RSVP for ${o.instance.name}, ${when(o)}`} />}
               />
             ))}
             {troubled.map((d) => (
@@ -172,28 +152,24 @@ export default async function Dashboard() {
         ) : (
           <div className="flex flex-col gap-3">
             <Card className="flex flex-col gap-4 border-accent-line sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex min-w-0 items-start gap-4">
-                <DateTile date={new Date(next.starts_at)} timeZone={user.timezone} size="lg" tone={live || Date.parse(next.starts_at) - now < 86_400_000 ? "pigment" : "accent"} />
-                <div className="min-w-0">
-                  <p className="tabular text-heading font-semibold text-ink">{when(next)}</p>
-                  <p className="flex flex-wrap items-center gap-2">
-                    <Link href={`/instances/${next.instance.id}/schedule`} className="font-medium text-accent hover:underline">
-                      {next.instance.name}
-                    </Link>
-                    <span className="text-caption text-muted">{next.instance.campaign}</span>
-                    {next.status === "moved" && <Badge tone="warning">Moved</Badge>}
-                    {live && (
-                      <Badge tone="pigment" dot>
-                        Live now
-                      </Badge>
-                    )}
-                  </p>
-                </div>
-              </div>
+              <NextSession startsAt={next.starts_at} timezone={user.timezone} now={now} live={live} size="lg">
+                <p className="flex flex-wrap items-center gap-2">
+                  <Link href={`/instances/${next.instance.id}/schedule`} className="font-medium text-accent hover:underline">
+                    {next.instance.name}
+                  </Link>
+                  <span className="text-caption text-muted">{next.instance.campaign}</span>
+                  {next.status === "moved" && <Badge tone="warning">Moved</Badge>}
+                  {live && (
+                    <Badge tone="pigment" dot>
+                      Live now
+                    </Badge>
+                  )}
+                </p>
+              </NextSession>
               <div className="flex flex-col gap-2 sm:items-end">
                 <span className="text-caption text-muted">{next.mine ? "Your answer" : "Will you come?"}</span>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Rsvp o={next} label={`RSVP for ${next.instance.name}, ${when(next)}`} />
+                  <Rsvp instanceId={next.instance.id} occurrence={next} mine={next.mine} label={`RSVP for ${next.instance.name}, ${when(next)}`} />
                   {live && (
                     <ButtonLink href={`/instances/${next.instance.id}/play`} variant="primary" size="sm" icon={<Play {...ICON_DENSE} />}>
                       Join
@@ -211,7 +187,7 @@ export default async function Dashboard() {
                     href={`/instances/${o.instance.id}/schedule`}
                     meta={`${when(o)} · ${o.instance.campaign}`}
                     badge={o.status === "moved" ? <Badge tone="warning">Moved</Badge> : undefined}
-                    actions={<Rsvp o={o} label={`RSVP for ${o.instance.name}, ${when(o)}`} />}
+                    actions={<Rsvp instanceId={o.instance.id} occurrence={o} mine={o.mine} label={`RSVP for ${o.instance.name}, ${when(o)}`} />}
                   />
                 ))}
               </List>
@@ -226,7 +202,7 @@ export default async function Dashboard() {
         ) : (
           <CardGrid>
             {active.map((i) => (
-              <GameCard key={i.id} game={i} userId={user.id} />
+              <GameCard key={i.id} game={i} userId={user.id} archived={archived.has(i.campaign_id)} />
             ))}
           </CardGrid>
         )}
@@ -235,7 +211,7 @@ export default async function Dashboard() {
             <h3 className="mb-2 text-label font-medium text-muted">Finished</h3>
             <List>
               {finished.map((i) => (
-                <ListRow key={i.id} icon={<History {...ICON_DENSE} />} title={i.name} href={`/instances/${i.id}/history`} meta={i.campaign} badge={<StatusBadge status="ended" label="Ended" />} />
+                <ListRow key={i.id} icon={<History {...ICON_DENSE} />} title={i.name} href={`/instances/${i.id}/history`} meta={archived.has(i.campaign_id) ? `${i.campaign} (archived)` : i.campaign} badge={<StatusBadge status="ended" label="Ended" />} />
               ))}
             </List>
           </div>

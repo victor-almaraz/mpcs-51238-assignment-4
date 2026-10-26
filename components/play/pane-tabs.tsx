@@ -36,7 +36,7 @@ export function PaneTabs<T extends string>({ tabs, current, onChange, label, var
   };
   const bar = variant === "bar";
   return (
-    <div role="tablist" aria-label={label} className={cx(bar ? "grid auto-cols-fr grid-flow-col" : "flex gap-1 px-2", className)}>
+    <div role="tablist" aria-label={label} className={cx(bar ? "grid auto-cols-fr grid-flow-col" : "flex gap-1 px-1", className)}>
       {tabs.map((t, i) => {
         const selected = t.id === current;
         const count = !selected && t.count ? t.count : 0;

@@ -225,8 +225,8 @@ function only(where: string, value: unknown, allowed: readonly string[]): Obj {
 
 const ENTITY_DEFAULTS = ["footprint", "obstructs", "cover", "open", "uses"];
 
-// SPEC_ISSUES.md#bundle-format: the bundle has no schema; fields are those of the pack schemas plus
-// the compiler's defaults, `system.modules`, and `system.resolved`.
+// Bundle fields (spec/README.md, "Bundle"): those of the pack schemas plus the compiler's defaults,
+// `system.modules`, and `system.resolved`.
 /** Loads a setting bundle, failing on unknown fields at every level the compiler writes. */
 export function loadSettingBundle(json: unknown): SettingBundle {
   const b = only("bundle", json, ["kind", "format_version", "id", "version", "namespace", "manifest", "conditions", "abilities", "entities", "rooms", "tables", "parser", "assets"]);

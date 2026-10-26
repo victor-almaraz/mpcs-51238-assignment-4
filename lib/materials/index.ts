@@ -1,15 +1,15 @@
 // The Content Compiler (spec/README.md): one library for the command line, the adventure editor,
 // and publishing.
 
-import { stringify } from "yaml";
 import type { AdventureBundle } from "../bundle/adventure";
 import type { SettingBundle } from "../bundle/setting";
 import { compileAdventure } from "./adventure";
-import type { Diagnostic } from "./diagnostics";
+import { formatDiagnostic, type Diagnostic } from "./diagnostics";
+import { draftFiles } from "./draft-io";
 import { Diagnostics, schemaIssues, type PackFiles } from "./pack";
 import { compileSetting, type CompileResult } from "./setting";
 
-export { compileAdventure, compileSetting, type CompileResult };
+export { compileAdventure, compileSetting, draftFiles, type CompileResult };
 export type { Diagnostic, PackFiles };
 export { formatDiagnostic, CHECKS } from "./diagnostics";
 
@@ -29,21 +29,10 @@ export function compile(files: PackFiles, settings: readonly SettingBundle[] = [
   return { ok: false, diagnostics: out.list };
 }
 
-/**
- * The files an editor draft maps onto (spec/README.md, "Adventure directory": the draft holds the
- * same records keyed by id and maps one-to-one onto the files).
- */
-export function draftFiles(draft: Record<string, unknown>): Map<string, string> {
-  const files = new Map<string, string>();
-  const put = (path: string, data: unknown) => files.set(path, stringify(data, { version: "1.2" }));
-  put("adventure.yaml", draft.adventure);
-  if (draft.flags && Object.keys(draft.flags).length > 0) put("flags.yaml", draft.flags);
-  for (const [dir, key] of [["plot", "arcs"], ["locations", "locations"], ["npcs", "npcs"]] as const) {
-    for (const [id, record] of Object.entries((draft[key] ?? {}) as Record<string, unknown>)) put(`${dir}/${id}.yaml`, record);
-  }
-  // SPEC_ISSUES.md#draft-entity-files: the draft's merged entities map onto one file.
-  if (draft.entities && Object.keys(draft.entities).length > 0) put("entities/entities.yaml", draft.entities);
-  return files;
+/** The bundle a compilation produced; throws with `label` and every diagnostic when it produced none. */
+export function mustCompile<B>(result: CompileResult<B>, label: string): B {
+  if (!result.bundle) throw new Error(`${label}:\n${result.diagnostics.map(formatDiagnostic).join("\n")}`);
+  return result.bundle;
 }
 
 /** Compiles an adventure editor draft with the same checks and diagnostics as its directory. */
@@ -67,9 +56,9 @@ export function compileDraft(draft: unknown, settings: readonly SettingBundle[])
 
 /**
  * A bundle with its asset files, as `materials build` writes it and `publish_bundle` reads it: the
- * bundle's fields, plus `files` mapping each SHA-256 to its type and base64 bytes.
+ * bundle's fields, plus `files` mapping each SHA-256 to its type and base64 bytes (spec/README.md,
+ * "Asset files").
  */
-// SPEC_ISSUES.md#asset-delivery
 export function withFiles(bundle: Bundle, files: CompileResult<Bundle>["files"]): Record<string, unknown> {
   const entries = Object.entries(files ?? {});
   if (entries.length === 0) return bundle as unknown as Record<string, unknown>;

@@ -83,7 +83,7 @@ export function conformance(system: RulesSystem, label = system.ID, unconfigured
       expect(Array.isArray(system.MODULES)).toBe(true);
     });
 
-    it("has a valid 2020-12 schema for every kind, and STANDARD_CHECKS.search validates", () => {
+    it("has a valid 2020-12 schema for every kind, and STANDARD_CHECKS.search and {} validate", () => {
       const ajv = schemaRegistry(system);
       for (const kind of SCHEMA_KINDS) {
         const schema = system.SCHEMAS[kind];
@@ -92,6 +92,8 @@ export function conformance(system: RulesSystem, label = system.ID, unconfigured
       }
       const validate = ajv.getSchema(schemaId(system.SCHEMAS.check))!;
       expect(validate(system.STANDARD_CHECKS.search), JSON.stringify(validate.errors)).toBe(true);
+      // systems/README.md, "Ability statistics": a rolled ability's check uses the empty specification.
+      expect(validate({}), JSON.stringify(validate.errors)).toBe(true);
     });
 
     it("creates characters that validate and are identical for identical arguments and seed", () => {

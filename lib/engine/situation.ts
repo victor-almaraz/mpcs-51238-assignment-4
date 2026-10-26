@@ -28,7 +28,7 @@ export function situation(ctx: Ctx, actor: string, target: string | null, tags: 
 }
 
 /** A target has cover when a cover entity occupies a cell strictly between the endpoints of the sight line. */
-export function hasCover(ctx: Ctx, attacker: string, target: string): boolean {
+function hasCover(ctx: Ctx, attacker: string, target: string): boolean {
   const a = placement(ctx.state, ctx.c, attacker);
   const t = placement(ctx.state, ctx.c, target);
   if (!a || !t || a.location !== t.location) return false;

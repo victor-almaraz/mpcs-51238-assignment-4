@@ -1,8 +1,7 @@
 // The balance simulation is seeded and replayable (AGENTS.md, phase 11).
 
 import { describe, expect, it } from "vitest";
-import { replay } from "../../lib/engine";
-import { commitOf } from "../../lib/harness/harness";
+import { replay } from "../../lib/harness/harness";
 import { arena, LOADOUTS } from "./arena";
 import { ENCOUNTERS } from "./encounters";
 import { simulate, sweep } from "./run";
@@ -14,7 +13,7 @@ describe("balance simulation", () => {
     const a = simulate(octopus, { party: 2, loadout: "full", armorMax: 6 }, 7);
     const b = simulate(octopus, { party: 2, loadout: "full", armorMax: 6 }, 7);
     expect(JSON.stringify(a.session.log)).toBe(JSON.stringify(b.session.log));
-    expect(replay(arena(octopus, LOADOUTS.full!, 2), a.session.log.map(commitOf)).ok).toBe(true);
+    expect(replay(arena(octopus, LOADOUTS.full!, 2), a.session.log).ok).toBe(true);
   });
 
   it("takes the gear, dons the armor, and fights", () => {

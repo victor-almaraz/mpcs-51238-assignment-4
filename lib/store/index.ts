@@ -117,7 +117,7 @@ export interface CharacterRecord {
   portrait_asset: string | null;
   status: "available" | "in_instance" | "dead" | "retired";
   instance_id: string | null;
-  /** Kept out of the owner's lists and out of games until unarchived (SPEC_ISSUES.md#character-draft-archive). */
+  /** Kept out of games until unarchived (api.md, Characters). */
   archived: boolean;
   created_at: string;
 }
@@ -185,6 +185,14 @@ export interface InstanceView {
   ending: string | null;
 }
 
+/** A character that has joined an instance; `left_at` is null while it is in the party. */
+export interface RosterEntry {
+  id: string;
+  user_id: string;
+  name: string;
+  left_at: string | null;
+}
+
 export interface HistoryItem {
   version: number;
   actor_id: string | null;
@@ -203,7 +211,7 @@ export interface DraftRecord {
   revision: number;
   diagnostics: { pointer: string; severity: "error" | "warning"; code: string; message: string }[];
   last_published_version: string | null;
-  /** Kept out of the owner's drafts and from publishing until unarchived (SPEC_ISSUES.md#character-draft-archive). */
+  /** Kept from publishing until unarchived (api.md, Adventure drafts). */
   archived: boolean;
   created_at: string;
   updated_at: string;
@@ -273,6 +281,11 @@ export class Store {
     return (await this.rpc.call<SettingBundle | AdventureBundle | null>("cadmium_get_bundle", { p_kind: kind, p_id: id, p_version: version })) ?? undefined;
   }
 
+  /** Deletes the bundle version unless a campaign or game uses it; returns how many do (both zero when deleted). */
+  async deleteBundle(kind: string, id: string, version: string): Promise<{ campaigns: number; games: number }> {
+    return this.rpc.call("cadmium_delete_bundle", { p_kind: kind, p_id: id, p_version: version });
+  }
+
   async setListed(kind: string, id: string, version: string, listed: boolean): Promise<void> {
     await this.rpc.call("cadmium_set_listed", { p_kind: kind, p_id: id, p_version: version, p_listed: listed });
   }
@@ -298,10 +311,6 @@ export class Store {
 
   async setStatus(id: string, status: InstanceStatus): Promise<void> {
     await this.rpc.call("cadmium_set_status", { p_id: id, p_status: status });
-  }
-
-  async addCharacter(instanceId: string, characterId: string, userId: string): Promise<void> {
-    await this.rpc.call("cadmium_add_character", { p_instance: instanceId, p_character: characterId, p_user: userId });
   }
 
   // Commits --------------------------------------------------------------------------------------
@@ -371,6 +380,11 @@ export class Store {
       (await this.rpc.call<UserRecord | null>("cadmium_upsert_user", { p_id: u.id, p_email: u.email, p_display_name: u.display_name, p_terms_accepted_at: u.terms_accepted_at })) ??
       undefined
     );
+  }
+
+  /** The ids get_me lists: the user's characters, the campaigns they belong to that are not archived, and those they author. */
+  async userIds(id: string): Promise<{ character_ids: string[]; active_campaign_ids: string[]; authored_campaign_ids: string[] }> {
+    return this.rpc.call("cadmium_user_ids", { p_user: id });
   }
 
   async getUser(id: string): Promise<UserRecord | undefined> {
@@ -545,6 +559,11 @@ export class Store {
     return this.rpc.call<InstanceView[]>("cadmium_list_instances", { p_campaign: campaignId });
   }
 
+  /** Every character that has joined the instance, in joining order, with when it left (null while in). */
+  async instanceRoster(instanceId: string): Promise<RosterEntry[]> {
+    return this.rpc.call<RosterEntry[]>("cadmium_instance_roster", { p_instance: instanceId });
+  }
+
   /** Puts an available character of the user into an instance; false when it is no longer available. */
   async joinInstance(instanceId: string, characterId: string, userId: string): Promise<boolean> {
     return this.rpc.call<boolean>("cadmium_join_instance", { p_instance: instanceId, p_character: characterId, p_user: userId });
@@ -655,6 +674,12 @@ export class Store {
     return this.rpc.call<boolean>("cadmium_schedule_mark", { p_key: key });
   }
 
+  /** Which of the user's reminder keys the Scheduler has marked done, that is, sent or tried to send. */
+  async reminderMarks(userId: string, keys: readonly string[]): Promise<Set<string>> {
+    if (keys.length === 0) return new Set();
+    return new Set(await this.rpc.call<string[]>("cadmium_reminder_marks", { p_user: userId, p_keys: keys }));
+  }
+
   async schedulerSnapshot(): Promise<SchedulerSnapshot> {
     return this.rpc.call<SchedulerSnapshot>("cadmium_scheduler_snapshot", {});
   }
@@ -754,8 +779,14 @@ export class Store {
     return this.rpc.call<boolean>("cadmium_set_suspended", { p_id: id, p_suspended: suspended });
   }
 
+  /** Hides a character from every user for good, deleted or not; false when there is none. */
   async removeCharacter(id: string): Promise<boolean> {
     return this.rpc.call<boolean>("cadmium_remove_character", { p_id: id });
+  }
+
+  /** Hides a campaign from every user for good, deleted or not; false when there is none. */
+  async removeCampaign(id: string): Promise<boolean> {
+    return this.rpc.call<boolean>("cadmium_remove_campaign", { p_id: id });
   }
 
   async allBundles(): Promise<(Omit<MaterialRecord, "manifest"> & { created_at: string })[]> {
@@ -801,6 +832,16 @@ export class Store {
     return (await this.rpc.call<DraftRecord | null>("cadmium_restore_draft", { p_id: id })) ?? undefined;
   }
 
+  /** Sets the adventure id of a never-published draft; undefined once published. Another of the owner's drafts with the id fails with 23505. */
+  async setDraftMaterial(id: string, materialId: string): Promise<DraftRecord | undefined> {
+    return (await this.rpc.call<DraftRecord | null>("cadmium_set_draft_material", { p_id: id, p_material_id: materialId })) ?? undefined;
+  }
+
+  /** The version ranges of drafts, and the resolved versions of listed adventures, that require setting `id`. */
+  async settingDependents(id: string): Promise<{ drafts: (string | null)[]; adventures: (string | null)[] }> {
+    return this.rpc.call("cadmium_setting_dependents", { p_id: id });
+  }
+
   async setDraftArchived(id: string, archived: boolean): Promise<DraftRecord | undefined> {
     return (await this.rpc.call<DraftRecord | null>("cadmium_set_draft_archived", { p_id: id, p_archived: archived })) ?? undefined;
   }
@@ -816,10 +857,6 @@ export class Store {
 
   async adventureVersions(id: string): Promise<{ version: string; publisher_id: string | null; origin: string }[]> {
     return this.rpc.call("cadmium_adventure_versions", { p_id: id });
-  }
-
-  async purgeDrafts(now: Date): Promise<number> {
-    return this.rpc.call<number>("cadmium_purge_drafts", { p_now: now.toISOString() });
   }
 
   async userDrafts(owner: string): Promise<DraftRecord[]> {
@@ -880,6 +917,16 @@ export class Store {
     return (await this.rpc.call<CharacterRecord | null>("cadmium_restore_character", { p_id: id })) ?? undefined;
   }
 
+  /** Whether the character has ever joined an instance. */
+  async characterPlayed(id: string): Promise<boolean> {
+    return this.rpc.call<boolean>("cadmium_character_played", { p_id: id });
+  }
+
+  /** Undefined unless the character is available and has never joined an instance. */
+  async rebuildCharacter(id: string, name: string, sheet: CharacterRecord["sheet"]): Promise<CharacterRecord | undefined> {
+    return (await this.rpc.call<CharacterRecord | null>("cadmium_rebuild_character", { p_id: id, p_name: name, p_sheet: sheet })) ?? undefined;
+  }
+
   /** Undefined when the character is deleted, or in an instance and `archived` is true. */
   async setCharacterArchived(id: string, archived: boolean): Promise<CharacterRecord | undefined> {
     return (await this.rpc.call<CharacterRecord | null>("cadmium_set_character_archived", { p_id: id, p_archived: archived })) ?? undefined;
@@ -894,7 +941,8 @@ export class Store {
     return (await this.rpc.call<{ id: string; owner_id: string; deleted_at: string } | null>("cadmium_deleted_character", { p_id: id })) ?? undefined;
   }
 
-  async purgeContent(now: Date): Promise<{ characters: number; assets: number }> {
+  /** Erases characters and drafts deleted more than 90 days before `now`, then unused images; returns the counts. */
+  async purgeContent(now: Date): Promise<{ characters: number; drafts: number; assets: number }> {
     return this.rpc.call("cadmium_purge_content", { p_now: now.toISOString() });
   }
 }

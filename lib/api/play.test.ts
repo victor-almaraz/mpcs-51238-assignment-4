@@ -12,7 +12,7 @@ import type { testDb } from "../store/testing/pglite";
 import { createCharacter } from "./characters";
 import { createCampaign, deleteCampaign, joinByLink, leaveCampaign, restoreCampaign, rotateInviteLink } from "./campaigns";
 import type { Entropy } from "./entropy";
-import { addCharacter, advanceRound, createInstance, endInstance, getHistory, getInstance, pauseInstance, removeCharacter, resumeInstance, startInstance, submitAction, type Deps } from "./instances";
+import { actWithOutcome, addCharacter, advanceRound, createInstance, endInstance, getHistory, getInstance, instanceRoster, pauseInstance, removeCharacter, resumeInstance, startInstance, submitAction, type Deps } from "./instances";
 import { code, entropy, richSetting, SIX, SUNKEN, world } from "./testing/fixtures";
 
 let db: Awaited<ReturnType<typeof testDb>>;
@@ -78,6 +78,18 @@ describe("lifecycle", () => {
     for (const id of [vale.id, rook.id]) expect(await store.getCharacter(id)).toMatchObject({ status: "available", instance_id: null });
     expect(types(`instance:${instance.id}`).filter((t) => t === "instance_status")).toEqual(["instance_status", "instance_status", "instance_status", "instance_status"]);
   });
+
+  it("names every character that played after the game ends", async () => {
+    const { instance, vale, rook } = await table();
+    await startInstance(deps, "user_a", instance.id);
+    await endInstance(deps, "user_a", instance.id);
+    const roster = await instanceRoster(store, "user_b", instance.id);
+    expect(roster.map((c) => [c.id, c.name])).toEqual([
+      [vale.id, "Vale"],
+      [rook.id, "Rook"],
+    ]);
+    expect(roster.every((c) => c.left_at !== null)).toBe(true);
+  });
 });
 
 describe("play", () => {
@@ -110,9 +122,19 @@ describe("play", () => {
     const { instance } = await table();
     await startInstance(deps, "user_a", instance.id);
     const r = await act("user_b", instance.id, "bad-move-0001", "move", { to_id: "nowhere" });
-    expect(broadcast.on("user:user_b").at(-1)).toMatchObject({ type: "input_rejected", input_id: r.input_id, version: 1 });
+    expect(r).toEqual({ accepted: true, input_id: r.input_id });
+    expect(broadcast.on("user:user_b").at(-1)).toMatchObject({ type: "input_rejected", input_id: r.input_id, version: 1, reason: "unknown_id", detail: "There is nothing like that here." });
     expect((await store.instanceView(instance.id))!.version).toBe(1);
     expect(await code(act("user_c", instance.id, "no-char-0001"))).toBe("forbidden");
+  });
+
+  it("returns a rejection's sentence to the play page, which may have no Realtime channel", async () => {
+    const { instance } = await table();
+    await startInstance(deps, "user_a", instance.id);
+    const r = await actWithOutcome(deps, "user_b", { instance_id: instance.id, tool: "move", args: { to_id: "nowhere" }, idempotency_key: "bad-move-0002" }, e);
+    expect(r.rejected).toBe("There is nothing like that here.");
+    const ok = await actWithOutcome(deps, "user_b", { instance_id: instance.id, tool: "wait", args: {}, idempotency_key: "good-wait-0002" }, e);
+    expect(ok.rejected).toBeUndefined();
   });
 
   it("advances an expired round on the next request, or when the author asks", async () => {
@@ -212,6 +234,37 @@ describe("party changes", () => {
     expect(plain.instance.characters).toHaveLength(3);
     expect(plain).not.toHaveProperty("view");
     expect((await getInstance(deps, "user_a", { instance_id: instance.id, character_id: vale.id })).view).toBeDefined();
+  });
+
+  it("keeps the adventure's player range when characters join and leave", async () => {
+    const { instance, vale, rook, make } = await table();
+    // The Sunken Archive takes 1 to 4 characters.
+    for (const name of ["Third", "Fourth"]) await addCharacter(deps, "user_c", { instance_id: instance.id, character_id: (await make("user_c", name)).id });
+    const fifth = await make("user_c", "Fifth");
+    expect(await code(addCharacter(deps, "user_c", { instance_id: instance.id, character_id: fifth.id }))).toBe("conflict");
+    await startInstance(deps, "user_a", instance.id);
+    await pauseInstance(deps, "user_a", instance.id);
+    expect(await code(addCharacter(deps, "user_c", { instance_id: instance.id, character_id: fifth.id }))).toBe("conflict");
+    expect(await store.getCharacter(fifth.id)).toMatchObject({ status: "available", instance_id: null });
+    const ids = (await store.instanceView(instance.id))!.characters.map((c) => c.id).filter((id) => id !== vale.id && id !== rook.id);
+    for (const id of [...ids, rook.id]) await removeCharacter(deps, "user_a", { instance_id: instance.id, character_id: id });
+    // The last character stays: a paused game keeps its minimum, so it can resume.
+    expect(await code(removeCharacter(deps, "user_a", { instance_id: instance.id, character_id: vale.id }))).toBe("conflict");
+    expect((await resumeInstance(deps, "user_a", instance.id)).status).toBe("active");
+  });
+
+  it("pauses a running game that a member's removal leaves below the minimum, and will not resume it", async () => {
+    const campaign = await createCampaign(store, "user_a", { title: "Rook alone", system: "quest", system_versions: "^1.0", materials: SUNKEN }, e);
+    await joinByLink(store, "user_b", (await rotateInviteLink(store, "user_a", campaign.id, e)).invite_link_code);
+    const instance = await createInstance(store, "user_a", { campaign_id: campaign.id, name: "Solo" }, e);
+    const rook = await createCharacter(store, "user_b", { system: "quest", name: "Rook", choices: { role: "fighter", abilities: SIX } }, e);
+    await addCharacter(deps, "user_b", { instance_id: instance.id, character_id: rook.id });
+    await startInstance(deps, "user_a", instance.id);
+    await leaveCampaign(deps, "user_b", campaign.id);
+    expect(await store.instanceView(instance.id)).toMatchObject({ status: "paused", characters: [] });
+    expect(await store.getCharacter(rook.id)).toMatchObject({ status: "available", instance_id: null });
+    expect(await code(resumeInstance(deps, "user_a", instance.id))).toBe("conflict");
+    expect((await store.instanceView(instance.id))!.status).toBe("paused");
   });
 
   it("takes a leaving member's characters out of a running instance", async () => {

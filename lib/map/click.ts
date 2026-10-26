@@ -1,4 +1,4 @@
-// A clicked map cell as a `move` call (app-flow.md, Adventure editor: Playtest; SPEC_ISSUES.md#playtest-click-cell). Tools name rooms,
+// A clicked map cell as a `move` call (app-flow.md, Adventure editor: Playtest). Tools name rooms,
 // doors, links, and entities by id, never cells (engine.md, Space; Action resolution), so a click
 // resolves to what the cell holds in the viewer's view: a visible entity or door on it, else a link on
 // it, else the room containing it. Unseen cells, walls, cells outside every room, and the viewer's own

@@ -1,5 +1,5 @@
 "use client";
-// SPEC_ISSUES.md#editor-stats: structures included; modules come from the draft's system.
+// Structures included; modules come from the draft's system (app-flow.md, Character creation and editor).
 // The adventure editor's form for creature, item, ability, and structure `system_stats` (app-flow.md,
 // Character creation and editor: `StatsEditor`, generated from the system's schemas by default; module
 // fields only while the module is enabled). Fields come from lib/materials/stats-form.ts; a schema

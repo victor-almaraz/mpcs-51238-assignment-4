@@ -3,7 +3,8 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Store } from "../store";
 import type { testDb } from "../store/testing/pglite";
-import { handle, RATE_LIMIT } from "./http";
+import { handle } from "./http";
+import { RATE_LIMIT } from "./limits";
 import type { Deps } from "./instances";
 import { SIX, SUNKEN, world } from "./testing/fixtures";
 

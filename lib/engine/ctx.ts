@@ -201,7 +201,7 @@ export class Ctx {
     return eid;
   }
 
-  // SPEC_ISSUES.md#container-contents: container contents are drawn when the container is placed.
+  // Container contents are drawn when the container is placed (setting-packs.md, "Container").
   fillContainer(id: string): void {
     const e = this.state.entities[id]!;
     const t = this.c.template(e.ref) as { contents: { table: string; picks: number | string } | string[] };
@@ -216,7 +216,7 @@ export class Ctx {
     const count = typeof picks === "number" ? picks : this.rng.roll(picks).total;
     const refs: string[] = [];
     for (let i = 0; i < count && entries.length > 0; i++) {
-      // SPEC_ISSUES.md#weighted-tables: the same weighted draw as the generator.
+      // engine.md, "Random numbers": the same weighted selection as the generator.
       const entry = pickWeighted(this.rng, entries);
       const n = entry.count === undefined ? 1 : typeof entry.count === "number" ? entry.count : this.rng.roll(entry.count).total;
       for (let k = 0; k < n; k++) refs.push(entry.ref);

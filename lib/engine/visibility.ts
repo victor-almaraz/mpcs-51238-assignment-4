@@ -1,6 +1,6 @@
 // The events of a commit that every member may see (app-flow.md, Real-time channels: the `commit`
 // message on the instance channel contains the events visible to every member).
-// SPEC_ISSUES.md#commit-event-visibility: which events and entities count as visible to the party.
+// The rules are api.md, Messages, Event visibility.
 
 import { content } from "./content";
 import type { Bundles, GameEvent, State } from "./types";

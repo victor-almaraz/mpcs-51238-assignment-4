@@ -10,8 +10,8 @@ import { useMemo, useState } from "react";
 import { cx } from "@/components/ui/cx";
 import { useDark } from "./dark";
 
-export const NODE_W = 132;
-export const NODE_H = 36;
+const NODE_W = 132;
+const NODE_H = 36;
 
 type Position2 = { x: number; y: number };
 type StageData = { stage: string; initial: boolean; reachable: boolean; selected: boolean; select: (s: string) => void };

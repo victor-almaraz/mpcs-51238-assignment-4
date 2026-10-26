@@ -37,9 +37,9 @@ const config: NextConfig = {
   outputFileTracingIncludes: {
     "/terms": ["./legal/terms.md"],
     "/privacy": ["./legal/privacy.md"],
-    "/attribution": ["./cadmium-spec/LICENSES.md", "./cadmium-spec/systems/*/NOTICE", "./materials/*/NOTICE"],
-    "/characters/new": ["./materials/*/descriptions.yaml", "./materials/*/pack/manifest.yaml"],
-    "/characters/[id]": ["./materials/*/descriptions.yaml", "./materials/*/pack/manifest.yaml"],
+    "/attribution": ["./docs/spec/LICENSES.md", "./docs/spec/systems/*/NOTICE", "./materials/*/NOTICE"],
+    "/characters/new": ["./materials/*/descriptions.yaml", "./materials/*/pack/manifest.yaml", "./docs/spec/spec/examples/*/manifest.yaml"],
+    "/characters/[id]": ["./materials/*/descriptions.yaml", "./materials/*/pack/manifest.yaml", "./docs/spec/spec/examples/*/manifest.yaml"],
   },
 };
 

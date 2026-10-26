@@ -11,6 +11,7 @@ import { sendActionMenus } from "./menus";
 import { Rng } from "../rng";
 import { VersionConflict, type CharacterRecord, type InstanceRecord, type InstanceStatus, type Store } from "../store";
 import { pinnedBundles } from "./admin";
+import { rejectionText } from "./rejections";
 
 export class CoordinatorError extends Error {
   constructor(
@@ -44,7 +45,7 @@ export interface Deps {
   defer?: (task: () => Promise<void>) => void;
   /** Sends `action_menu` to every character at each round and turn start (tools.md, improvise). */
   actionMenuMode?: boolean;
-  /** Logs a failed broadcast; the commit stands and clients backfill. */
+  /** Logs a failure after a commit, such as a failed broadcast, auto-pause, or narration; the commit stands and clients backfill. */
   warn?: (message: string) => void;
 }
 
@@ -68,7 +69,7 @@ function timeoutOf(deps: Deps, state: State): number | null {
 const startsWait = (events: readonly GameEvent[]) => events.some((e) => e.type === "round_started" || e.type === "turn_started");
 
 /** The `round` message payload (api.md, Messages). */
-export function roundOf(state: State, deadline: Date | null) {
+function roundOf(state: State, deadline: Date | null) {
   const r = state.round;
   const characters = r.participants.filter((id) => state.characters[id]);
   const current = r.resolution === "sequential" && r.order && r.turn_index !== null ? r.order[r.turn_index] : undefined;
@@ -162,11 +163,19 @@ export async function commit(
   for (const [user, messages] of owners) await send(deps, userTopic(user), messages);
 
   await sendActionMenus(deps, instance.id, version, bundles, result.state, result.events, extra.actor);
+  // The action is committed: a failure from here on is logged, not thrown, so no caller retries it.
+  const warn = (what: string, e: unknown) => deps.warn?.(`${what} ${instance.id}@${version}: ${e instanceof Error ? e.message : String(e)}`);
   // auto_pause waits for the round under way to close.
-  if (!ended && result.events.some((e) => e.type === "round_ended") && (await deps.store.pauseRequested(instance.id))) await setStatus(deps, instance.id, "paused");
+  if (!ended && result.events.some((e) => e.type === "round_ended")) {
+    try {
+      if (await deps.store.pauseRequested(instance.id)) await setStatus(deps, instance.id, "paused");
+    } catch (e) {
+      warn("auto_pause", e);
+    }
+  }
 
   // Narration after the commit; a commit with nothing resolved, such as a declaration, has none.
-  const job = () => narrate(deps, { instanceId: instance.id, version, bundles, before: instance.state, after: result.state, events: visible, facts: result.facts ?? [], actor: extra.actor ?? null });
+  const job = () => narrate(deps, { instanceId: instance.id, version, bundles, before: instance.state, after: result.state, events: visible, facts: result.facts ?? [], actor: extra.actor ?? null }).catch((e: unknown) => warn("narration", e));
   if (deps.defer) deps.defer(job);
   else await job();
   return { version, state: result.state, events: result.events };
@@ -218,7 +227,8 @@ export async function catchUp(deps: Deps, instanceId: string): Promise<boolean> 
   }
 }
 
-export type ActOutcome = { committed: number } | { rejected: { code: string; detail: string } };
+/** A rejection carries the engine's code and detail, and `text`, a sentence for the player. */
+export type ActOutcome = { committed: number } | { rejected: { code: string; detail: string; text: string } };
 
 /**
  * Runs one tool call for `actor` through the engine and commits it, first advancing past an expired
@@ -230,7 +240,7 @@ export async function act(deps: Deps, instanceId: string, actor: string, call: {
     requireStatus(instance, ["active"], "act in");
     const bundles = await pinnedBundles(deps.store, instance);
     const result = submit(instance.state!, bundles, actor, call, rngFor(instance, instance.state!));
-    if (!result.ok) return { rejected: result.error };
+    if (!result.ok) return { rejected: { ...result.error, text: rejectionText(instance.state!, bundles, result.error) } };
     const c = await commit(deps, instance, bundles, result, { call: { actor, tool: call.tool, args: call.args } }, { actor, inputLog });
     return { committed: c.version };
   });
@@ -247,11 +257,19 @@ export async function advanceRound(deps: Deps, instanceId: string): Promise<Comm
   });
 }
 
-/** Pauses, resumes, or ends an instance without a commit; ending writes every sheet back. */
+/**
+ * Pauses, resumes, or ends an instance without a commit; ending writes every sheet back. Resuming needs
+ * at least the adventure's minimum of players, since a game without its party is lost at once.
+ */
 export async function setStatus(deps: Deps, instanceId: string, status: "active" | "paused" | "ended"): Promise<void> {
   await serialized(deps, instanceId, async (instance) => {
     const from: Record<typeof status, InstanceStatus[]> = { paused: ["active"], active: ["paused"], ended: ["active", "paused"] };
     requireStatus(instance, from[status], status === "active" ? "resume" : status === "paused" ? "pause" : "end");
+    if (status === "active" && instance.state) {
+      const [min] = (await pinnedBundles(deps.store, instance)).adventure.manifest.players;
+      const n = Object.keys(instance.state.characters).length;
+      if (n < min) throw new CoordinatorError("conflict", `the adventure needs at least ${min} character${min === 1 ? "" : "s"} and the game has ${n}; add a character before resuming`);
+    }
     // A resumed wait gets a full timeout; a paused or ended instance has none.
     const seconds = status === "active" && instance.state ? timeoutOf(deps, instance.state) : null;
     const deadline = seconds === null ? null : new Date(deps.now().getTime() + seconds * 1000);

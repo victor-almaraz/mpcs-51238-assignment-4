@@ -22,8 +22,8 @@ export async function DemoIndex() {
   const w = await demoWorld();
   const groups: [string, [string, string][]][] = [
     ["Home", [["Dashboard", "/dashboard"], ["Notifications", "/notifications"], ["Settings", "/settings"], ["Accept terms", "/accept-terms"]]],
-    ["Characters", [["Characters", "/characters"], ["New character", "/characters/new"], ["New character, Cadmium for a campaign", `/characters/new?system=cadmium&campaign=${w.campaign}`], ["Character: Wren Halloway", `/characters/${w.character}`]]],
-    ["Campaigns", [["Campaigns", "/campaigns"], ["New campaign", "/campaigns/new"], ["Campaign: The Sunken Archive", `/campaigns/${w.campaign}`], ["Campaign editor", `/campaigns/${w.campaign}/edit`]]],
+    ["Characters", [["Characters", "/characters"], ["New character", "/characters/new"], ["New character, Cadmium for a campaign", `/characters/new?system=cadmium&campaign=${w.campaign}`], ["Character: Wren Halloway", `/characters/${w.character}`], ["Archived character: Old Tam", `/characters/${w.archivedCharacter}`]]],
+    ["Campaigns", [["Campaigns", "/campaigns"], ["New campaign", "/campaigns/new"], ["Campaign: The Sunken Archive", `/campaigns/${w.campaign}`], ["Campaign editor", `/campaigns/${w.campaign}/edit`], ["Archived campaign: Summer in Vessaro", `/campaigns/${w.archivedCampaign}`], ["Archived campaign editor", `/campaigns/${w.archivedCampaign}/edit`]]],
     [
       "Games",
       [

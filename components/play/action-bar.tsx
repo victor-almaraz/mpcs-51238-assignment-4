@@ -9,6 +9,7 @@ import type { View } from "@/lib/engine";
 import { Button } from "@/components/ui/button";
 import { ICON_DENSE } from "@/components/ui/icon-button";
 import { cx } from "@/components/ui/cx";
+import { capitalize } from "@/lib/text";
 
 export type Act = (tool: string, args: Record<string, unknown>, label: string) => void;
 
@@ -55,6 +56,17 @@ function Target({ label, kind, onClear, children }: { label: string; kind: strin
       <div className="flex flex-wrap gap-2">{children}</div>
     </div>
   );
+}
+
+/**
+ * What an ability aimed at an entity or a door may target: for an entity, the user, visible creatures,
+ * and party members in the same room; for a door, visible doors. The engine checks visibility and range.
+ */
+function abilityTargets(view: View, target: View["actions"]["abilities"][number]["target"]): { id: string; label: string }[] {
+  if (target === "door") return view.visible.filter((v) => v.kind === "door");
+  if (target !== "entity") return [];
+  const room = view.character.room;
+  return [{ id: view.character_id, label: "yourself" }, ...view.visible.filter((v) => v.kind === "creature"), ...view.party.filter((p) => room !== null && p.room === room).map((p) => ({ id: p.id, label: p.name }))];
 }
 
 /** The pending choice as buttons, or the actions of the selected target, with the NPC talk form. */
@@ -121,8 +133,8 @@ export function TargetActions({ view, selected, onSelect, act, busy }: Props) {
             </Action>
           ))}
           {entity?.verbs?.map((verb) => (
-            <Action key={verb} busy={busy} onClick={() => act("interact", { target_id: entity.id, verb }, `${verb[0]!.toUpperCase()}${verb.slice(1)} ${entity.label}`)}>
-              {verb[0]!.toUpperCase() + verb.slice(1)}
+            <Action key={verb} busy={busy} onClick={() => act("interact", { target_id: entity.id, verb }, `${capitalize(verb)} ${entity.label}`)}>
+              {capitalize(verb)}
             </Action>
           ))}
           {npc && (
@@ -163,19 +175,17 @@ export function TargetActions({ view, selected, onSelect, act, busy }: Props) {
               </Action>
             </>
           )}
-          {ability && (
+          {ability && (ability.target === "self" || ability.target === "none") && (
             <Action busy={busy} onClick={() => act("ability", { ability_id: ability.id }, ability.label)}>
-              Use on self
+              {ability.target === "self" ? "Use on self" : "Use"}
             </Action>
           )}
           {ability &&
-            view.visible
-              .filter((v) => v.kind === "creature")
-              .map((v) => (
-                <Action key={v.id} busy={busy} onClick={() => act("ability", { ability_id: ability.id, target_id: v.id }, `${ability.label} on ${v.label}`)}>
-                  On {v.label}
-                </Action>
-              ))}
+            abilityTargets(view, ability.target).map((t) => (
+              <Action key={t.id} busy={busy} onClick={() => act("ability", { ability_id: ability.id, target_id: t.id }, `${ability.label} on ${t.label}`)}>
+                On {t.label}
+              </Action>
+            ))}
         </Target>
       )}
       {!entity && !destination && !npc && !item && !ability && <p className="text-caption text-muted">Select something on the map or in a list to act on it.</p>}

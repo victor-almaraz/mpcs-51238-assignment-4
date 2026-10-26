@@ -81,7 +81,7 @@ export function checkActor(ctx: Ctx, actor: string, call: ToolCall): void {
     const blocks = ctx.c.condition(k.id)?.blocks ?? [];
     if (blocks.includes(call.tool)) reject("blocked_by_condition", `'${k.id}' blocks ${call.tool}`);
   }
-  // SPEC_ISSUES.md#outside-combat-area: characters outside the combat area use the exploration tool set.
+  // engine.md, "Rounds": characters outside the combat area may use the exploration-only tools.
   if (ctx.state.round.mode === "combat" && EXPLORATION_ONLY.has(call.tool) && inCombatAreaOf(ctx, actor)) {
     reject("invalid_in_mode", `${call.tool} is not available in combat`);
   }
@@ -264,7 +264,7 @@ function ability(ctx: Ctx, actor: string, abilityRef: string, target: string | u
   const cost = (def.system_stats as { cost?: unknown }).cost;
   ctx.setSheet(actor, rules(() => ctx.system.pay_cost(ctx.combatant(actor).sheet, cost)));
   ctx.emit(aim !== undefined && aim !== actor ? { type: "ability_used", actor, ability: abilityRef, target: aim } : { type: "ability_used", actor, ability: abilityRef });
-  // SPEC_ISSUES.md#ability-roll: an ability is rolled when its system_stats set `roll: true`.
+  // engine.md, "Action resolution": an ability is rolled when its system_stats set `roll: true`.
   if ((def.system_stats as { roll?: boolean }).roll === true) {
     const result = rules(() => ctx.system.check(ctx.combatant(actor), {}, situation(ctx, actor, aim ?? null, []), ctx.rng));
     ctx.apply({ ...result, choice: null }, actor, aim);

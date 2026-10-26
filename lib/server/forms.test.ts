@@ -35,7 +35,7 @@ describe("attempt", () => {
   it("refuses without running the operation once the limit is reached", async () => {
     wait = 2500;
     const run = vi.fn(async () => "done");
-    expect(await attempt(run)).toEqual({ error: "too many requests; try again in 3 seconds" });
+    expect(await attempt(run)).toEqual({ error: "Too many requests; try again in 3 seconds.", code: "rate_limited" });
     expect(run).not.toHaveBeenCalled();
   });
 
@@ -43,5 +43,16 @@ describe("attempt", () => {
     user = undefined;
     expect(await attempt(async (id) => id)).toEqual({ ok: null });
     expect(hits).toEqual([]);
+  });
+});
+
+describe("plain", () => {
+  it("names a leading field in words and ends the sentence", async () => {
+    const { plain } = await import("./forms");
+    expect(plain("display_name must have 1 to 40 characters")).toBe("Display name must have 1 to 40 characters.");
+    expect(plain("reminders.lead_minutes must list minutes")).toBe("Reminders lead minutes must list minutes.");
+    expect(plain("the campaign is archived")).toBe("The campaign is archived.");
+    expect(plain("setting lantern_coast requires the module armor")).toBe("Setting lantern_coast requires the module armor.");
+    expect(plain("Already a sentence.")).toBe("Already a sentence.");
   });
 });

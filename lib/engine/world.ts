@@ -73,7 +73,6 @@ export function footprintOf(c: Content, e: EntityState): Footprint {
 }
 
 /** Whether a creature or character still occupies cells: status other than `dead`. */
-// SPEC_ISSUES.md#dead-creatures: dead creatures and characters stay in place but do not occupy cells.
 export function occupies(sheetStatus: string | undefined): boolean {
   return sheetStatus !== "dead";
 }
@@ -250,7 +249,7 @@ export function illumination(state: State, c: Content, location: string): Illumi
   return out.map((v) => LEVEL[v]!);
 }
 
-export function levelAt(illum: Illumination, loc: LocationState, cell: Cell): LightLevel {
+function levelAt(illum: Illumination, loc: LocationState, cell: Cell): LightLevel {
   const width = loc.rows[0]?.length ?? 0;
   return illum[cell[1] * width + cell[0]] ?? "dark";
 }

@@ -3,7 +3,7 @@
 // selected arc's graph with stages as nodes and `set_stage` effects as edges, and the triggers that act
 // in the selected stage as rule cards: When, If, Then, Narrate, Only once, with a plain-English summary.
 // Stages are chosen by clicking a node, by keyboard on a node, or from the stage list.
-import { ArrowDown, ArrowUp, Braces, GripVertical, Plus, Trash2, X } from "lucide-react";
+import { ArrowDown, ArrowUp, Braces, GripVertical, Plus, X } from "lucide-react";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { parse, stringify } from "yaml";
 import { Badge } from "@/components/ui/badge";
@@ -11,11 +11,11 @@ import { Button } from "@/components/ui/button";
 import { cx } from "@/components/ui/cx";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Select, TextInput } from "@/components/ui/field";
-import { ICON, ICON_DENSE, IconButton } from "@/components/ui/icon-button";
+import { ICON_DENSE, IconButton } from "@/components/ui/icon-button";
 import { Notice } from "@/components/ui/notice";
 import { plotGraph } from "@/lib/materials/plot";
 import ArcGraph from "./arc-graph";
-import { denseArea, denseInput, denseSelect, NewId, Panel, RemoveButton } from "./controls";
+import { DeleteButton, denseArea, denseInput, denseSelect, NewId, Panel, RemoveButton } from "./controls";
 import { freshId, type Arc, type AuthoredLocation, type Doc, type Refs } from "./doc";
 import { EditorField, fieldId, InlineProblems, segments, SeverityIcon, useProblems } from "./problems";
 import type { Reveal } from "./sections";
@@ -106,7 +106,7 @@ function When({ on, set, ix }: { on: Obj; set: (on: Obj) => void; ix: Index }) {
       {on.type === "interacted" && (
         <>
           <Pick label="thing" value={String(on.target ?? "")} options={ix.entities} onChange={(v) => set({ ...on, target: v })} />
-          <input aria-label="verb" placeholder="verb" defaultValue={String(on.verb ?? "")} onBlur={(e) => set(e.target.value ? { ...on, verb: e.target.value } : { type: on.type, target: on.target })} className={cx(denseInput, "w-24")} />
+          <input key={String(on.verb ?? "")} aria-label="verb" placeholder="verb" defaultValue={String(on.verb ?? "")} onBlur={(e) => e.target.value !== String(on.verb ?? "") && set(e.target.value ? { ...on, verb: e.target.value } : { type: on.type, target: on.target })} className={cx(denseInput, "w-24")} />
         </>
       )}
       {on.type === "item_taken" && <Pick label="item" value={String(on.ref ?? "")} options={ix.items} onChange={(v) => set({ ...on, ref: v })} />}
@@ -180,10 +180,12 @@ function Condition({ c, set, ix }: { c: Cond; set: (c: Cond) => void; ix: Index 
           <Pick label="is set" value={op} options={[{ value: "eq", label: "=" }, { value: "gte", label: "≥" }, { value: "lte", label: "≤" }]} onChange={(o) => set(o ? { flag: c.flag, [o]: c.eq ?? c.gte ?? c.lte ?? 0 } : { flag: c.flag })} />
           {op && (
             <input
+              key={String(c[op])}
               aria-label="value"
               defaultValue={String(c[op])}
               onBlur={(e) => {
                 const v = e.target.value;
+                if (v === String(c[op])) return;
                 set({ flag: c.flag, [op]: v === "true" ? true : v === "false" ? false : Number.isNaN(Number(v)) ? v : Number(v) });
               }}
               className={cx(denseInput, "w-20")}
@@ -254,10 +256,12 @@ function Effect({ e, set, ix }: { e: Obj; set: (e: Obj) => void; ix: Index }) {
           <Pick label="flag" value={String(a.flag ?? "")} options={ix.flags} onChange={(v) => set({ [name]: { ...a, flag: v } })} />
           {name === "set_flag" ? "to" : "by"}
           <input
+            key={a.value === undefined ? "" : String(a.value)}
             aria-label="value"
             defaultValue={a.value === undefined ? "" : String(a.value)}
             onBlur={(ev) => {
               const v = ev.target.value;
+              if (v === (a.value === undefined ? "" : String(a.value))) return;
               set({ [name]: { ...a, value: v === "true" ? true : v === "false" ? false : Number.isNaN(Number(v)) ? v : Number(v) } });
             }}
             className={cx(denseInput, "w-20")}
@@ -342,12 +346,14 @@ function RuleCard({ t, pointer, set, remove, doc, ix }: { t: Trigger; pointer: s
             {t.id} as YAML
           </label>
           <textarea
+            key={stringify(t, { version: "1.2" })}
             id={`${id}-yaml`}
             defaultValue={stringify(t, { version: "1.2" })}
             rows={10}
             spellCheck={false}
             onBlur={(e) => {
               try {
+                if (e.target.value === stringify(t, { version: "1.2" })) return setError(null);
                 set(parse(e.target.value, { version: "1.2" }) as Trigger);
                 setError(null);
               } catch (err) {
@@ -414,7 +420,7 @@ function RuleCard({ t, pointer, set, remove, doc, ix }: { t: Trigger; pointer: s
             </div>
           </Row>
           <Row word="Narrate">
-            <input aria-label="Narrate" defaultValue={t.narrate ?? ""} placeholder="Optional line for the narrator" onBlur={(e) => set(e.target.value ? { ...t, narrate: e.target.value } : (({ narrate, ...rest }) => (void narrate, rest))(t))} className={cx(denseInput, "w-full font-prose italic")} />
+            <input key={t.narrate ?? ""} aria-label="Narrate" defaultValue={t.narrate ?? ""} placeholder="Optional line for the narrator" onBlur={(e) => e.target.value !== (t.narrate ?? "") && set(e.target.value ? { ...t, narrate: e.target.value } : (({ narrate, ...rest }) => (void narrate, rest))(t))} className={cx(denseInput, "w-full font-prose italic")} />
           </Row>
           <label className="flex items-center gap-2 text-label @lg:pl-[6.25rem]">
             <input type="checkbox" checked={t.once === true} onChange={(e) => set({ ...t, once: e.target.checked })} className="size-4 accent-[var(--color-accent)]" />
@@ -451,6 +457,34 @@ function ArcGraphOf({ arc, doc, selected, select, move }: { arc: Arc; doc: Doc; 
 
 // Arc ----------------------------------------------------------------------------------------------
 
+/**
+ * Sets the stages of arc `id`. A stage renamed in place (the same position, the old name gone, the new
+ * one new) is renamed where the draft refers to it: the arc's initial stage, `stage` conditions,
+ * `set_stage` effects, stage events, and the graph's layout. References to a removed stage stay, and
+ * the compiler reports them.
+ */
+function restage(d: Doc, id: string, next: string[]) {
+  const arc = d.arcs[id]!;
+  const prev = arc.stages;
+  const renamed = new Map<string, string>();
+  if (prev.length === next.length) prev.forEach((s, i) => s !== next[i] && !next.includes(s) && !prev.includes(next[i]!) && renamed.set(s, next[i]!));
+  arc.stages = next;
+  if (renamed.size === 0) return;
+  const to = (s: unknown) => (typeof s === "string" ? (renamed.get(s) ?? s) : s);
+  arc.initial = to(arc.initial) as string;
+  const walk = (v: unknown) => {
+    if (Array.isArray(v)) return v.forEach(walk);
+    if (v === null || typeof v !== "object") return;
+    const o = v as Obj;
+    if (Array.isArray(o.stage) && o.stage[0] === id) o.stage = [id, to(o.stage[1])];
+    else if (o.arc === id && typeof o.stage === "string") o.stage = to(o.stage);
+    Object.values(o).forEach(walk);
+  };
+  walk([d.arcs, d.npcs, d.locations, d.adventure.start]);
+  const layout = (d.editor.layout as Layout)[id];
+  if (layout) d.editor.layout = { ...d.editor.layout, [id]: Object.fromEntries(Object.entries(layout).map(([s, xy]) => [to(s) as string, xy])) };
+}
+
 function ArcEditor({ arc, doc, ix, edit, stage, setStage }: { arc: Arc; doc: Doc; ix: Index; edit: (f: (d: Doc) => void) => void; stage: string; setStage: (s: string) => void }) {
   const { under, rest } = useProblems();
   const base = `/arcs/${arc.id}`;
@@ -473,15 +507,15 @@ function ArcEditor({ arc, doc, ix, edit, stage, setStage }: { arc: Arc; doc: Doc
             {arc.title || arc.id}
           </h3>
           <span className="font-mono text-caption text-muted">{arc.id}</span>
-          <IconButton tone="danger" tip="end" className="ml-auto" label={`Delete ${arc.title || arc.id}`} icon={<Trash2 {...ICON} />} onClick={() => edit((d) => void delete d.arcs[arc.id])} />
+          <DeleteButton tip="end" className="ml-auto" label={`Delete ${arc.title || arc.id}`} name={arc.title || arc.id} doc={doc} target={{ kind: "arc", id: arc.id }} onDelete={() => edit((d) => void delete d.arcs[arc.id])} />
         </div>
         <InlineProblems problems={top} />
         <div className="grid gap-4 @3xl:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,0.8fr)]">
           <EditorField pointer={`${base}/title`} label="Title">
-            {(p) => <TextInput {...p} defaultValue={arc.title ?? ""} placeholder="title" onBlur={(e) => edit((d) => void (d.arcs[arc.id]!.title = e.target.value))} />}
+            {(p) => <TextInput key={arc.title ?? ""} {...p} defaultValue={arc.title ?? ""} placeholder="title" onBlur={(e) => e.target.value !== (arc.title ?? "") && edit((d) => void (d.arcs[arc.id]!.title = e.target.value))} />}
           </EditorField>
-          <EditorField pointer={`${base}/stages`} label="Stages" hint="In order, separated by commas. Applied when you leave the field.">
-            {(p) => <TextInput {...p} defaultValue={arc.stages.join(", ")} spellCheck={false} onBlur={(e) => edit((d) => void (d.arcs[arc.id]!.stages = e.target.value.split(/[,\s]+/).filter(Boolean)))} className="font-mono text-code" />}
+          <EditorField pointer={`${base}/stages`} label="Stages" hint="In order, separated by commas. Applied when you leave the field; a stage renamed in place is renamed where triggers use it.">
+            {(p) => <TextInput key={arc.stages.join(", ")} {...p} defaultValue={arc.stages.join(", ")} spellCheck={false} onBlur={(e) => edit((d) => restage(d, arc.id, e.target.value.split(/[,\s]+/).filter(Boolean)))} className="font-mono text-code" />}
           </EditorField>
           <EditorField pointer={`${base}/initial`} label="Initial stage">
             {(p) => (

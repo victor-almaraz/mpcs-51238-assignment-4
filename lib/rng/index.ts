@@ -7,8 +7,8 @@ const TWO_64 = 1n << 64n;
 /** A 64-bit seed or counter. */
 export type U64 = bigint | number;
 
-// SPEC_ISSUES.md#seed-range: data-model.md types the instance seed as `int` with no range.
-// Numbers must be non-negative safe integers; bigints are reduced modulo 2^64.
+// Numbers must be non-negative safe integers, as instance seeds are (engine.md, "Random numbers");
+// bigints, such as derived seeds, are reduced modulo 2^64.
 function toU64(value: U64): bigint {
   if (typeof value === "number") {
     if (!Number.isSafeInteger(value) || value < 0) {

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { draftFiles } from ".";
-import { draftPointer, filesToDraft } from "./draft-io";
+import { draftFiles, draftPointer, filesToDraft } from "./draft-io";
 import { stationAdventure } from "./testing/fixtures";
 
 describe("draft and directory", () => {
@@ -9,7 +8,7 @@ describe("draft and directory", () => {
     const { draft, problems } = filesToDraft(files);
     expect(problems).toEqual([]);
     expect((draft.adventure as { id: string }).id).toBe("sunken_archive");
-    // SPEC_ISSUES.md#draft-entity-files: entity files merge into one.
+    // Entity files merge into entities/entities.yaml (spec/README.md, "Adventure directory").
     const expected = [...files.keys()].map((k) => (k.startsWith("entities/") ? "entities/entities.yaml" : k));
     expect([...draftFiles(draft).keys()].sort()).toEqual([...new Set(expected)].sort());
   });

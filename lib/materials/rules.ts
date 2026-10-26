@@ -46,7 +46,7 @@ function validatorFor(system: RulesSystem, kind: SchemaKind): ValidateFunction {
   const key = `${system.ID}@${system.VERSION}:${(system as { ENABLED?: string[] }).ENABLED?.join(",") ?? ""}`;
   let byKind = validators.get(key);
   if (!byKind) {
-    // One registry per configuration: configured schemas keep their $id (SPEC_ISSUES.md#module-schema-fields).
+    // One registry per configuration: configured schemas keep their $id (systems/README.md, "Modules").
     const ajv = new Ajv2020({ allErrors: true, strict: true, strictRequired: false, allowUnionTypes: true });
     byKind = new Map();
     for (const k of ["character", "creature", "item", "ability", "check", "structure"] as const) byKind.set(k, ajv.compile(system.SCHEMAS[k]!));

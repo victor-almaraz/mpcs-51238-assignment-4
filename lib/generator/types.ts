@@ -48,8 +48,7 @@ export type GenerateResult =
   | {
       ok: true;
       location: GeneratedMap;
-      // SPEC_ISSUES.md#generated-room-aliases: the output format cannot say which room holds an anchor.
-      /** Room aliases (adventure-packs.md, "Room references"): `r1`, `entry`, `boss`, anchor ids, link ids. */
+      /** Room aliases (generation.md, "Output"): `r1`, `entry`, `boss`, anchor ids, link ids. */
       aliases: Record<string, string>;
       /** The attempt that passed verification, from 0. */
       attempt: number;

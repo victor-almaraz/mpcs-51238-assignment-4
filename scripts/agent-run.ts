@@ -1,27 +1,19 @@
 // Agent-driven runs of the exemplar (SPRINTS.md, sprint 24): a Groq player model and the Groq parser
 // play one character to each ending. Writes agent-runs/<scenario>.{turns,log}.jsonl (not committed).
 //   pnpm agent:run [escaped|archive_sealed|lost]...
-// Exits 0 when every run reaches its ending, 1 otherwise, 2 when GROQ_API_KEY is unset.
+// Exits 0 when every run reaches its ending, 1 otherwise, 2 when GROQ_API_KEY is unset or PARSER_TIMEOUT
+// is not an integer.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { GOALS } from "../lib/agent/goals";
-import { agentRun, chatPlayer, patient } from "../lib/agent/run";
-import { replay } from "../lib/engine";
-import { commitOf } from "../lib/harness/harness";
+import { agentRun, chatPlayer } from "../lib/agent/run";
+import { replay } from "../lib/harness/harness";
 import { SCENARIOS } from "../lib/harness/scenarios";
-import { DEFAULT_MODEL, ModelError, groqChat, groqModels, tunedForReasoning } from "../lib/models/groq";
-import { modelParser } from "../lib/parser/adapter";
+import { DEFAULT_MODEL, ModelError, groqModels } from "../lib/models/groq";
+import { groqFromEnv } from "./lib";
 
-const key = process.env.GROQ_API_KEY;
-if (!key) {
-  console.error("agent-run: GROQ_API_KEY is not set");
-  process.exit(2);
-}
-const groq = patient(groqChat(key), undefined, undefined, (e, ms) => console.log(`  (${e.status === 429 ? "rate limited" : e.message.slice(0, 120)}; waiting ${(ms / 1000).toFixed(1)} s)`));
-const chat = tunedForReasoning(groq, process.env.GROQ_REASONING_EFFORT || "low");
-const parserModel = process.env.GROQ_PARSER_MODEL || DEFAULT_MODEL;
+const { key, chat, parserModel, parser } = groqFromEnv("agent-run");
 const playerModel = process.env.GROQ_PLAYER_MODEL || DEFAULT_MODEL;
-const parser = modelParser(chat, parserModel, Number(process.env.PARSER_TIMEOUT || 20) * 1000);
 const player = chatPlayer(chat, playerModel);
 
 const wanted = process.argv.slice(2);
@@ -72,7 +64,7 @@ for (const g of goals) {
   }
   writeFileSync(join(OUT, `${g.scenario}.turns.jsonl`), lines.join("\n") + "\n");
   writeFileSync(join(OUT, `${g.scenario}.log.jsonl`), r.session.log.map((l) => JSON.stringify(l)).join("\n") + "\n");
-  const replayed = replay(scenario.bundles(), r.session.log.map(commitOf));
+  const replayed = replay(scenario.bundles(), r.session.log);
   const ok = r.ending === g.ending && replayed.ok;
   if (!ok) failed++;
   console.log(`${g.scenario}: ${ok ? "reached" : "did not reach"} '${g.ending}' (ended: ${r.ending ?? "no"}) in ${r.turns.length} turns, ${r.fallbacks} fallbacks, replay ${replayed.ok ? "ok" : "differs"}`);

@@ -3,18 +3,22 @@
 
 import Ajv2020, { type ValidateFunction } from "ajv/dist/2020.js";
 import { Rng } from "../rng";
+import { capitalize } from "../text";
 import { RulesError, type RulesSystem } from "../systems";
 import type { CharacterRecord, Store } from "../store";
 import { cryptoEntropy, type Entropy } from "./entropy";
 import { withStages } from "./deletion";
 import { ApiError, onlyFields } from "./errors";
+import { paged, pageOf } from "./paging";
 import { accepted, systemOrThrow } from "./systems";
 import { caller } from "./users";
 
 const validators = new Map<string, ValidateFunction>();
 
+/** The validator of a configured system's character sheet, one per system, version, and module set. */
 function sheetValidator(system: RulesSystem): ValidateFunction {
-  const key = `${system.ID}@${system.VERSION}`;
+  const enabled = (system as { ENABLED?: readonly string[] }).ENABLED ?? [];
+  const key = `${system.ID}@${system.VERSION}[${enabled.join(",")}]`;
   let v = validators.get(key);
   if (!v) {
     v = new Ajv2020({ allErrors: true, strict: false }).compile(system.SCHEMAS.character!);
@@ -42,19 +46,49 @@ const NAME = (v: unknown): string => {
 export async function createCharacter(store: Store, userId: string | null, input: unknown, entropy: Entropy = cryptoEntropy) {
   const user = await caller(store, userId, "create_character");
   const req = onlyFields(input, ["system", "name", "choices"]);
-  // Characters are created without modules; module fields come from the campaign (app-flow.md).
-  const system = systemOrThrow(req.system).configure([]);
   const name = NAME(req.name);
+  const { system, sheet } = buildSheet(req.system, name, req.choices, entropy);
+  const record = await store.createCharacter({ id: entropy.id("ch"), owner_id: user.id, system: system.ID, system_version: system.VERSION, name, sheet });
+  return characterView(record);
+}
+
+/** The sheet the rules system builds from the player's choices, with a server-generated seed. */
+function buildSheet(systemId: unknown, name: string, choices: unknown, entropy: Entropy) {
+  // Characters are built without modules; module fields come from the campaign (app-flow.md).
+  const system = systemOrThrow(systemId).configure([]);
   let sheet: CharacterRecord["sheet"];
   try {
-    sheet = system.create_character(name, req.choices ?? {}, new Rng(entropy.seed())) as CharacterRecord["sheet"];
+    sheet = system.create_character(name, choices ?? {}, new Rng(entropy.seed())) as CharacterRecord["sheet"];
   } catch (e) {
     if (e instanceof RulesError) throw new ApiError("rules_rejected", e.detail, { rules_code: e.code });
     throw e;
   }
   if (!sheetValidator(system)(sheet)) throw new ApiError("rules_rejected", "the rules system built a sheet its schema rejects");
-  const record = await store.createCharacter({ id: entropy.id("ch"), owner_id: user.id, system: system.ID, system_version: system.VERSION, name, sheet });
-  return characterView(record);
+  return { system, sheet };
+}
+
+/** Whether the caller may rebuild the character's role and abilities: available, and never in a game. */
+export async function characterRebuildable(store: Store, userId: string | null, characterId: unknown): Promise<boolean> {
+  const user = await caller(store, userId, "get_character");
+  const c = await owned(store, user.id, characterId);
+  return c.status === "available" && !(await store.characterPlayed(c.id));
+}
+
+/**
+ * Builds the character again from new choices, as create_character does, keeping its id and portrait;
+ * only while it is available and has never joined a game, so no play is lost.
+ */
+export async function rebuildCharacter(store: Store, userId: string | null, input: unknown, entropy: Entropy = cryptoEntropy) {
+  const user = await caller(store, userId, "rebuild_character");
+  const req = onlyFields(input, ["character_id", "name", "choices"]);
+  const c = await owned(store, user.id, req.character_id);
+  if (c.status !== "available") throw new ApiError("conflict", `a character that is ${c.status.replace("_", " ")} cannot be rebuilt`);
+  if (await store.characterPlayed(c.id)) throw new ApiError("conflict", "the character has played in a game, so its role and abilities are fixed");
+  const name = NAME(req.name ?? c.name);
+  const { sheet } = buildSheet(c.system, name, req.choices, entropy);
+  const rebuilt = await store.rebuildCharacter(c.id, name, sheet);
+  if (!rebuilt) throw new ApiError("conflict", "the character joined a game, so its role and abilities are fixed");
+  return characterView(rebuilt);
 }
 
 /** The caller's own character, or not_found: other users' characters are never revealed here. */
@@ -74,38 +108,47 @@ export async function getCharacter(store: Store, userId: string | null, characte
 export async function listCharacters(store: Store, userId: string | null, input: unknown = {}) {
   const user = await caller(store, userId, "list_characters");
   const req = onlyFields(input, ["system", "status", "archived", "limit", "cursor"]);
-  const limit = req.limit === undefined ? 20 : req.limit;
-  if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > 100) throw new ApiError("invalid_request", "limit must be 1 to 100");
-  for (const f of ["system", "status", "cursor"] as const) {
+  const { limit, cursor } = pageOf(req);
+  for (const f of ["system", "status"] as const) {
     if (req[f] !== undefined && typeof req[f] !== "string") throw new ApiError("invalid_request", `${f} must be a string`);
   }
   if (req.archived !== undefined && typeof req.archived !== "boolean") throw new ApiError("invalid_request", "archived must be a boolean");
-  const page = await store.listCharacters(user.id, { system: req.system as string | undefined, status: req.status as string | undefined, archived: req.archived as boolean | undefined, limit: limit + 1, after: req.cursor as string | undefined });
-  const items = page.slice(0, limit);
-  return { items: items.map((c) => characterView(c)), next_cursor: page.length > limit ? items.at(-1)!.id : null };
+  const rows = await store.listCharacters(user.id, { system: req.system as string | undefined, status: req.status as string | undefined, archived: req.archived as boolean | undefined, limit: limit + 1, after: cursor });
+  return paged(rows, limit, characterView);
 }
 
 export async function updateCharacter(store: Store, userId: string | null, input: unknown) {
   const user = await caller(store, userId, "update_character");
   const req = onlyFields(input, ["character_id", "name", "profile", "portrait"]);
   const c = await owned(store, user.id, req.character_id);
-  if (req.portrait !== undefined) {
-    // A portrait hash the user uploaded, or null to remove it.
-    if (req.portrait !== null) {
-      const a = typeof req.portrait === "string" ? await store.assetMeta(req.portrait) : undefined;
-      if (!a || a.kind !== "portrait" || a.removed_at || !(await store.uploadedBy(a.hash, user.id))) throw new ApiError("invalid_request", "portrait must be the hash of a portrait you uploaded");
-    }
-    await store.setPortrait(c.id, req.portrait as string | null);
-    if (req.name === undefined && req.profile === undefined) return characterView((await store.getCharacter(c.id))!);
+  // A portrait hash the user uploaded, or null to remove it. The portrait is not on the sheet, so it can
+  // change while the character is in an instance.
+  if (req.portrait !== undefined && req.portrait !== null) {
+    const a = typeof req.portrait === "string" ? await store.assetMeta(req.portrait) : undefined;
+    if (!a || a.kind !== "portrait" || a.removed_at || !(await store.uploadedBy(a.hash, user.id))) throw new ApiError("invalid_request", "portrait must be the hash of a portrait you uploaded");
   }
+  // Without a portrait, the request edits the sheet, even when it changes nothing.
+  const edit = req.portrait === undefined || req.name !== undefined || req.profile !== undefined ? editedSheet(c, req) : undefined;
+  let updated = c;
+  if (req.portrait !== undefined) updated = (await store.setPortrait(c.id, req.portrait as string | null))!;
+  if (edit) updated = (await store.updateCharacter(c.id, edit.name, edit.sheet))!;
+  return characterView(updated);
+}
+
+/** The sheet with the request's name and profile, checked against the system's character sheet. */
+function editedSheet(c: CharacterRecord, req: Record<string, unknown>): { name: string; sheet: CharacterRecord["sheet"] } {
   // While the character is in an instance, the instance holds the authoritative sheet.
   if (c.status === "in_instance") throw new ApiError("conflict", "the character is in an instance");
   const name = req.name === undefined ? c.name : NAME(req.name);
   const sheet: CharacterRecord["sheet"] = { ...c.sheet, name };
   if (req.profile !== undefined) sheet.profile = req.profile as never;
+  // A sheet back from a game can carry module fields, such as Cadmium's `armor`, which the edit leaves as
+  // they are; only the fields of the system without modules are checked.
   const system = systemOrThrow(c.system).configure([]);
-  if (!sheetValidator(system)(sheet)) throw new ApiError("invalid_request", "the profile does not fit the system's character sheet");
-  return characterView((await store.updateCharacter(c.id, name, sheet))!);
+  const known = Object.keys((system.SCHEMAS.character as { properties?: object }).properties ?? {});
+  const base = Object.fromEntries(Object.entries(sheet).filter(([k]) => known.includes(k)));
+  if (!sheetValidator(system)(base)) throw new ApiError("invalid_request", "the profile does not fit the system's character sheet");
+  return { name, sheet };
 }
 
 export async function retireCharacter(store: Store, userId: string | null, characterId: unknown) {
@@ -158,7 +201,7 @@ export function effectSentences(effects: PackEffect[], conditions: Record<string
       case "spawn":
         return "Brings a creature or object into play.";
       default:
-        return `${String(name).replaceAll("_", " ")}.`.replace(/^./, (c) => c.toUpperCase());
+        return capitalize(`${String(name).replaceAll("_", " ")}.`);
     }
   });
 }
@@ -167,7 +210,6 @@ export function effectSentences(effects: PackEffect[], conditions: Record<string
  * Abilities the creation form offers for a system: those of the listed settings it accepts
  * (systems/README.md, Compatibility: Cadmium also accepts Quest settings).
  */
-// SPEC_ISSUES.md#starting-abilities-supply: Quest needs six abilities; the example settings define two.
 export async function abilityOptions(store: Store, systemId: string): Promise<AbilityOption[]> {
   const settings = await store.listedBundles<import("../bundle/setting").SettingBundle>("setting", accepted(systemId));
   return settings.flatMap((s) =>
@@ -206,8 +248,7 @@ export async function restoreCharacter(store: Store, userId: string | null, char
   return characterView(c);
 }
 
-// SPEC_ISSUES.md#character-draft-archive: archiving keeps a character out of the owner's lists and out
-// of games; restore_character needs the deleted character's id, which no list gives.
+// Archiving keeps a character out of games until unarchived (api.md, Characters).
 export async function archiveCharacter(store: Store, userId: string | null, characterId: unknown) {
   const user = await caller(store, userId, "archive_character");
   const c = await owned(store, user.id, characterId);

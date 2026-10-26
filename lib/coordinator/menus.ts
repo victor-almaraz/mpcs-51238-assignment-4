@@ -5,6 +5,7 @@ import { labelsFor, submit, toolsFor, view, type Bundles, type GameEvent, type S
 import { userTopic } from "../broadcast";
 import { describeCall } from "../narrator/template";
 import { Rng } from "../rng";
+import { capitalize } from "../text";
 import { send, type Deps } from "./instance";
 
 type Call = { tool: string; args: Record<string, unknown> };
@@ -36,7 +37,7 @@ export function menuOptions(state: State, bundles: Bundles, actor: string, max =
     if (out.length >= max) break;
     if (!tools.includes(c.tool) || !valid(state, bundles, actor, c)) continue;
     const label = describeCall(c, labels);
-    out.push({ label: label.charAt(0).toUpperCase() + label.slice(1), ...c });
+    out.push({ label: capitalize(label), ...c });
   }
   return out;
 }

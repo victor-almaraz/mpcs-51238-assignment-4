@@ -1,6 +1,8 @@
 // Compiler diagnostics (spec/README.md, "Compiler interface"): `FILE: PATH: MESSAGE` lines, or
 // `{ file, path, message, check }` objects with `--json` and from the library.
 
+import { compareText } from "../systems/contract";
+
 export type Segment = string | number;
 
 export interface Diagnostic {
@@ -11,7 +13,7 @@ export interface Diagnostic {
   check: Check;
 }
 
-// SPEC_ISSUES.md#diagnostic-check-ids: the specification names checks in prose only.
+// Check ids (spec/README.md, "Checks" and "Adventure checks").
 export const CHECKS = {
   file: "A file is readable, parses as JSON-compatible YAML, and belongs to the pack layout",
   duplicate_key: "A key is defined once across the files of a merged directory",
@@ -45,7 +47,6 @@ export type Check = keyof typeof CHECKS;
 
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
-// SPEC_ISSUES.md#diagnostic-check-ids: the root path is written `.`.
 /** `a.b[2]["~"]`; the root is `.`. */
 export function formatPath(path: readonly Segment[]): string {
   let out = "";
@@ -73,8 +74,7 @@ export function show(value: unknown): string {
 /** Sorts diagnostics by file, then path, then message, so output is stable. */
 export function sortDiagnostics(list: Diagnostic[]): Diagnostic[] {
   return [...list].sort(
-    (a, b) => cmp(a.file, b.file) || cmp(a.path, b.path) || cmp(a.message, b.message) || cmp(a.check, b.check),
+    (a, b) => compareText(a.file, b.file) || compareText(a.path, b.path) || compareText(a.message, b.message) || compareText(a.check, b.check),
   );
 }
 
-const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);

@@ -5,11 +5,10 @@ import { zip, type ZipFile } from "../export/zip";
 import { draftFiles } from "../materials";
 import { validZone } from "../scheduler/zone";
 import type { Store } from "../store";
+import { withStages } from "./deletion";
 import { cryptoEntropy, type Entropy } from "./entropy";
 import { ApiError, onlyFields } from "./errors";
 import { caller, userView } from "./users";
-
-const DAY = 86_400_000;
 
 function reminders(v: unknown) {
   const r = onlyFields(v, ["push", "lead_minutes"]);
@@ -23,7 +22,7 @@ function reminders(v: unknown) {
 export async function updateMe(store: Store, userId: string | null, input: unknown) {
   const user = await caller(store, userId, "update_me");
   const req = onlyFields(input, ["display_name", "email", "timezone", "reminders", "password", "current_password"]);
-  // SPEC_ISSUES.md#binding-gaps: Clerk holds the sign-in address and password.
+  // Clerk holds the sign-in address and password (api.md, Authentication: with an identity provider).
   if (req.email !== undefined || req.password !== undefined || req.current_password !== undefined) throw new ApiError("invalid_request", "change your email address and password in your account settings with the identity provider");
   if (req.display_name !== undefined && (typeof req.display_name !== "string" || req.display_name.trim().length < 1 || req.display_name.length > 40)) throw new ApiError("invalid_request", "display_name must have 1 to 40 characters");
   if (req.timezone !== undefined && (typeof req.timezone !== "string" || !validZone(req.timezone))) throw new ApiError("invalid_request", "timezone must be an IANA time zone name");
@@ -41,8 +40,8 @@ export async function requestAccountDeletion(store: Store, userId: string | null
   const req = onlyFields(input, ["confirm"]);
   if (req.confirm !== user.display_name) throw new ApiError("invalid_request", "confirm must be your display name");
   const closed = (await store.requestDeletion(user.id))!;
-  const at = Date.parse(closed.deletion_requested_at!);
-  return { restorable_until: new Date(at + 30 * DAY).toISOString(), purge_after: new Date(at + 90 * DAY).toISOString() };
+  const { restorable_until, erased_by } = withStages({ deleted_at: closed.deletion_requested_at! });
+  return { restorable_until, purge_after: erased_by };
 }
 
 export async function restoreAccount(store: Store, userId: string | null) {
@@ -152,7 +151,7 @@ export async function exportMyData(store: Store, userId: string | null, now = ne
   void calendar_feed_generation;
   const files: ZipFile[] = [
     { name: "README.txt", data: README },
-    { name: "profile.json", data: json({ ...profile, push_subscriptions: x.push_subscriptions, calendar_feed: { enabled: (await store.getUser(user.id))?.calendar_token_hash ? true : false } }) },
+    { name: "profile.json", data: json({ ...profile, push_subscriptions: x.push_subscriptions, calendar_feed: { enabled: !!user.calendar_token_hash } }) },
     ...x.characters.map((c) => ({ name: `characters/${safe(c.id)}.json`, data: json(c) })),
     ...x.adventures.map((a) => ({ name: `adventures/${safe(a.id)}-${safe(a.version)}.json`, data: json(a) })),
     ...x.campaigns.map((c) => ({ name: `campaigns/${safe(c.campaign.id)}.json`, data: json(c) })),
@@ -175,9 +174,10 @@ export async function exportMyData(store: Store, userId: string | null, now = ne
 // Purge -------------------------------------------------------------------------------------------
 
 /**
- * The purge stage (data-model.md, Deletion): erases accounts and campaigns deleted more than 90 days
- * ago, skipping held ones, and deletes each erased account's identity at the provider. An identity
- * that fails to delete is reported in `identity_errors`; the account's data is erased regardless.
+ * The daily purge (data-model.md, Deletion): erases accounts, campaigns, characters, and drafts deleted
+ * more than 90 days before `now`, then images nothing uses, skipping held ones, and deletes each erased
+ * account's identity at the provider. An identity that fails to delete is reported in
+ * `identity_errors`; the account's data is erased regardless. Returns the counts.
  */
 export async function runPurge(store: Store, deleteIdentity: (userId: string) => Promise<void>, now = new Date()) {
   const due = await store.purgeDue(now);
@@ -187,5 +187,5 @@ export async function runPurge(store: Store, deleteIdentity: (userId: string) =>
     await store.purgeUser(id);
     await deleteIdentity(id).catch((e: unknown) => identity_errors.push({ user_id: id, message: e instanceof Error ? e.message : String(e) }));
   }
-  return { users: due.users.length, campaigns: due.campaigns.length, identity_errors };
+  return { users: due.users.length, campaigns: due.campaigns.length, ...(await store.purgeContent(now)), identity_errors };
 }

@@ -23,6 +23,7 @@
     "bundles": "node --import tsx scripts/bundles.ts",
     "sim": "node --import tsx tools/sim/cli.ts",
     "db:fresh": "node --import tsx scripts/db-fresh.ts",
+    "schema:diff": "node --import tsx scripts/schema-diff.ts",
     "agent:run": "node --env-file-if-exists=.env.local --import tsx scripts/agent-run.ts"
   },
   "packageManager": "pnpm@12.9.1",

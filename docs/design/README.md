@@ -1,9 +1,9 @@
 # Cadmium pattern library
 
 The interface patterns of this application. They replace the specification's Margin design
-(`cadmium-spec/docs/design/`) for this application; see
-[SPEC_ISSUES.md](../../SPEC_ISSUES.md#design-system). Routes, contents, and behaviour follow
-`cadmium-spec/docs/app-flow.md`. The patterns follow how comparable tools lay out the
+(`docs/spec/docs/design/`) for this application, as `docs/spec/docs/design/README.md`,
+Substitution, allows. Routes, contents, and behaviour follow
+`docs/spec/docs/app-flow.md`. The patterns follow how comparable tools lay out the
 same tasks; [Sources](#sources) lists them.
 
 ## Principles
@@ -137,7 +137,7 @@ one content edge.
 
 Lucide through `lucide-react`, 20 px (16 px in dense rows), stroke 1.75 with `absoluteStrokeWidth`,
 in `currentColor`. The icon vocabulary
-of `cadmium-spec/docs/design/foundations.md` (Icons, Vocabulary) stands: one concept, one icon. The
+of `docs/spec/docs/design/foundations.md` (Icons, Vocabulary) stands: one concept, one icon. The
 product mark is the cadmium tile, Cd, drawn as a Lucide-style icon (`components/ui/logo.tsx`).
 
 **Icon or word.** An action is an icon-only button with a tooltip when its icon is conventional and

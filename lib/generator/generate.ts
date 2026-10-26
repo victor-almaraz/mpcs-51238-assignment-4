@@ -19,16 +19,15 @@ export function locationSeed(instanceSeed: U64, locationId: string): bigint {
   return draw(new Rng(instanceSeed).seed ^ fnv1a64(locationId), 0);
 }
 
-// SPEC_ISSUES.md#generator-attempt-seeds: attempt 0 uses the location seed; retry `attempt`, from 1,
-// uses `draw(location_seed, attempt)`.
-/** The seed of attempt number `attempt`. */
+/** The seed of attempt number `attempt` (generation.md, "Interface"): the location seed for attempt 0, else `draw(location_seed, attempt)`. */
 export function attemptSeed(location: bigint, attempt: number): bigint {
   return attempt === 0 ? location & MASK : draw(location, attempt);
 }
 
-// SPEC_ISSUES.md#weighted-tables: a die with the total weight as faces, taking the first entry
-// whose cumulative weight reaches the result, in table order.
-/** One draw from a weighted table. */
+/**
+ * One weighted selection (engine.md, "Random numbers"): a die with the total weight as faces, taking
+ * the first entry whose running total of weights reaches the result, in table order.
+ */
 export function pickWeighted<T extends { weight: number }>(rng: Rng, entries: readonly T[]): T {
   const total = entries.reduce((sum, e) => sum + e.weight, 0);
   let roll = rng.die(total);
@@ -39,7 +38,7 @@ export function pickWeighted<T extends { weight: number }>(rng: Rng, entries: re
   return entries[entries.length - 1]!;
 }
 
-// SPEC_ISSUES.md#generator-probability: one draw `v`; the event happens when `v < p × 2^64`.
+// generation.md, "Draws and orders": a chance takes one draw `v`; the event occurs when `v < floor(p × 2^64)`.
 function chance(rng: Rng, p: number): boolean {
   const v = rng.next();
   return p >= 1 ? true : v < BigInt(Math.floor(p * 2 ** 64));
@@ -143,7 +142,7 @@ function range(lo: number, hi: number): number[] {
 
 const roomId = (i: number) => `r${i + 1}`;
 
-// SPEC_ISSUES.md#treasure-role: no room has the role `treasure`, so it is never satisfied.
+// generation.md, "3. Roles and depth": a role constraint holds when the room holds the role; no room holds `treasure`.
 const hasRole = (roles: ReadonlySet<RoomRole>, role: string): boolean => roles.has(role as RoomRole);
 
 interface Attempt {
@@ -183,7 +182,6 @@ function attempt(id: string, spec: Spec, catalog: Catalog, metric: Metric, rng: 
   for (const ref of spec.roomTemplates) {
     const t = catalog.room(ref);
     const parsed = parseMap(t.map.rows, t.map.legend ?? {});
-    // SPEC_ISSUES.md#room-template-rooms: a room holds at most one room template.
     const fits = all.filter((i) => {
       const r = rooms[i]!;
       const roleOk = t.role === "any" || hasRole(r.roles, t.role);
@@ -212,7 +210,6 @@ function attempt(id: string, spec: Spec, catalog: Catalog, metric: Metric, rng: 
       }
     }
     r.template = ref;
-    // SPEC_ISSUES.md#room-template-rooms: the room takes the template's label and tags.
     r.label = t.label;
     r.tags = [...(t.tags ?? [])];
     templateLegends.push(t.map.legend ?? {});
@@ -255,7 +252,6 @@ function attempt(id: string, spec: Spec, catalog: Catalog, metric: Metric, rng: 
   // 6. Locks.
   if (spec.gates > 0) {
     const deepest = anchored.reduce<{ room: number } | undefined>((best, a) => (!best || rooms[a.room]!.depth > rooms[best.room]!.depth ? a : best), undefined);
-    // SPEC_ISSUES.md#lock-path: the path is the BFS tree path of rooms; its doorways join consecutive rooms.
     const path: number[] = [];
     for (let r = deepest?.room ?? layout.boss; r !== -1; r = layout.parent[r]!) path.unshift(r);
     const pathDoors = path.slice(1).map((r, i) => {
@@ -271,7 +267,6 @@ function attempt(id: string, spec: Spec, catalog: Catalog, metric: Metric, rng: 
         .map((door, position) => ({ door, position }))
         .filter(({ door, position }) => position > lastPosition && layout.doorways[door]!.owner !== 0)
         .sort((p, q) => p.door - q.door);
-      // SPEC_ISSUES.md#lock-candidates: with no doorway left on the path, the attempt fails.
       if (candidates.length === 0) throw new AttemptFailed(`no doorway on the path for lock ${g + 1}`);
       const { door, position } = rng.pick(candidates);
       lastPosition = position;
@@ -282,7 +277,7 @@ function attempt(id: string, spec: Spec, catalog: Catalog, metric: Metric, rng: 
       Object.assign(d, occupancy(template), { ref: lockRef, lock: { has_item: key }, templateLock: template.kind === "door" ? template.lock : undefined });
       gates.push({ door, key });
     }
-    // SPEC_ISSUES.md#lock-key-order: keys are placed after every lock is chosen, so "any later lock" is known.
+    // generation.md, "6. Locks", step 4: keys are placed after every lock is chosen.
     gates.forEach(({ key }, g) => {
       const closed = new Set(gates.slice(g).map((x) => x.door));
       const seen = new Set([0]);
@@ -304,7 +299,6 @@ function attempt(id: string, spec: Spec, catalog: Catalog, metric: Metric, rng: 
 
   // 7. Population.
   const encounters = catalog.table(spec.encounterTable);
-  // SPEC_ISSUES.md#remaining-rooms: rooms holding a room template or an anchor receive no encounter.
   for (const i of all) {
     const r = rooms[i]!;
     if (i === 0 || r.template !== undefined || r.anchors > 0) continue;
@@ -314,8 +308,6 @@ function attempt(id: string, spec: Spec, catalog: Catalog, metric: Metric, rng: 
     const e = pickWeighted(rng, eligible);
     for (let k = count(rng, e.count); k > 0; k--) placeRandom(i, { ref: e.ref });
   }
-  // SPEC_ISSUES.md#loot-containers: each dead end and boss room receives one container, chosen by RNG
-  // among the container templates whose contents draw from the loot table.
   const containers = spec.lootTable === undefined ? [] : catalog.containersFor(spec.lootTable);
   if (containers.length > 0) {
     for (const i of all) {
@@ -323,17 +315,14 @@ function attempt(id: string, spec: Spec, catalog: Catalog, metric: Metric, rng: 
       if (roles.has("dead_end") || roles.has("boss")) placeRandom(i, { ref: rng.pick(containers) });
     }
   }
-  // SPEC_ISSUES.md#room-label-fallback: labels come from the pack that supplies `generation`.
   const labels = catalog.generation.tables.room_labels;
   for (const i of all) {
     const r = rooms[i]!;
     if (r.label !== undefined) continue;
     const eligible = labels.filter((l) => (l.tags ?? []).every((t) => r.tags.includes(t)));
-    // SPEC_ISSUES.md#room-label-fallback: with no eligible label, the room's label is its id.
     r.label = eligible.length > 0 ? pickWeighted(rng, eligible).label : roomId(i);
   }
   const lit = new Set<number>();
-  // SPEC_ISSUES.md#lit-rooms-ambient: with a bright ambient, no rooms are chosen and no draws are made.
   if (spec.ambient !== "bright") {
     const pool = [...all];
     for (let k = Math.round(spec.litRooms * rooms.length); k > 0 && pool.length > 0; k--) {
@@ -362,8 +351,7 @@ const SPARE = [...Array(94).keys()].map((i) => String.fromCharCode(33 + i)).filt
 
 function output(linksDef: GeneratedLocation["links"], a: Attempt): GeneratedMap {
   const { draft } = a;
-  // SPEC_ISSUES.md#generated-legend: terrain other than void, floor, and wall needs legend characters;
-  // each takes its character from the first placed template that draws it, else the first free one.
+  // generation.md, "Output": legend characters come from placed templates' legends, then the first free one.
   const charOf = new Map<string, string>();
   const used = new Set<string>();
   const assign = (terrain: string, ch: string) => {

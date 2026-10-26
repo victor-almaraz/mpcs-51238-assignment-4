@@ -14,9 +14,8 @@ const ALLOWED: Readonly<Record<FileType, readonly Kind[]>> = { svg: ["icon", "ti
 const MAX_BYTES: Readonly<Record<FileType, number>> = { svg: 200 * 1024, png: 1024 * 1024, webp: 1024 * 1024 };
 const MAX_PIXELS: Readonly<Partial<Record<Kind, number>>> = { portrait: 1024, tile: 256 };
 
-// SPEC_ISSUES.md#attribution-licenses: the licenses that require `credit` are not listed; the
-// Creative Commons attribution family is taken to require it.
-export function requiresCredit(license: string): boolean {
+// The Creative Commons attribution family requires `credit` (setting-packs.md, "Art").
+function requiresCredit(license: string): boolean {
   return /^CC-BY(-|$)/.test(license);
 }
 
@@ -110,7 +109,7 @@ export interface AssetFile {
 
 const MIME: Readonly<Record<FileType, AssetFile["mime"]>> = { svg: "image/svg+xml", png: "image/png", webp: "image/webp" };
 
-// SPEC_ISSUES.md#asset-delivery: a bundle names each file asset by content hash; the bytes travel beside it.
+// A bundle names each file asset by content hash; the bytes travel beside it (spec/README.md, "Asset files").
 /** Adds `hash` and `mime` to each file asset and returns the files by hash. Run after checkAssets. */
 export function hashAssets(assets: Record<string, JsonObject>, files: ReadonlyMap<string, Uint8Array>): Record<string, AssetFile> {
   const out: Record<string, AssetFile> = {};

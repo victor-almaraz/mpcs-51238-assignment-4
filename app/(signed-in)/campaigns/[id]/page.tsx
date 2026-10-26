@@ -2,19 +2,22 @@
 // lobby: Create instance lives here, author only). A detail page (docs/design/README.md, Campaign):
 // tabs Overview, Members, Invitations (author only), and Materials; the aside holds the system,
 // modules, adventure, and the next session.
-import { Gamepad2, Pencil, UserPlus } from "lucide-react";
+import { Gamepad2, LogOut, Pencil, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { ActionForm } from "@/components/action-form";
-import { ArchivedNotice } from "@/components/campaign-lifecycle";
+import { ArchivedNotice } from "@/components/lifecycle";
+import { NextSession } from "@/components/next-session";
 import { formatWhen } from "@/components/when";
 import { getCampaign } from "@/lib/api/campaigns";
 import { listInstances } from "@/lib/api/instances";
-import { listOccurrences } from "@/lib/api/schedules";
 import { systemView } from "@/lib/api/systems";
-import { createInstanceAction } from "@/lib/server/campaign-actions";
+import { createInstanceAction, leaveCampaignAction } from "@/lib/server/campaign-actions";
+import { ConfirmButton } from "@/components/ui/confirm";
 import { orNotFound, origin, requestTime } from "@/lib/server/pages";
 import { pageUser } from "@/lib/server/session";
+import { nextOccurrence } from "@/lib/server/sessions";
 import { serverStore } from "@/lib/server/supabase";
+import { plural } from "@/lib/text";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, Panel } from "@/components/ui/card";
@@ -24,10 +27,7 @@ import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
 import { DescriptionList, List, ListRow } from "@/components/ui/list";
 import { Page, PageHeader, Section, WithAside } from "@/components/ui/page";
 import { Tabs } from "@/components/ui/tabs";
-import { DateTile } from "@/components/ui/tile";
 import { InvitationsPanel, MembersPanel } from "./panels";
-
-const DAY = 86_400_000;
 
 export default async function CampaignPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -37,16 +37,9 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
   const instances = await listInstances(store, user.id, campaign.id);
   const author = campaign.author_id === user.id;
   const system = systemView(campaign.system);
-  // The next session of each game that has not ended, in the same 92-day window as the lobby.
+  // The next session of each game that has not ended, as the lobby shows it.
   const now = requestTime();
-  const window = { from: new Date(now).toISOString(), to: new Date(now + 92 * DAY).toISOString() };
-  const nextOf = new Map(
-    await Promise.all(
-      instances
-        .filter((i) => i.status !== "ended")
-        .map(async (i) => [i.id, (await listOccurrences(store, user.id, { instance_id: i.id, ...window })).find((o) => o.status !== "cancelled")] as const),
-    ),
-  );
+  const nextOf = new Map(await Promise.all(instances.filter((i) => i.status !== "ended").map(async (i) => [i.id, await nextOccurrence(store, user.id, i.id, now)] as const)));
   const upcoming = instances
     .map((i) => ({ instance: i, next: nextOf.get(i.id) }))
     .filter((x): x is { instance: (typeof instances)[number]; next: NonNullable<typeof x.next> } => !!x.next)
@@ -78,7 +71,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
                   badge={<StatusBadge status={i.status} />}
                   meta={
                     <>
-                      {i.characters.length} character{i.characters.length === 1 ? "" : "s"}
+                      {plural(i.characters.length, "character")}
                       {next && ` · Next session ${formatWhen(next.starts_at, user.timezone)}`}
                     </>
                   }
@@ -96,7 +89,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
               <Field id="game-name" label="Game name" className="sm:max-w-sm sm:flex-1">
                 <TextInput {...described("game-name")} name="name" required maxLength={80} placeholder="Tuesday group" />
               </Field>
-              <Button type="submit" variant="primary" className="h-10">
+              <Button type="submit" variant="primary" className="h-10 self-start sm:self-auto">
                 Create game
               </Button>
             </ActionForm>
@@ -125,7 +118,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
   const tabs = [
     { id: "overview", label: "Overview", panel: overview },
     { id: "members", label: `Members (${campaign.members.length})`, panel: <MembersPanel campaignId={campaign.id} members={campaign.members} author={author} /> },
-    ...(author ? [{ id: "invitations", label: "Invitations", panel: <InvitationsPanel campaignId={campaign.id} userId={user.id} archived={campaign.archived} linkCode={linkCode} origin={await origin()} /> }] : []),
+    ...(author ? [{ id: "invitations", label: "Invitations", panel: <InvitationsPanel campaignId={campaign.id} userId={user.id} archived={campaign.archived} linkCode={linkCode} origin={await origin()} timeZone={user.timezone} /> }] : []),
     { id: "materials", label: "Materials", panel: materials },
   ];
 
@@ -137,31 +130,38 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
         status={campaign.archived ? <StatusBadge status="archived" /> : undefined}
         description={`${system.title} ${campaign.system_versions} · ${author ? "You are the author" : "You are a player"}`}
         actions={
-          author && (
+          author ? (
             <ButtonLink href={`/campaigns/${campaign.id}/edit`} icon={<Pencil {...ICON_DENSE} />}>
               Edit campaign
             </ButtonLink>
+          ) : (
+            <ActionForm action={leaveCampaignAction}>
+              <input type="hidden" name="campaign_id" value={campaign.id} />
+              <ConfirmButton
+                label="Leave campaign"
+                icon={<LogOut {...ICON_DENSE} />}
+                title={`Leave ${campaign.title}?`}
+                description="Your characters leave its games, and you need a new invitation or the invite link to come back."
+                confirm="Leave"
+              />
+            </ActionForm>
           )
         }
       />
-      {campaign.archived && <ArchivedNotice campaignId={campaign.id} author={author} className="mb-6" />}
+      {campaign.archived && <ArchivedNotice kind="campaign" id={campaign.id} unarchive={author} className="mb-6" />}
       <WithAside
         aside={
           <>
             <Panel title="Next session">
               {upcoming ? (
-                <div className="flex items-center gap-3">
-                  <DateTile date={new Date(upcoming.next.starts_at)} timeZone={user.timezone} tone={Date.parse(upcoming.next.starts_at) - now < DAY ? "pigment" : "accent"} />
-                  <div className="min-w-0">
-                    <p className="text-heading font-semibold text-ink">{formatWhen(upcoming.next.starts_at, user.timezone)}</p>
-                    <p className="text-caption text-muted">
-                      {upcoming.instance.name} ·{" "}
-                      <Link href={`/instances/${upcoming.instance.id}/schedule`} className="text-accent underline">
-                        Schedule
-                      </Link>
-                    </p>
-                  </div>
-                </div>
+                <NextSession startsAt={upcoming.next.starts_at} timezone={user.timezone} now={now}>
+                  <p className="text-caption text-muted">
+                    {upcoming.instance.name} ·{" "}
+                    <Link href={`/instances/${upcoming.instance.id}/schedule`} className="text-accent underline">
+                      Schedule
+                    </Link>
+                  </p>
+                </NextSession>
               ) : (
                 <p className="text-muted">None scheduled.</p>
               )}
@@ -179,7 +179,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
               <p className="text-caption text-muted">{system.credit}</p>
             </Panel>
             {!campaign.archived && (
-              <ButtonLink href={`/characters/new?system=${campaign.system}&campaign=${campaign.id}`} variant="quiet" icon={<UserPlus {...ICON_DENSE} />} className="self-start">
+              <ButtonLink href={`/characters/new?system=${campaign.system}&campaign=${campaign.id}`} variant="quiet" icon={<UserPlus {...ICON_DENSE} />} className="-ml-4 self-start">
                 New character for this campaign
               </ButtonLink>
             )}

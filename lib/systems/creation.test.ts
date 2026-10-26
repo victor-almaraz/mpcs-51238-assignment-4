@@ -1,29 +1,47 @@
 import { describe, expect, it } from "vitest";
 import { creationModuleFields } from "./cadmium/creation";
-import { campaignChoices, chosenCampaign, quickStartFor } from "./creation";
+import { abilitiesFor, campaignChoices, chosenCampaign, quickStartFor } from "./creation";
 
+const coast = [{ namespace: "coast", title: "The Lantern Coast" }];
 const campaigns = [
-  { id: "k1", title: "Lantern", system: "cadmium", modules: ["stash", "armor"], archived: false },
-  { id: "k2", title: "Old", system: "cadmium", modules: ["armor"], archived: true },
-  { id: "k3", title: "Plain", system: "quest", modules: [], archived: false },
-  { id: "k4", title: "Bare", system: "cadmium", modules: [] },
+  { id: "k1", title: "Lantern", system: "cadmium", modules: ["stash", "armor"], archived: false, settings: coast },
+  { id: "k2", title: "Old", system: "cadmium", modules: ["armor"], archived: true, settings: coast },
+  { id: "k3", title: "Plain", system: "quest", modules: [], archived: false, settings: [{ namespace: "starter", title: "Quest Quick Start" }] },
+  { id: "k4", title: "Bare", system: "cadmium", modules: [], settings: [] },
 ];
+const accepts = (system: string) => (system === "cadmium" ? ["cadmium", "quest"] : [system]);
 
 describe("campaignChoices", () => {
-  it("offers the unarchived campaigns of the form's system", () => {
-    expect(campaignChoices(campaigns, "cadmium")).toEqual([
-      { id: "k1", title: "Lantern", modules: ["stash", "armor"] },
-      { id: "k4", title: "Bare", modules: [] },
+  it("offers the unarchived campaigns whose games take the form's system, with their settings", () => {
+    expect(campaignChoices(campaigns, "cadmium", accepts)).toEqual([
+      { id: "k1", title: "Lantern", modules: ["stash", "armor"], settings: coast },
+      { id: "k4", title: "Bare", modules: [], settings: [] },
     ]);
-    expect(campaignChoices(campaigns, "quest").map((c) => c.id)).toEqual(["k3"]);
+  });
+
+  it("offers a Quest character Cadmium campaigns too, without Cadmium's modules", () => {
+    expect(campaignChoices(campaigns, "quest", accepts).map((c) => [c.id, c.modules])).toEqual([
+      ["k1", []],
+      ["k3", []],
+      ["k4", []],
+    ]);
   });
 
   it("finds the chosen campaign, or none", () => {
-    const choices = campaignChoices(campaigns, "cadmium");
+    const choices = campaignChoices(campaigns, "cadmium", accepts);
     expect(chosenCampaign(choices, "k1")?.title).toBe("Lantern");
     expect(chosenCampaign(choices, "k3")).toBeUndefined();
     expect(chosenCampaign(choices, undefined)).toBeUndefined();
     expect(chosenCampaign(choices, "")).toBeUndefined();
+  });
+});
+
+describe("abilitiesFor", () => {
+  const abilities = [{ ref: "coast:lamp" }, { ref: "starter:track" }, { ref: "base:overload" }];
+  it("keeps the abilities of the campaign's settings, or all without a campaign", () => {
+    const [lantern] = campaignChoices(campaigns, "cadmium", accepts);
+    expect(abilitiesFor(abilities, lantern).map((a) => a.ref)).toEqual(["coast:lamp"]);
+    expect(abilitiesFor(abilities, undefined)).toHaveLength(3);
   });
 });
 

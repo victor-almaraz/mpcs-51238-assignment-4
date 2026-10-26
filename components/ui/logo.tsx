@@ -5,7 +5,7 @@
 
 const SYSTEM_FONT = 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 
-export function LogoMark({ size = 28, strokeWidth = 2, title }: { size?: number; strokeWidth?: number; title?: string }) {
+function LogoMark({ size = 28, strokeWidth = 2, title }: { size?: number; strokeWidth?: number; title?: string }) {
   return (
     <svg
       width={size}

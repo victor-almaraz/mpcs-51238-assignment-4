@@ -1,0 +1,34 @@
+# The Ranger's abilities on the Lantern Coast: tides, shorelines, and the animals of both.
+
+harbor_saying:
+  label: Harbor Saying
+  target: self
+  system_stats: { roles: [ranger], path: story and song, cost: { ap: 1 } }
+  effects: []
+read_the_tides:
+  label: Read the Tides
+  target: self
+  system_stats: { roles: [ranger], path: pathfinder, cost: { ap: 0 } }
+  effects: []
+gull_speech:
+  label: Gull Speech
+  target: entity
+  system_stats: { roles: [ranger], path: friend, cost: { ap: 1 } }
+  effects: []
+shore_companion:
+  label: Shore Companion
+  target: entity
+  system_stats: { roles: [ranger], path: friend, cost: { ap: 4 } }
+  effects: []
+harpoon_cast:
+  label: Harpoon Cast
+  target: entity
+  system_stats: { roles: [ranger], path: hunter, cost: { ap: 1 }, roll: true }
+  effects:
+    - damage: { target: target, amount: 2, type: physical }
+marsh_remedy:
+  label: Marsh Remedy
+  target: self
+  system_stats: { roles: [ranger], path: survivalist, cost: { ap: 1 } }
+  effects:
+    - remove_condition: { target: actor, condition: fevered }

@@ -6,7 +6,9 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
 import { Notice } from "@/components/ui/notice";
 import { Standalone } from "@/components/ui/standalone";
-import { previewInvitation } from "@/lib/api/invitations";
+import { invitationContext, previewInvitation } from "@/lib/api/invitations";
+import { formatWhen } from "@/components/when";
+import { sessionUser } from "@/lib/server/session";
 import { acceptInvitationAction, declineInvitationAction } from "@/lib/server/campaign-actions";
 import { decoded, orNotFound } from "@/lib/server/pages";
 import { serverStore } from "@/lib/server/supabase";
@@ -21,9 +23,12 @@ const REASONS: Record<string, string> = {
 
 export default async function Invitation({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params;
-  const invitation = await orNotFound(previewInvitation(serverStore(), decoded(code)));
+  const store = serverStore();
+  const invitation = await orNotFound(previewInvitation(store, decoded(code)));
   const step = invitation.status === "pending" ? await nextStep(`/invite/${code}`) : null;
-  const expires = new Date(invitation.expires_at).toUTCString();
+  const viewer = await sessionUser();
+  const context = await invitationContext(store, viewer?.id ?? null, decoded(code));
+  const expires = formatWhen(invitation.expires_at, viewer?.timezone ?? "UTC");
   return (
     <Standalone
       icon={<MailOpen {...ICON} />}
@@ -41,6 +46,24 @@ export default async function Invitation({ params }: { params: Promise<{ code: s
       {invitation.status !== "pending" ? (
         <>
           <Notice tone="warning">{REASONS[invitation.status]}</Notice>
+          <div>
+            <ButtonLink href="/dashboard" icon={<LayoutDashboard {...ICON_DENSE} />}>
+              Go to the dashboard
+            </ButtonLink>
+          </div>
+        </>
+      ) : context?.member ? (
+        <>
+          <Notice>You are already in this campaign.</Notice>
+          <div>
+            <ButtonLink href={`/campaigns/${context.campaignId}`} icon={<LayoutDashboard {...ICON_DENSE} />}>
+              Open the campaign
+            </ButtonLink>
+          </div>
+        </>
+      ) : context?.archived ? (
+        <>
+          <Notice tone="warning">The campaign is archived, so it takes no new players. Ask {invitation.inviter_display_name} to unarchive it.</Notice>
           <div>
             <ButtonLink href="/dashboard" icon={<LayoutDashboard {...ICON_DENSE} />}>
               Go to the dashboard

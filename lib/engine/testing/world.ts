@@ -2,7 +2,7 @@
 // derelict_station example: two locations joined by a link, doors, a locked chest with capacity, a dark
 // room with a hostile drone, light sources, a hidden item, and an NPC with topics.
 
-import { compileAdventure } from "../../materials";
+import { compileAdventure, mustCompile } from "../../materials";
 import { derelictStation } from "../../materials/testing/fixtures";
 import { Rng } from "../../rng";
 import { QUEST } from "../../systems/quest";
@@ -114,9 +114,7 @@ let cached: Bundles | undefined;
 export function trialBundles(system: RulesSystem = QUEST, files: Record<string, string> = TRIAL): Bundles {
   if (system === QUEST && files === TRIAL && cached) return cached;
   const setting = derelictStation();
-  const result = compileAdventure(new Map(Object.entries(files)), [setting]);
-  if (!result.bundle) throw new Error(result.diagnostics.map((d) => `${d.file}: ${d.path}: ${d.message}`).join("\n"));
-  const bundles: Bundles = { system, settings: [setting], adventure: result.bundle };
+  const bundles: Bundles = { system, settings: [setting], adventure: mustCompile(compileAdventure(new Map(Object.entries(files)), [setting]), "trial adventure") };
   if (system === QUEST && files === TRIAL) cached = bundles;
   return bundles;
 }

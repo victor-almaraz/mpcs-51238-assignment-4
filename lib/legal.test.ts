@@ -1,4 +1,4 @@
-// The application's legal documents (SPEC_ISSUES.md#legal-documents).
+// The application's legal documents (app-flow.md, Legal documents).
 
 import { describe, expect, it } from "vitest";
 import { CONTACT } from "./legal";

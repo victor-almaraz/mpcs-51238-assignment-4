@@ -16,21 +16,45 @@ export class AdminError extends Error {
   }
 }
 
-/** The configured system and the bundles an instance pinned, settings in material order. */
+/** Pinned bundles per store, by system, modules, and materials, most recently used last. */
+const pinned = new WeakMap<Store, Map<string, Promise<Bundles>>>();
+const PINNED_MAX = 50;
+
+/**
+ * The configured system and the bundles an instance pinned, settings in material order. Bundles are
+ * insert-only by kind, id, and version, so each set is fetched once per store and shared, which keeps
+ * the engine's per-Bundles caches warm; a failed fetch is not kept.
+ */
 export async function pinnedBundles(store: Store, instance: InstanceRecord): Promise<Bundles> {
   const base = SYSTEMS[instance.system];
   if (!base) throw new AdminError("invalid_request", `rules system '${instance.system}' is not installed`);
   if (base.VERSION !== instance.system_version) throw new AdminError("invalid_request", `installed ${instance.system} ${base.VERSION} is not the pinned ${instance.system_version}`);
+  const materials = [...instance.materials].sort((a, b) => a.position - b.position);
+  const key = `${instance.system}@${instance.system_version}|${instance.modules.join(",")}|${materials.map((m) => `${m.kind}:${m.id}@${m.version}`).join(",")}`;
+  const cache = pinned.get(store) ?? new Map<string, Promise<Bundles>>();
+  pinned.set(store, cache);
+  const hit = cache.get(key);
+  const bundles = hit ?? fetchPinned(store, materials).then((b) => ({ system: base.configure(instance.modules), ...b }));
+  cache.delete(key);
+  cache.set(key, bundles);
+  if (!hit) {
+    bundles.catch(() => cache.get(key) === bundles && cache.delete(key));
+    if (cache.size > PINNED_MAX) cache.delete(cache.keys().next().value!);
+  }
+  return bundles;
+}
+
+async function fetchPinned(store: Store, materials: InstanceRecord["materials"]): Promise<Omit<Bundles, "system">> {
   const settings: SettingBundle[] = [];
   let adventure: AdventureBundle | undefined;
-  for (const m of [...instance.materials].sort((a, b) => a.position - b.position)) {
+  for (const m of materials) {
     const b = await store.getBundle(m.kind, m.id, m.version);
     if (!b) throw new AdminError("invalid_request", `bundle ${m.kind} ${m.id} ${m.version} is missing`);
     if (b.kind === "adventure") adventure = b;
     else settings.push(b);
   }
   if (!adventure) throw new AdminError("invalid_request", "the instance pins no adventure");
-  return { system: base.configure(instance.modules), settings, adventure };
+  return { settings, adventure };
 }
 
 async function instanceOrThrow(store: Store, id: string): Promise<InstanceRecord> {
@@ -39,7 +63,7 @@ async function instanceOrThrow(store: Store, id: string): Promise<InstanceRecord
   return instance;
 }
 
-// SPEC_ISSUES.md#replay-to-version: replay stops at the first diverging version, which it reports.
+// api.md, Administrative operations (replay_instance): replay stops at the first diverging version.
 /**
  * Replays an instance's commits to `toVersion` (default: latest). `matches_stored` holds when every
  * commit's events reproduce and, at the latest version, the replayed state equals the stored state.

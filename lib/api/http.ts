@@ -1,12 +1,12 @@
 // The HTTP binding (api.md, HTTP and WebSocket binding): routes under /v1, JSON bodies, error codes as
 // HTTP statuses, the Idempotency-Key header, and the per-user rate limit (api.md, Rate limits).
-// The bearer token is the Clerk session token; Clerk authenticates it before `handle` runs.
-// SPEC_ISSUES.md#binding-gaps: account routes belong to Clerk; deletion routes are not listed.
+// The bearer token is the Clerk session token; Clerk authenticates it before `handle` runs, and the
+// binding has no register, login, or logout routes (api.md, Authentication: with an identity provider).
 import { createHash } from "node:crypto";
 import { shutdownPhase } from "../ops/shutdown";
 
 import { uploadAsset } from "./assets";
-import { archiveCharacter, createCharacter, deleteCharacter, getCharacter, listCharacters, listDeletedCharacters, restoreCharacter, retireCharacter, unarchiveCharacter, updateCharacter } from "./characters";
+import { archiveCharacter, createCharacter, deleteCharacter, getCharacter, listCharacters, listDeletedCharacters, rebuildCharacter, restoreCharacter, retireCharacter, unarchiveCharacter, updateCharacter } from "./characters";
 import {
   archiveCampaign,
   createCampaign,
@@ -43,14 +43,13 @@ import {
   type Deps,
 } from "./instances";
 import { acceptInvitation, declineInvitation, invite, listInvitations, previewInvitation, revokeInvitation } from "./invitations";
-import { listMaterials } from "./materials";
+import { deleteMaterial, listMaterials } from "./materials";
+import { listReminders } from "./notifications";
 import { addPushSubscription, exportMyData, getPushKey, listPushSubscriptions, removePushSubscription, requestAccountDeletion, restoreAccount, updateMe } from "./account";
 import { archiveDraft, createDraft, deleteDraft, exportDraft, getDraft, importDraft, listDeletedDrafts, listDrafts, publishDraft, restoreDraft, saveDraft, unarchiveDraft, validateDraft } from "./drafts";
-import { calendarFeed, cancelSession, disableCalendarFeed, exportCalendar, getCalendarFeed, listOccurrences, moveOccurrence, rotateCalendarFeed, rsvp, scheduleSession, updateSession } from "./schedules";
+import { calendarFeed, calendarFeedKey, cancelSession, disableCalendarFeed, exportCalendar, getCalendarFeed, listOccurrences, moveOccurrence, rotateCalendarFeed, rsvp, scheduleSession, updateSession } from "./schedules";
 import { getSystemSchema, listSystems } from "./systems";
 import { acceptTerms, caller, getMe } from "./users";
-
-export { RATE_LIMIT };
 
 const STATUS: Record<ApiErrorCode, number> = {
   unauthenticated: 401,
@@ -88,7 +87,7 @@ const ics = (text: string): Reply => ({ status: 200, calendar: text });
 const FEED_LIMIT = { window_seconds: 3600, limit: 60 };
 
 function feedConfig(c: Call) {
-  const key = process.env.CALENDAR_FEED_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const key = calendarFeedKey();
   if (!key) throw new ApiError("unavailable", "calendar feeds are not configured");
   return { key, origin: c.origin };
 }
@@ -123,6 +122,7 @@ const ROUTES: Route[] = [
   ["GET", "/me/calendar-feed", async (c) => ok(await getCalendarFeed(c.deps.store, c.user, feedConfig(c)))],
   ["POST", "/me/calendar-feed", async (c) => ok(await rotateCalendarFeed(c.deps.store, c.user, feedConfig(c)))],
   ["DELETE", "/me/calendar-feed", async (c) => (await disableCalendarFeed(c.deps.store, c.user), none())],
+  ["GET", "/me/reminders", async (c) => ok(await listReminders(c.deps.store, c.user, queryInput(c.query, ["days"])))],
   [
     "GET",
     "/calendar/:feed",
@@ -138,14 +138,21 @@ const ROUTES: Route[] = [
   ["GET", "/systems", async (c) => (await gated(c, "list_systems"), ok({ items: listSystems() }))],
   ["GET", "/systems/:system/schemas/:kind", async (c) => (await gated(c, "get_system_schema"), ok(getSystemSchema(c.params.system, c.params.kind, c.query.getAll("modules"))))],
   ["GET", "/materials", async (c) => ok({ items: await listMaterials(c.deps.store, c.user, queryInput(c.query)) })],
+  ["DELETE", "/materials/:kind/:id/:version", async (c) => (await deleteMaterial(c.deps.store, c.user, { kind: c.params.kind, id: c.params.id, version: c.params.version }), none())],
   // Adventure drafts
   ["POST", "/drafts", async (c) => created({ draft: await createDraft(c.deps.store, c.user, c.body) })],
   ["POST", "/drafts/import", async (c) => created(await importDraft(c.deps.store, c.user, c.raw))],
   ["GET", "/drafts", async (c) => ok(await listDrafts(c.deps.store, c.user, queryInput(c.query, ["limit"], ["archived"])))],
-  // SPEC_ISSUES.md#character-draft-archive
   ["GET", "/drafts/deleted", async (c) => ok({ drafts: await listDeletedDrafts(c.deps.store, c.user) })],
   ["GET", "/drafts/:draft_id", async (c) => ok({ draft: await getDraft(c.deps.store, c.user, c.params.draft_id) })],
-  ["PUT", "/drafts/:draft_id", async (c) => ok(await saveDraft(c.deps.store, c.user, { ...c.body, draft_id: c.params.draft_id }))],
+  [
+    "PUT",
+    "/drafts/:draft_id",
+    async (c) => {
+      const { revision, saved_at } = await saveDraft(c.deps.store, c.user, { ...c.body, draft_id: c.params.draft_id });
+      return ok({ revision, saved_at });
+    },
+  ],
   ["POST", "/drafts/:draft_id/validate", async (c) => ok({ diagnostics: await validateDraft(c.deps.store, c.user, c.params.draft_id) })],
   ["GET", "/drafts/:draft_id/export.zip", async (c) => ({ status: 200, file: { type: "application/zip", ...(await exportDraft(c.deps.store, c.user, c.params.draft_id)) } })],
   ["POST", "/drafts/:draft_id/publish", async (c) => created({ material: await publishDraft(c.deps.store, c.user, { ...c.body, draft_id: c.params.draft_id }) })],
@@ -173,6 +180,7 @@ const ROUTES: Route[] = [
   ["DELETE", "/characters/:character_id", async (c) => (await deleteCharacter(c.deps.store, c.user, c.params.character_id), none())],
   ["POST", "/characters/:character_id/restore", async (c) => ok({ character: await restoreCharacter(c.deps.store, c.user, c.params.character_id) })],
   ["POST", "/characters/:character_id/archive", async (c) => ok({ character: await archiveCharacter(c.deps.store, c.user, c.params.character_id) })],
+  ["POST", "/characters/:character_id/rebuild", async (c) => ok({ character: await rebuildCharacter(c.deps.store, c.user, { ...c.body, character_id: c.params.character_id }) })],
   ["POST", "/characters/:character_id/unarchive", async (c) => ok({ character: await unarchiveCharacter(c.deps.store, c.user, c.params.character_id) })],
   [
     "POST",
@@ -191,7 +199,6 @@ const ROUTES: Route[] = [
   ["POST", "/campaigns", async (c) => created({ campaign: await createCampaign(c.deps.store, c.user, c.body) })],
   ["GET", "/campaigns", async (c) => ok(await listCampaigns(c.deps.store, c.user, queryInput(c.query, ["limit"], ["archived"])))],
   ["POST", "/campaigns/join", async (c) => ok({ campaign: await joinByLink(c.deps.store, c.user, c.body.invite_link_code) })],
-  // SPEC_ISSUES.md#campaign-unarchive
   ["GET", "/campaigns/deleted", async (c) => ok({ campaigns: await listDeletedCampaigns(c.deps.store, c.user) })],
   ["GET", "/campaigns/:campaign_id", async (c) => ok({ campaign: await getCampaign(c.deps.store, c.user, c.params.campaign_id) })],
   ["PATCH", "/campaigns/:campaign_id", async (c) => ok({ campaign: await updateCampaign(c.deps.store, c.user, { ...c.body, campaign_id: c.params.campaign_id }) })],
@@ -322,7 +329,7 @@ export async function handle(request: Request, user: string | null, deps: Deps):
     if (crossSite(request, url)) throw new ApiError("forbidden", "requests from other sites are refused");
     const phase = shutdownPhase(process.env.SHUTDOWN_AT, new Date()).phase;
     if (phase === "closed" || phase === "purge") throw new ApiError("unavailable", "Cadmium has closed");
-    // SPEC_ISSUES.md#binding-gaps: images are immutable and cached, so they do not count against the limit.
+    // Images are immutable and cached, so they do not count against the limit (api.md, Rate limits).
     if (user && !(request.method === "GET" && path.startsWith("/assets/"))) {
       const wait = await deps.store.rateHit(user, "api", RATE_LIMIT.window_seconds, RATE_LIMIT.limit);
       if (wait > 0) throw new ApiError("rate_limited", "too many requests", { retry_after_ms: wait });

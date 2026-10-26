@@ -1,25 +1,12 @@
 "use server";
 // Server actions for the operator console.
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
-import { endGame, hold, publishBundle, release, removeAssetContent, removeCampaignContent, removeCharacterContent, restoreInstance, setListed, suspend } from "../api/admin";
-import { ApiError } from "../api/errors";
+import { applyReport, deleteBundle, inspectInstance, publishBundle, replayInstance, restoreInstance, setListed } from "../api/admin";
 import { serverDeps } from "./coordinator";
-import { attempt, type FormState } from "./forms";
+import { attempt, save, str, type FormState } from "./forms";
 
-const str = (form: FormData, name: string) => {
-  const v = form.get(name);
-  return typeof v === "string" ? v : undefined;
-};
-
-/**
- * Back to the console without its query: re-rendering `/admin?inspect=…` would run the inspection again
- * and write it to the operator log a second time.
- */
-function done(): never {
-  revalidatePath("/admin");
-  redirect("/admin");
-}
+/** The console again. */
+const consolePage = () => revalidatePath("/admin");
 
 export async function publishAction(_: FormState, form: FormData): Promise<FormState> {
   const file = form.get("bundle");
@@ -31,34 +18,50 @@ export async function publishAction(_: FormState, form: FormData): Promise<FormS
     return { error: "The bundle is not JSON." };
   }
   const r = await attempt((uid) => publishBundle(serverDeps().store, uid, { kind: str(form, "kind"), bundle }));
-  return "error" in r ? r : done();
+  if ("error" in r) return { error: r.error };
+  consolePage();
+  return { error: null, saved: `Published ${r.ok.kind} ${r.ok.id} ${r.ok.version}.` };
 }
 
 export async function listedAction(_: FormState, form: FormData): Promise<FormState> {
-  const r = await attempt((uid) => setListed(serverDeps().store, uid, { kind: str(form, "kind"), id: str(form, "id"), version: str(form, "version"), listed: str(form, "listed") === "true" }));
-  return "error" in r ? r : done();
+  const listed = str(form, "listed") === "true";
+  return save((uid) => setListed(serverDeps().store, uid, { kind: str(form, "kind"), id: str(form, "id"), version: str(form, "version"), listed }), consolePage, `${listed ? "Listed" : "Unlisted"} ${str(form, "id")} ${str(form, "version")}.`);
+}
+
+/** Deletes a bundle version that no campaign or game uses; one in use stays, and the error says how many use it. */
+export async function deleteBundleAction(_: FormState, form: FormData): Promise<FormState> {
+  return save((uid) => deleteBundle(serverDeps().store, uid, { kind: str(form, "kind"), id: str(form, "id"), version: str(form, "version") }), consolePage, `Deleted ${str(form, "kind")} ${str(form, "id")} ${str(form, "version")}.`);
 }
 
 export async function restoreAction(_: FormState, form: FormData): Promise<FormState> {
-  const r = await attempt((uid) => restoreInstance(serverDeps().store, uid, { instance_id: str(form, "instance_id"), to_version: Number(str(form, "to_version")), reason: str(form, "reason") }));
-  return "error" in r ? r : done();
+  return save((uid) => restoreInstance(serverDeps().store, uid, { instance_id: str(form, "instance_id"), to_version: Number(str(form, "to_version")), reason: str(form, "reason") }), consolePage, `Restored the game to version ${str(form, "to_version")}.`);
 }
 
 export async function reportAction(_: FormState, form: FormData): Promise<FormState> {
-  const deps = serverDeps();
-  const action = str(form, "action");
-  const kind = str(form, "kind");
-  const id = str(form, "id");
-  const reason = str(form, "reason");
-  const r = await attempt(async (uid) => {
-    if (action === "hold") return hold(deps.store, uid, { kind, id, reason });
-    if (action === "release") return release(deps.store, uid, { kind, id, note: reason });
-    if (action === "suspend" || action === "unsuspend") return suspend(deps.store, uid, { user_id: id, suspended: action === "suspend", reason });
-    if (action === "remove" && kind === "character") return removeCharacterContent(deps, uid, { character_id: id, reason });
-    if (action === "remove" && kind === "campaign") return removeCampaignContent(deps, uid, { campaign_id: id, reason });
-    if (action === "remove" && kind === "asset") return removeAssetContent(deps.store, uid, { hash: id, reason });
-    if (action === "end") return endGame(deps, uid, { instance_id: id, reason });
-    throw new ApiError("invalid_request", "unknown action");
-  });
-  return "error" in r ? r : done();
+  const r = await attempt((uid) => applyReport(serverDeps(), uid, { action: str(form, "action"), kind: str(form, "kind"), id: str(form, "id"), reason: str(form, "reason") }));
+  if ("error" in r) return { error: r.error };
+  consolePage();
+  return { error: null, saved: r.ok };
+}
+
+export type Inspection = {
+  error: string | null;
+  instance?: { id: string; name: string; status: string; version: number; state: unknown };
+  /** Whether replaying the event log reproduces the stored state, or why the replay failed. */
+  replay?: { matches_stored: boolean; diverges_at: number | null } | { error: string };
+};
+
+/** Inspect: the game's full state, written to the operator log with the reason, and its replay check. */
+export async function inspectAction(_: Inspection, form: FormData): Promise<Inspection> {
+  const store = serverDeps().store;
+  const r = await attempt((uid) => inspectInstance(store, uid, str(form, "inspect")?.trim(), str(form, "reason")));
+  if ("error" in r) return { error: r.error };
+  const i = r.ok;
+  const replay = await attempt((uid) => replayInstance(store, uid, { instance_id: i.id })).catch((e: Error) => ({ error: e.message }));
+  consolePage();
+  return {
+    error: null,
+    instance: { id: i.id, name: i.name, status: i.status, version: i.version, state: i.state },
+    replay: "error" in replay ? { error: replay.error } : { matches_stored: replay.ok.matches_stored, diverges_at: replay.ok.diverges_at ?? null },
+  };
 }

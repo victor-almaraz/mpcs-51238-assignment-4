@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schema.dungeon-crawler.invalid/v1/systems/cadmium/creature.schema.json",
+  "title": "Cadmium creature stats",
+  "type": "object",
+  "properties": {
+    "template": {
+      "enum": [
+        "commoner",
+        "minion",
+        "boss"
+      ]
+    },
+    "hp": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "damage": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "speed": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 24,
+      "description": "Cells per combat turn. Default from data.json spatial.speed."
+    },
+    "ranged": {
+      "type": "boolean",
+      "description": "Attacks any visible target instead of adjacent ones."
+    },
+    "armor": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 40,
+      "description": "Module armor: starting armor pool."
+    }
+  },
+  "required": [
+    "template"
+  ],
+  "additionalProperties": false,
+  "description": "A property whose description begins with Module <id>: is accepted only while module <id> is enabled."
+}
