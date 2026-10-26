@@ -41,7 +41,7 @@ The server reads these variables, from `.env.local` locally and from the Vercel 
 | `PARSER_ENABLED`, `NARRATOR_ENABLED` | no | `0` disables one adapter while keeping the other (runbooks/model-outage.md) |
 | `ACTION_MENU_MODE` | no | `1` sends every character an action menu at each round and turn start |
 | `CRON_SECRET` | yes | Authorizes calls to the scheduler at `/api/cron/scheduler` (Vercel Cron sends it as a bearer token) |
-| `CALENDAR_FEED_KEY` | yes | Derives calendar feed secrets; the service key is used when unset |
+| `CALENDAR_FEED_KEY` | yes | Derives calendar feed secrets; without it, calendar feeds are unavailable |
 | `SHUTDOWN_AT` | no | The end-of-course shutdown time (ISO 8601): a banner from 14 days before, the closed notice from then, the purge 90 days after |
 | `CONTACT_EMAIL` | no | Overrides the contact address on the closed notice; the default is the address in the Terms and Privacy Policy |
 | `VAPID_PUBLIC_KEY` | no | The Web Push public key: Settings offers browser notifications when it is set |
@@ -132,7 +132,7 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `lib/bundle/` | Schema registry and generated types; generated files are never edited by hand |
 | `lib/materials/` | Content Compiler: pack reading, schema explanations, rules-system, cross-reference, map, and art checks, bundles, and the `materials` command line |
 | `scripts/` | Build-time scripts, such as type generation |
-| `materials/` | Material packs shipped with the application: `quest_starter` (the Quest Quick Start abilities, CC BY 4.0). The exemplar `sunken_archive` and its setting `lantern_coast` are specification examples in `cadmium-spec/spec/examples/` |
+| `materials/` | Material packs shipped with the application: `quest_starter` (the Quest Quick Start abilities, CC BY 4.0), and the ability descriptions of `lantern_coast`. The exemplar `sunken_archive` and its setting `lantern_coast`, with six abilities per role, are specification examples in `cadmium-spec/spec/examples/` |
 | `docs/exemplar/` | The exemplar's report: coverage, validation passes, walkthroughs, and departures from the draft |
 | `tools/sim/` | The balance simulation |
 | `public/fonts/` | Libertinus Serif (SIL Open Font License, `OFL.txt`) for story text |
@@ -142,7 +142,7 @@ Modules under `lib/` follow the boundaries in [`engine-implementation.md`](cadmi
 
 ## Specification version
 
-`cadmium-spec/` is a copy of the specification at commit `54f4adcdffe5bf3c8547a5c89a9f55fefbeb2fef` with one change applied: the exemplar of `briefs/example-adventure.md`, which adds `spec/examples/lantern_coast` and `spec/examples/sunken_archive` and updates `spec/README.md`, `AGENTS.md`, `docs/adventure-packs.md`, and `docs/guides/adventure-authoring.md`. That change belongs in the specification repository. The copy becomes a git submodule, pinned to a commit that contains the change, when the specification repository's URL is available. Updating the specification is its own change, with the specification diff summarized.
+`cadmium-spec/` is a copy of the specification at commit `54f4adcdffe5bf3c8547a5c89a9f55fefbeb2fef` with two changes applied. The first is the exemplar of `briefs/example-adventure.md`, which adds `spec/examples/lantern_coast` (with six abilities per role) and `spec/examples/sunken_archive` and updates `spec/README.md`, `AGENTS.md`, `docs/adventure-packs.md`, and `docs/guides/adventure-authoring.md`. The second is `docs/legal/privacy.md`, which matches `legal/privacy.md` on archived and deleted campaigns, characters, and drafts, and on revoked invitations. Both changes belong in the specification repository. The copy becomes a git submodule, pinned to a commit that contains the change, when the specification repository's URL is available. Updating the specification is its own change, with the specification diff summarized.
 
 ## License
 

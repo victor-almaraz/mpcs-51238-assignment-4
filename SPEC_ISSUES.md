@@ -748,7 +748,7 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 
 **Problem.** A Quest or Cadmium character needs six distinct abilities from installed materials, but the settings installed with Cadmium define two abilities in total (`base:overload` and `crypt:turn_undead`). No character can be created with the shipped materials.
 
-**Implemented.** The creation form offers the abilities of every listed operator setting the system accepts, and states the shortfall when there are fewer than six. The application ships a setting pack, `materials/quest_starter` (Quest Quick Start), with each role's six quick-start abilities from the Quest Creators Resource (CC BY 4.0), which the operator publishes; the form offers a role's quick start in one click, and new campaigns include every setting by default so the chosen abilities are in their materials.
+**Implemented.** The creation form offers the abilities of every listed operator setting the system accepts, and states the shortfall when there are fewer than six. The application ships a setting pack, `materials/quest_starter` (Quest Quick Start), with each role's six quick-start abilities from the Quest Creators Resource (CC BY 4.0), which the operator publishes; the form offers a role's quick start in one click, and new campaigns include every setting by default so the chosen abilities are in their materials. The exemplar setting `lantern_coast` holds six single-role abilities for each role, so a Cadmium campaign on it has a Quick Start for every role without Quest Quick Start.
 
 **Proposed resolution.** Ship at least six abilities usable by any role in the example settings, or a starter setting installed with Cadmium that holds a starting set.
 
@@ -870,11 +870,11 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 |---|---|
 | Document | `docs/legal/terms.md`; `docs/runbooks/content-reports.md`; `docs/data-model.md` |
 | Section | Terms, reports ("suspend accounts"); Procedure, step 2; User |
-| Marker | `supabase/migrations/20261023000800_operations.sql`, `lib/api/users.ts`, `lib/server/session.ts` |
+| Marker | `supabase/migrations/20261023000800_operations.sql`, `supabase/migrations/20261025000500_account_fixes.sql`, `lib/api/users.ts`, `lib/server/session.ts` |
 
 **Problem.** Operators may suspend accounts, but the User record has no field for it and no document says what a suspended user may still do.
 
-**Implemented.** The user record has `suspended_at`. A suspended user may call only `get_me`, `export_my_data`, and `logout`; every other operation fails with `forbidden`. Signed-in pages send a suspended user to a notice that names the contact address and offers the data export; live messages and calendar feeds stop.
+**Implemented.** The user record has `suspended_at`. A suspended user may call only `get_me`, `export_my_data`, and `logout`; every other operation fails with `forbidden`. Signed-in pages send a suspended user to a notice that names the contact address and offers the data export; live messages, reminders, and calendar feeds stop.
 
 **Proposed resolution.** Add `suspended_at` to the User record and list the operations a suspended account keeps.
 
@@ -1098,9 +1098,9 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 
 **Problem.** Creation shows module fields "when the chosen campaign enables the module", but the creation flow has no campaign step and `create_character` takes only `system`, `name`, and `choices`. Characters get module state when they join an instance. A Quest character may also join a Cadmium campaign and play under its modules, which Quest's form cannot show.
 
-**Implemented.** Cadmium's creation form offers an optional "For campaign" choice among the caller's unarchived Cadmium campaigns, and shows the fields of the modules it enables (the armor pool and the carrying limit, from modules.json) as information. The choice is not submitted and does not change the stored sheet. `/characters/new?system=cadmium&campaign=<id>` preselects it.
+**Implemented.** The creation form of every system has an optional Campaign step, after System, among the caller's unarchived campaigns whose games take the system's characters (a Quest character's form lists Cadmium campaigns too). With a campaign chosen, the form offers only the abilities of the campaign's settings, warns when they are fewer than `starting_abilities`, and Cadmium's form shows the fields of the modules the campaign enables (the armor pool and the carrying limit, from modules.json) as information. The form submits the campaign to the server action, which refuses abilities from settings the campaign does not include before it calls `create_character`; `create_character` takes no campaign, and the stored sheet does not record it. `/characters/new?system=cadmium&campaign=<id>` preselects it.
 
-**Proposed resolution.** Add an optional campaign, for display only, to the creation flow, and say whether a Quest form should show the modules of a Cadmium campaign that would accept the character.
+**Proposed resolution.** Add an optional campaign to the creation flow that limits the abilities to the campaign's settings, so a character made for a campaign can join its games, and say that only a campaign of the character's own system shows module fields.
 
 ## design-system
 
@@ -1171,3 +1171,31 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** Characters and material drafts have an `archived` boolean, returned in the character and draft objects, and `list_characters` and `list_drafts` take `archived?` as `list_campaigns` does. `archive_character` and `unarchive_character` (owner; `conflict` when already in that state, and archiving a character in an instance is a `conflict`): an archived character cannot join an instance (`add_character` is a `conflict`). `archive_draft` and `unarchive_draft` (owner): an archived draft cannot be published (`publish_draft` is a `conflict`). `list_deleted_characters` and `list_deleted_drafts` return the caller's records deleted less than 30 days ago, each with `restorable_until` and `erased_by`. HTTP: `POST /v1/characters/{id}/archive` and `/unarchive`, `GET /v1/characters/deleted`, and the same under `/v1/drafts`; also `POST /v1/campaigns/{id}/unarchive` and `GET /v1/campaigns/deleted`. The Characters and My adventures pages list archived records with Unarchive and recently deleted ones with Restore; the character page offers Archive or Unarchive, and Delete character confirmed by its name. Migration `20261025000100_character_draft_archive` adds the columns and SQL functions.
 
 **Proposed resolution.** Add the `archived` field to data-model.md's Character and Material draft, the six operations and the `archived?` list parameter to api.md and its HTTP binding, and the archived and deleted lists to app-flow.md's Characters hub, Character editor, and My adventures.
+
+## terms-gate-recovery
+
+| Field | Value |
+|---|---|
+| Document | `docs/api.md` |
+| Section | Conventions (the terms gate; closing accounts) |
+| Marker | `lib/api/users.ts` |
+
+**Problem.** Until the current terms are accepted, every operation except `get_me`, `accept_terms`, and `logout` fails, while a closing account may call only `get_me`, `restore_account`, `export_my_data`, and `logout`. When the terms change while an account is closing, both rules apply: the account cannot accept the terms, so it can neither restore nor export, although the Privacy Policy promises both. A suspended account is in the same position for the export.
+
+**Implemented.** The terms gate also lets `restore_account` and `export_my_data` through. A restored account accepts the current terms before anything else.
+
+**Proposed resolution.** Add `restore_account` and `export_my_data` to the operations the terms gate allows.
+
+## character-rebuild
+
+| Field | Value |
+|---|---|
+| Document | `docs/app-flow.md`; `docs/api.md` |
+| Section | Character creation and editor ("The editor shows the sheet read-only"); Characters |
+| Marker | `lib/api/characters.ts` |
+
+**Problem.** The sheet is read-only after creation, so a player who picked the wrong role or abilities, or abilities a campaign's games cannot use, can only make a new character.
+
+**Implemented.** `rebuild_character` (`character_id`, `name?`, `choices`; owner) builds the sheet again from new choices with a new seed, as `create_character` does, keeping the id and portrait. It is allowed while the character is `available` and has never joined an instance; otherwise it is a `conflict`. The character page offers Change role and abilities in that state, which opens the system's creation form filled with the current choices (`/characters/{id}/rebuild`). HTTP: `POST /v1/characters/{id}/rebuild`. Migration `20261025000200_character_rebuild` adds `cadmium_character_played` and `cadmium_rebuild_character`, which re-checks the state in the same statement.
+
+**Proposed resolution.** Add `rebuild_character` to api.md's Characters operations and the HTTP binding, and Change role and abilities to app-flow.md's Character editor, for characters that have not played.

@@ -22,6 +22,10 @@ const PROBES: [migration: string, fn: string, args: Record<string, unknown>][] =
   ["20261024000000_access_hardening", "cadmium_user_active", { p_id: "health" }],
   ["20261025000000_campaign_archive", "cadmium_deleted_campaigns", { p_author: "health" }],
   ["20261025000100_character_draft_archive", "cadmium_deleted_characters", { p_owner: "health" }],
+  ["20261025000200_character_rebuild", "cadmium_character_played", { p_id: "health" }],
+  ["20261025000300_play_fixes", "cadmium_instance_roster", { p_instance: "health" }],
+  ["20261025000400_editor_fixes", "cadmium_setting_dependents", { p_id: "health" }],
+  ["20261025000500_account_fixes", "cadmium_reminder_marks", { p_user: "health", p_keys: [] }],
 ];
 
 /** Whether the caller presented the cron secret, and so may see the details. */

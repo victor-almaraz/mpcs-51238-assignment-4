@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { shutdownPhase } from "../ops/shutdown";
 
 import { uploadAsset } from "./assets";
-import { archiveCharacter, createCharacter, deleteCharacter, getCharacter, listCharacters, listDeletedCharacters, restoreCharacter, retireCharacter, unarchiveCharacter, updateCharacter } from "./characters";
+import { archiveCharacter, createCharacter, deleteCharacter, getCharacter, listCharacters, listDeletedCharacters, rebuildCharacter, restoreCharacter, retireCharacter, unarchiveCharacter, updateCharacter } from "./characters";
 import {
   archiveCampaign,
   createCampaign,
@@ -46,7 +46,7 @@ import { acceptInvitation, declineInvitation, invite, listInvitations, previewIn
 import { listMaterials } from "./materials";
 import { addPushSubscription, exportMyData, getPushKey, listPushSubscriptions, removePushSubscription, requestAccountDeletion, restoreAccount, updateMe } from "./account";
 import { archiveDraft, createDraft, deleteDraft, exportDraft, getDraft, importDraft, listDeletedDrafts, listDrafts, publishDraft, restoreDraft, saveDraft, unarchiveDraft, validateDraft } from "./drafts";
-import { calendarFeed, cancelSession, disableCalendarFeed, exportCalendar, getCalendarFeed, listOccurrences, moveOccurrence, rotateCalendarFeed, rsvp, scheduleSession, updateSession } from "./schedules";
+import { calendarFeed, calendarFeedKey, cancelSession, disableCalendarFeed, exportCalendar, getCalendarFeed, listOccurrences, moveOccurrence, rotateCalendarFeed, rsvp, scheduleSession, updateSession } from "./schedules";
 import { getSystemSchema, listSystems } from "./systems";
 import { acceptTerms, caller, getMe } from "./users";
 
@@ -88,7 +88,7 @@ const ics = (text: string): Reply => ({ status: 200, calendar: text });
 const FEED_LIMIT = { window_seconds: 3600, limit: 60 };
 
 function feedConfig(c: Call) {
-  const key = process.env.CALENDAR_FEED_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const key = calendarFeedKey();
   if (!key) throw new ApiError("unavailable", "calendar feeds are not configured");
   return { key, origin: c.origin };
 }
@@ -173,6 +173,8 @@ const ROUTES: Route[] = [
   ["DELETE", "/characters/:character_id", async (c) => (await deleteCharacter(c.deps.store, c.user, c.params.character_id), none())],
   ["POST", "/characters/:character_id/restore", async (c) => ok({ character: await restoreCharacter(c.deps.store, c.user, c.params.character_id) })],
   ["POST", "/characters/:character_id/archive", async (c) => ok({ character: await archiveCharacter(c.deps.store, c.user, c.params.character_id) })],
+  // SPEC_ISSUES.md#character-rebuild
+  ["POST", "/characters/:character_id/rebuild", async (c) => ok({ character: await rebuildCharacter(c.deps.store, c.user, { ...c.body, character_id: c.params.character_id }) })],
   ["POST", "/characters/:character_id/unarchive", async (c) => ok({ character: await unarchiveCharacter(c.deps.store, c.user, c.params.character_id) })],
   [
     "POST",

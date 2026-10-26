@@ -51,6 +51,8 @@ export interface DemoWorld {
   draft: string | null;
   invitation: string;
   link: string;
+  archivedCampaign: string;
+  archivedCharacter: string;
 }
 
 export async function seedDemo(store: Store, now = new Date()): Promise<DemoWorld> {
@@ -143,5 +145,5 @@ export async function seedDemo(store: Store, now = new Date()): Promise<DemoWorl
   const scrap = await createDraft(store, "user_demo", { ...notes, material_id: "scratch", title: "Scratch pad" }, e);
   await deleteDraft(store, "user_demo", scrap.id);
 
-  return { campaign: campaign.id, game: game.id, lobby: lobby.id, character: wren.id, draft: draft ? draft.draft.id : null, invitation, link };
+  return { campaign: campaign.id, game: game.id, lobby: lobby.id, character: wren.id, draft: draft ? draft.draft.id : null, invitation, link, archivedCampaign: past.id, archivedCharacter: oldTam.id };
 }

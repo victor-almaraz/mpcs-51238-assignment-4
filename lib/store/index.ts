@@ -185,6 +185,14 @@ export interface InstanceView {
   ending: string | null;
 }
 
+/** A character that has joined an instance; `left_at` is null while it is in the party. */
+export interface RosterEntry {
+  id: string;
+  user_id: string;
+  name: string;
+  left_at: string | null;
+}
+
 export interface HistoryItem {
   version: number;
   actor_id: string | null;
@@ -545,6 +553,11 @@ export class Store {
     return this.rpc.call<InstanceView[]>("cadmium_list_instances", { p_campaign: campaignId });
   }
 
+  /** Every character that has joined the instance, in joining order, with when it left (null while in). */
+  async instanceRoster(instanceId: string): Promise<RosterEntry[]> {
+    return this.rpc.call<RosterEntry[]>("cadmium_instance_roster", { p_instance: instanceId });
+  }
+
   /** Puts an available character of the user into an instance; false when it is no longer available. */
   async joinInstance(instanceId: string, characterId: string, userId: string): Promise<boolean> {
     return this.rpc.call<boolean>("cadmium_join_instance", { p_instance: instanceId, p_character: characterId, p_user: userId });
@@ -653,6 +666,12 @@ export class Store {
   /** Records a unit of scheduler work; false when it was already done. */
   async scheduleMark(key: string): Promise<boolean> {
     return this.rpc.call<boolean>("cadmium_schedule_mark", { p_key: key });
+  }
+
+  /** Which of the user's reminder keys the Scheduler has marked done, that is, sent or tried to send. */
+  async reminderMarks(userId: string, keys: readonly string[]): Promise<Set<string>> {
+    if (keys.length === 0) return new Set();
+    return new Set(await this.rpc.call<string[]>("cadmium_reminder_marks", { p_user: userId, p_keys: keys }));
   }
 
   async schedulerSnapshot(): Promise<SchedulerSnapshot> {
@@ -801,6 +820,16 @@ export class Store {
     return (await this.rpc.call<DraftRecord | null>("cadmium_restore_draft", { p_id: id })) ?? undefined;
   }
 
+  /** Sets the adventure id of a never-published draft; undefined once published. Another of the owner's drafts with the id fails with 23505. */
+  async setDraftMaterial(id: string, materialId: string): Promise<DraftRecord | undefined> {
+    return (await this.rpc.call<DraftRecord | null>("cadmium_set_draft_material", { p_id: id, p_material_id: materialId })) ?? undefined;
+  }
+
+  /** The version ranges of drafts, and the resolved versions of listed adventures, that require setting `id`. */
+  async settingDependents(id: string): Promise<{ drafts: (string | null)[]; adventures: (string | null)[] }> {
+    return this.rpc.call("cadmium_setting_dependents", { p_id: id });
+  }
+
   async setDraftArchived(id: string, archived: boolean): Promise<DraftRecord | undefined> {
     return (await this.rpc.call<DraftRecord | null>("cadmium_set_draft_archived", { p_id: id, p_archived: archived })) ?? undefined;
   }
@@ -878,6 +907,16 @@ export class Store {
 
   async restoreCharacter(id: string): Promise<CharacterRecord | undefined> {
     return (await this.rpc.call<CharacterRecord | null>("cadmium_restore_character", { p_id: id })) ?? undefined;
+  }
+
+  /** Whether the character has ever joined an instance. */
+  async characterPlayed(id: string): Promise<boolean> {
+    return this.rpc.call<boolean>("cadmium_character_played", { p_id: id });
+  }
+
+  /** Undefined unless the character is available and has never joined an instance. */
+  async rebuildCharacter(id: string, name: string, sheet: CharacterRecord["sheet"]): Promise<CharacterRecord | undefined> {
+    return (await this.rpc.call<CharacterRecord | null>("cadmium_rebuild_character", { p_id: id, p_name: name, p_sheet: sheet })) ?? undefined;
   }
 
   /** Undefined when the character is deleted, or in an instance and `archived` is true. */
