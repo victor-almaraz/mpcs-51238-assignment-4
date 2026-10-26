@@ -10,6 +10,8 @@ import type { Store } from "../store";
 import type { testDb } from "../store/testing/pglite";
 import { createCampaign } from "./campaigns";
 import { withDescriptions } from "../server/ability-descriptions";
+import { quickStartFor } from "../systems/creation";
+import { example } from "../materials/testing/fixtures";
 import { abilityOptions, createCharacter, effectSentences } from "./characters";
 import type { Entropy } from "./entropy";
 import { addCharacter, createInstance, startInstance, submitAction, type Deps } from "./instances";
@@ -37,7 +39,7 @@ afterEach(async () => {
   await db.close();
 });
 
-const quickStart = async (role: string) => (await abilityOptions(store, "quest")).filter((a) => a.roles.length === 1 && a.roles[0] === role).map((a) => a.ref);
+const quickStart = async (role: string) => quickStartFor(role, await abilityOptions(store, "quest"), 6);
 
 describe("ability information for new players", () => {
   it("states each ability's cost, roll, target, path, and effects, with its Creators Resource description", async () => {
@@ -70,6 +72,14 @@ describe("Quest Quick Start", () => {
       const c = await createCharacter(store, "user_a", { system, name: "Vale", choices: { role, abilities: six } }, e);
       expect(c.sheet.abilities).toEqual(six);
     }
+  });
+
+  it("keeps every role's quick start when the Fantasy example adds an invoker prayer", async () => {
+    await store.putBundle(compileSetting(example("sunless_crypt")).bundle!, { origin: "operator" });
+    const options = await abilityOptions(store, "quest");
+    expect(options.filter((a) => a.roles.length === 1 && a.roles[0] === "invoker").length).toBe(7);
+    for (const role of ROLES) expect(quickStartFor(role, options, 6).every((ref) => ref.startsWith("starter:"))).toBe(true);
+    expect(ROLES.map((role) => quickStartFor(role, options, 6).length)).toEqual(ROLES.map(() => 6));
   });
 
   it("plays: a wizard spends 1 AP on Blink", async () => {

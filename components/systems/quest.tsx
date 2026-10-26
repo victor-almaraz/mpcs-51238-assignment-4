@@ -6,7 +6,7 @@ import { Check } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { useFormAction } from "@/components/form-action";
 import type { AbilityOption } from "@/lib/api/characters";
-import type { CampaignChoice } from "@/lib/systems/creation";
+import { quickStartFor, type CampaignChoice } from "@/lib/systems/creation";
 import { createCharacterAction } from "@/lib/server/actions";
 import type { FormState } from "@/lib/server/forms";
 import { Badge, StatusBadge } from "@/components/ui/badge";
@@ -89,8 +89,8 @@ export function QuestCreationForm({ system, roles, abilities, count, systemTitle
   ].filter(Boolean) as string[];
   const short = abilities.length < count;
   const toggle = (ref: string) => setChosen((c) => (c.includes(ref) ? c.filter((r) => r !== ref) : [...c, ref]));
-  // The role's quick start: the abilities tagged for exactly this role, when there are enough.
-  const quickStart = role ? abilities.filter((a) => a.roles.length === 1 && a.roles[0] === role).map((a) => a.ref) : [];
+  // The role's quick start: one setting's abilities for this role alone, when it has exactly `count`.
+  const quickStart = role ? quickStartFor(role, abilities, count) : [];
   const label = new Map(abilities.map((a) => [a.ref, a.label]));
   const muted = (s: string) => <span className="text-muted">{s}</span>;
 
