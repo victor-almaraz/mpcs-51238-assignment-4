@@ -3,6 +3,7 @@
 import { validRange } from "../materials/semver";
 import type { CampaignRecord, Store, UserRecord } from "../store";
 import { cryptoEntropy, type Entropy } from "./entropy";
+import { withStages } from "./deletion";
 import { ApiError, onlyFields } from "./errors";
 import { setStatus } from "../coordinator/instance";
 import { coordinated, takeOut, type Deps } from "./instances";
@@ -122,11 +123,7 @@ export async function unarchiveCampaign(store: Store, userId: string | null, cam
 /** The caller's campaigns deleted less than 30 days ago, which they can restore, with the dates of each stage. */
 export async function listDeletedCampaigns(store: Store, userId: string | null) {
   const user = await caller(store, userId, "list_deleted_campaigns");
-  const day = 24 * 60 * 60 * 1000;
-  return (await store.deletedCampaigns(user.id)).map((c) => {
-    const at = Date.parse(c.deleted_at);
-    return { ...c, restorable_until: new Date(at + 30 * day).toISOString(), erased_by: new Date(at + 90 * day).toISOString() };
-  });
+  return (await store.deletedCampaigns(user.id)).map(withStages);
 }
 
 /** Takes the member's characters out of the campaign's instances, writing their sheets back. */

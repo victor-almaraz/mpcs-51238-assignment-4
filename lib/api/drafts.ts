@@ -11,6 +11,7 @@ import { compareVersions, parseVersion, satisfies } from "../materials/semver";
 import type { DraftRecord, Store } from "../store";
 import { SYSTEMS } from "../systems";
 import { cryptoEntropy, type Entropy } from "./entropy";
+import { withStages } from "./deletion";
 import { ApiError, onlyFields } from "./errors";
 import { materialView } from "./materials";
 import { systemOrThrow } from "./systems";
@@ -150,10 +151,11 @@ export async function importDraft(store: Store, userId: string | null, archive: 
 
 export async function listDrafts(store: Store, userId: string | null, input: unknown = {}) {
   const user = await caller(store, userId, "list_drafts");
-  const req = onlyFields(input, ["limit", "cursor"]);
+  const req = onlyFields(input, ["archived", "limit", "cursor"]);
   const limit = req.limit ?? 20;
   if (typeof limit !== "number" || !Number.isInteger(limit) || limit < 1 || limit > 100) throw new ApiError("invalid_request", "limit must be 1 to 100");
-  const page = await store.listDrafts(user.id, limit + 1, req.cursor as string | undefined);
+  if (req.archived !== undefined && typeof req.archived !== "boolean") throw new ApiError("invalid_request", "archived must be a boolean");
+  const page = await store.listDrafts(user.id, limit + 1, req.cursor as string | undefined, req.archived as boolean | undefined);
   const items = page.slice(0, limit);
   return { items: items.map(draftSummary), next_cursor: page.length > limit ? items.at(-1)!.id : null };
 }
@@ -204,6 +206,7 @@ export async function publishDraft(store: Store, userId: string | null, input: u
   const user = await caller(store, userId, "publish_draft");
   const req = onlyFields(input, ["draft_id", "version"]);
   const d = await owned(store, user.id, req.draft_id);
+  if (d.archived) throw new ApiError("conflict", "the draft is archived; unarchive it to publish");
   if (typeof req.version !== "string" || !parseVersion(req.version)) throw new ApiError("invalid_request", "version must be a semantic version such as 1.0.0");
   const document = structuredClone(d.document);
   const adventure = document.adventure as Record<string, unknown>;
@@ -243,4 +246,26 @@ export async function restoreDraft(store: Store, userId: string | null, draftId:
   });
   if (!d) throw new ApiError("conflict", "the draft was deleted more than 30 days ago");
   return d;
+}
+
+// SPEC_ISSUES.md#character-draft-archive: archiving keeps a draft out of the owner's drafts and from
+// publishing; restore_draft needs the deleted draft's id, which no list gives.
+export async function archiveDraft(store: Store, userId: string | null, draftId: unknown) {
+  const user = await caller(store, userId, "archive_draft");
+  const d = await owned(store, user.id, draftId);
+  if (d.archived) throw new ApiError("conflict", "the draft is already archived");
+  return draftSummary((await store.setDraftArchived(d.id, true))!);
+}
+
+export async function unarchiveDraft(store: Store, userId: string | null, draftId: unknown) {
+  const user = await caller(store, userId, "unarchive_draft");
+  const d = await owned(store, user.id, draftId);
+  if (!d.archived) throw new ApiError("conflict", "the draft is not archived");
+  return draftSummary((await store.setDraftArchived(d.id, false))!);
+}
+
+/** The caller's drafts deleted less than 30 days ago, which they can restore, with the dates of each stage. */
+export async function listDeletedDrafts(store: Store, userId: string | null) {
+  const user = await caller(store, userId, "list_deleted_drafts");
+  return (await store.deletedDrafts(user.id)).map(withStages);
 }

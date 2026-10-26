@@ -117,6 +117,8 @@ export interface CharacterRecord {
   portrait_asset: string | null;
   status: "available" | "in_instance" | "dead" | "retired";
   instance_id: string | null;
+  /** Kept out of the owner's lists and out of games until unarchived (SPEC_ISSUES.md#character-draft-archive). */
+  archived: boolean;
   created_at: string;
 }
 
@@ -201,6 +203,8 @@ export interface DraftRecord {
   revision: number;
   diagnostics: { pointer: string; severity: "error" | "warning"; code: string; message: string }[];
   last_published_version: string | null;
+  /** Kept out of the owner's drafts and from publishing until unarchived (SPEC_ISSUES.md#character-draft-archive). */
+  archived: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -212,6 +216,10 @@ export interface DeletedCampaign {
   system: string;
   deleted_at: string;
 }
+
+/** A character or draft its owner deleted and can still restore; `name` is a character's, `title` a draft's. */
+export type DeletedCharacter = Omit<DeletedCampaign, "title"> & { name: string };
+export type DeletedDraft = DeletedCampaign;
 
 export interface PushView {
   id: string;
@@ -394,11 +402,12 @@ export class Store {
     return (await this.rpc.call<CharacterRecord | null>("cadmium_get_character", { p_id: id })) ?? undefined;
   }
 
-  async listCharacters(owner: string, filter: { system?: string; status?: string; limit: number; after?: string }): Promise<CharacterRecord[]> {
+  async listCharacters(owner: string, filter: { system?: string; status?: string; archived?: boolean; limit: number; after?: string }): Promise<CharacterRecord[]> {
     return this.rpc.call<CharacterRecord[]>("cadmium_list_characters", {
       p_owner: owner,
       p_system: filter.system ?? null,
       p_status: filter.status ?? null,
+      p_archived: filter.archived ?? null,
       p_limit: filter.limit,
       p_after: filter.after ?? null,
     });
@@ -767,8 +776,8 @@ export class Store {
     return (await this.rpc.call<DraftRecord | null>("cadmium_get_draft", { p_id: id })) ?? undefined;
   }
 
-  async listDrafts(owner: string, limit: number, after?: string): Promise<Omit<DraftRecord, "document">[]> {
-    return this.rpc.call("cadmium_list_drafts", { p_owner: owner, p_limit: limit, p_after: after ?? null });
+  async listDrafts(owner: string, limit: number, after?: string, archived?: boolean): Promise<Omit<DraftRecord, "document">[]> {
+    return this.rpc.call("cadmium_list_drafts", { p_owner: owner, p_limit: limit, p_after: after ?? null, p_archived: archived ?? null });
   }
 
   /** Saves at `revision`; undefined when the revision is stale. */
@@ -790,6 +799,15 @@ export class Store {
 
   async restoreDraft(id: string): Promise<DraftRecord | undefined> {
     return (await this.rpc.call<DraftRecord | null>("cadmium_restore_draft", { p_id: id })) ?? undefined;
+  }
+
+  async setDraftArchived(id: string, archived: boolean): Promise<DraftRecord | undefined> {
+    return (await this.rpc.call<DraftRecord | null>("cadmium_set_draft_archived", { p_id: id, p_archived: archived })) ?? undefined;
+  }
+
+  /** The owner's drafts deleted less than 30 days ago, newest first. */
+  async deletedDrafts(ownerId: string): Promise<DeletedDraft[]> {
+    return this.rpc.call<DeletedDraft[]>("cadmium_deleted_drafts", { p_owner: ownerId });
   }
 
   async deletedDraft(id: string): Promise<{ id: string; owner_id: string; deleted_at: string } | undefined> {
@@ -860,6 +878,16 @@ export class Store {
 
   async restoreCharacter(id: string): Promise<CharacterRecord | undefined> {
     return (await this.rpc.call<CharacterRecord | null>("cadmium_restore_character", { p_id: id })) ?? undefined;
+  }
+
+  /** Undefined when the character is deleted, or in an instance and `archived` is true. */
+  async setCharacterArchived(id: string, archived: boolean): Promise<CharacterRecord | undefined> {
+    return (await this.rpc.call<CharacterRecord | null>("cadmium_set_character_archived", { p_id: id, p_archived: archived })) ?? undefined;
+  }
+
+  /** The owner's characters deleted less than 30 days ago, newest first. */
+  async deletedCharacters(ownerId: string): Promise<DeletedCharacter[]> {
+    return this.rpc.call<DeletedCharacter[]>("cadmium_deleted_characters", { p_owner: ownerId });
   }
 
   async deletedCharacter(id: string): Promise<{ id: string; owner_id: string; deleted_at: string } | undefined> {

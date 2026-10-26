@@ -112,6 +112,7 @@ export async function addCharacter(deps: Deps, userId: string | null, input: unk
   if (major(character.system_version) !== major(against)) throw new ApiError("system_mismatch", `the character is for ${character.system} ${character.system_version}, not ${against}`);
   if (instance.status !== "lobby" && instance.status !== "paused") throw new ApiError("conflict", `characters join an instance in the lobby or paused; this one is ${instance.status}`);
   if (character.status !== "available") throw new ApiError("conflict", `the character is ${character.status.replace("_", " ")}`);
+  if (character.archived) throw new ApiError("conflict", `${character.name} is archived; unarchive the character to bring it to a game`);
   const missing = await missingSettings(store, instance, character.sheet);
   if (missing.length > 0) {
     const from = missing.join(" and ");
