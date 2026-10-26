@@ -1,0 +1,33 @@
+# The Spy's abilities on the Lantern Coast: port manners, false registry papers, and the fog's cover.
+
+harbor_manners:
+  label: Harbor Manners
+  target: self
+  system_stats: { roles: [spy], path: charisma, cost: { ap: 0 } }
+  effects: []
+knife_in_the_fog:
+  label: Knife in the Fog
+  target: entity
+  system_stats: { roles: [spy], path: termination, cost: { ap: 1 }, roll: true }
+  effects:
+    - damage: { target: target, amount: 2, type: physical }
+sleeve_sheath:
+  label: Sleeve Sheath
+  target: self
+  system_stats: { roles: [spy], path: concealment, cost: { ap: 0 } }
+  effects: []
+tin_token:
+  label: Tin Token
+  target: self
+  system_stats: { roles: [spy], path: surveillance, cost: { ap: 0 } }
+  effects: []
+registry_papers:
+  label: Registry Papers
+  target: self
+  system_stats: { roles: [spy], path: impersonation, cost: { ap: 2 } }
+  effects: []
+float_line:
+  label: Float Line
+  target: self
+  system_stats: { roles: [spy], path: infiltration, cost: { ap: 0 } }
+  effects: []

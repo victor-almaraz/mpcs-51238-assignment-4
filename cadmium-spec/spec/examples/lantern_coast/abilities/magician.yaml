@@ -1,0 +1,33 @@
+# The Magician's abilities on the Lantern Coast: quayside marvels, fog doubles, and marsh lights.
+
+quayside_sleight:
+  label: Quayside Sleight
+  target: self
+  system_stats: { roles: [magician], path: misdirection, cost: { ap: 0 } }
+  effects: []
+fog_double:
+  label: Fog Double
+  target: self
+  system_stats: { roles: [magician], path: mannequins, cost: { ap: 1 } }
+  effects: []
+far_lamp:
+  label: Far Lamp
+  target: self
+  system_stats: { roles: [magician], path: clairvoyance, cost: { ap: 1 } }
+  effects: []
+marsh_light:
+  label: Marsh Light
+  target: self
+  system_stats: { roles: [magician], path: conjuration, cost: { ap: 1 } }
+  effects: []
+muddle:
+  label: Muddle
+  target: entity
+  system_stats: { roles: [magician], path: mind control, cost: { ap: 1 } }
+  effects: []
+glass_flurry:
+  label: Glass Flurry
+  target: entity
+  system_stats: { roles: [magician], path: mayhem, cost: { ap: 0 }, roll: true }
+  effects:
+    - damage: { target: target, amount: 2, type: physical }

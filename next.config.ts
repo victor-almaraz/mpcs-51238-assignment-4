@@ -38,8 +38,8 @@ const config: NextConfig = {
     "/terms": ["./legal/terms.md"],
     "/privacy": ["./legal/privacy.md"],
     "/attribution": ["./cadmium-spec/LICENSES.md", "./cadmium-spec/systems/*/NOTICE", "./materials/*/NOTICE"],
-    "/characters/new": ["./materials/*/descriptions.yaml", "./materials/*/pack/manifest.yaml"],
-    "/characters/[id]": ["./materials/*/descriptions.yaml", "./materials/*/pack/manifest.yaml"],
+    "/characters/new": ["./materials/*/descriptions.yaml", "./materials/*/pack/manifest.yaml", "./cadmium-spec/spec/examples/*/manifest.yaml"],
+    "/characters/[id]": ["./materials/*/descriptions.yaml", "./materials/*/pack/manifest.yaml", "./cadmium-spec/spec/examples/*/manifest.yaml"],
   },
 };
 

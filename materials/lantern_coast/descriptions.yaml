@@ -1,0 +1,59 @@
+# Short descriptions of the Lantern Coast abilities (cadmium-spec/spec/examples/lantern_coast/abilities),
+# keyed by ability. The character creation form shows them under each ability.
+
+# Doctor
+salt_poultice: "You press a salted poultice to a creature's wounds, closing them and restoring its strength."
+fever_draught: "You give a creature a bitter draught that breaks a marsh fever."
+bitter_lancet: "You prick a creature with a tainted lancet, leaving it burning with marsh fever."
+drowned_sense: "You feel whether the drowned or other restless dead are near, and glimpse where they wait."
+ease_the_senses: "You dull or sharpen what a creature feels, whether pain, cold, or hunger, for up to an hour."
+read_the_drowned: "You examine a body taken from the water to learn how it died."
+# Fighter
+turn_of_the_tide: "You turn an attacker's misstep against them with a quick return cut."
+boarding_cut: "You swing hard and low, as a boarding party does when it comes over the rail."
+dockside_taunt: "You shout a wharf insult that turns a nearby creature's attention to you."
+hold_the_gangway: "You step between an ally and a blow meant for them."
+capstan_shanty: "You strike up a hauling song that steadies your companions' hands and spirits."
+weigh_the_foe: "You study a nearby creature to judge its strength and where it is weak."
+# Invoker
+beacon_oath: "You swear by the beacons why you have taken up a matter, and your resolve hardens."
+vigil_prayer: "While you rest, you keep a lamplit vigil and ask the two moons for a favor."
+lamplit_gaze: "You hold a creature's eyes in your lamp's light to see what it values and what it fears."
+storm_bell: "You speak a word that rings out like a harbor bell and strikes a creature with its peal."
+warming_word: "You speak warmth into a creature, driving the fog's chill from its limbs."
+salt_ward: "You draw a ring of salt and light around yourself that turns harm aside."
+# Magician
+quayside_sleight: "You work a small marvel, a coin from an ear or a flame in a palm, to delight or distract those nearby."
+fog_double: "You shape copies of yourself out of the fog to confuse anyone watching."
+far_lamp: "You see for a moment past walls and water, as though by a lamp held somewhere else."
+marsh_light: "You conjure a wavering marsh light that keeps watch over a place for you."
+muddle: "You leave a creature unsure of one particular thing."
+glass_flurry: "You fling a burst of glittering glass at a foe, or scatter it harmlessly as a show."
+# Naturalist
+seal_form: "You take the shape of a grey seal, with its senses, its breath, and its ease in the water."
+urchin_spine: "You conjure a venomous urchin spine and flick it at a nearby creature."
+sea_frost: "You breathe a freezing sea mist over a nearby creature."
+call_the_fog: "You draw the sea fog in around you until the area is hidden."
+tidal_aspect: "You take on the strength of the crab, the eel, or the gull for a time."
+bid_the_kelp: "You murmur to the kelp and marsh grass around you, and they move at your word."
+# Ranger
+harbor_saying: "You coin a dockside proverb that loosens a local's tongue."
+read_the_tides: "You read the water and the moons to tell when the tide will turn and the fog will lift."
+gull_speech: "You share a sense with a shore animal and understand what it wants and fears."
+shore_companion: "You win over a nearby animal, who follows you and does as you ask."
+harpoon_cast: "You hurl a weighted harpoon at a creature within a stone's throw."
+marsh_remedy: "You gather samphire and bitter reed to break a marsh fever in yourself."
+# Spy
+harbor_manners: "You fall into the manners of whichever port you are in, so locals take you for one of their own."
+knife_in_the_fog: "You strike quickly at a foe whose attention is elsewhere."
+sleeve_sheath: "You hide up to two blades in your clothes where no one will notice them."
+tin_token: "You slip a marked tin token onto something and follow it with a lodestone needle."
+registry_papers: "You prepare a guild registry entry and the bearing to match it, passing as a commoner, an officer, or a merchant of standing."
+float_line: "You cast a grappling line whose cork float lifts it gently to a high rail or sill."
+# Wizard
+rime_dart: "You loose a needle of sea ice from your wand or staff."
+numbing_frost: "You wrap a creature in a numbing frost that slows its hands and blunts its aim."
+fog_step: "You vanish into the fog and step out of it a short way off."
+sense_the_current: "You feel the pull of nearby magic as a swimmer feels a current, and learn its nature."
+silent_hail: "You speak without sound into the mind of a nearby creature."
+storm_petrel: "You summon a small spectral storm petrel who stays at your side as an ally."
