@@ -10,9 +10,11 @@
 // title, section headings, and tab labels on one content edge); and spacing (a box at least 8 px from the
 // blocks beside it, and text at least 8 px inside its box). Views that need a click to open, such as
 // the adventure editor's arc graph and YAML view, are audited after their screen.
+// Exits 0 with no findings, 1 with findings or a page that did not load, 2 on a usage error.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { chromium, type Page } from "@playwright/test";
+import { arg, demoScreens } from "./lib";
 
 /** Views reached by acting on a screen: the screen whose path matches `on`, then `open`. */
 const VIEWS: { label: string; on: RegExp; open: (page: Page) => Promise<void> }[] = [
@@ -36,13 +38,14 @@ const VIEWS: { label: string; on: RegExp; open: (page: Page) => Promise<void> }[
   },
 ];
 
-const arg = (name: string, fallback: string) => {
-  const i = process.argv.indexOf(`--${name}`);
-  return i > 0 && process.argv[i + 1] ? process.argv[i + 1]! : fallback;
-};
 const base = arg("base", "http://localhost:3100");
 const out = resolve(arg("out", "screenshots/audit.md"));
-const scheme = arg("scheme", "light") === "dark" ? "dark" : "light";
+const schemeArg = arg("scheme", "light");
+if (schemeArg !== "light" && schemeArg !== "dark") {
+  console.error(`usage: --scheme must be light or dark, not '${schemeArg}'`);
+  process.exit(2);
+}
+const scheme: "light" | "dark" = schemeArg;
 /** Audits only the screens whose path matches. */
 const only = new RegExp(arg("screens", ""));
 
@@ -297,14 +300,13 @@ async function focusChecks(page: Page): Promise<Finding[]> {
 
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 const index = await browser.newPage();
-await index.goto(base, { waitUntil: "networkidle" });
-const screens = await index.$$eval('main a[href^="/"]', (as) => [...new Map(as.map((a) => [a.getAttribute("href") ?? "", { label: (a.textContent ?? "").trim().replace(/\s+/g, " "), href: a.getAttribute("href") ?? "" }])).values()].filter((s) => s.href !== "/"));
-screens.unshift({ label: "Demo index", href: "/" });
-screens.splice(0, screens.length, ...screens.filter((s) => only.test(s.href)));
+const screens = (await demoScreens(index, base)).filter((s) => only.test(s.href));
 await index.close();
 
 const lines = ["# Design and accessibility audit", "", `Demo mode at ${base}, ${new Date().toISOString().slice(0, 16)} UTC, by \`pnpm audit:ui\`, ${scheme} theme. Each screen is checked at 1280 px and 390 px.`, ""];
 let total = 0;
+/** Pages that did not finish loading; each is audited as far as it loaded. */
+let unloaded = 0;
 const tally = new Map<string, number>();
 
 async function audit(label: string, href: string, open?: (page: Page) => Promise<void>) {
@@ -318,7 +320,10 @@ async function audit(label: string, href: string, open?: (page: Page) => Promise
     page.on("console", (m) => {
       if (m.type() === "error") errors.push(m.text().split("\n")[0]!.slice(0, 160));
     });
-    await page.goto(base + href, { waitUntil: "networkidle", timeout: 90_000 }).catch((e: Error) => console.error(`${href}: ${e.message.split("\n")[0]}; auditing what loaded`));
+    await page.goto(base + href, { waitUntil: "networkidle", timeout: 90_000 }).catch((e: Error) => {
+      unloaded++;
+      console.error(`${href}: ${e.message.split("\n")[0]}; auditing what loaded`);
+    });
     if (open) await open(page).catch((e: Error) => errors.push(`could not open ${label}: ${e.message.split("\n")[0]}`));
     await page.waitForTimeout(600);
     const findings = [...(await page.evaluate(pageChecks)), ...(await focusChecks(page)), ...[...new Set(errors)].map((detail) => ({ rule: "console", detail }))];
@@ -342,4 +347,5 @@ lines.splice(4, 0, `${total} findings. By rule: ${[...tally].map(([r, n]) => `${
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, lines.join("\n") + "\n");
 await browser.close();
-console.log(`${total} findings; wrote ${out}`);
+console.log(`${total} findings${unloaded ? `, ${unloaded} pages not loaded` : ""}; wrote ${out}`);
+process.exit(total > 0 || unloaded > 0 ? 1 : 0);

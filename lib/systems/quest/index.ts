@@ -6,6 +6,7 @@ import type { Rng } from "../../rng";
 import type { QuestCharacterSheet } from "../../bundle/types/questCharacter";
 import {
   RulesError,
+  compareText,
   emptyResolution,
   type ChoiceOption,
   type Combatant,
@@ -54,7 +55,7 @@ const CREATURE_DAMAGE = 2;
 
 // SPEC_ISSUES.md#quest-npc-attack: the Creators Resource's NPC templates give attack ratings
 // (commoner 1, minion 2, boss 4); a creature without its own `damage` deals its template's rating.
-export const NPC_ATTACK: Readonly<Record<string, number>> = { commoner: 1, minion: 2, boss: 4 };
+const NPC_ATTACK: Readonly<Record<string, number>> = { commoner: 1, minion: 2, boss: 4 };
 
 /** Prompt of a tough choice (api.md, `choice` message example). */
 const TOUGH_CHOICE_PROMPT = "Success, at a cost. Choose a setback.";
@@ -356,7 +357,7 @@ const MULTIPLIER: Readonly<Record<Tier, number>> = {
 };
 
 /** Standard damage: a creature's `damage`, the weapon's `damage` (default 2), or 1 unarmed. */
-export function standardDamage(attacker: Combatant, weapon: HeldItem | null): number {
+function standardDamage(attacker: Combatant, weapon: HeldItem | null): number {
   if (attacker.kind === "creature") return isInt(attacker.sheet.damage, 0) ? attacker.sheet.damage : CREATURE_DAMAGE;
   if (weapon === null) return DATA.damage.unarmed;
   return isInt(weapon.stats.damage, 0) ? weapon.stats.damage : DATA.damage.weapon;
@@ -435,7 +436,7 @@ export function session_end(target: Combatant): Resolution {
 /** Quest has no initiative: participants in ascending id order, with no draws. */
 export function initiative(participants: readonly Combatant[], rng: Rng): string[] {
   void rng;
-  return participants.map((p) => p.id).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  return participants.map((p) => p.id).sort(compareText);
 }
 
 export function pay_cost(sheet: Sheet, cost: unknown): Sheet {

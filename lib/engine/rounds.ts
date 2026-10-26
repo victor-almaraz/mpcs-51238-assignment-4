@@ -1,7 +1,7 @@
 // Rounds (engine.md, "Modes", "Rounds", "Resolution methods", "Ordering policy", "Pending choices").
 
 import { Rng } from "../rng";
-import type { SortKey } from "../systems";
+import { compareText, type SortKey } from "../systems";
 import { checkActor, resolve } from "./actions";
 import { Ctx, Reject, rules } from "./ctx";
 import { applyEffects, removeCondition } from "./effects";
@@ -75,7 +75,7 @@ function checkLost(ctx: Ctx): void {
 }
 
 /** Combat ends when no combatant entity can act, or no character is in the combat area or visible to a combatant. */
-export function checkCombatEnd(ctx: Ctx): void {
+function checkCombatEnd(ctx: Ctx): void {
   const state = ctx.state;
   if (state.mode !== "combat" || state.ended) return;
   const acting = state.combatants.filter((id) => state.entities[id] && ctx.isActive(id));
@@ -187,7 +187,7 @@ export function orderOf(ctx: Ctx, participants: readonly string[], declarations:
       const d = rank(a, k) - rank(b, k);
       if (d !== 0) return d;
     }
-    return a < b ? -1 : a > b ? 1 : 0;
+    return compareText(a, b);
   });
 }
 

@@ -35,8 +35,6 @@ export interface CompileResult<B> {
 
 export { qualify };
 
-const clone = <T>(v: T): T => structuredClone(v);
-
 interface Setting {
   file: string;
   manifest: JsonObject;
@@ -54,23 +52,23 @@ interface Setting {
 }
 
 const records = (pack: ParsedPack, dir: string): Map<string, Entry> =>
-  new Map([...(pack.merged.get(dir) ?? [])].map(([k, e]) => [k, { file: e.file, value: clone(e.value) }]));
+  new Map([...(pack.merged.get(dir) ?? [])].map(([k, e]) => [k, { file: e.file, value: structuredClone(e.value) }]));
 
 function settingOf(pack: ParsedPack): Setting {
   const get = (p: string) => pack.single.get(p);
   return {
     file: get("manifest.yaml")!.file,
-    manifest: clone(get("manifest.yaml")!.data),
+    manifest: structuredClone(get("manifest.yaml")!.data),
     namespace: get("manifest.yaml")!.data.namespace as string,
-    conditions: clone(get("conditions.yaml")?.data ?? {}),
+    conditions: structuredClone(get("conditions.yaml")?.data ?? {}),
     conditionsFile: get("conditions.yaml")?.file ?? "conditions.yaml",
     abilities: records(pack, "abilities/*.yaml"),
     entities: records(pack, "entities/*.yaml"),
     rooms: records(pack, "rooms/*.yaml"),
-    tables: clone(get("tables.yaml")!.data),
+    tables: structuredClone(get("tables.yaml")!.data),
     tablesFile: get("tables.yaml")!.file,
-    parser: clone(get("parser.yaml")?.data ?? {}),
-    assets: clone(get("assets.yaml")?.data ?? {}),
+    parser: structuredClone(get("parser.yaml")?.data ?? {}),
+    assets: structuredClone(get("assets.yaml")?.data ?? {}),
     assetsFile: get("assets.yaml")?.file ?? "assets.yaml",
   };
 }

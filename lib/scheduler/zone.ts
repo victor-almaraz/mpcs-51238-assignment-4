@@ -38,7 +38,7 @@ export function wallAt(ms: number, tz: string): Wall {
 const asUtc = (w: Wall) => Date.UTC(w.year, w.month - 1, w.day, w.hour, w.minute, w.second);
 
 /** The zone's offset from UTC at instant `ms`, in milliseconds. */
-export function offsetAt(ms: number, tz: string): number {
+function offsetAt(ms: number, tz: string): number {
   return asUtc(wallAt(ms, tz)) - Math.floor(ms / 1000) * 1000;
 }
 

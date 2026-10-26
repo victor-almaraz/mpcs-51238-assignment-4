@@ -250,7 +250,7 @@ export function illumination(state: State, c: Content, location: string): Illumi
   return out.map((v) => LEVEL[v]!);
 }
 
-export function levelAt(illum: Illumination, loc: LocationState, cell: Cell): LightLevel {
+function levelAt(illum: Illumination, loc: LocationState, cell: Cell): LightLevel {
   const width = loc.rows[0]?.length ?? 0;
   return illum[cell[1] * width + cell[0]] ?? "dark";
 }

@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { draftFiles } from ".";
-import { draftPointer, filesToDraft } from "./draft-io";
+import { draftFiles, draftPointer, filesToDraft } from "./draft-io";
 import { stationAdventure } from "./testing/fixtures";
 
 describe("draft and directory", () => {

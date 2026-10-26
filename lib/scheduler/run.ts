@@ -36,21 +36,32 @@ export async function runScheduler(deps: Deps, notify: Notifier, now = deps.now(
     }
   };
 
+  const membersOf = new Map<string, typeof snap.members>();
+  for (const m of snap.members) {
+    const list = membersOf.get(m.campaign_id);
+    if (list) list.push(m);
+    else membersOf.set(m.campaign_id, [m]);
+  }
+  /** Answers of no, by session, occurrence start in milliseconds, and user. */
+  const declined = new Set(snap.rsvps.flatMap((r) => (r.response === "no" && !Number.isNaN(Date.parse(r.occurrence_start)) ? [`${r.session_id}|${Date.parse(r.occurrence_start)}|${r.user_id}`] : [])));
+
   for (const session of snap.sessions) {
     const instance = instances.get(session.instance_id);
     if (!instance) continue;
-    const members = snap.members.filter((m) => m.campaign_id === instance.campaign_id);
+    const members = membersOf.get(instance.campaign_id) ?? [];
+    const longestLead = Math.max(0, ...members.flatMap((m) => m.reminders.lead_minutes)) * 60_000;
     for (const o of occurrencesOf(session, snap.exceptions)) {
       if (o.status === "cancelled") continue;
       const start = Date.parse(o.starts_at);
+      // Nothing is due before the longest reminder lead.
+      if (start - longestLead > t) continue;
       const end = Date.parse(o.ends_at);
       const occ = `${session.id}:${o.occurrence_start}`;
 
       // Reminders at each member's lead times, unless they answered no.
       if (t < start) {
         for (const m of members) {
-          const declined = snap.rsvps.some((r) => r.session_id === session.id && Date.parse(r.occurrence_start) === Date.parse(o.occurrence_start) && r.user_id === m.user_id && r.response === "no");
-          if (declined) continue;
+          if (declined.has(`${session.id}|${Date.parse(o.occurrence_start)}|${m.user_id}`)) continue;
           for (const lead of m.reminders.lead_minutes) {
             if (start - lead * 60_000 > t) continue;
             if (!(await once(`reminder:${occ}:${m.user_id}:${lead}`))) continue;

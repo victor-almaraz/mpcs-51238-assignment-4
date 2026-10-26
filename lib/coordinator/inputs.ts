@@ -16,7 +16,7 @@ type Call = { tool: string; args: Record<string, unknown> };
 const RETRYABLE = new Set(["invalid_call", "unknown_id", "not_reachable", "requirement_unmet"]);
 
 /** `improvise` with category `unclear` and a valid suggestion, for inputs the parser could not turn into a valid call. */
-export function fallbackCall(state: State, bundles: Bundles, actor: string, text: string, error: EngineError | null): Call {
+function fallbackCall(state: State, bundles: Bundles, actor: string, text: string, error: EngineError | null): Call {
   const preferred = error?.code === "not_your_turn" ? ["examine"] : ["move", "examine", "interact", "take", "wait"];
   const options = menuOptions(state, bundles, actor, 12);
   const suggestion = options.find((o) => preferred.includes(o.tool)) ?? options[0];

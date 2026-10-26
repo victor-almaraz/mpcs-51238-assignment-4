@@ -2,6 +2,7 @@
 // name ids and argument names; the player sees labels, or a fixed sentence for the error code.
 
 import { labelsFor, type Bundles, type EngineError, type State } from "../engine";
+import { sentence } from "../text";
 
 const FIXED: Partial<Record<EngineError["code"], string>> = {
   not_your_turn: "It is not your turn.",
@@ -25,7 +26,5 @@ export function rejectionText(state: State, bundles: Bundles, error: EngineError
       return id;
     }
   };
-  const text = error.detail.replace(/'([^']+)'/g, (_, id: string) => label(id)).replace(/^the character is/, "You are");
-  const sentence = text.charAt(0).toUpperCase() + text.slice(1);
-  return /[.!?]$/.test(sentence) ? sentence : `${sentence}.`;
+  return sentence(error.detail.replace(/'([^']+)'/g, (_, id: string) => label(id)).replace(/^the character is/, "You are"));
 }

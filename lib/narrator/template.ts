@@ -3,6 +3,7 @@
 // It narrates only shared events, so it says nothing a member could not see.
 
 import type { GameEvent } from "../engine";
+import { capitalize } from "../text";
 
 export interface Labels {
   /** A character, entity, or item. */
@@ -47,7 +48,6 @@ export function describeCall(call: { tool: string; args: Record<string, unknown>
 }
 
 const third = (verb: string) => (/(s|sh|ch|x|z)$/.test(verb) ? `${verb}es` : `${verb}s`);
-const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 type P = Record<string, unknown>;
 
@@ -125,5 +125,5 @@ function line(e: GameEvent, l: Labels): string | null {
 /** Template narration for a commit's shared events, or null when nothing was resolved. */
 export function templateNarration(events: readonly GameEvent[], labels: Labels): string | null {
   const lines = events.map((e) => line(e, labels)).filter((s): s is string => s !== null);
-  return lines.length === 0 ? null : lines.map(sentence).join(" ");
+  return lines.length === 0 ? null : lines.map(capitalize).join(" ");
 }

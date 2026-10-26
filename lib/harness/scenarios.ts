@@ -3,11 +3,11 @@
 // authors each scenario's input lines from state once; the lines, and the log they produce, are kept
 // as golden files under lib/harness/golden and replayed by the tests.
 
-import { findPath, type Cell } from "../grid";
 import { join } from "node:path";
-import { compileAdventure, compileSetting, formatDiagnostic } from "../materials";
+import { findPath, type Cell } from "../grid";
+import { compileAdventure, compileSetting, mustCompile } from "../materials";
 import { readPackDir } from "../materials/fs";
-import { derelictStation, stationAdventure } from "../materials/testing/fixtures";
+import { EXAMPLES, derelictStation, stationAdventure } from "../materials/testing/fixtures";
 import { Rng } from "../rng";
 import { CADMIUM } from "../systems/cadmium";
 import { QUEST } from "../systems/quest";
@@ -38,24 +38,26 @@ export function sunkenBundles(): Bundles {
 
 const vale = () => [character("c_1", "Vale", { abilities: [] })];
 
-const EXAMPLES = join(process.cwd(), "cadmium-spec/spec/examples");
 let exemplar: Bundles | undefined;
 /** The exemplar: sunken_archive 1.0.0 on lantern_coast, for Cadmium with armor and stash. */
 export function exemplarBundles(): Bundles {
   if (!exemplar) {
-    const coast = compileSetting(readPackDir(join(EXAMPLES, "lantern_coast")));
-    if (!coast.bundle) throw new Error(coast.diagnostics.map(formatDiagnostic).join("\n"));
-    const adventure = compileAdventure(readPackDir(join(EXAMPLES, "sunken_archive")), [coast.bundle]);
-    if (!adventure.bundle) throw new Error(adventure.diagnostics.map(formatDiagnostic).join("\n"));
-    exemplar = { system: CADMIUM.configure(["armor", "stash"]), settings: [coast.bundle], adventure: adventure.bundle };
+    const coast = mustCompile(compileSetting(readPackDir(join(EXAMPLES, "lantern_coast"))), "lantern_coast");
+    const adventure = mustCompile(compileAdventure(readPackDir(join(EXAMPLES, "sunken_archive")), [coast]), "sunken_archive");
+    exemplar = { system: CADMIUM.configure(["armor", "stash"]), settings: [coast], adventure };
   }
   return exemplar;
 }
 
-/** A Cadmium fighter. The runs give her more hit points than creation does, so one character survives every fight. */
+/** A Cadmium fighter's sheet, with armor and stash, created from the Quick Start abilities and keeping none of them. */
+export function fighter(name: string) {
+  const sheet = CADMIUM.configure(["armor", "stash"]).create_character(name, { role: "fighter", abilities: ["a", "b", "c", "d", "e", "f"].map((a) => `starter:${a}`) }, new Rng(0n));
+  return { ...sheet, abilities: [] };
+}
+
+/** Wren, a fighter. The runs give her more hit points than creation does, so one character survives every fight. */
 function wren(hp: number) {
-  const sheet = CADMIUM.configure(["armor", "stash"]).create_character("Wren", { role: "fighter", abilities: ["a", "b", "c", "d", "e", "f"].map((a) => `starter:${a}`) }, new Rng(0n));
-  return () => [{ id: "c_1", user_id: "u_c_1", sheet: { ...sheet, abilities: [], hp: { value: hp, max: hp } } }];
+  return () => [{ id: "c_1", user_id: "u_c_1", sheet: { ...fighter("Wren"), hp: { value: hp, max: hp } } }];
 }
 
 // ---------------------------------------------------------------------------------------------

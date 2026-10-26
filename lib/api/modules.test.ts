@@ -3,7 +3,7 @@
 
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { compileAdventure, compileSetting, formatDiagnostic } from "../materials";
+import { compileAdventure, compileSetting, mustCompile } from "../materials";
 import { readPackDir } from "../materials/fs";
 import type { Store } from "../store";
 import type { testDb } from "../store/testing/pglite";
@@ -175,12 +175,10 @@ afterEach(async () => {
 });
 
 function compiled() {
-  const market = compileSetting(SETTING);
-  if (!market.bundle) throw new Error(market.diagnostics.map(formatDiagnostic).join("\n"));
+  const market = mustCompile(compileSetting(SETTING), "market_town");
   const starter = compileSetting(readPackDir(join(process.cwd(), "materials/quest_starter/pack"))).bundle!;
-  const adventure = compileAdventure(ADVENTURE, [market.bundle]);
-  if (!adventure.bundle) throw new Error(adventure.diagnostics.map(formatDiagnostic).join("\n"));
-  return { market: market.bundle, starter, adventure: adventure.bundle };
+  const adventure = mustCompile(compileAdventure(ADVENTURE, [market]), "market_day");
+  return { market, starter, adventure };
 }
 
 describe("Cadmium modules in play", () => {

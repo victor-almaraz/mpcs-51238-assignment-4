@@ -1,6 +1,8 @@
 // Compiler diagnostics (spec/README.md, "Compiler interface"): `FILE: PATH: MESSAGE` lines, or
 // `{ file, path, message, check }` objects with `--json` and from the library.
 
+import { compareText } from "../systems/contract";
+
 export type Segment = string | number;
 
 export interface Diagnostic {
@@ -73,8 +75,7 @@ export function show(value: unknown): string {
 /** Sorts diagnostics by file, then path, then message, so output is stable. */
 export function sortDiagnostics(list: Diagnostic[]): Diagnostic[] {
   return [...list].sort(
-    (a, b) => cmp(a.file, b.file) || cmp(a.path, b.path) || cmp(a.message, b.message) || cmp(a.check, b.check),
+    (a, b) => compareText(a.file, b.file) || compareText(a.path, b.path) || compareText(a.message, b.message) || compareText(a.check, b.check),
   );
 }
 
-const cmp = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);

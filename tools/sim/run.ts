@@ -4,8 +4,7 @@
 
 import { toolsFor, type State } from "../../lib/engine";
 import { begin, step, type Session } from "../../lib/harness/harness";
-import { Rng } from "../../lib/rng";
-import { CADMIUM } from "../../lib/systems/cadmium";
+import { fighter } from "../../lib/harness/scenarios";
 import { arena, LOADOUTS } from "./arena";
 import type { Encounter } from "./encounters";
 
@@ -37,8 +36,7 @@ const sheetOf = (s: State, id: string) => s.characters[id]!.sheet as { hp: Meter
 const ids = (n: number) => Array.from({ length: n }, (_, i) => `c_${i + 1}`);
 
 function party(config: Config) {
-  const base = CADMIUM.configure(["armor", "stash"]).create_character("Fighter", { role: "fighter", abilities: ["a", "b", "c", "d", "e", "f"].map((a) => `starter:${a}`) }, new Rng(0n));
-  return ids(config.party).map((id, i) => ({ id, user_id: `u_${id}`, sheet: { ...base, name: `Fighter ${i + 1}`, abilities: [], armor: { value: 0, max: config.armorMax } } }));
+  return ids(config.party).map((id, i) => ({ id, user_id: `u_${id}`, sheet: { ...fighter(`Fighter ${i + 1}`), armor: { value: 0, max: config.armorMax } } }));
 }
 
 /** The policy's next call for a character: gear first, then the nearest active hostile. */

@@ -6,11 +6,8 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { chromium } from "@playwright/test";
+import { arg, demoScreens } from "./lib";
 
-const arg = (name: string, fallback: string) => {
-  const i = process.argv.indexOf(`--${name}`);
-  return i > 0 && process.argv[i + 1] ? process.argv[i + 1]! : fallback;
-};
 const base = arg("base", "http://localhost:3100");
 const out = resolve(arg("out", "screenshots"));
 mkdirSync(out, { recursive: true });
@@ -18,9 +15,7 @@ mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({ channel: "chrome", headless: true });
 const context = await browser.newContext();
 const page = await context.newPage();
-await page.goto(base, { waitUntil: "networkidle" });
-const screens = await page.$$eval('main a[href^="/"]', (as) => [...new Map(as.map((a) => [a.getAttribute("href") ?? "", { label: (a.textContent ?? "").trim().replace(/\s+/g, " "), href: a.getAttribute("href") ?? "" }])).values()].filter((s) => s.href !== "/"));
-screens.unshift({ label: "Demo index", href: "/" });
+const screens = await demoScreens(page, base);
 
 const slug = (s: string) => s.split("/")[0]!.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 const lines = ["# Screenshots", "", `Demo mode at ${base}, ${new Date().toISOString().slice(0, 16)} UTC. Wide is 1280 px, narrow 390 px.`, "", "| # | Screen | Path | Wide | Narrow | Console errors |", "|---|---|---|---|---|---|"];

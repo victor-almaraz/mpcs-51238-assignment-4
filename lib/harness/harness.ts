@@ -82,8 +82,6 @@ export function play(session: Session, lines: readonly string[]): string[] {
   return out;
 }
 
-export type ReplayResult = { ok: true; state: State } | { ok: false; version: number; reason: string };
-
 /** The engine commit an input line records. */
 export function commitOf(line: LogLine): Commit {
   if ("start" in line) return { version: line.version, input: { start: line.start }, events: line.events };
@@ -93,16 +91,13 @@ export function commitOf(line: LogLine): Commit {
   return { version: line.version, input: { call: input }, events: line.events };
 }
 
-/** Rebuilds state from a log, re-running each input; reports the first version that differs. */
-export function replay(bundles: Bundles, log: readonly LogLine[], expected?: State): ReplayResult {
+/** Rebuilds state from a log up to `toVersion`, re-running each input; reports the first version that differs. */
+export function replay(bundles: Bundles, log: readonly LogLine[], toVersion = Infinity): ReturnType<typeof replayCommits> {
   let commits: Commit[];
   try {
     commits = log.map(commitOf);
   } catch (e) {
     return { ok: false, version: 0, reason: (e as Error).message };
   }
-  const r = replayCommits(bundles, commits);
-  if (!r.ok) return r;
-  if (expected && JSON.stringify(r.state) !== JSON.stringify(expected)) return { ok: false, version: r.version, reason: "final state differs" };
-  return { ok: true, state: r.state };
+  return replayCommits(bundles, commits, toVersion);
 }

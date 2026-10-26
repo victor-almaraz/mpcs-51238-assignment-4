@@ -63,7 +63,7 @@ const text = (content: Uint8Array | string): string =>
 const bytes = (content: Uint8Array | string): Uint8Array => (typeof content === "string" ? new TextEncoder().encode(content) : content);
 
 /** Parses JSON-compatible YAML 1.2: only `true` and `false` are booleans, dates are strings. */
-export function parseData(file: string, content: Uint8Array | string, out: Diagnostics): Json | undefined {
+function parseData(file: string, content: Uint8Array | string, out: Diagnostics): Json | undefined {
   let source: string;
   try {
     source = text(content);

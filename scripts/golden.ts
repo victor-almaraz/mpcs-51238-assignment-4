@@ -2,10 +2,11 @@
 // lines the autopilot authored) and <name>.log.jsonl (the log they produce). Rerun only when engine or
 // material behaviour changes on purpose, and review the diff.
 import { writeFileSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { SCENARIOS, author } from "../lib/harness/scenarios";
 
-const DIR = join(dirname(new URL(import.meta.url).pathname), "../lib/harness/golden");
+const DIR = fileURLToPath(new URL("../lib/harness/golden", import.meta.url));
 
 for (const scenario of SCENARIOS) {
   const session = author(scenario);

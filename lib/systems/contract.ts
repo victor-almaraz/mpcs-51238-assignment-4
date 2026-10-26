@@ -5,6 +5,9 @@ import type { Rng } from "../rng";
 
 export type Tier = "critical_failure" | "failure" | "partial" | "success" | "critical_success";
 
+/** Ascending string order by UTF-16 code unit, the order of `<`: the same in every locale, unlike `localeCompare`. */
+export const compareText = (a: string, b: string): number => (a < b ? -1 : a > b ? 1 : 0);
+
 /** Outcomes that pass requirements. */
 export const PASSING: ReadonlySet<Tier> = new Set<Tier>(["partial", "success", "critical_success"]);
 

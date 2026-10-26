@@ -7,17 +7,14 @@ import { describe, expect, it } from "vitest";
 import type { Cell } from "../grid";
 import { compileAdventure, compileSetting } from "../materials";
 import { readPackDir } from "../materials/fs";
-import { Rng } from "../rng";
+import { EXAMPLES } from "../materials/testing/fixtures";
 import { CADMIUM } from "../systems/cadmium";
 import { begin, step, type Session } from "./harness";
-import { exemplarBundles } from "./scenarios";
+import { exemplarBundles, fighter } from "./scenarios";
 import { parse } from "yaml";
 
-const EXAMPLES = join(process.cwd(), "cadmium-spec/spec/examples");
-
 function party(n: number): Session {
-  const sheet = CADMIUM.configure(["armor", "stash"]).create_character("Wren", { role: "fighter", abilities: ["a", "b", "c", "d", "e", "f"].map((a) => `starter:${a}`) }, new Rng(0n));
-  const characters = Array.from({ length: n }, (_, i) => ({ id: `c_${i + 1}`, user_id: `u_${i + 1}`, sheet: { ...sheet, name: `Wren ${i + 1}`, abilities: [] } }));
+  const characters = Array.from({ length: n }, (_, i) => ({ id: `c_${i + 1}`, user_id: `u_${i + 1}`, sheet: { ...fighter("Wren"), name: `Wren ${i + 1}` } }));
   return begin(exemplarBundles(), 11, characters);
 }
 

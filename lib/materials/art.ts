@@ -16,7 +16,7 @@ const MAX_PIXELS: Readonly<Partial<Record<Kind, number>>> = { portrait: 1024, ti
 
 // SPEC_ISSUES.md#attribution-licenses: the licenses that require `credit` are not listed; the
 // Creative Commons attribution family is taken to require it.
-export function requiresCredit(license: string): boolean {
+function requiresCredit(license: string): boolean {
   return /^CC-BY(-|$)/.test(license);
 }
 

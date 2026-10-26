@@ -45,7 +45,7 @@ export interface Deps {
   defer?: (task: () => Promise<void>) => void;
   /** Sends `action_menu` to every character at each round and turn start (tools.md, improvise). */
   actionMenuMode?: boolean;
-  /** Logs a failed broadcast; the commit stands and clients backfill. */
+  /** Logs a failure after a commit, such as a failed broadcast, auto-pause, or narration; the commit stands and clients backfill. */
   warn?: (message: string) => void;
 }
 
@@ -69,7 +69,7 @@ function timeoutOf(deps: Deps, state: State): number | null {
 const startsWait = (events: readonly GameEvent[]) => events.some((e) => e.type === "round_started" || e.type === "turn_started");
 
 /** The `round` message payload (api.md, Messages). */
-export function roundOf(state: State, deadline: Date | null) {
+function roundOf(state: State, deadline: Date | null) {
   const r = state.round;
   const characters = r.participants.filter((id) => state.characters[id]);
   const current = r.resolution === "sequential" && r.order && r.turn_index !== null ? r.order[r.turn_index] : undefined;
@@ -163,11 +163,19 @@ export async function commit(
   for (const [user, messages] of owners) await send(deps, userTopic(user), messages);
 
   await sendActionMenus(deps, instance.id, version, bundles, result.state, result.events, extra.actor);
+  // The action is committed: a failure from here on is logged, not thrown, so no caller retries it.
+  const warn = (what: string, e: unknown) => deps.warn?.(`${what} ${instance.id}@${version}: ${e instanceof Error ? e.message : String(e)}`);
   // auto_pause waits for the round under way to close.
-  if (!ended && result.events.some((e) => e.type === "round_ended") && (await deps.store.pauseRequested(instance.id))) await setStatus(deps, instance.id, "paused");
+  if (!ended && result.events.some((e) => e.type === "round_ended")) {
+    try {
+      if (await deps.store.pauseRequested(instance.id)) await setStatus(deps, instance.id, "paused");
+    } catch (e) {
+      warn("auto_pause", e);
+    }
+  }
 
   // Narration after the commit; a commit with nothing resolved, such as a declaration, has none.
-  const job = () => narrate(deps, { instanceId: instance.id, version, bundles, before: instance.state, after: result.state, events: visible, facts: result.facts ?? [], actor: extra.actor ?? null });
+  const job = () => narrate(deps, { instanceId: instance.id, version, bundles, before: instance.state, after: result.state, events: visible, facts: result.facts ?? [], actor: extra.actor ?? null }).catch((e: unknown) => warn("narration", e));
   if (deps.defer) deps.defer(job);
   else await job();
   return { version, state: result.state, events: result.events };

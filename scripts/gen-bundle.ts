@@ -6,6 +6,7 @@ import { readdirSync, readFileSync, writeFileSync, mkdirSync, rmSync } from "nod
 import { join, relative, dirname } from "node:path";
 import { compile } from "json-schema-to-typescript";
 import { fnv1a64 } from "../lib/rng";
+import { capitalize } from "../lib/text";
 
 const ROOT = join(dirname(new URL(import.meta.url).pathname), "..");
 const SPEC = join(ROOT, "cadmium-spec");
@@ -46,7 +47,7 @@ function identFor(rel: string): string {
     .replace(/^systems\//, "");
   return stem
     .split(/[/_-]/)
-    .map((p, i) => (i === 0 ? p : p[0]!.toUpperCase() + p.slice(1)))
+    .map((p, i) => (i === 0 ? p : capitalize(p)))
     .join("") + "Schema";
 }
 

@@ -4,6 +4,7 @@
 import type { AdventureBundle } from "../bundle/adventure";
 import { FORMAT_VERSION, type SettingBundle } from "../bundle/setting";
 import type { TerrainType } from "../grid";
+import { compareText } from "../systems/contract";
 import { checkAssets, hashAssets } from "./art";
 import {
   BUILTIN_CONDITIONS,
@@ -62,8 +63,6 @@ type RoomScope =
   | { kind: "actor"; location?: string }
   | { kind: "no_actor"; event: string };
 
-const clone = <T>(v: T): T => structuredClone(v);
-
 /** Compiles an adventure pack against the bundles of the setting packs it requires. */
 export function compileAdventure(files: PackFiles, settings: readonly SettingBundle[]): CompileResult<AdventureBundle> {
   const out = new Diagnostics();
@@ -71,12 +70,12 @@ export function compileAdventure(files: PackFiles, settings: readonly SettingBun
   if (!out.ok) return { ok: false, diagnostics: sortDiagnostics(out.list) };
 
   const manifestFile = pack.single.get("adventure.yaml")!.file;
-  const manifest = clone(pack.single.get("adventure.yaml")!.data);
+  const manifest = structuredClone(pack.single.get("adventure.yaml")!.data);
   const flagsFile = pack.single.get("flags.yaml")?.file ?? "flags.yaml";
-  const flags = clone(pack.single.get("flags.yaml")?.data ?? {}) as Record<string, JsonObject>;
-  const assets = clone(pack.single.get("assets.yaml")?.data ?? {});
+  const flags = structuredClone(pack.single.get("flags.yaml")?.data ?? {}) as Record<string, JsonObject>;
+  const assets = structuredClone(pack.single.get("assets.yaml")?.data ?? {});
   const assetsFile = pack.single.get("assets.yaml")?.file ?? "assets.yaml";
-  const records = (dir: string) => new Map([...(pack.merged.get(dir) ?? [])].sort(([, a], [, b]) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0)).map(([k, e]) => [k, { file: e.file, value: clone(e.value) }]));
+  const records = (dir: string) => new Map([...(pack.merged.get(dir) ?? [])].sort(([, a], [, b]) => compareText(a.file, b.file)).map(([k, e]) => [k, { file: e.file, value: structuredClone(e.value) }]));
   const arcs = records("plot/*.yaml");
   const locations = records("locations/*.yaml");
   const npcs = records("npcs/*.yaml");

@@ -1,25 +1,16 @@
 // Builds the bundles an operator publishes on a fresh deployment (runbooks/content-publishing.md):
-// the example settings, the Quest quick-start setting, lantern_coast, and the exemplar sunken_archive.
+// the packs in PUBLISHED (lib/demo/seed.ts), the settings and then the exemplar sunken_archive.
 // Writes them to bundles/ (not committed); upload each in /admin, settings before the adventure.
 import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { compileAdventure, compileSetting, formatDiagnostic, withFiles } from "../lib/materials";
-import { readPackDir } from "../lib/materials/fs";
+import { compilePublished } from "../lib/demo/seed";
+import { withFiles } from "../lib/materials";
 
 const OUT = join(process.cwd(), "bundles");
 mkdirSync(OUT, { recursive: true });
 
-const compiled = ["cadmium-spec/spec/examples/derelict_station", "cadmium-spec/spec/examples/sunless_crypt", "materials/quest_starter/pack", "cadmium-spec/spec/examples/lantern_coast"].map((dir) => {
-  const r = compileSetting(readPackDir(join(process.cwd(), dir)));
-  if (!r.bundle) throw new Error(`${dir}:\n${r.diagnostics.map(formatDiagnostic).join("\n")}`);
-  return r;
-});
-const adventure = compileAdventure(readPackDir(join(process.cwd(), "cadmium-spec/spec/examples/sunken_archive")), compiled.map((r) => r.bundle!));
-if (!adventure.bundle) throw new Error(adventure.diagnostics.map(formatDiagnostic).join("\n"));
-
-for (const [n, r] of [...compiled, adventure].entries()) {
-  const b = r.bundle!;
-  const file = join(OUT, `${n + 1}-${b.kind}-${b.id}-${b.version}.json`);
-  writeFileSync(file, JSON.stringify(withFiles(b, r.files)));
+for (const [n, { bundle, files }] of compilePublished().entries()) {
+  const file = join(OUT, `${n + 1}-${bundle.kind}-${bundle.id}-${bundle.version}.json`);
+  writeFileSync(file, JSON.stringify(withFiles(bundle, files)));
   console.log(file);
 }
