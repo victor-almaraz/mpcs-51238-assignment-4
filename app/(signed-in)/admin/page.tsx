@@ -1,7 +1,6 @@
 // Operator console (app-flow.md, Route map: /admin; runbooks/content-publishing.md,
 // content-reports.md, instance-recovery.md): materials, instance inspection, reports, and the log.
 // Non-operators get the 404 page.
-import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
 import { ScrollText, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -13,29 +12,23 @@ import { described, Field, Select, TextArea } from "@/components/ui/field";
 import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { listBundles, operatorLog, REPORT_ACTIONS, settingDependents } from "@/lib/api/admin";
-import { ApiError } from "@/lib/api/errors";
+import { orNotFound } from "@/lib/server/pages";
 import { listedAction, publishAction } from "@/lib/server/admin-actions";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
 import { InspectPanel, ReportForm } from "./forms";
+import { plural } from "@/lib/text";
 
 /** What unlisting a setting version takes away, for its confirmation. */
 function unlistWarning(id: string, version: string, d: { drafts: number; adventures: number }): string {
-  const n = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
   if (d.drafts === 0 && d.adventures === 0) return `No draft or listed adventure depends on ${id} ${version} alone. New drafts and campaigns can no longer choose it.`;
-  return `${n(d.drafts, "draft")} and ${n(d.adventures, "listed adventure")} depend on ${id} ${version}. Those drafts lose its terrain, templates, and conditions until it is listed again, and new campaigns can no longer choose it.`;
+  return `${plural(d.drafts, "draft")} and ${plural(d.adventures, "listed adventure")} depend on ${id} ${version}. Those drafts lose its terrain, templates, and conditions until it is listed again, and new campaigns can no longer choose it.`;
 }
 
 export default async function Admin() {
   const user = await pageUser();
   const store = serverStore();
-  let bundles;
-  try {
-    bundles = await listBundles(store, user.id);
-  } catch (e) {
-    if (e instanceof ApiError && e.code === "not_found") notFound();
-    throw e;
-  }
+  const bundles = await orNotFound(listBundles(store, user.id));
   const dependents = new Map<string, { drafts: number; adventures: number }>();
   for (const b of bundles) if (b.kind === "setting" && b.listed) dependents.set(`${b.id}@${b.version}`, await settingDependents(store, user.id, { id: b.id, version: b.version }));
   const log = await operatorLog(store, user.id);

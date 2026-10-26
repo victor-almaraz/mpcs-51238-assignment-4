@@ -8,7 +8,7 @@ import { getCampaign } from "@/lib/api/campaigns";
 import { listMaterials, materialView } from "@/lib/api/materials";
 import { systemView } from "@/lib/api/systems";
 import { setMaterialsAction, updateCampaignAction } from "@/lib/server/campaign-actions";
-import { ArchivedNotice, ArchiveForm, DeleteCampaignForm } from "@/components/campaign-lifecycle";
+import { ArchivedNotice, ArchiveForm, DeleteForm } from "@/components/lifecycle";
 import { orNotFound, origin } from "@/lib/server/pages";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
@@ -69,14 +69,14 @@ export default async function EditCampaign({ params, searchParams }: { params: P
       </ActionForm>
       <div className="mt-10 flex flex-col gap-6">
         {campaign.archived ? (
-          <ArchivedNotice campaignId={campaign.id} author />
+          <ArchivedNotice kind="campaign" id={campaign.id} />
         ) : (
           <Panel title="Archive campaign">
-            <ArchiveForm campaignId={campaign.id} />
+            <ArchiveForm kind="campaign" id={campaign.id} />
           </Panel>
         )}
         <DangerZone id="danger-zone" title="Delete campaign">
-          <DeleteCampaignForm campaignId={campaign.id} title={campaign.title} />
+          <DeleteForm kind="campaign" id={campaign.id} name={campaign.title} />
         </DangerZone>
       </div>
     </>

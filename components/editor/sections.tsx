@@ -18,6 +18,7 @@ import { freshId, usesOf, type Adventure, type AuthoredLocation, type Doc, type 
 import { MapEditor } from "./map-editor";
 import type { YamlFile } from "./yaml-editor";
 import { EditorField, fieldId, InlineProblems, problemProps, useProblems } from "./problems";
+import { plural } from "@/lib/text";
 
 type Edit = (f: (d: Doc) => void) => void;
 
@@ -334,7 +335,7 @@ export function Flags({ doc, edit }: { doc: Doc; edit: Edit }) {
                         label={`Delete flag ${id}`}
                         onClick={() => {
                           const uses = usesOf(doc, { kind: "flag", id });
-                          if (uses.count > 0) return setBlocked(`${id} is used ${uses.count} time${uses.count === 1 ? "" : "s"}, by ${uses.places.join(", ")}; remove those uses first.`);
+                          if (uses.count > 0) return setBlocked(`${id} is used ${plural(uses.count, "time")}, by ${uses.places.join(", ")}; remove those uses first.`);
                           setBlocked(null);
                           edit((d) => void delete d.flags[id]);
                         }}

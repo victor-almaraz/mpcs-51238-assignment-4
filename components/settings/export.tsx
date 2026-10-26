@@ -5,6 +5,7 @@ import { Download } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ICON_DENSE } from "@/components/ui/icon-button";
+import { plural, sentence } from "@/lib/text";
 
 const URL_PATH = "/v1/me/export.zip";
 
@@ -12,7 +13,7 @@ const URL_PATH = "/v1/me/export.zip";
 async function reason(r: Response): Promise<string> {
   if (r.status === 429) {
     const wait = Number(r.headers.get("retry-after"));
-    return wait > 0 ? `Too many requests. Try again in ${wait} second${wait === 1 ? "" : "s"}.` : "Too many requests. Try again in a minute.";
+    return wait > 0 ? `Too many requests. Try again in ${plural(wait, "second")}.` : "Too many requests. Try again in a minute.";
   }
   if (r.status === 401) return "Your session has ended. Sign in again to export your data.";
   if (r.status === 503) return "The export is not available right now.";
@@ -21,8 +22,7 @@ async function reason(r: Response): Promise<string> {
     .then((b: { error?: { detail?: unknown } }) => (typeof b.error?.detail === "string" ? b.error.detail : null))
     .catch(() => null);
   if (!detail) return "The export failed. Try again later.";
-  const sentence = detail.charAt(0).toUpperCase() + detail.slice(1);
-  return /[.!?]$/.test(sentence) ? sentence : `${sentence}.`;
+  return sentence(detail);
 }
 
 /** A button, or with `inline` a link-styled button for running text, and the error under it. */

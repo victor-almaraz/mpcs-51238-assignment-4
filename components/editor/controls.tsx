@@ -10,6 +10,7 @@ import { ConfirmButton } from "@/components/ui/confirm";
 import { ICON, ICON_DENSE, IconButton } from "@/components/ui/icon-button";
 import type { TipAlign } from "@/components/ui/tip";
 import { ID, type Doc, type UseTarget, usesOf } from "./doc";
+import { plural } from "@/lib/text";
 
 /** A 32 px input, select, or textarea for dense rows. */
 export const dense =
@@ -55,7 +56,7 @@ export function DeleteButton({ label, name, doc, target, onDelete, dense, tip, c
         label={label}
         icon={<Trash2 {...(dense ? ICON_DENSE : ICON)} />}
         title={`Delete ${name}?`}
-        description={`It is used ${uses.count} time${uses.count === 1 ? "" : "s"}, by ${uses.places.join(", ")}. Those uses stay and show as problems until you change them; Undo brings ${name} back.`}
+        description={`It is used ${plural(uses.count, "time")}, by ${uses.places.join(", ")}. Those uses stay and show as problems until you change them; Undo brings ${name} back.`}
         confirm="Delete"
       />
     </form>
@@ -63,7 +64,7 @@ export function DeleteButton({ label, name, doc, target, onDelete, dense, tip, c
 }
 
 /** The ids rule: lower-case letters, digits, and underscores, starting with a letter. */
-export function idProblem(id: string, taken: readonly string[]): string | null {
+function idProblem(id: string, taken: readonly string[]): string | null {
   if (!id) return null;
   if (!ID.test(id)) return "Use lower-case letters, digits, and _, starting with a letter.";
   if (taken.includes(id)) return `${id} is already taken.`;

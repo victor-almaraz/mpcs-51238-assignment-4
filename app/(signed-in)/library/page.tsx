@@ -14,8 +14,9 @@ import { listMaterials } from "@/lib/api/materials";
 import { listSystems } from "@/lib/api/systems";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
+import { plural } from "@/lib/text";
 
-const players = ([min, max]: [number, number]) => (min === max ? `${min} player${min === 1 ? "" : "s"}` : `${min} to ${max} players`);
+const players = ([min, max]: [number, number]) => (min === max ? plural(min, "player") : `${min} to ${max} players`);
 
 export default async function Library({ searchParams }: { searchParams: Promise<{ system?: string }> }) {
   const user = await pageUser();

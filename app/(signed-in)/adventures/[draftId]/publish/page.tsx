@@ -2,7 +2,7 @@
 // since the newest published version of its id with the suggested increment (runbooks/content-publishing.md).
 import { Upload } from "lucide-react";
 import { ActionForm } from "@/components/action-form";
-import { ArchivedNotice } from "@/components/draft-lifecycle";
+import { ArchivedNotice } from "@/components/lifecycle";
 import { getDraft, publishSuggestion, validateDraft } from "@/lib/api/drafts";
 import { publishDraftAction } from "@/lib/server/draft-actions";
 import { orNotFound } from "@/lib/server/pages";
@@ -14,14 +14,13 @@ import { Field, FieldGroup, TextInput, described } from "@/components/ui/field";
 import { ICON_DENSE } from "@/components/ui/icon-button";
 import { Notice } from "@/components/ui/notice";
 import { Page, PageHeader } from "@/components/ui/page";
+import { plural } from "@/lib/text";
 
 export default async function Publish({ params }: { params: Promise<{ draftId: string }> }) {
   const { draftId } = await params;
   const user = await pageUser();
   const store = serverStore();
-  const draft = await orNotFound(getDraft(store, user.id, draftId));
-  const diagnostics = await validateDraft(store, user.id, draftId);
-  const s = await publishSuggestion(store, user.id, draftId);
+  const [draft, diagnostics, s] = await orNotFound(Promise.all([getDraft(store, user.id, draftId), validateDraft(store, user.id, draftId), publishSuggestion(store, user.id, draftId)]));
   const errors = diagnostics.filter((d) => d.severity === "error");
   const warnings = diagnostics.filter((d) => d.severity === "warning");
   const problems = (list: typeof diagnostics) => (
@@ -47,9 +46,9 @@ export default async function Publish({ params }: { params: Promise<{ draftId: s
       />
       <div className="flex flex-col gap-6">
         {draft.archived ? (
-          <ArchivedNotice draftId={draftId} />
+          <ArchivedNotice kind="draft" id={draftId} />
         ) : errors.length > 0 ? (
-          <Notice tone="danger" title={`Fix ${errors.length} problem${errors.length === 1 ? "" : "s"} to publish.`}>
+          <Notice tone="danger" title={`Fix ${plural(errors.length, "problem")} to publish.`}>
             {problems(errors.slice(0, 20))}
             <ButtonLink href={`/adventures/${draftId}/edit`} size="sm" className="mt-3">
               Open the editor
@@ -69,7 +68,7 @@ export default async function Publish({ params }: { params: Promise<{ draftId: s
           </FieldGroup>
         )}
         {warnings.length > 0 && (
-          <Notice tone="warning" title={`${warnings.length} warning${warnings.length === 1 ? "" : "s"}; publishing is allowed.`}>
+          <Notice tone="warning" title={`${plural(warnings.length, "warning")}; publishing is allowed.`}>
             {problems(warnings)}
           </Notice>
         )}

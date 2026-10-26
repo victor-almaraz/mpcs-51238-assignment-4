@@ -17,6 +17,7 @@ import { formatWhen } from "@/components/when";
 import { List, ListRow } from "@/components/ui/list";
 import { Notice } from "@/components/ui/notice";
 import { Section } from "@/components/ui/page";
+import { plural } from "@/lib/text";
 
 interface Member {
   user_id: string;
@@ -27,7 +28,7 @@ interface Member {
 /** The members, with Remove beside each player when the viewer is the author. */
 export function MembersPanel({ campaignId, members, author }: { campaignId: string; members: Member[]; author: boolean }) {
   return (
-    <Section id="members" title="Members" description={`${members.length} member${members.length === 1 ? "" : "s"}`}>
+    <Section id="members" title="Members" description={plural(members.length, "member")}>
       <List>
         {members.map((m) => (
           <ListRow

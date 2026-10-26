@@ -9,6 +9,7 @@ import { createContext, useContext, useMemo, useSyncExternalStore, type Keyboard
 import { cx } from "@/components/ui/cx";
 import { ICON_DENSE, IconButton } from "@/components/ui/icon-button";
 import type { Problem } from "./doc";
+import { plural } from "@/lib/text";
 
 export type Section = "overview" | "flags" | "plot" | "locations" | "npcs" | "entities";
 
@@ -36,7 +37,7 @@ export function sectionOf(pointer: string): Section {
 }
 
 /** Where a problem is, in words: its section, then the path inside it. */
-export function locate(pointer: string): string {
+function locate(pointer: string): string {
   const parts = segments(pointer);
   if (parts.length === 0) return "Whole draft";
   const label = SECTIONS.find((s) => s.id === sectionOf(pointer))!.label;
@@ -230,7 +231,7 @@ export function counts(problems: Problem[]): string {
   const e = problems.filter(isError).length;
   const w = problems.length - e;
   if (problems.length === 0) return "No problems";
-  return [e ? `${e} error${e === 1 ? "" : "s"}` : null, w ? `${w} warning${w === 1 ? "" : "s"}` : null].filter(Boolean).join(", ");
+  return [e ? plural(e, "error") : null, w ? plural(w, "warning") : null].filter(Boolean).join(", ");
 }
 
 /** The bottom Problems panel: every problem with its severity, message, and location. */

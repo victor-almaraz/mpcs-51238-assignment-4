@@ -26,6 +26,7 @@ import { Rng } from "@/lib/rng";
 import { SYSTEMS } from "@/lib/systems";
 import { denseInput, denseSelect, Labelled } from "./controls";
 import type { Doc } from "./doc";
+import { plural } from "@/lib/text";
 
 type Call = { tool: string; args: Record<string, unknown> };
 interface TraceEntry {
@@ -80,7 +81,7 @@ export function Playtest({ doc, settings, onShowProblems }: { doc: Doc; settings
     return (
       <Notice tone="danger" title="The draft does not compile">
         <p>
-          Fix {n} problem{n === 1 ? "" : "s"} to playtest.
+          Fix {plural(n, "problem")} to playtest.
         </p>
         {onShowProblems && (
           <Button variant="quiet" size="sm" className="-ml-3 mt-1" onClick={onShowProblems}>
@@ -271,7 +272,7 @@ export function Playtest({ doc, settings, onShowProblems }: { doc: Doc; settings
               )}
             </Group>
 
-            <Group title={`Trace · ${trace.length} step${trace.length === 1 ? "" : "s"}`}>
+            <Group title={`Trace · ${plural(trace.length, "step")}`}>
               <div role="log" aria-label="Playtest trace">
               <ol className="flex flex-col divide-y divide-rule rounded-card border border-rule">
                 {trace.map((t, i) => (

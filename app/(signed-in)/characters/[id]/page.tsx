@@ -4,17 +4,16 @@
 // (docs/design/README.md, Page layouts): the sheet and details in the main column, the portrait and
 // summary facts in the aside.
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { abilityOptions, characterRebuildable, getCharacter } from "@/lib/api/characters";
 import { withDescriptions } from "@/lib/server/ability-descriptions";
-import { ApiError } from "@/lib/api/errors";
+import { orNotFound } from "@/lib/server/pages";
 import { systemView } from "@/lib/api/systems";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
 import { systemUi } from "@/components/systems";
 import { StatusBadge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
-import { ArchivedNotice, ArchiveForm, DeleteCharacterForm, RetireForm } from "@/components/character-lifecycle";
+import { ArchivedNotice, ArchiveForm, DeleteForm, RetireForm } from "@/components/lifecycle";
 import { Card, DangerZone, Panel } from "@/components/ui/card";
 import { Notice } from "@/components/ui/notice";
 import { elementSymbol } from "@/components/ui/tile";
@@ -26,13 +25,7 @@ export default async function CharacterPage({ params }: { params: Promise<{ id: 
   const { id } = await params;
   const user = await pageUser();
   const store = serverStore();
-  let character;
-  try {
-    character = await getCharacter(store, user.id, id);
-  } catch (e) {
-    if (e instanceof ApiError && e.code === "not_found") notFound();
-    throw e;
-  }
+  const character = await orNotFound(getCharacter(store, user.id, id));
   const ui = systemUi(character.system);
   const options = withDescriptions(await abilityOptions(store, character.system));
   const labels = Object.fromEntries(options.map((a) => [a.ref, a.label]));
@@ -46,7 +39,7 @@ export default async function CharacterPage({ params }: { params: Promise<{ id: 
   return (
     <Page>
       <PageHeader crumbs={[{ label: "Characters", href: "/characters" }]} title={character.name} status={<StatusBadge status={character.archived ? "archived" : character.status} />} description={`${system.title} · ${character.summary.health}`} />
-      {character.archived && <ArchivedNotice characterId={character.id} className="mb-6" />}
+      {character.archived && <ArchivedNotice kind="character" id={character.id} className="mb-6" />}
       {game && (
         <Notice title="In a game." className="mb-6">
           {character.name} is playing in{" "}
@@ -95,7 +88,7 @@ export default async function CharacterPage({ params }: { params: Promise<{ id: 
       <div className="mt-10 flex flex-col gap-6 lg:mr-[22rem]">
         {!character.archived && !inGame && (
           <Panel title="Archive character">
-            <ArchiveForm characterId={character.id} />
+            <ArchiveForm kind="character" id={character.id} />
           </Panel>
         )}
         {(character.status === "available" || character.status === "dead") && (
@@ -104,7 +97,7 @@ export default async function CharacterPage({ params }: { params: Promise<{ id: 
           </DangerZone>
         )}
         <DangerZone id="danger-zone" title="Delete character">
-          {inGame ? <p className="text-muted">The character is in a game. Take it out of the game to delete it.</p> : <DeleteCharacterForm characterId={character.id} name={character.name} />}
+          {inGame ? <p className="text-muted">The character is in a game. Take it out of the game to delete it.</p> : <DeleteForm kind="character" id={character.id} name={character.name} />}
         </DangerZone>
       </div>
     </Page>

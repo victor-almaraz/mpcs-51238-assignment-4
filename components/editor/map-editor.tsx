@@ -13,6 +13,7 @@ import type { AuthoredLocation, Cell, Doc, Placement, Rect, Refs } from "./doc";
 import { freshId, ID } from "./doc";
 import { fieldId, InlineProblems, inside, problemProps, segments, SeverityIcon, useProblems } from "./problems";
 import type { Reveal } from "./sections";
+import { plural } from "@/lib/text";
 
 type Tool = "paint" | "fill" | "rect" | "room" | "place" | "link" | "select";
 
@@ -466,7 +467,7 @@ export function MapEditor({ loc, doc, refs, change, reveal }: { loc: AuthoredLoc
                     <div className="flex items-center gap-2 pl-6 text-caption text-muted">
                       <span className="font-mono">{id}</span>
                       <span>
-                        · {n} area{n === 1 ? "" : "s"}
+                        · {plural(n, "area")}
                       </span>
                       {n > 0 && (
                         <button type="button" className="rounded-control px-1 text-accent hover:underline" onClick={() => change((l) => void (l.map.rooms[id]!.area = []))}>

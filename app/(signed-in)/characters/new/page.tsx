@@ -2,12 +2,8 @@
 // creation): the System step first; once a system is chosen, its form's steps and summary, with the
 // caller's campaigns whose games take the system, each with its settings.
 import { notFound } from "next/navigation";
-import { listCampaigns } from "@/lib/api/campaigns";
-import { abilityOptions } from "@/lib/api/characters";
-import { campaignChoices } from "@/lib/systems/creation";
-import { accepted, creationRules, listSystems } from "@/lib/api/systems";
-import { settingsOf } from "@/lib/api/instances";
-import { withDescriptions } from "@/lib/server/ability-descriptions";
+import { listSystems } from "@/lib/api/systems";
+import { creationData } from "@/lib/server/creation-data";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
 import { systemUi } from "@/components/systems";
@@ -40,22 +36,12 @@ export default async function NewCharacter({ searchParams }: { searchParams: Pro
   const chosen = systems.find((s) => s.id === system);
   const ui = systemUi(system);
   if (!chosen || !ui) notFound();
-  const rules = creationRules(system);
-  const store = serverStore();
-  const [abilities, joined] = await Promise.all([abilityOptions(store, system).then(withDescriptions), listCampaigns(store, user.id, { archived: false, limit: 100 })]);
-  const candidates = joined.items.filter((c) => accepted(c.system).includes(system));
-  const campaigns = campaignChoices(await Promise.all(candidates.map(async (c) => ({ ...c, settings: await settingsOf(store, c.materials) }))), system, accepted);
+  const data = await creationData(serverStore(), user.id, system);
   return (
     <Page>
-      <PageHeader crumbs={crumbs} title={`New ${chosen.title} character`} description={`Choose a role, ${rules.starting_abilities} abilities, and a name. You can change any step before you create the character.`} />
+      <PageHeader crumbs={crumbs} title={`New ${chosen.title} character`} description={`Choose a role, ${data.count} abilities, and a name. You can change any step before you create the character.`} />
       <ui.CreationForm
-        system={system}
-        roles={rules.roles}
-        abilities={abilities}
-        count={rules.starting_abilities}
-        hp={rules.hp_max}
-        ap={rules.ap_start}
-        campaigns={campaigns}
+        {...data}
         campaign={campaign}
         systemTitle={chosen.title}
         systemCredit={chosen.credit}

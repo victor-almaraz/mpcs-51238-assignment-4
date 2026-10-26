@@ -37,7 +37,7 @@ const SYSTEMS: [RegExp, string][] = [
 ];
 
 /** "Firefox on Windows": the browser and operating system a user agent string names. */
-export function browserLabel(ua: string): string {
+function browserLabel(ua: string): string {
   const browser = BROWSERS.find(([re]) => re.test(ua))?.[1] ?? "Browser";
   const os = SYSTEMS.find(([re]) => re.test(ua))?.[1];
   return os ? `${browser} on ${os}` : browser;

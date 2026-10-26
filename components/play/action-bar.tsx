@@ -9,6 +9,7 @@ import type { View } from "@/lib/engine";
 import { Button } from "@/components/ui/button";
 import { ICON_DENSE } from "@/components/ui/icon-button";
 import { cx } from "@/components/ui/cx";
+import { capitalize } from "@/lib/text";
 
 export type Act = (tool: string, args: Record<string, unknown>, label: string) => void;
 
@@ -132,8 +133,8 @@ export function TargetActions({ view, selected, onSelect, act, busy }: Props) {
             </Action>
           ))}
           {entity?.verbs?.map((verb) => (
-            <Action key={verb} busy={busy} onClick={() => act("interact", { target_id: entity.id, verb }, `${verb[0]!.toUpperCase()}${verb.slice(1)} ${entity.label}`)}>
-              {verb[0]!.toUpperCase() + verb.slice(1)}
+            <Action key={verb} busy={busy} onClick={() => act("interact", { target_id: entity.id, verb }, `${capitalize(verb)} ${entity.label}`)}>
+              {capitalize(verb)}
             </Action>
           ))}
           {npc && (

@@ -1,6 +1,7 @@
 // Status badges: a word on a tint, never colour alone (docs/design/README.md, Components).
 import type { ReactNode } from "react";
 import { cx } from "./cx";
+import { capitalize } from "@/lib/text";
 
 export type Tone = "neutral" | "accent" | "success" | "warning" | "danger" | "pigment";
 
@@ -25,7 +26,7 @@ export function Badge({ tone = "neutral", children, dot = false }: { tone?: Tone
 }
 
 /** The badge tone for an instance, campaign, or character status word. */
-export function statusTone(status: string): Tone {
+function statusTone(status: string): Tone {
   if (["active", "available", "accepted", "published", "ready", "yes"].includes(status)) return "success";
   if (["paused", "lobby", "pending", "maybe", "draft", "in_instance"].includes(status)) return "warning";
   if (["ended", "archived", "retired", "declined", "revoked", "expired", "no"].includes(status)) return "neutral";
@@ -34,9 +35,9 @@ export function statusTone(status: string): Tone {
 }
 
 /** A status word in sentence case: `in_instance` reads "In a game". */
-export function statusWord(status: string): string {
+function statusWord(status: string): string {
   const words = status === "in_instance" ? "in a game" : status.replaceAll("_", " ");
-  return words.charAt(0).toUpperCase() + words.slice(1);
+  return capitalize(words);
 }
 
 export function StatusBadge({ status, label }: { status: string; label?: string }) {

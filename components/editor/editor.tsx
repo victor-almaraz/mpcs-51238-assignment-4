@@ -27,6 +27,7 @@ import { Playtest } from "./playtest";
 import { counts, focusPointer, inside, isError, ProblemBadge, ProblemsPanel, ProblemsProvider, sectionOf, SECTIONS, segments, useRemembered, type Section } from "./problems";
 import { Flags, Locations, Npcs, Overview, YamlPanel, type Reveal } from "./sections";
 import type { SettingBundle } from "@/lib/bundle/setting";
+import { plural } from "@/lib/text";
 
 const PROBLEMS_ID = "editor-problems";
 /** The largest draft the server saves, as JSON (save_draft), and the size from which the editor warns. */
@@ -416,7 +417,7 @@ export function Editor(props: EditorProps) {
             ? "Checked as you edit"
             : "Checked";
   const title = doc.adventure.title || doc.adventure.id;
-  const publishWhy = errors.length ? `Fix ${errors.length} error${errors.length === 1 ? "" : "s"} to publish.` : undefined;
+  const publishWhy = errors.length ? `Fix ${plural(errors.length, "error")} to publish.` : undefined;
 
   /** Publish, disabled with its reason while the draft has errors; in the title row on compact screens. */
   const publish = (where: string) =>

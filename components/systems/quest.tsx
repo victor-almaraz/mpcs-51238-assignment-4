@@ -11,6 +11,7 @@ import type { AbilityOption } from "@/lib/api/characters";
 import { abilitiesFor, chosenCampaign, quickStartFor, type CampaignChoice } from "@/lib/systems/creation";
 import { createCharacterAction, rebuildCharacterAction } from "@/lib/server/actions";
 import type { FormState } from "@/lib/server/forms";
+import { capitalize, plural } from "@/lib/text";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Choice, Field, Select, TextInput, described } from "@/components/ui/field";
@@ -49,10 +50,8 @@ interface SummaryRow {
   href: string;
 }
 
-const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
 /** A titled, numbered step of the creation page; Change links in the summary lead to its id. */
-export function CreationStep({ n, id, title, done, status, children }: { n: number; id: string; title: string; done: boolean; status?: ReactNode; children: ReactNode }) {
+function CreationStep({ n, id, title, done, status, children }: { n: number; id: string; title: string; done: boolean; status?: ReactNode; children: ReactNode }) {
   return (
     <section id={id} aria-labelledby={`${id}-title`} className="rounded-card border border-rule bg-page p-4">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
@@ -80,8 +79,12 @@ export function QuestCreationForm({ system, roles, abilities: all, count, campai
   const [state, form, pending] = useFormAction<FormState>(rebuild ? rebuildCharacterAction : createCharacterAction, { error: null });
   const [name, setName] = useState(rebuild?.name ?? "");
   const [role, setRole] = useState(rebuild?.role ?? "");
-  const [chosen, setChosen] = useState<string[]>(rebuild?.abilities ?? []);
   const [campaignId, setCampaignId] = useState(chosenCampaign(campaigns, initialCampaign)?.id ?? "");
+  // A rebuilt character's abilities that are still offered: one from a setting no longer listed has no checkbox to clear it.
+  const [chosen, setChosen] = useState<string[]>(() => {
+    const offered = new Set(abilitiesFor(all, chosenCampaign(campaigns, initialCampaign)).map((a) => a.ref));
+    return (rebuild?.abilities ?? []).filter((r) => offered.has(r));
+  });
   const campaign = chosenCampaign(campaigns, campaignId);
   // With a campaign chosen, only its settings' abilities, so the character can join its games.
   const abilities = abilitiesFor(all, campaign);
@@ -97,7 +100,7 @@ export function QuestCreationForm({ system, roles, abilities: all, count, campai
   const missing = [
     name.trim() === "" && "a name",
     role === "" && "a role",
-    chosen.length < count && `${count - chosen.length} more abilit${count - chosen.length === 1 ? "y" : "ies"}`,
+    chosen.length < count && plural(count - chosen.length, "more ability", "more abilities"),
   ].filter(Boolean) as string[];
   const short = abilities.length < count;
   const toggle = (ref: string) => setChosen((c) => (c.includes(ref) ? c.filter((r) => r !== ref) : [...c, ref]));
@@ -133,7 +136,7 @@ export function QuestCreationForm({ system, roles, abilities: all, count, campai
 
   const rows: SummaryRow[] = [
     { label: "System", value: systemTitle ?? system, href: systemHref },
-    { label: "Role", value: role ? sentence(role) : muted("Not chosen"), href: "#step-role" },
+    { label: "Role", value: role ? capitalize(role) : muted("Not chosen"), href: "#step-role" },
     { label: "Abilities", value: chosen.length === 0 ? muted(`None of ${count}`) : `${chosen.map((r) => label.get(r) ?? r).join(", ")} (${chosen.length} of ${count})`, href: "#step-abilities" },
     { label: "Name", value: name.trim() || muted("Not given"), href: "#step-name" },
   ];
@@ -215,7 +218,7 @@ export function QuestCreationForm({ system, roles, abilities: all, count, campai
           )}
 
           <CreationStep n={next()} id="step-role" title="Role" done={role !== ""}>
-            <WithInfo label={`New to ${systemTitle ?? sentence(system)}? The rules in brief`} info={<RulesPrimer hp={hp} ap={ap} count={count} cadmium={system === "cadmium"} />} className="mb-3">
+            <WithInfo label={`New to ${systemTitle ?? capitalize(system)}? The rules in brief`} info={<RulesPrimer hp={hp} ap={ap} count={count} cadmium={system === "cadmium"} />} className="mb-3">
               <p id="step-role-hint" className="pt-2 text-caption text-muted">
                 The role puts its abilities first in the next step; any ability can still be chosen.
               </p>
@@ -223,7 +226,7 @@ export function QuestCreationForm({ system, roles, abilities: all, count, campai
             <div role="radiogroup" aria-labelledby="step-role-title" aria-describedby="step-role-hint" className="grid items-start gap-2 sm:grid-cols-2 xl:grid-cols-4">
               {roles.map((r) => (
                 <WithInfo key={r} label={`About the ${r}`} info={roleSummary(r, abilities)} className="rounded-control border border-rule px-3 has-[:checked]:border-accent has-[:checked]:bg-accent-soft">
-                  <Choice type="radio" name="role" value={r} checked={role === r} onChange={() => setRole(r)} label={sentence(r)} />
+                  <Choice type="radio" name="role" value={r} checked={role === r} onChange={() => setRole(r)} label={capitalize(r)} />
                 </WithInfo>
               ))}
             </div>
@@ -255,8 +258,8 @@ export function QuestCreationForm({ system, roles, abilities: all, count, campai
               {short && (
                 <Notice tone="warning">
                   {campaign
-                    ? `${campaign.title}'s settings offer ${abilities.length} abilit${abilities.length === 1 ? "y" : "ies"}; a character needs ${count}. Its author can add a setting with abilities under Materials, or choose Any campaign.`
-                    : `The installed settings offer ${abilities.length} abilit${abilities.length === 1 ? "y" : "ies"}; this system needs ${count}.`}
+                    ? `${campaign.title}'s settings offer ${plural(abilities.length, "ability", "abilities")}; a character needs ${count}. Its author can add a setting with abilities under Materials, or choose Any campaign.`
+                    : `The installed settings offer ${plural(abilities.length, "ability", "abilities")}; this system needs ${count}.`}
                 </Notice>
               )}
               {!role && <p className="text-caption text-muted">Choose a role to see the abilities suggested for it first.</p>}
@@ -306,7 +309,7 @@ export function QuestSheetView({ sheet, labels, abilities }: { sheet: Record<str
   const known = new Map((abilities ?? []).map((a) => [a.ref, a]));
   const s = sheet as { role: string; hp: { value: number; max: number }; ap: number; abilities: string[]; inventory: { ref: string }[]; status: string; armor?: { value: number; max: number } };
   const items: [ReactNode, ReactNode][] = [
-    ["Role", sentence(s.role)],
+    ["Role", capitalize(s.role)],
     [
       "Health",
       <span key="hp" className="tabular">

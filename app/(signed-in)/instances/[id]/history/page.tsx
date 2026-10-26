@@ -16,6 +16,7 @@ import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
 import { DescriptionList } from "@/components/ui/list";
 import { Page, PageHeader, WithAside } from "@/components/ui/page";
 import { HistoryFilter } from "./filter";
+import { plural } from "@/lib/text";
 
 export default async function History({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ after?: string }> }) {
   const { id } = await params;
@@ -107,7 +108,7 @@ export default async function History({ params, searchParams }: { params: Promis
                         {item.narration ? <p className="max-w-prose font-prose text-prose text-ink">{item.narration.text}</p> : <p className="text-caption text-muted">No narration.</p>}
                         <details className="mt-2">
                           <summary className="cursor-pointer text-caption text-muted hover:text-ink">
-                            {item.events.length} event{item.events.length === 1 ? "" : "s"}
+                            {plural(item.events.length, "event")}
                           </summary>
                           <pre className="mt-2 relative overflow-x-auto rounded-control bg-desk p-2 whitespace-pre-wrap font-mono text-code">{item.events.map((e) => JSON.stringify(e)).join("\n")}</pre>
                         </details>

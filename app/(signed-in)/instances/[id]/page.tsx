@@ -4,7 +4,7 @@
 // its maximum. An ended game lists every character that played. A detail page
 // (docs/design/README.md, Game lobby): the party in the main column, the next session and the
 // game's facts in the aside.
-import { CalendarClock, Check, History, Pause, Play, Square, UserMinus, Users } from "lucide-react";
+import { CalendarClock, History, Pause, Play, Square, UserMinus, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { ActionForm } from "@/components/action-form";
 import { getCampaign } from "@/lib/api/campaigns";
@@ -12,15 +12,17 @@ import { listCharacters } from "@/lib/api/characters";
 import { getInstance, instanceRoster, missingFor, playerRange } from "@/lib/api/instances";
 import { accepted, systemView } from "@/lib/api/systems";
 import { addCharacterAction, instanceControlAction, removeCharacterAction } from "@/lib/server/campaign-actions";
-import { rsvpAction } from "@/lib/server/schedule-actions";
-import { listOccurrences } from "@/lib/api/schedules";
+import { NextSession } from "@/components/next-session";
+import { Rsvp, answerOf } from "@/components/rsvp";
 import { formatWhen } from "@/components/when";
 import { orNotFound, requestTime } from "@/lib/server/pages";
 import { pageUser } from "@/lib/server/session";
 import { serverDeps } from "@/lib/server/coordinator";
+import { nextOccurrence } from "@/lib/server/sessions";
 import { serverStore } from "@/lib/server/supabase";
+import { plural } from "@/lib/text";
 import { Badge, StatusBadge } from "@/components/ui/badge";
-import { Button, ButtonLink, buttonClass, type Variant } from "@/components/ui/button";
+import { Button, ButtonLink, type Variant } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm";
 import { Card, Panel } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
@@ -29,7 +31,6 @@ import { ICON, ICON_DENSE, IconButton } from "@/components/ui/icon-button";
 import { DescriptionList, List, ListRow } from "@/components/ui/list";
 import { Notice } from "@/components/ui/notice";
 import { Page, PageHeader, Section, WithAside } from "@/components/ui/page";
-import { DateTile } from "@/components/ui/tile";
 
 const CONTROLS: Record<string, { control: string; label: string; danger?: boolean }[]> = {
   lobby: [{ control: "start", label: "Start" }],
@@ -44,9 +45,7 @@ const CONTROLS: Record<string, { control: string; label: string; danger?: boolea
   ended: [],
 };
 
-const RESPONSES = ["yes", "maybe", "no"] as const;
-const word = (r: string) => r[0]!.toUpperCase() + r.slice(1);
-const characters = (n: number) => `${n} character${n === 1 ? "" : "s"}`;
+const characters = (n: number) => plural(n, "character");
 
 const ICONS: Record<string, ReactNode> = {
   start: <Play {...ICON_DENSE} />,
@@ -83,13 +82,12 @@ export default async function Lobby({ params, searchParams }: { params: Promise<
     : [];
   const joinable = mine.filter((c) => c.missing.length === 0);
   const now = requestTime();
-  const next = (await listOccurrences(store, user.id, { instance_id: instance.id, from: new Date(now).toISOString(), to: new Date(now + 92 * 86_400_000).toISOString() })).find((o) => o.status !== "cancelled");
+  const next = await nextOccurrence(store, user.id, instance.id, now);
   const controls = (author && CONTROLS[instance.status]) || [];
   // Start and Resume need the adventure's player range: the reason shows under the party's count.
   const blocked = (control: string) => (control === "start" && range !== null && (n < range[0] || n > range[1])) || (control === "resume" && short);
   const rangeText = range && (range[0] === range[1] ? `${range[0]}` : `${range[0]}–${range[1]}`);
   const reason = short ? `The adventure needs at least ${characters(range![0])}; add ${characters(range![0] - n)} to ${instance.status === "paused" ? "resume" : "start"}.` : null;
-  const mineNext = next && RESPONSES.find((r) => next.rsvps[r].includes(user.id));
   const playing = instance.status === "active" && instance.characters.some((c) => c.user_id === user.id);
   const system = systemView(instance.system);
   // One primary per view: Enter game when the viewer plays, else Start or Resume.
@@ -142,26 +140,8 @@ export default async function Lobby({ params, searchParams }: { params: Promise<
             <Panel title="Next session">
               {next ? (
                 <>
-                  <div className="flex items-center gap-3">
-                    <DateTile date={new Date(next.starts_at)} timeZone={user.timezone} tone={Date.parse(next.starts_at) - now < 86_400_000 ? "pigment" : "accent"} />
-                    <p className="text-heading font-semibold text-ink">{formatWhen(next.starts_at, user.timezone)}</p>
-                  </div>
-                  {!ended && (
-                    <div role="group" aria-label={`Your answer for ${formatWhen(next.starts_at, user.timezone)}`} className="flex flex-wrap items-center gap-2">
-                      {RESPONSES.map((r) => (
-                        <ActionForm key={r} action={rsvpAction}>
-                          <input type="hidden" name="instance_id" value={instance.id} />
-                          <input type="hidden" name="session_id" value={next.session_id} />
-                          <input type="hidden" name="occurrence_start" value={next.occurrence_start} />
-                          <input type="hidden" name="response" value={r} />
-                          <button type="submit" aria-pressed={mineNext === r} className={mineNext === r ? buttonClass("quiet", "sm", "border border-accent bg-accent-soft") : buttonClass("secondary", "sm")}>
-                            {mineNext === r && <Check {...ICON_DENSE} />}
-                            {word(r)}
-                          </button>
-                        </ActionForm>
-                      ))}
-                    </div>
-                  )}
+                  <NextSession startsAt={next.starts_at} timezone={user.timezone} now={now} />
+                  {!ended && <Rsvp instanceId={instance.id} occurrence={next} mine={answerOf(next, user.id)} label={`Your answer for ${formatWhen(next.starts_at, user.timezone)}`} />}
                 </>
               ) : (
                 <p className="text-muted">None scheduled.</p>

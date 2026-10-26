@@ -3,17 +3,19 @@
 // Subscribe. Occurrences that have ended are a record, without answers or controls. A detail page
 // (docs/design/README.md, Game lobby, schedule, history): the sessions in the main column; the calendar
 // links and the author's New session and Edit sessions forms in the aside.
-import { CalendarDays, CalendarPlus, Check, Rss } from "lucide-react";
+import { CalendarDays, CalendarPlus, Rss } from "lucide-react";
 import { ActionForm } from "@/components/action-form";
 import { CopyButton } from "@/components/invite-form";
+import { RESPONSES, Rsvp, answerOf } from "@/components/rsvp";
 import { formatWhen, weekOf } from "@/components/when";
 import { getCampaign } from "@/lib/api/campaigns";
 import { getInstance } from "@/lib/api/instances";
 import { calendarFeedKey, getCalendarFeed, listOccurrences, listSessions } from "@/lib/api/schedules";
 import { serverDeps } from "@/lib/server/coordinator";
 import { orNotFound, origin, requestTime } from "@/lib/server/pages";
-import { cancelAction, createFeedAction, moveOccurrenceAction, rsvpAction, scheduleSessionAction, updateSessionAction } from "@/lib/server/schedule-actions";
+import { cancelAction, createFeedAction, moveOccurrenceAction, scheduleSessionAction, updateSessionAction } from "@/lib/server/schedule-actions";
 import { pageUser } from "@/lib/server/session";
+import { capitalize } from "@/lib/text";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button, buttonClass } from "@/components/ui/button";
 import { Panel } from "@/components/ui/card";
@@ -25,8 +27,64 @@ import { Notice } from "@/components/ui/notice";
 import { Page, PageHeader, Section, WithAside } from "@/components/ui/page";
 
 const DAY = 86_400_000;
-const RESPONSES = ["yes", "maybe", "no"] as const;
-const word = (r: string) => r[0]!.toUpperCase() + r.slice(1);
+
+type Session = Awaited<ReturnType<typeof listSessions>>[number];
+
+/**
+ * A session's fields, with ids under `prefix`. Editing `session` changes the whole series from its
+ * current start; a new session also takes its start and time zone, `timezone` by default.
+ */
+function SessionFields({ prefix, session: x, timezone }: { prefix: string; session?: Session; timezone?: string }) {
+  const id = (field: string) => `${prefix}-${field}`;
+  const minutes = (
+    <Field id={id("minutes")} label="Minutes">
+      <TextInput {...described(id("minutes"))} type="number" name="duration_minutes" required min={15} max={720} defaultValue={x?.duration_minutes ?? 180} className="tabular" />
+    </Field>
+  );
+  return (
+    <>
+      <Field id={id("title")} label="Title" optional>
+        <TextInput {...described(id("title"))} name="title" maxLength={80} defaultValue={x?.title} placeholder="Weekly game" />
+      </Field>
+      {x ? (
+        minutes
+      ) : (
+        <>
+          <Field id={id("starts")} label="Starts">
+            <TextInput {...described(id("starts"))} type="datetime-local" name="starts_at" required />
+          </Field>
+          <div className="grid grid-cols-[1fr_7.5rem] gap-3">
+            <Field id={id("timezone")} label="Time zone">
+              <TextInput {...described(id("timezone"))} name="timezone" required defaultValue={timezone} />
+            </Field>
+            {minutes}
+          </div>
+        </>
+      )}
+      <div className="grid grid-cols-[1fr_7.5rem] gap-3">
+        <Field id={id("every")} label="Repeats">
+          <Select {...described(id("every"))} name="every" defaultValue={x ? String(x.recurrence?.interval ?? 0) : "1"}>
+            <option value="0">Once</option>
+            <option value="1">Every week</option>
+            <option value="2">Every 2 weeks</option>
+            <option value="3">Every 3 weeks</option>
+            <option value="4">Every 4 weeks</option>
+          </Select>
+        </Field>
+        <Field id={id("count")} label="Times" optional>
+          <TextInput {...described(id("count"))} type="number" name="count" min={1} max={52} defaultValue={x?.recurrence?.count} placeholder="52" className="tabular" />
+        </Field>
+      </div>
+      <div className="flex flex-col">
+        <Choice name="auto_resume" defaultChecked={x ? x.auto_resume : true} label="Resume a paused game at each start" />
+        <Choice name="auto_pause" defaultChecked={x?.auto_pause} label="Pause the game at each end" />
+      </div>
+      <Field id={id("notes")} label="Notes" optional>
+        <TextArea {...described(id("notes"))} name="notes" maxLength={500} rows={2} defaultValue={x?.notes} />
+      </Field>
+    </>
+  );
+}
 
 export default async function Schedule({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -99,41 +157,7 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
               <Panel title="New session" className="gap-4">
                 <ActionForm action={scheduleSessionAction} className="flex flex-col gap-4">
                   <input type="hidden" name="instance_id" value={id} />
-                  <Field id="session-title" label="Title" optional>
-                    <TextInput {...described("session-title")} name="title" maxLength={80} placeholder="Weekly game" />
-                  </Field>
-                  <Field id="session-starts" label="Starts">
-                    <TextInput {...described("session-starts")} type="datetime-local" name="starts_at" required />
-                  </Field>
-                  <div className="grid grid-cols-[1fr_7.5rem] gap-3">
-                    <Field id="session-timezone" label="Time zone">
-                      <TextInput {...described("session-timezone")} name="timezone" required defaultValue={tz} />
-                    </Field>
-                    <Field id="session-minutes" label="Minutes">
-                      <TextInput {...described("session-minutes")} type="number" name="duration_minutes" required min={15} max={720} defaultValue={180} className="tabular" />
-                    </Field>
-                  </div>
-                  <div className="grid grid-cols-[1fr_7.5rem] gap-3">
-                    <Field id="session-every" label="Repeats">
-                      <Select {...described("session-every")} name="every" defaultValue="1">
-                        <option value="0">Once</option>
-                        <option value="1">Every week</option>
-                        <option value="2">Every 2 weeks</option>
-                        <option value="3">Every 3 weeks</option>
-                        <option value="4">Every 4 weeks</option>
-                      </Select>
-                    </Field>
-                    <Field id="session-count" label="Times" optional>
-                      <TextInput {...described("session-count")} type="number" name="count" min={1} max={52} placeholder="52" className="tabular" />
-                    </Field>
-                  </div>
-                  <div className="flex flex-col">
-                    <Choice name="auto_resume" defaultChecked label="Resume a paused game at each start" />
-                    <Choice name="auto_pause" label="Pause the game at each end" />
-                  </div>
-                  <Field id="session-notes" label="Notes" optional>
-                    <TextArea {...described("session-notes")} name="notes" maxLength={500} rows={2} />
-                  </Field>
+                  <SessionFields prefix="session" timezone={tz} />
                   <div>
                     <Button type="submit" variant="primary">
                       Schedule session
@@ -151,33 +175,7 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
                     <ActionForm action={updateSessionAction} className="mt-3 flex flex-col gap-4">
                       <input type="hidden" name="instance_id" value={id} />
                       <input type="hidden" name="session_id" value={x.id} />
-                      <Field id={`edit-${x.id}-title`} label="Title" optional>
-                        <TextInput {...described(`edit-${x.id}-title`)} name="title" maxLength={80} defaultValue={x.title} placeholder="Weekly game" />
-                      </Field>
-                      <Field id={`edit-${x.id}-minutes`} label="Minutes">
-                        <TextInput {...described(`edit-${x.id}-minutes`)} type="number" name="duration_minutes" required min={15} max={720} defaultValue={x.duration_minutes} className="tabular" />
-                      </Field>
-                      <div className="grid grid-cols-[1fr_7.5rem] gap-3">
-                        <Field id={`edit-${x.id}-every`} label="Repeats">
-                          <Select {...described(`edit-${x.id}-every`)} name="every" defaultValue={String(x.recurrence?.interval ?? 0)}>
-                            <option value="0">Once</option>
-                            <option value="1">Every week</option>
-                            <option value="2">Every 2 weeks</option>
-                            <option value="3">Every 3 weeks</option>
-                            <option value="4">Every 4 weeks</option>
-                          </Select>
-                        </Field>
-                        <Field id={`edit-${x.id}-count`} label="Times" optional>
-                          <TextInput {...described(`edit-${x.id}-count`)} type="number" name="count" min={1} max={52} defaultValue={x.recurrence?.count} placeholder="52" className="tabular" />
-                        </Field>
-                      </div>
-                      <div className="flex flex-col">
-                        <Choice name="auto_resume" defaultChecked={x.auto_resume} label="Resume a paused game at each start" />
-                        <Choice name="auto_pause" defaultChecked={x.auto_pause} label="Pause the game at each end" />
-                      </div>
-                      <Field id={`edit-${x.id}-notes`} label="Notes" optional>
-                        <TextArea {...described(`edit-${x.id}-notes`)} name="notes" maxLength={500} rows={2} defaultValue={x.notes} />
-                      </Field>
+                      <SessionFields prefix={`edit-${x.id}`} session={x} />
                       <div>
                         <Button type="submit" size="sm">
                           Save session
@@ -201,7 +199,6 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
           <Section key={week} id={`week-${n}`} title={week} className="mb-8">
             <ul className="flex flex-col gap-3">
               {items.map((o) => {
-                const mine = RESPONSES.find((r) => o.rsvps[r].includes(user.id));
                 const minutes = Math.round((Date.parse(o.ends_at) - Date.parse(o.starts_at)) / 60000);
                 const answered = RESPONSES.filter((r) => o.rsvps[r].length > 0);
                 const over = Date.parse(o.ends_at) <= now;
@@ -219,7 +216,7 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
                       <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-caption">
                         {answered.map((r) => (
                           <li key={r} className="flex items-center gap-1.5">
-                            <StatusBadge status={r} label={word(r)} />
+                            <StatusBadge status={r} label={capitalize(r)} />
                             <span className="text-ink">{o.rsvps[r].map((u) => names.get(u) ?? u).join(", ")}</span>
                           </li>
                         ))}
@@ -227,18 +224,9 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
                     )}
                     {o.status !== "cancelled" && !ended && !over && (
                       <div className="mt-3 flex flex-col gap-3 border-t border-rule pt-3">
-                        <div role="group" aria-label={`Your answer for ${formatWhen(o.starts_at, tz)}`} className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <span className="text-label font-medium text-muted">Your answer</span>
-                          {RESPONSES.map((r) => (
-                            <ActionForm key={r} action={rsvpAction}>
-                              {hidden(o)}
-                              <input type="hidden" name="response" value={r} />
-                              <button type="submit" aria-pressed={mine === r} className={mine === r ? buttonClass("quiet", "sm", "border border-accent bg-accent-soft") : buttonClass("secondary", "sm")}>
-                                {mine === r && <Check {...ICON_DENSE} />}
-                                {word(r)}
-                              </button>
-                            </ActionForm>
-                          ))}
+                          <Rsvp instanceId={id} occurrence={o} mine={answerOf(o, user.id)} label={`Your answer for ${formatWhen(o.starts_at, tz)}`} />
                         </div>
                         {author && (
                           <details>

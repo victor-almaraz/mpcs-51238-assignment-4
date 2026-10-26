@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { SettingBundle } from "@/lib/bundle/setting";
 import type { Problem } from "./doc";
 
-export const DEBOUNCE_MS = 400;
+const DEBOUNCE_MS = 400;
 
 export type Source = "server" | "browser";
 
