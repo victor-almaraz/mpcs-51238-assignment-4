@@ -12,7 +12,7 @@ export const EXAMPLES = join(HERE, "../../../cadmium-spec/spec/examples");
 
 export type Files = Map<string, Uint8Array | string>;
 
-export function example(name: "derelict_station" | "sunless_crypt"): Files {
+export function example(name: "derelict_station" | "sunless_crypt" | "lantern_coast" | "sunken_archive"): Files {
   return new Map(readPackDir(join(EXAMPLES, name)));
 }
 
@@ -419,45 +419,31 @@ export const SETTING_FIXTURES: Fixture[] = [
 // ---------------------------------------------------------------------------------------------
 // Adventures
 
-import { docBlocks } from "../../../tests/doc-blocks";
 import { compileSetting } from "../setting";
 import type { SettingBundle } from "../../bundle/setting";
 
-const SPEC = join(HERE, "../../../cadmium-spec");
-
-/** The `sunken_archive` adventure assembled from the YAML blocks of the adventure authoring guide. */
-export function guideAdventure(): Files {
-  const files: Files = new Map();
-  for (const b of docBlocks(SPEC)) {
-    if (b.doc === "docs/guides/adventure-authoring.md" && b.file && !b.file.includes("*")) files.set(b.file, b.source + "\n");
-  }
-  return files;
+/**
+ * The Quest fixture adventure (`sunken_archive` 0.1.0 on `derelict_station`): one arc, the `dock` and
+ * `lower_archive` locations, and the archivist. The adventure compiler fixtures, the generator tests,
+ * and the `sunken_*` golden scenarios edit or play it.
+ */
+export function stationAdventure(): Map<string, string> {
+  return new Map([...readPackDir(join(HERE, "station_archive"))].map(([path, data]) => [path, typeof data === "string" ? data : new TextDecoder().decode(data)]));
 }
 
 let settingCache: SettingBundle | undefined;
 
-/** The compiled `derelict_station` example, the setting the guide adventure requires. */
+/** The compiled `derelict_station` example, the setting the fixture adventure requires. */
 export function derelictStation(): SettingBundle {
   settingCache ??= compileSetting(example("derelict_station")).bundle!;
   return structuredClone(settingCache);
-}
-
-/** The adventure assembled from the reference blocks of adventure-packs.md; one-per-file blocks are named by their `id`. */
-export function referenceAdventure(): Files {
-  const files: Files = new Map();
-  for (const b of docBlocks(SPEC)) {
-    if (b.doc !== "docs/adventure-packs.md" || !b.file) continue;
-    const path = b.file.includes("*") ? b.file.replace("*", (parse(b.source) as { id: string }).id) : b.file;
-    files.set(path, b.source + "\n");
-  }
-  return files;
 }
 
 export interface AdventureFixture extends Fixture {
   settings?: () => SettingBundle[];
 }
 
-const ga = () => guideAdventure();
+const ga = () => stationAdventure();
 const trig = (d: Data, i: number) => at(d, "triggers", i);
 const dockMap = (d: Data) => at(d, "map");
 

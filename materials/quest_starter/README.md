@@ -28,6 +28,12 @@ Abilities with several activation costs (such as Read the Winds, 0/2 AP) use the
 an ability in the Quest system schema has one cost. The Creators Resource lists no cost for
 Thorn or Tracker; both cost 0.
 
+## Descriptions
+
+`descriptions.yaml` holds each ability's short description from the Creators Resource, keyed by ability.
+Packs have no description field, so the file sits beside the pack; the character creation form and the
+character page show it under the ability, with what the ability's data does.
+
 ## Licence
 
 CC BY 4.0, with the attribution in `NOTICE`.

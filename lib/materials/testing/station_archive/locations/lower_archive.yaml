@@ -1,0 +1,19 @@
+id: lower_archive
+kind: generated
+generator:
+  algorithm: bsp
+  size: [40, 28]
+  rooms: [8, 12]
+  loop_ratio: 0.1
+population:
+  encounter_table: base:encounters_machine
+  loot_table: base:locker_loot
+  room_templates: [base:reactor_room]
+  density: 0.4
+anchors:
+  - id: core_anchor
+    place: { ref: sunken_archive:reactor_core }
+    constraints: { min_depth: 4, prefer_role: dead_end }
+links:
+  x_up: { label: service lift, role: entry, to: { location: dock, link: x_lift } }
+gates_per_location: 1

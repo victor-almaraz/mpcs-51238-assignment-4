@@ -1,0 +1,4 @@
+reactor_core:
+  kind: item
+  label: reactor core
+  tags: [objective]

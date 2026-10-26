@@ -10,16 +10,18 @@ the culprit to someone with access to both the Reliquary and the Salvors' Concor
 |---|---|
 | Id, version | `sunken_archive` 1.0.0, `format_version: 2` |
 | System | `cadmium ^1.0`, modules `armor`, `stash` |
-| Requires | [`lantern_coast ^1.0`](../lantern_coast/README.md) |
+| Requires | [`lantern_coast ^1.0`](lantern_coast.md) |
 | Players | 1 to 4 |
 | Endings | `escaped`, `archive_sealed`, `lost` |
 | Size | 13 locations (12 authored, 1 generated), 33 NPCs, 6 arcs, 76 triggers |
 
-The packs follow the brief's layout. They live in this application as a proposal for the
-specification's `spec/examples/`; see [SPEC_ISSUES.md](../../SPEC_ISSUES.md#exemplar-location).
+The packs are the specification's examples `cadmium-spec/spec/examples/sunken_archive` and
+`cadmium-spec/spec/examples/lantern_coast`, in the brief's layout. This report holds the brief's
+schema and semantic passes and a walkthrough per ending. The adventure authoring guide and
+`docs/adventure-packs.md` quote the packs' files; a test checks every quotation.
 
 ```bash
-pnpm materials check --setting materials/lantern_coast/pack materials/sunken_archive/pack
+pnpm materials check --setting cadmium-spec/spec/examples/lantern_coast cadmium-spec/spec/examples/sunken_archive
 ```
 
 `pnpm bundles` builds both bundles for `/admin`. A campaign lists `lantern_coast` before any Quest
@@ -140,6 +142,6 @@ their inputs and logs are in `lib/harness/golden/exemplar_*.jsonl`.
 
 ## Balance
 
-Combat numbers are Quest's templates and the draft's values, before the simulation of the draft's
-section 14.9. The golden runs give their one character 40 hit points: a 10-hit-point character alone
+Combat numbers are Quest's templates and the draft's values. The balance simulation of the draft's
+section 14.9 and its proposed values are in `tools/sim/README.md`. The golden runs give their one character 40 hit points: a 10-hit-point character alone
 does not survive the octopus. A party of four Quest characters is the expected table.

@@ -68,9 +68,10 @@ A change in one place usually needs changes elsewhere:
 
 1. Every schema passes the JSON Schema 2020-12 meta-schema.
 2. Every file in `spec/examples/` validates against its schema, as listed in [spec/README.md](spec/README.md).
-3. Every YAML block in `docs/` that is a complete pack file validates against its schema.
-4. Every relative link and heading anchor in Markdown resolves.
-5. The prose passes the rules in [Writing documentation](#writing-documentation).
+3. Every YAML block in `docs/` that is a complete pack file validates against its schema. A block introduced by a paragraph that begins `Excerpt of` and names a file in `spec/examples/` is an excerpt: its lines appear in that file in the same order, and its data is contained in the file's data.
+4. Every YAML block that names a file in `spec/examples/` without `Excerpt of` is identical to that file.
+5. Every relative link and heading anchor in Markdown resolves.
+6. The prose passes the rules in [Writing documentation](#writing-documentation).
 
 ## Do not
 
@@ -87,7 +88,6 @@ A change in one place usually needs changes elsewhere:
 | Quest values to confirm, inherited by Cadmium: `ap_award_per_session`, `npc_templates`, `setbacks`, `spatial` | `systems/quest/data.json`, `systems/cadmium/data.json` |
 | Cadmium module values set by simulation: `armor.max`, `armor.bypass_types` | `systems/cadmium/modules.json` |
 | Groq zero data retention to confirm before publishing | Privacy Policy section 4 |
-| Exemplar adventure `sunken_archive` and setting `lantern_coast` | [briefs/example-adventure.md](briefs/example-adventure.md) |
 
 ## Implementing the specification
 

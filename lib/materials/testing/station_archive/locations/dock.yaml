@@ -1,0 +1,24 @@
+id: dock
+kind: authored
+map:
+  legend:
+    "+": { terrain: floor, place: base:hatch }
+    "o": { terrain: floor, place: base:crate_stack }
+  rows:
+    - "################"
+    - "#....#.........#"
+    - "#....+...o.....#"
+    - "#....#.........#"
+    - "#....#...o.....#"
+    - "################"
+  rooms:
+    airlock: { label: airlock, tags: [entry], area: [[1, 1, 4, 4]] }
+    hangar:  { label: hangar, tags: [large], area: [[5, 2, 1, 1], [6, 1, 9, 4]] }
+  links:
+    x_lift: { label: lift, at: [14, 2], to: { location: lower_archive, link: x_up } }
+  contents:
+    - { id: lift_door, ref: base:bulkhead, at: [14, 2], lock: { flag: lift_powered } }
+    - { id: lift_panel, ref: base:control_panel, at: [13, 1] }
+    - { ref: base:locker, at: [13, 4] }
+    - { ref: base:keycard, room: hangar }
+    - { npc: archivist, at: [7, 3] }

@@ -1,6 +1,6 @@
 # Cadmium
 
-The web application for Cadmium, a multiplayer text dungeon crawler run by software. The specification lives in [`cadmium-spec/`](cadmium-spec/); start with [`cadmium-spec/AGENTS.md`](cadmium-spec/AGENTS.md) and [`cadmium-spec/docs/README.md`](cadmium-spec/docs/README.md). The specification is the requirement: this repository implements it and does not edit it.
+The web application for Cadmium, a multiplayer text dungeon crawler run by software. The specification lives in [`cadmium-spec/`](cadmium-spec/); start with [`cadmium-spec/AGENTS.md`](cadmium-spec/AGENTS.md) and [`cadmium-spec/docs/README.md`](cadmium-spec/docs/README.md). The specification is the requirement. Changes to `cadmium-spec/` are specification changes and follow its own rules; see [Specification version](#specification-version).
 
 The work is planned in [SPRINTS.md](SPRINTS.md). Gaps in the specification found during implementation are recorded in [SPEC_ISSUES.md](SPEC_ISSUES.md).
 
@@ -44,9 +44,11 @@ The server reads these variables, from `.env.local` locally and from the Vercel 
 | `CALENDAR_FEED_KEY` | yes | Derives calendar feed secrets; the service key is used when unset |
 | `SHUTDOWN_AT` | no | The end-of-course shutdown time (ISO 8601): a banner from 14 days before, the closed notice from then, the purge 90 days after |
 | `CONTACT_EMAIL` | no | Overrides the contact address on the closed notice; the default is the address in the Terms and Privacy Policy |
-| `VAPID_PUBLIC_KEY` | no | Offers browser notifications in Settings; sending also needs the private key and the `web-push` package |
+| `VAPID_PUBLIC_KEY` | no | The Web Push public key: Settings offers browser notifications when it is set |
+| `VAPID_PRIVATE_KEY` | yes | With the public key, the scheduler sends reminders by Web Push; generate the pair with `pnpm exec web-push generate-vapid-keys` |
+| `VAPID_SUBJECT` | no | The contact push services see, a `mailto:` or `https:` URL; default `mailto:` the contact address |
 
-`GET /api/health` reports `status` (`ok`, `incomplete`, or `unconfigured`) to anyone. With `Authorization: Bearer $CRON_SECRET` it also reports which settings are set and each migration's state, without revealing values.
+`GET /api/health` reports `status` (`ok`, `incomplete`, or `unconfigured`) to anyone. With `Authorization: Bearer $CRON_SECRET` it also reports which settings are set, whether Web Push is configured (`settings.webPush`), and each migration's state, without revealing values.
 
 ### Database schema
 
@@ -54,11 +56,11 @@ The migrations in `supabase/migrations/` create the store's tables and functions
 
 ### Realtime
 
-Instance and user messages travel on Supabase Realtime private channels, `instance:{id}` and `user:{id}`, admitted by the policy in the fifth migration. Browsers authenticate with their Clerk session token, which Supabase accepts once Clerk is added under Authentication, Third-party auth in the Supabase dashboard (and Supabase is enabled under Integrations in the Clerk dashboard).
+Instance and user messages travel on Supabase Realtime private channels, `instance:{id}` and `user:{id}`, admitted by the policy in the fifth migration. Browsers authenticate with their Clerk session token, which Supabase accepts through the Clerk third-party auth integration (Authentication, Third-party auth in the Supabase dashboard, with Supabase enabled under Integrations in the Clerk dashboard).
 
 ### Materials
 
-A fresh database has no settings or adventures. As an operator (`update users set operator = true where email = '…'`), run `pnpm bundles` and upload the four files in `bundles/` at `/admin`, in their numbered order, settings before the adventure.
+A fresh database has no settings or adventures. As an operator (`update users set operator = true where email = '…'`), run `pnpm bundles` and upload the five files in `bundles/` at `/admin`, in their numbered order, settings before the adventure.
 
 ### Clerk webhook
 
@@ -75,6 +77,7 @@ Clerk keeps the `users` table current through a webhook endpoint at `https://<ho
 | `pnpm typecheck` | `tsc --noEmit` |
 | `pnpm lint` | ESLint |
 | `pnpm test` | Vitest: unit tests, test vectors, and specification validation |
+| `pnpm e2e` | Playwright with real Clerk sign-in (`e2e/isolation.e2e.ts`): two users each save an adventure draft, and neither can list or open the other's; a signed-out visitor is sent to sign-in. Needs the Clerk development keys in `.env.local` and the bundles published at `/admin`; it writes to the Supabase project in `.env.local` and deletes its drafts afterwards |
 | `pnpm check` | Every gate: `gen:check`, `typecheck`, `lint --max-warnings 0`, `test`, and `build` |
 | `pnpm materials check DIR` | The Content Compiler's `check` subcommand |
 | `pnpm harness play ...` | The engine's command-line harness; see `lib/harness/cli.ts` |
@@ -85,7 +88,7 @@ Clerk keeps the `users` table current through a webhook endpoint at `https://<ho
 | `pnpm sim` | The balance simulation of the exemplar's fights; writes `tools/sim/REPORT.md` |
 | `pnpm demo` | `next dev` on port 3100 in demo mode: signed in as a fixture user against an in-memory database, without Clerk, Realtime, or Groq; `/` lists every screen |
 | `pnpm screens` | Screenshot every demo screen, wide and narrow, into `screenshots/` with the installed Chrome (run `pnpm demo` first) |
-| `pnpm audit:ui` | Design and accessibility audit of every demo screen at 1280 and 390 px into `screenshots/audit.md` (run `pnpm demo` first) |
+| `pnpm audit:ui` | Design and accessibility audit of every demo screen, and of the editor's arc graph and YAML view, at 1280 and 390 px into `screenshots/audit.md` (run `pnpm demo` first); `--scheme dark` for the dark theme, `--screens REGEX` for the screens whose path matches |
 | `pnpm db:fresh` | Write `supabase/fresh.sql`: delete every Cadmium table and function and apply every migration, in one transaction |
 
 The Content Compiler's command line follows [`spec/README.md`](cadmium-spec/spec/README.md#compiler-interface). pnpm prints the script line on stdout, so run `build` directly when its output is piped:
@@ -129,7 +132,8 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `lib/bundle/` | Schema registry and generated types; generated files are never edited by hand |
 | `lib/materials/` | Content Compiler: pack reading, schema explanations, rules-system, cross-reference, map, and art checks, bundles, and the `materials` command line |
 | `scripts/` | Build-time scripts, such as type generation |
-| `materials/` | Material packs shipped with the application: `quest_starter` (the Quest Quick Start abilities, CC BY 4.0), `lantern_coast`, and the exemplar `sunken_archive` |
+| `materials/` | Material packs shipped with the application: `quest_starter` (the Quest Quick Start abilities, CC BY 4.0). The exemplar `sunken_archive` and its setting `lantern_coast` are specification examples in `cadmium-spec/spec/examples/` |
+| `docs/exemplar/` | The exemplar's report: coverage, validation passes, walkthroughs, and departures from the draft |
 | `tools/sim/` | The balance simulation |
 | `public/fonts/` | Libertinus Serif (SIL Open Font License, `OFL.txt`) for story text |
 | `tests/` | Tests that span modules, such as specification validation |
@@ -138,7 +142,7 @@ Modules under `lib/` follow the boundaries in [`engine-implementation.md`](cadmi
 
 ## Specification version
 
-`cadmium-spec/` is a copy of the specification at commit `54f4adcdffe5bf3c8547a5c89a9f55fefbeb2fef`. It is to become a git submodule pinned to that commit once the specification repository's URL is available. Updating the specification is its own change, with the specification diff summarized.
+`cadmium-spec/` is a copy of the specification at commit `54f4adcdffe5bf3c8547a5c89a9f55fefbeb2fef` with one change applied: the exemplar of `briefs/example-adventure.md`, which adds `spec/examples/lantern_coast` and `spec/examples/sunken_archive` and updates `spec/README.md`, `AGENTS.md`, `docs/adventure-packs.md`, and `docs/guides/adventure-authoring.md`. That change belongs in the specification repository. The copy becomes a git submodule, pinned to a commit that contains the change, when the specification repository's URL is available. Updating the specification is its own change, with the specification diff summarized.
 
 ## License
 

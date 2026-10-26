@@ -1,0 +1,24 @@
+diff --git a/index.js b/index.js
+index 6527afac750ef88957e5d7b02b9cb04c4000df5d..8c5e2e81105fd5f73e832ca2a6f32bb2cb9b55df 100644
+--- a/index.js
++++ b/index.js
+@@ -40,11 +40,15 @@ export function createWorkerManager(monaco, options) {
+             }
+             lastUsedTime = Date.now();
+             if (!worker) {
+-                worker = monaco.editor.createWebWorker({
+-                    createData,
+-                    label,
+-                    moduleId,
++                // monaco-editor 0.55 takes the Worker itself in createWebWorker. The worker side
++                // (worker.js) wakes on its first message and reads createData from its second,
++                // so both go out before Monaco's own initialize message.
++                const webWorker = Promise.resolve(globalThis.MonacoEnvironment.getWorker(moduleId, label)).then((w) => {
++                    w.postMessage(null);
++                    w.postMessage(createData);
++                    return w;
+                 });
++                worker = monaco.editor.createWebWorker({ worker: webWorker });
+             }
+             return worker.withSyncedResources(resources);
+         },

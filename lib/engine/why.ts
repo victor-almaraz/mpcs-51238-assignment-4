@@ -40,12 +40,6 @@ export function whyHeld(trigger: HeldTrigger, event: GameEvent, before: State, a
   return v.why;
 }
 
-/** The parts of `req` that fail for `actor`, outermost group first; empty when it holds. */
-export function unmetParts(ctx: Ctx, req: Requirement | undefined, actor: string | undefined): string[] {
-  const v = judge(ctx, req, actor);
-  return v.ok === true ? [] : v.why;
-}
-
 function judge(ctx: Ctx, req: Requirement | undefined, actor: string | undefined): Verdict {
   if (req === undefined) return { ok: true, why: [] };
   const r = req as Record<string, unknown>;

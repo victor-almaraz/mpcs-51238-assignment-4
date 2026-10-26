@@ -13,7 +13,7 @@ import { begin, step, type Session } from "./harness";
 import { exemplarBundles } from "./scenarios";
 import { parse } from "yaml";
 
-const MATERIALS = join(process.cwd(), "materials");
+const EXAMPLES = join(process.cwd(), "cadmium-spec/spec/examples");
 
 function party(n: number): Session {
   const sheet = CADMIUM.configure(["armor", "stash"]).create_character("Wren", { role: "fighter", abilities: ["a", "b", "c", "d", "e", "f"].map((a) => `starter:${a}`) }, new Rng(0n));
@@ -46,9 +46,9 @@ const talk = (s: Session, actor: string, npc: string, topic: string) => act(s, a
 
 describe("exemplar mechanics", () => {
   it("compiles both packs without diagnostics", () => {
-    const coast = compileSetting(readPackDir(join(MATERIALS, "lantern_coast/pack")));
+    const coast = compileSetting(readPackDir(join(EXAMPLES, "lantern_coast")));
     expect(coast.diagnostics).toEqual([]);
-    expect(compileAdventure(readPackDir(join(MATERIALS, "sunken_archive/pack")), [coast.bundle!]).diagnostics).toEqual([]);
+    expect(compileAdventure(readPackDir(join(EXAMPLES, "sunken_archive")), [coast.bundle!]).diagnostics).toEqual([]);
   });
 
   it("pays errands to everyone in the room, charges only the buyer, and widens a stash", () => {
@@ -176,7 +176,7 @@ describe("exemplar mechanics", () => {
 
 // The brief's required coverage, checked against the pack sources.
 describe("exemplar coverage", () => {
-  const files = [...readPackDir(join(MATERIALS, "sunken_archive/pack")), ...readPackDir(join(MATERIALS, "lantern_coast/pack"))]
+  const files = [...readPackDir(join(EXAMPLES, "sunken_archive")), ...readPackDir(join(EXAMPLES, "lantern_coast"))]
     .filter(([p]) => p.endsWith(".yaml"))
     .map(([path, text]) => ({ path, data: parse(typeof text === "string" ? text : new TextDecoder().decode(text)) as unknown }));
   const nodes: Record<string, unknown>[] = [];

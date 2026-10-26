@@ -4,6 +4,7 @@
 // summary facts in the aside.
 import { notFound } from "next/navigation";
 import { abilityOptions, getCharacter } from "@/lib/api/characters";
+import { withDescriptions } from "@/lib/server/ability-descriptions";
 import { ApiError } from "@/lib/api/errors";
 import { systemView } from "@/lib/api/systems";
 import { pageUser } from "@/lib/server/session";
@@ -28,7 +29,8 @@ export default async function CharacterPage({ params }: { params: Promise<{ id: 
     throw e;
   }
   const ui = systemUi(character.system);
-  const labels = Object.fromEntries((await abilityOptions(store, character.system)).map((a) => [a.ref, a.label]));
+  const options = withDescriptions(await abilityOptions(store, character.system));
+  const labels = Object.fromEntries(options.map((a) => [a.ref, a.label]));
   const profile = (character.sheet.profile ?? {}) as Record<string, string>;
   const portrait = character.portrait ? await store.assetMeta(character.portrait) : undefined;
   const system = systemView(character.system);
@@ -53,7 +55,7 @@ export default async function CharacterPage({ params }: { params: Promise<{ id: 
         {ui && (
           <Section id="sheet" title="Sheet" description="Read-only; it changes in play.">
             <Card>
-              <ui.SheetView sheet={character.sheet} labels={labels} />
+              <ui.SheetView sheet={character.sheet} labels={labels} abilities={options} />
             </Card>
           </Section>
         )}

@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "vitest run",
+    "e2e": "playwright test",
     "check": "pnpm gen:check && pnpm typecheck && pnpm lint --max-warnings 0 && pnpm test && pnpm build",
     "materials": "node --import tsx lib/materials/cli.ts",
     "harness": "node --import tsx lib/harness/cli.ts",
@@ -24,6 +25,7 @@
     "db:fresh": "node --import tsx scripts/db-fresh.ts",
     "agent:run": "node --env-file-if-exists=.env.local --import tsx scripts/agent-run.ts"
   },
+  "packageManager": "pnpm@12.9.1",
   "devEngines": {
     "runtime": {
       "name": "node",
@@ -33,13 +35,12 @@
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.19",
-    "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.118.0",
     "@xyflow/react": "^12.12.0",
     "ajv": "^8.20.0",
     "ajv-formats": "^3.0.1",
     "lucide-react": "^1.61.0",
-    "monaco-editor": "^0.57.0",
+    "monaco-editor": "~0.55.1",
     "monaco-yaml": "^5.5.1",
     "next": "^16.4.2",
     "react": "^19.3.1",
@@ -48,12 +49,14 @@
     "yaml": "^2.9.1"
   },
   "devDependencies": {
+    "@clerk/testing": "^2.2.50",
     "@electric-sql/pglite": "^0.5.11",
     "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/web-push": "^3.6.4",
     "eslint": "^10.13.0",
     "eslint-config-next": "^16.4.2",
     "fast-check": "^4.10.2",

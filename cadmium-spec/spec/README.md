@@ -27,9 +27,11 @@ schema/
 examples/
   derelict_station/        Quest setting, science fiction
   sunless_crypt/           Quest setting, fantasy
+  lantern_coast/           Cadmium setting with the armor and stash modules, coastal city-states
+  sunken_archive/          Cadmium adventure on lantern_coast, the exemplar adventure
 ```
 
-The packs in `examples/` demonstrate the formats and are validated against them. They are neither a catalogue of available content nor a limit on what packs contain.
+The packs in `examples/` demonstrate the formats and are validated against them. They are neither a catalogue of available content nor a limit on what packs contain. `sunken_archive` and `lantern_coast` form the exemplar: a complete adventure and its setting that exercise the adventure format, the setting format, and the Cadmium modules together. The [adventure authoring guide](../docs/guides/adventure-authoring.md) builds a subset of it.
 
 All schemas share the base URI `https://schema.dungeon-crawler.invalid/v1/` and refer to each other by file name, so a validator loads the whole directory as one registry.
 

@@ -53,7 +53,7 @@ The work in `cadmium-spec/AGENTS.md` ("Phases") split into sprints that each fit
 
 ## Status
 
-All twelve migrations are applied to the remote database (rebuilt from `supabase/fresh.sql`, 2026-10-24).
+All thirteen migrations are applied to the remote database (rebuilt from `supabase/fresh.sql` on 2026-10-24; `20261025000000_campaign_archive` applied on 2026-10-25).
 
 ### Sprint 0: Foundations — closed
 
@@ -151,7 +151,7 @@ Done:
 
 Phase 1 is complete. Notes for sprint 6:
 
-- `guideAdventure()` and `derelictStation()` in `lib/materials/testing/fixtures.ts` give a compiled setting and adventure for engine tests; `lower_archive` is generated, so playing past the lift needs sprint 8's generator.
+- `stationAdventure()` (the guide adventure of that sprint, frozen in `lib/materials/testing/station_archive`) and `derelictStation()` in `lib/materials/testing/fixtures.ts` give a compiled setting and adventure for engine tests; `lower_archive` is generated, so playing past the lift needs sprint 8's generator.
 - Bundle refs are qualified (`base:hatch`); room references stay as written and resolve at runtime by the scopes in adventure-packs.md, "Room references".
 
 ### Sprint 6: Engine state and exploration — closed
@@ -321,7 +321,7 @@ Done:
 
 Open:
 
-- Realtime private channels need Supabase's Clerk third-party auth integration (Supabase dashboard, Authentication, Third-party auth, Clerk) so Supabase accepts Clerk session tokens; until then subscriptions fail and clients see commits only through `get_history`.
+- Done: Supabase's Clerk third-party auth integration is configured (the project owner, by 2026-10-25), so Supabase accepts Clerk session tokens on the Realtime private channels.
 - Two browsers over the deployed binding are verified only in tests with an in-memory broadcaster.
 - `narration` (template and model), `action_menu`, and `submit_input` come with sprints 14 and 15.
 
@@ -380,7 +380,7 @@ Done:
 - `/notifications` lists recent and upcoming session reminders, derived from schedules by the Scheduler's rules, refreshed by `session_reminder` on the user channel and every minute ([notification-records](SPEC_ISSUES.md#notification-records)). No migration.
 Open:
 
-- Web Push: needs `pnpm add web-push` and a VAPID key pair (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`); the Notifier takes a push function once they exist. Push subscriptions and Settings come with sprint 19.
+- Done: Web Push sends reminders through `web-push` (polish pass), and the VAPID key pair is set (the project owner, by 2026-10-25).
 - The cron schedule is not configured: Vercel Hobby allows daily cron jobs only, and a more frequent schedule fails the deployment. Every-minute runs need a plan that allows them, or an external scheduler calling `/api/cron/scheduler` with `CRON_SECRET`. Deadlines are also enforced on every request to an instance.
 
 ### Sprint 19: Settings, export, deletion — open
@@ -397,7 +397,6 @@ Done:
 Open:
 
 - In the Clerk dashboard, turn off users deleting their own accounts, so deletion goes through Settings and its 30-day recovery. A deletion at Clerk still marks the user deleted, and the purge erases the data after 90 days.
-- Sending Web Push needs `web-push` and VAPID keys; subscriptions are stored meanwhile.
 - `drafts/` and `assets/` in the export arrive with the adventure editor and portrait uploads.
 
 ### Sprint 20: Operations — open
@@ -505,12 +504,26 @@ Open:
 
 - The Terms of Service and Privacy Policy already describe portraits; they are offline for revision.
 
+### Polish pass (branch `cleanup-review`)
+
+- Web Push: `lib/notifier/push.ts` sends session reminders through `web-push` when `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` are set (`lib/server/push.ts`); gone subscriptions are deleted. This closes the Web Push items of sprints 18 and 19.
+- Edit as YAML is Monaco with `monaco-yaml` (`components/editor/yaml-editor.tsx`), with completion and marked errors from the specification's schemas. `monaco-editor` is pinned to `~0.55.1`, and `patches/monaco-worker-manager@2.0.1.patch` adapts monaco-yaml's worker manager to Monaco's `createWebWorker({ worker })`. This closes the Monaco item of sprint 16.
+- Arc graphs are React Flow (`components/editor/arc-graph.tsx`), and a rule card's effects reorder by drag. This closes the React Flow item of sprint 17.
+- The scheduler and the purge report failures instead of discarding them; the status colours are cadmium red deep, yellow deep, and green.
+- `pnpm audit:ui` also audits the editor's arc graph and YAML view, and `--screens REGEX` audits a subset.
+- Character creation and the character page explain roles and abilities behind info icons, for Quest and Cadmium.
+- Campaigns: the hub lists archived campaigns with Unarchive and recently deleted ones with Restore; the editor offers Unarchive and Delete campaign (title confirmed). Migration `20261025000000_campaign_archive` adds `cadmium_unarchive_campaign` and `cadmium_deleted_campaigns` ([campaign-unarchive](SPEC_ISSUES.md#campaign-unarchive)). The Privacy Policy (both copies) states how archived and deleted campaigns are kept, and its effective date and `TERMS_VERSION` change, so users accept it again.
+- Assignment 4: `AGENTS.md` at the root holds the data model and access rules, and `pnpm e2e` (`e2e/isolation.e2e.ts`) signs two Clerk test users in and checks that neither can list or open the other's drafts. It passes against the deployment's Supabase project with the bundles published.
+
+Open:
+
+
 ### Sprint 24: Exemplar adventure — open
 
 Built from the author's campaign draft, supplied separately and not committed.
 
-- `materials/lantern_coast/pack`: the setting for Cadmium with `armor` and `stash`. It adds the floret currency, sea and shore terrain (with `window` and `low_wall`, which block movement but not sight), people and creatures, goods with `armor` and `slots`, chests with `capacity`, the `vault_door` lock-and-key pair, and the `registry_vault` room template.
-- `materials/sunken_archive/pack`: the adventure, 1.0.0. It has 13 locations (one generated), 33 NPCs, six arcs with 76 triggers, and the endings `escaped` (six variants), `archive_sealed` (two), and `lost`. `materials/sunken_archive/README.md` maps the brief's coverage list to the pack, reports the schema and semantic passes, gives a walkthrough per ending, and lists departures from the draft.
+- `cadmium-spec/spec/examples/lantern_coast`: the setting for Cadmium with `armor` and `stash`. It adds the floret currency, sea and shore terrain (with `window` and `low_wall`, which block movement but not sight), people and creatures, goods with `armor` and `slots`, chests with `capacity`, the `vault_door` lock-and-key pair, and the `registry_vault` room template.
+- `cadmium-spec/spec/examples/sunken_archive`: the adventure, 1.0.0. It has 13 locations (one generated), 33 NPCs, six arcs with 76 triggers, and the endings `escaped` (six variants), `archive_sealed` (two), and `lost`. `docs/exemplar/sunken_archive.md` maps the brief's coverage list to the pack, reports the schema and semantic passes, gives a walkthrough per ending, and lists departures from the draft.
 - Scripted runs reach every ending: the golden scenarios `exemplar_escaped` (contract path), `exemplar_archive_sealed` (rumor path), and `exemplar_lost`. `lib/harness/exemplar.test.ts` covers room-wide rewards, purchases and affordability, stash capacity, the strongbox lock, the fog bank's lit-lamp lock, `item_given`, `set_hostile`, and NPCs moved between locations, and checks the coverage list against the pack files.
 - `tools/sim` (`pnpm sim`): seeded, replayable Monte Carlo fights of the exemplar's twelve encounters through the engine, sweeping party size, loadout, `armor.max`, and the octopus's hit points; it writes `tools/sim/REPORT.md`. One character finishes about one time in five to two in five, because of the octopus and the gallery ambush; two or more win every required fight. Tests: `tools/sim/sim.test.ts` (4).
 - `pnpm bundles` publishes `lantern_coast` and the exemplar in place of the guide adventure. The campaign material picker lists an adventure's required settings first ([generation-order](SPEC_ISSUES.md#generation-order)).
@@ -520,8 +533,9 @@ Built from the author's campaign draft, supplied separately and not committed.
 - The draft's lore of section 14.10 appears as background in topic text: six new topics and seven extended briefs.
 Open:
 
-- The agent-driven runs are built but not yet run: `pnpm agent:run` (reads `GROQ_API_KEY`, from `.env.local` when present). A Groq player model writes free text from a description of the view and a route guide per ending (`lib/agent/goals.ts`); the Groq parser turns it into a call with the Coordinator's retry and fallback; each run's turns and replayable log go to `agent-runs/`. `lib/agent/run.test.ts` checks the loop with a scripted parser.
+- Agent-driven runs (`pnpm agent:run`, which reads `GROQ_API_KEY` from `.env.local`): `lost` reaches its ending in 8 turns and replays. `escaped` did not converge: after 51 turns in about 4.5 hours the player model was acting on later steps of its route guide (the holds, the hatch) while still on the quay, the parser answered most of them with `improvise`, and Groq's limits had grown to waits of up to 22 minutes. The run was stopped; `archive_sealed` did not start. The route guide needs to give the player only the next step, or the run needs a paid Groq tier. A Groq player model writes free text from a description of the view and a route guide per ending (`lib/agent/goals.ts`); the Groq parser turns it into a call with the Coordinator's retry and fallback; each run's turns and replayable log go to `agent-runs/`. `lib/agent/run.test.ts` checks the loop with a scripted parser.
 - The balance values in `tools/sim/README.md` wait for the designers' target ranges; the packs keep the draft's values. The proposed Cadmium values are in [armor-tuning](SPEC_ISSUES.md#armor-tuning).
-- The packs are a proposal for the specification's `spec/examples/`; the brief's documentation updates are not made ([exemplar-location](SPEC_ISSUES.md#exemplar-location)).
 
 Done meanwhile: the play page shows `action_menu` suggestions as chips.
+
+Specification updates (branch `cleanup-review`): both packs are in the vendored specification's `spec/examples/`, with the brief's documentation updates: `spec/README.md` lists them, `docs/guides/adventure-authoring.md` builds the wreck of Perpetua from the exemplar's files, `docs/adventure-packs.md` quotes the exemplar, and `AGENTS.md` drops the open item and defines labelled excerpts. `tests/spec-validation.test.ts` checks that every quotation of `spec/examples/` is the whole file or an excerpt of it. The former guide adventure (Quest, `derelict_station`) is the application's fixture `lib/materials/testing/station_archive`, used by the compiler fixtures, the generator tests, and the `sunken_*` golden runs. The vendored specification differs from its pinned commit until the change is made upstream.

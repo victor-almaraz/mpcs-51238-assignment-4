@@ -1,6 +1,7 @@
 /* Cadmium design tokens (docs/design/README.md, Foundations). The Graphite neutrals are the
-   specification's (cadmium-spec/design/theme.css); the cadmium orange accent, the crimson danger, the
-   ochre warning, type, shape, and depth follow the pattern library (SPEC_ISSUES.md, design-system). */
+   specification's (cadmium-spec/design/theme.css). The colours are cadmium pigments: orange for the
+   accent, yellow for the pigment, red deep for danger, yellow deep for warning, and green for success.
+   They, type, shape, and depth follow the pattern library (SPEC_ISSUES.md, design-system). */
 
 @font-face { font-family: "Libertinus Serif"; src: url("/fonts/LibertinusSerif-Regular.woff2") format("woff2"); font-weight: 400; font-style: normal; font-display: swap; }
 @font-face { font-family: "Libertinus Serif"; src: url("/fonts/LibertinusSerif-Italic.woff2") format("woff2"); font-weight: 400; font-style: italic; font-display: swap; }
@@ -16,12 +17,12 @@
   --color-accent-strong: #8C370A;
   --color-accent-soft: #FDF0E6;
   --color-accent-line: #EDB48C;
-  --color-danger: #A8233F;
-  --color-danger-soft: #FCEEF1;
-  --color-warning: #7A5E00;
-  --color-warning-soft: #FAF4DC;
-  --color-success: #376F44;
-  --color-success-soft: #EDF6EE;
+  --color-danger: #A81E2A;
+  --color-danger-soft: #FCEDEC;
+  --color-warning: #7F5B00;
+  --color-warning-soft: #FAF3DA;
+  --color-success: #006B3C;
+  --color-success-soft: #E6F4EC;
   --color-selection: #FBDCC5;
   --color-border: #878481;
   --color-muted: #6A6761;
@@ -78,12 +79,12 @@
     --color-accent-strong: #FFC49A;
     --color-accent-soft: #55402F;
     --color-accent-line: #9C6A45;
-    --color-danger: #F59DB5;
-    --color-danger-soft: #573A44;
-    --color-warning: #DDC873;
+    --color-danger: #FF9AA2;
+    --color-danger-soft: #573A3E;
+    --color-warning: #E5C65C;
     --color-warning-soft: #4A4529;
-    --color-success: #96CAA0;
-    --color-success-soft: #3A4A3D;
+    --color-success: #86CFA4;
+    --color-success-soft: #33493D;
     --color-selection: #5E4535;
     --color-border: #888682;
     --color-pigment: #EDB93B;
@@ -104,12 +105,12 @@
   --color-accent-strong: #FFC49A;
   --color-accent-soft: #55402F;
   --color-accent-line: #9C6A45;
-  --color-danger: #F59DB5;
-  --color-danger-soft: #573A44;
-  --color-warning: #DDC873;
+  --color-danger: #FF9AA2;
+  --color-danger-soft: #573A3E;
+  --color-warning: #E5C65C;
   --color-warning-soft: #4A4529;
-  --color-success: #96CAA0;
-  --color-success-soft: #3A4A3D;
+  --color-success: #86CFA4;
+  --color-success-soft: #33493D;
   --color-selection: #5E4535;
   --color-border: #888682;
   --color-pigment: #EDB93B;

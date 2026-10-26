@@ -52,5 +52,5 @@ better than these numbers.
 | The great octopus | `hp: 6` in `sunken_archive`'s own copy of the template, if one character should usually finish; otherwise the adventure's minimum players becomes 2 | The author's choice; not applied |
 | Weapons and shop prices | No change: the boarding axe (damage 3) helps one character most, and two characters win without it | The draft, section 14.7 |
 
-The draft says the designers set target ranges before the runs. These proposals wait for those
-targets; the packs keep the draft's values.
+The draft leaves target ranges to the designers. The packs keep the draft's values, and the
+designers' ranges decide which proposals apply.

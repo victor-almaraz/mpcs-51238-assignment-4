@@ -5,6 +5,7 @@ import { listCampaigns } from "@/lib/api/campaigns";
 import { abilityOptions } from "@/lib/api/characters";
 import { campaignChoices } from "@/lib/systems/creation";
 import { creationRules, listSystems } from "@/lib/api/systems";
+import { withDescriptions } from "@/lib/server/ability-descriptions";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
 import { systemUi } from "@/components/systems";
@@ -41,7 +42,7 @@ export default async function NewCharacter({ searchParams }: { searchParams: Pro
   const store = serverStore();
   // A system with modules shows module fields for the chosen campaign (app-flow.md): offer the caller's campaigns.
   const [abilities, campaigns] = await Promise.all([
-    abilityOptions(store, system),
+    abilityOptions(store, system).then(withDescriptions),
     chosen.modules.length > 0 ? listCampaigns(store, user.id, { archived: false, limit: 100 }).then((p) => campaignChoices(p.items, system)) : [],
   ]);
   return (
@@ -52,6 +53,8 @@ export default async function NewCharacter({ searchParams }: { searchParams: Pro
         roles={rules.roles}
         abilities={abilities}
         count={rules.starting_abilities}
+        hp={rules.hp_max}
+        ap={rules.ap_start}
         campaigns={campaigns}
         campaign={campaign}
         systemTitle={chosen.title}

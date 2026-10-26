@@ -14,6 +14,8 @@ export interface DocBlock {
   file: string | undefined; // pack file the block is, e.g. "entities/creatures.yaml"; undefined for fragments
   section: string; // nearest level-2 heading
   fromSection: boolean; // file named by the section heading rather than the paragraph
+  example: string | undefined; // file of spec/examples/ the block quotes, relative to the specification root
+  excerpt: boolean; // the paragraph begins "Excerpt of": the block is part of `example`
   source: string;
 }
 
@@ -35,17 +37,31 @@ function markdownFiles(dir: string): string[] {
     });
 }
 
-function paragraphFile(lines: string[], fence: number): string | undefined {
+/** The lines of the paragraph right before the fence at `fence`, top first. */
+function paragraph(lines: string[], fence: number): string[] {
   let i = fence - 1;
   while (i >= 0 && lines[i]!.trim() === "") i--;
+  const end = i;
+  for (; i >= 0 && lines[i]!.trim() !== "" && !lines[i]!.startsWith("#"); i--);
+  return lines.slice(i + 1, end + 1);
+}
+
+function paragraphFile(text: string[]): string | undefined {
   const found = new Set<string>();
-  for (; i >= 0 && lines[i]!.trim() !== "" && !lines[i]!.startsWith("#"); i--) {
-    for (const m of lines[i]!.matchAll(/`([^`]+)`/g)) {
+  for (const line of text) {
+    for (const m of line.matchAll(/`([^`]+)`/g)) {
       const file = packFile(m[1]!);
       if (file) found.add(file);
     }
   }
   return found.size === 1 ? [...found][0] : undefined;
+}
+
+// AGENTS.md, "Validation before finishing", items 3 and 4: a block that names a file of
+// spec/examples/ quotes it whole, or, after "Excerpt of", in part.
+function quoted(text: string[]): { example: string | undefined; excerpt: boolean } {
+  const example = text.join(" ").match(/`(spec\/examples\/[^`]+\.yaml)`/)?.[1];
+  return { example, excerpt: example !== undefined && /^Excerpt of /.test(text[0] ?? "") };
 }
 
 export function docBlocks(specRoot: string): DocBlock[] {
@@ -63,13 +79,15 @@ export function docBlocks(specRoot: string): DocBlock[] {
       const fence = i;
       const body: string[] = [];
       for (i++; i < lines.length && !lines[i]!.startsWith("```"); i++) body.push(lines[i]!);
-      const named = paragraphFile(lines, fence);
+      const before = paragraph(lines, fence);
+      const named = paragraphFile(before);
       blocks.push({
         doc: relative(specRoot, path),
         line: fence + 1,
         file: named ?? sectionFile,
         section,
         fromSection: named === undefined && sectionFile !== undefined,
+        ...quoted(before),
         source: body.join("\n"),
       });
     }

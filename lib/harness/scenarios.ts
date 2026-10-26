@@ -7,7 +7,7 @@ import { findPath, type Cell } from "../grid";
 import { join } from "node:path";
 import { compileAdventure, compileSetting, formatDiagnostic } from "../materials";
 import { readPackDir } from "../materials/fs";
-import { derelictStation, guideAdventure } from "../materials/testing/fixtures";
+import { derelictStation, stationAdventure } from "../materials/testing/fixtures";
 import { Rng } from "../rng";
 import { CADMIUM } from "../systems/cadmium";
 import { QUEST } from "../systems/quest";
@@ -30,7 +30,7 @@ let sunken: Bundles | undefined;
 export function sunkenBundles(): Bundles {
   if (!sunken) {
     const setting = derelictStation();
-    const adventure = compileAdventure(guideAdventure(), [setting]).bundle!;
+    const adventure = compileAdventure(stationAdventure(), [setting]).bundle!;
     sunken = { system: QUEST, settings: [setting], adventure };
   }
   return sunken;
@@ -38,14 +38,14 @@ export function sunkenBundles(): Bundles {
 
 const vale = () => [character("c_1", "Vale", { abilities: [] })];
 
-const MATERIALS = join(process.cwd(), "materials");
+const EXAMPLES = join(process.cwd(), "cadmium-spec/spec/examples");
 let exemplar: Bundles | undefined;
 /** The exemplar: sunken_archive 1.0.0 on lantern_coast, for Cadmium with armor and stash. */
 export function exemplarBundles(): Bundles {
   if (!exemplar) {
-    const coast = compileSetting(readPackDir(join(MATERIALS, "lantern_coast/pack")));
+    const coast = compileSetting(readPackDir(join(EXAMPLES, "lantern_coast")));
     if (!coast.bundle) throw new Error(coast.diagnostics.map(formatDiagnostic).join("\n"));
-    const adventure = compileAdventure(readPackDir(join(MATERIALS, "sunken_archive/pack")), [coast.bundle]);
+    const adventure = compileAdventure(readPackDir(join(EXAMPLES, "sunken_archive")), [coast.bundle]);
     if (!adventure.bundle) throw new Error(adventure.diagnostics.map(formatDiagnostic).join("\n"));
     exemplar = { system: CADMIUM.configure(["armor", "stash"]), settings: [coast.bundle], adventure: adventure.bundle };
   }

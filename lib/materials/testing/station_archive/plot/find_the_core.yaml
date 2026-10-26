@@ -1,0 +1,37 @@
+id: find_the_core
+title: Find the Core
+stages: [inactive, searching, core_found, done]
+initial: inactive
+triggers:
+  - id: learn_of_core
+    on: { type: talked, npc: archivist, topic: core }
+    when: { stage: [find_the_core, inactive] }
+    effects:
+      - set_stage: { arc: find_the_core, stage: searching }
+    narrate: The archivist points toward the lift.
+    once: true
+
+  - id: power_lift
+    on: { type: interacted, target: lift_panel, verb: operate }
+    effects:
+      - set_flag: { flag: lift_powered, value: true }
+      - open_door: { door: lift_door }
+    narrate: The lift hums awake.
+    once: true
+
+  - id: take_core
+    on: { type: item_taken, ref: sunken_archive:reactor_core }
+    effects:
+      - set_stage: { arc: find_the_core, stage: core_found }
+      - add_flag: { flag: alarm_level, value: 1 }
+      - spawn: { ref: base:security_frame, room: dock.hangar, at: [12, 3] }
+      - reveal: { secret: archivist.sabotage }
+    narrate: Alarms wail through the stacks.
+    once: true
+
+  - id: escape
+    on: { type: moved, location: dock, to: airlock }
+    when: { stage: [find_the_core, core_found] }
+    effects:
+      - set_stage: { arc: find_the_core, stage: done }
+      - end_campaign: { ending: escaped }

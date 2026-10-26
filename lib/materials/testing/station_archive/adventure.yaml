@@ -1,0 +1,16 @@
+format_version: 2
+kind: adventure
+id: sunken_archive
+version: 0.1.0
+title: The Sunken Archive
+system: { id: quest, versions: "^1.0" }
+requires_settings:
+  - { id: derelict_station, versions: "^3.0" }
+players: [1, 4]
+start:
+  location: dock
+  room: airlock
+  effects: []
+endings:
+  escaped: { label: Escaped with the core }
+  lost: { label: Lost in the dark }

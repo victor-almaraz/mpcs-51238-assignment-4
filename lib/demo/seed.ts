@@ -5,7 +5,7 @@
 
 import { join } from "node:path";
 import { abilityOptions, createCharacter, updateCharacter } from "../api/characters";
-import { createCampaign, joinByLink, rotateInviteLink } from "../api/campaigns";
+import { archiveCampaign, createCampaign, deleteCampaign, joinByLink, rotateInviteLink } from "../api/campaigns";
 import { importDraft } from "../api/drafts";
 import type { Entropy } from "../api/entropy";
 import { addCharacter, createInstance, startInstance, submitAction } from "../api/instances";
@@ -62,10 +62,10 @@ export async function seedDemo(store: Store, now = new Date()): Promise<DemoWorl
   }
 
   // Materials, as an operator publishes them.
-  const coast = setting({ materials: "lantern_coast" });
+  const coast = setting({ example: "lantern_coast" });
   const settings = [setting({ example: "derelict_station" }), setting({ example: "sunless_crypt" }), setting({ materials: "quest_starter" }), coast];
   for (const b of settings) await store.putBundle(b, { origin: "operator" });
-  const exemplar = compileAdventure(pack({ materials: "sunken_archive" }), [coast]);
+  const exemplar = compileAdventure(pack({ example: "sunken_archive" }), [coast]);
   if (!exemplar.bundle) throw new Error(exemplar.diagnostics.map(formatDiagnostic).join("; "));
   await store.putBundle(exemplar.bundle, { origin: "operator" });
 
@@ -122,8 +122,14 @@ export async function seedDemo(store: Store, now = new Date()): Promise<DemoWorl
   await joinByLink(store, "user_demo", (await rotateInviteLink(store, "user_ari", theirs.id, e)).invite_link_code!);
 
   // An adventure draft: the exemplar itself, imported as an author would.
-  const files = [...pack({ materials: "sunken_archive" })].map(([name, data]) => ({ name: `sunken_archive/${name}`, data }));
+  const files = [...pack({ example: "sunken_archive" })].map(([name, data]) => ({ name: `sunken_archive/${name}`, data }));
   const draft = await importDraft(store, "user_demo", zip(files), e).catch((x) => void console.error("draft", (x as Error).message));
+
+  // Last, so the ids above stay the same: an archived campaign and a recently deleted one.
+  const past = await createCampaign(store, "user_demo", { title: "Summer in Vessaro", description: "A finished summer campaign.", system: "cadmium", system_versions: "^1.0", modules: ["armor", "stash"], materials }, e);
+  await archiveCampaign(store, "user_demo", past.id);
+  const dropped = await createCampaign(store, "user_demo", { title: "Test table", description: "A campaign made to try things out.", system: "cadmium", system_versions: "^1.0", modules: ["armor", "stash"], materials }, e);
+  await deleteCampaign(deps, "user_demo", { campaign_id: dropped.id, confirm: dropped.title });
 
   return { campaign: campaign.id, game: game.id, lobby: lobby.id, character: wren.id, draft: draft ? draft.draft.id : null, invitation, link };
 }

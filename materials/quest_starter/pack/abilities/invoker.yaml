@@ -1,40 +1,34 @@
-# The Invoker's quick start (Quest Creators Resource, chapter 3). Name, learning path,
-# and short description from the Creators Resource; costs are its lowest listed activation cost.
+# The Invoker's quick start (Quest Creators Resource, chapter 3). Name and learning path
+# from the Creators Resource, short description in ../../descriptions.yaml; costs are its lowest listed activation cost.
 
 declare:
   label: Declare
-  # Profess a reason for intervening in a matter, steeling your resolve.
   target: self
   system_stats: {"roles": ["invoker"], "path": "invocation", "cost": {"ap": 0}}
   effects: []
 petition:
   label: Petition
-  # While regrouping, recite a petition to receive a boon.
   target: self
   system_stats: {"roles": ["invoker"], "path": "invocation", "cost": {"ap": 2}}
   effects: []
 soul_gaze:
   label: Soul Gaze
-  # You peer into the eyes of another creature to sense their ideals and flaws.
   target: entity
   system_stats: {"roles": ["invoker"], "path": "inquiries", "cost": {"ap": 1}}
   effects: []
 fiery_avenger:
   label: Fiery Avenger
-  # You speak a phrase of power, igniting your weapon in magical flame.
   target: self
   system_stats: {"roles": ["invoker"], "path": "wrath", "cost": {"ap": 1}}
   effects: []
 thunderous_word:
   label: Thunderous Word
-  # You speak a word of power that releases a thunderous shockwave.
   target: entity
   system_stats: {"roles": ["invoker"], "path": "wrath", "cost": {"ap": 2}, "roll": true}
   effects:
     - {"damage": {"target": "target", "amount": 2, "type": "magic"}}
 shield:
   label: Shield
-  # Summon a magical shield that blocks damage.
   target: self
   system_stats: {"roles": ["invoker"], "path": "wards", "cost": {"ap": 1}}
   effects: []

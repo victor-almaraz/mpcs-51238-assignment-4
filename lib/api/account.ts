@@ -176,16 +176,16 @@ export async function exportMyData(store: Store, userId: string | null, now = ne
 
 /**
  * The purge stage (data-model.md, Deletion): erases accounts and campaigns deleted more than 90 days
- * ago, skipping held ones, and deletes each erased account's identity at the provider.
+ * ago, skipping held ones, and deletes each erased account's identity at the provider. An identity
+ * that fails to delete is reported in `identity_errors`; the account's data is erased regardless.
  */
 export async function runPurge(store: Store, deleteIdentity: (userId: string) => Promise<void>, now = new Date()) {
   const due = await store.purgeDue(now);
   for (const id of due.campaigns) await store.purgeCampaign(id);
-  const users: string[] = [];
+  const identity_errors: { user_id: string; message: string }[] = [];
   for (const id of due.users) {
     await store.purgeUser(id);
-    await deleteIdentity(id).catch(() => undefined);
-    users.push(id);
+    await deleteIdentity(id).catch((e: unknown) => identity_errors.push({ user_id: id, message: e instanceof Error ? e.message : String(e) }));
   }
-  return { users: users.length, campaigns: due.campaigns.length };
+  return { users: due.users.length, campaigns: due.campaigns.length, identity_errors };
 }

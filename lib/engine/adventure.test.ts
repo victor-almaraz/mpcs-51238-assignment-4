@@ -3,14 +3,14 @@
 
 import { describe, expect, it } from "vitest";
 import { compileAdventure } from "../materials";
-import { derelictStation, guideAdventure } from "../materials/testing/fixtures";
+import { derelictStation, stationAdventure } from "../materials/testing/fixtures";
 import { Rng } from "../rng";
 import { QUEST } from "../systems/quest";
 import { startInstance, submit, type Bundles, type GameEvent, type State } from "./index";
 import { character } from "./testing/world";
 
 const setting = derelictStation();
-const bundles: Bundles = { system: QUEST, settings: [setting], adventure: compileAdventure(guideAdventure(), [setting]).bundle! };
+const bundles: Bundles = { system: QUEST, settings: [setting], adventure: compileAdventure(stationAdventure(), [setting]).bundle! };
 const SEED = 11;
 
 function started(): State {

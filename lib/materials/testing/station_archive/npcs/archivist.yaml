@@ -1,0 +1,15 @@
+id: archivist
+name: Archivist Oyelaran
+template: base:civilian
+disposition: wary
+topics:
+  core:
+    label: the power core
+    brief: The core sits in the deepest stacks. The lift panel needs a keycard.
+    effects: []
+  keycard:
+    label: the keycard
+    when: { stage: [find_the_core, searching] }
+    brief: Someone dropped a keycard by the far wall of the hangar.
+secrets:
+  sabotage: She disabled the lift deliberately.

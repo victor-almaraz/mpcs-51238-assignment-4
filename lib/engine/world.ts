@@ -345,14 +345,6 @@ export function entityDistance(state: State, c: Content, a: string, b: string): 
   return footprintDistance(pa.at, pa.footprint, pb.at, pb.footprint, c.bundles.system.SPATIAL.metric);
 }
 
-/** Footprint sight between two placed things, for a viewer on `side`. */
-export function entitySees(state: State, c: Content, a: string, b: string, side: Side): boolean {
-  const pa = placement(state, c, a);
-  const pb = placement(state, c, b);
-  if (!pa || !pb || pa.location !== pb.location) return false;
-  return footprintSees(pa.at, pa.footprint, pb.at, pb.footprint, blocksSight(state, c, pa.location, side));
-}
-
 /** After every resolved action: every cell a character perceives becomes seen. */
 export function updateSeen(state: State, c: Content): void {
   const perception = new Perception(state, c);

@@ -3,7 +3,7 @@
 // lib/api through `attempt`.
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { archiveCampaign, createCampaign, disableInviteLink, joinByLink, removeMember, rotateInviteLink, setMaterials, updateCampaign } from "../api/campaigns";
+import { archiveCampaign, createCampaign, deleteCampaign, disableInviteLink, joinByLink, removeMember, restoreCampaign, rotateInviteLink, setMaterials, unarchiveCampaign, updateCampaign } from "../api/campaigns";
 import { addCharacter, createInstance, endInstance, pauseInstance, removeCharacter, resumeInstance, startInstance } from "../api/instances";
 import { acceptInvitation, declineInvitation, invite, previewInvitation, revokeInvitation } from "../api/invitations";
 import { attempt, type FormState } from "./forms";
@@ -32,6 +32,7 @@ const modulesFrom = (form: FormData) => form.getAll("modules").filter((v): v is 
 
 function refresh(campaignId: unknown): FormState {
   revalidatePath(`/campaigns/${String(campaignId)}`, "layout");
+  revalidatePath("/campaigns");
   return { error: null };
 }
 
@@ -67,6 +68,30 @@ export async function archiveCampaignAction(_: FormState, form: FormData): Promi
   const id = str(form, "campaign_id");
   const r = await attempt((uid) => archiveCampaign(serverStore(), uid, id));
   return "error" in r ? r : refresh(id);
+}
+
+export async function unarchiveCampaignAction(_: FormState, form: FormData): Promise<FormState> {
+  const id = str(form, "campaign_id");
+  const r = await attempt((uid) => unarchiveCampaign(serverStore(), uid, id));
+  return "error" in r ? r : refresh(id);
+}
+
+/** Deletes the campaign once its title is typed; its games end. Returns to the Campaigns page, which lists it under Recently deleted. */
+export async function deleteCampaignAction(_: FormState, form: FormData): Promise<FormState> {
+  const id = str(form, "campaign_id");
+  const r = await attempt((uid) => deleteCampaign(serverDeps(), uid, { campaign_id: id, confirm: str(form, "confirm") }));
+  if ("error" in r) return r;
+  revalidatePath("/campaigns");
+  revalidatePath("/dashboard");
+  redirect("/campaigns");
+}
+
+export async function restoreCampaignAction(_: FormState, form: FormData): Promise<FormState> {
+  const id = str(form, "campaign_id");
+  const r = await attempt((uid) => restoreCampaign(serverStore(), uid, id));
+  if ("error" in r) return r;
+  revalidatePath("/dashboard");
+  return refresh(id);
 }
 
 export async function removeMemberAction(_: FormState, form: FormData): Promise<FormState> {

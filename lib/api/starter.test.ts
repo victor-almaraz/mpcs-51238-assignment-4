@@ -9,7 +9,8 @@ import { readPackDir } from "../materials/fs";
 import type { Store } from "../store";
 import type { testDb } from "../store/testing/pglite";
 import { createCampaign } from "./campaigns";
-import { abilityOptions, createCharacter } from "./characters";
+import { withDescriptions } from "../server/ability-descriptions";
+import { abilityOptions, createCharacter, effectSentences } from "./characters";
 import type { Entropy } from "./entropy";
 import { addCharacter, createInstance, startInstance, submitAction, type Deps } from "./instances";
 import { entropy, SUNKEN, world } from "./testing/fixtures";
@@ -37,6 +38,22 @@ afterEach(async () => {
 });
 
 const quickStart = async (role: string) => (await abilityOptions(store, "quest")).filter((a) => a.roles.length === 1 && a.roles[0] === role).map((a) => a.ref);
+
+describe("ability information for new players", () => {
+  it("states each ability's cost, roll, target, path, and effects, with its Creators Resource description", async () => {
+    const options = withDescriptions(await abilityOptions(store, "quest"));
+    const by = (ref: string) => options.find((o) => o.ref === ref)!;
+    expect(by("starter:mend")).toMatchObject({ cost: 1, roll: false, target: "entity", path: "healing", effects: ["Restores 2 HP."], description: "You gently touch a creature, immediately restoring hit points and mending minor wounds." });
+    expect(by("starter:corrupt")).toMatchObject({ cost: 0, roll: true, effects: ["Deals 2 magic damage."] });
+    expect(by("starter:deathsense")).toMatchObject({ target: "self", effects: [] });
+    expect(by("starter:sleep").effects).toEqual(["Leaves the target asleep for 3 rounds."]);
+    expect(options.filter((o) => o.ref.startsWith("starter:")).every((o) => o.description)).toBe(true);
+  });
+
+  it("names unknown effects plainly and conditions by their label", () => {
+    expect(effectSentences([{ remove_condition: { target: "target", condition: "fevered" } }, { open_door: { door: "d" } }], { fevered: { label: "feverish" } })).toEqual(["Ends feverish.", "Open door."]);
+  });
+});
 
 describe("Quest Quick Start", () => {
   it("compiles with six abilities for each of the eight roles", () => {

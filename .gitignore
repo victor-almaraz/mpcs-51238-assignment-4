@@ -17,3 +17,4 @@ bundles/
 agent-runs/
 supabase/fresh.sql
 screenshots/
+.DS_Store

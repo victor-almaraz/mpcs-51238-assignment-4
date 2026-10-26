@@ -33,24 +33,31 @@ Each file has a JSON Schema in `spec/schema/`; see [spec/README.md](../spec/READ
 
 ## adventure.yaml
 
+The exemplar's `spec/examples/sunken_archive/adventure.yaml`:
+
 ```yaml
 format_version: 2
 kind: adventure
 id: sunken_archive
-version: 2.0.0
+version: 1.0.0
 title: The Sunken Archive
-system: { id: quest, versions: "^1.0" }
+description: >-
+  Perpetua, the Ironmasters' fortress-ship, sank among the Tessera Isles carrying the Royal
+  Reliquary's pledged collection. Crews race for it. Gather a chart fragment in a coast town,
+  cross the fog with a lit lamp, board the half-drowned wreck, and choose between leaving with an
+  artifact and sealing the archive with its keeper. For one to four characters.
+system: { id: cadmium, versions: "^1.0", modules: [armor, stash] }
 requires_settings:
-  - { id: derelict_station, versions: "^3.0" }
+  - { id: lantern_coast, versions: "^1.0" }
 players: [1, 4]
 start:
-  location: dock
-  room: airlock
+  location: orvelle
+  room: plaza
   effects: []
 endings:
-  escaped: { label: Escaped with the core }
+  escaped: { label: Escaped with an artifact }
   archive_sealed: { label: Sealed the archive }
-  lost: { label: Lost in the dark }
+  lost: { label: Lost to the tide }
 ```
 
 | Key | Required | Meaning |
@@ -69,12 +76,14 @@ The instance ends with ending `lost` when no character's status is `active`, if 
 
 Every flag used in the adventure MUST be declared.
 
+Excerpt of `spec/examples/sunken_archive/flags.yaml`:
+
 ```yaml
-alarm_level:   { type: int, min: 0, max: 3, initial: 0 }
-lift_powered:  { type: bool, initial: false }
-met_archivist: { type: bool, initial: false }
-faction:       { type: enum, values: [none, wardens, scavengers], initial: none }
-purse:         { type: int, min: 0, max: 400, initial: 12, scope: character, currency: base:credit }
+path:             { type: enum, values: [none, contract, rumor], initial: none }
+clues:            { type: int, min: 0, max: 5, initial: 0 }
+passage:          { type: bool, initial: false }
+keeper_fed:       { type: bool, initial: false }
+purse:            { type: int, min: 0, max: 400, initial: 12, scope: character, currency: coast:floret }
 ```
 
 Effects that set a flag outside its type or range fail compilation when the value is a literal, and are clamped at runtime when computed.
@@ -88,40 +97,70 @@ Effects that set a flag outside its type or range fail compilation when the valu
 | `scope` | `party` (default): one value for the instance. `character`: one value per character, set to `initial` when the character joins. |
 | `currency` | On an `int` flag: a setting's currency. The value is an amount in the currency's smallest unit, and the client shows it as coins. |
 
-Requirements read a character-scoped flag's value for the actor. `set_flag` and `add_flag` change the actor's value, or, with `target: room`, the value of every character in the actor's room; `target` on a party-scoped flag is a compilation error. Spending is `add_flag` with a negative value; affordability is `{ flag: purse, gte: 6 }`. No tool moves a flag value between characters, so coin cannot be given from one character to another. The client shows the acting character's currency flags in the character panel; models receive no flags, so a shop topic's `brief` states its price in words.
+Requirements read a character-scoped flag's value for the actor. `set_flag` and `add_flag` change the actor's value, or, with `target: room`, the value of every character in the actor's room; `target` on a party-scoped flag is a compilation error. Spending is `add_flag` with a negative value; affordability is `{ flag: purse, gte: 20 }`. No tool moves a flag value between characters, so coin cannot be given from one character to another. The client shows the acting character's currency flags in the character panel; models receive no flags, so a shop topic's `brief` states its price in words.
 
 ## plot/*.yaml
 
 Each file defines one arc. An arc is a state machine with named stages and triggers.
 
+Excerpt of `spec/examples/sunken_archive/plot/the_archive.yaml`:
+
 ```yaml
-id: find_the_core
-title: Find the Core
-stages: [inactive, searching, core_found, done]
-initial: inactive
+id: the_archive
+title: The Archive
+stages: [outside, aboard, below, resolved]
+initial: outside
 triggers:
-  - id: hear_rumor
-    on: { type: talked, npc: archivist, topic: core }
-    when: { stage: [find_the_core, inactive] }
+  - id: aboard
+    on: { type: moved, location: perpetua_deck }
     effects:
-      - set_stage: { arc: find_the_core, stage: searching }
-      - set_flag: { flag: met_archivist, value: true }
-    narrate: The archivist mentions a power core sealed below.
+      - set_stage: { arc: the_archive, stage: aboard }
+    narrate: >-
+      Perpetua leans in the shallows like a sleeper. Her iron decks are warm with sun above the water
+      line and cold below it, and every hatch has been torn at from outside.
     once: true
-
-  - id: core_taken
-    on: { type: item_taken, ref: sunken_archive:reactor_core }
+  - id: gallery_ambush
+    on: { type: moved, location: perpetua_deck, to: gallery }
     effects:
-      - set_stage: { arc: find_the_core, stage: core_found }
-      - add_flag: { flag: alarm_level, value: 1 }
+      - spawn: { ref: coast:drowned, room: gallery, at: [18, 1], id: deck_drowned_1 }
+      - spawn: { ref: coast:drowned, room: gallery, at: [18, 4], id: deck_drowned_2 }
       - start_combat: {}
+    narrate: >-
+      Two drowned sailors stand up out of the shallows of the gallery floor. Their lids are bare, no
+      eyes painted on them. They died unseen, and something below still commands them.
     once: true
-
-  - id: escape
-    on: { type: moved, location: dock, to: airlock }
-    when: { stage: [find_the_core, core_found] }
+  - id: winch
+    on: { type: interacted, target: winch, verb: operate }
     effects:
-      - end_campaign: { ending: escaped }
+      - set_flag: { flag: deck_open, value: true }
+      - open_door: { door: holds_hatch }
+    narrate: The winch groans and the iron hatch to the holds lifts on its chain, breathing out cold air.
+    once: true
+  - id: opened_book
+    on: { type: interacted, target: box_book, verb: open }
+    effects:
+      - spawn: { ref: opened_box, room: perpetua_holds.box_book }
+    once: true
+  - id: ring_sealed
+    on: { type: interacted, verb: seal }
+    effects:
+      - set_flag: { flag: ward_sealed, value: true }
+      - set_hostile: { target: ward_drowned_1, hostile: false }
+      - set_hostile: { target: ward_drowned_2, hostile: false }
+      - set_hostile: { target: ward_drowned_3, hostile: false }
+    narrate: >-
+      You shut the false seal in iron and drive the chisel through the hasp. All through the ship the
+      drowned lie down in the water, as if someone had finally painted their eyes.
+    once: true
+  - id: archive_sealed_quiet
+    on: { type: talked, npc: vantane, topic: seal }
+    when: { flag: hints, lte: 4 }
+    effects:
+      - set_stage: { arc: the_archive, stage: resolved }
+      - end_campaign: { ending: archive_sealed }
+    narrate: >-
+      Vantane walks out of the vault on your arm. Together you close the iron doors and open the sea-cocks, and the lower stacks fill with quiet water. The archive stays beneath the sea, and you leave with nothing but her account.
+    once: true
 ```
 
 ### Triggers
@@ -178,35 +217,40 @@ A generated location's rooms receive ids `r1` to `rN` in BFS order from the entr
 
 Anchor and link ids of a generated location MUST NOT be `entry`, `boss`, or of the form `r` followed by digits. Triggers about anchored content can also use the anchored entity: `item_taken` with its ref, `defeated`, or `near`. Room-template contents have no ids, so triggers cannot name them.
 
-`moved` events carry the room in `to` and the location in `location`. A trigger on arrival in a room matches both: `{ type: moved, location: dock, to: airlock }`.
+`moved` events carry the room in `to` and the location in `location`. A trigger on arrival in a room matches both: `{ type: moved, location: perpetua_deck, to: mooring }`.
 
 ### Authored
 
+The exemplar's `spec/examples/sunken_archive/locations/perpetua_deck.yaml`:
+
 ```yaml
-id: dock
+id: perpetua_deck
 kind: authored
 map:
   legend:
-    "+": { terrain: floor, place: base:hatch }
-    "o": { terrain: floor, place: base:crate_stack }
+    "w": window
+    "~": shallows
   rows:
-    - "################"
-    - "#....#.........#"
-    - "#....+...o.....#"
-    - "#....#.........#"
-    - "#....#...o.....#"
-    - "################"
+    - "########################"
+    - "#.......w......w.......#"
+    - "#..............w.......#"
+    - "#.......w..............#"
+    - "#.......w......w.......#"
+    - "#~~~~~~~#~~~~~~#~~~~~~~#"
+    - "########################"
   rooms:
-    airlock: { label: airlock, tags: [entry], area: [[1, 1, 4, 4]] }
-    hangar:  { label: hangar, tags: [large], area: [[5, 2, 1, 1], [6, 1, 9, 4]] }
+    mooring: { label: Perpetua's mooring, tags: [ship, wreck], light: dim, area: [[1, 1, 7, 5], [8, 2, 1, 1]] }
+    chart_room: { label: chart room, tags: [ship, wreck], light: dim, area: [[9, 1, 6, 5], [15, 3, 1, 1]] }
+    gallery: { label: long gallery, tags: [ship, wreck], light: dark, area: [[16, 1, 7, 5]] }
   links:
-    x_lift: { label: lift, at: [14, 2], to: { location: lower_archive, link: x_up } }
+    x_stair: { label: down to the Drowned Stair, at: [1, 3], to: { location: drowned_stair, link: x_perpetua } }
+    x_down: { label: the hatch to the holds, at: [22, 3], to: { location: perpetua_holds, link: x_up } }
   contents:
-    - { id: lift_door, ref: base:bulkhead, at: [14, 2], lock: { flag: lift_powered } }
-    - { id: lift_panel, ref: base:control_panel, at: [13, 1] }
-    - { ref: base:locker, at: [13, 4] }
-    - { ref: base:keycard, room: hangar }
-    - { npc: archivist, at: [7, 3] }
+    - { id: chart_door, ref: coast:hatch, at: [8, 2] }
+    - { id: gallery_door, ref: coast:hatch, at: [15, 3] }
+    - { id: crates, ref: coast:crate_stack, at: [4, 2] }
+    - { id: winch, ref: coast:winch, at: [12, 1] }
+    - { id: holds_hatch, ref: coast:deck_hatch, at: [22, 3], lock: { flag: deck_open } }
 ```
 
 | Key | Required | Meaning |
@@ -218,32 +262,37 @@ map:
 
 Each `contents` entry places a template given by `ref`, or an NPC given by `npc`. An NPC's entity id is its NPC id. A `ref` entry MAY set `id`; triggers and effects refer to the entity by that id. Entries without `id` receive a generated id and cannot be referenced by triggers.
 
-A link leads to the named link of another location; travel in both directions needs a link on each side. A link at a door's cell is passable only while the door is open: in the example, the lift opens when a trigger applies `open_door: { door: lift_door }`.
+A link leads to the named link of another location; travel in both directions needs a link on each side. A link at a door's cell is passable only while the door is open: in the example, the link `x_down` to the holds is usable once the `winch` trigger applies `open_door: { door: holds_hatch }`.
 
 ### Generated
 
+The exemplar's `spec/examples/sunken_archive/locations/perpetua_holds.yaml`:
+
 ```yaml
-id: lower_archive
+id: perpetua_holds
 kind: generated
 generator:
   algorithm: bsp
-  size: [40, 28]
-  rooms: [10, 14]
-  min_room: 3
+  size: [44, 30]
+  rooms: [9, 12]
+  min_room: 4
   loop_ratio: 0.1
 population:
-  encounter_table: base:encounters_machine
-  loot_table: base:locker_loot
-  room_templates: [base:reactor_room]
-  density: 0.5
+  encounter_table: coast:encounters_holds
+  loot_table: coast:hold_loot
+  room_templates: [coast:registry_vault]
+  density: 0.4
   ambient: dark
-  lit_rooms: 0.2
+  lit_rooms: 0.25
 anchors:
-  - id: core_anchor
-    place: { ref: sunken_archive:reactor_core }
-    constraints: { min_depth: 4, prefer_role: dead_end }
+  - { id: box_book, place: { ref: sealed_iron_box_book, id: box_book }, constraints: { min_depth: 1 } }
+  - { id: box_folio, place: { ref: sealed_iron_box_folio, id: box_folio }, constraints: { min_depth: 1 } }
+  - { id: box_glass, place: { ref: sealed_iron_box_glass, id: box_glass }, constraints: { min_depth: 1 } }
+  - { id: box_stone, place: { ref: sealed_iron_box_stone, id: box_stone }, constraints: { min_depth: 1 } }
+  - { id: keeper, place: { npc: vantane }, constraints: { prefer_role: boss }, shared: true }
 links:
-  x_up: { label: service lift, role: entry, to: { location: dock, link: x_lift } }
+  x_up: { label: the ladder to the deck, role: entry, to: { location: perpetua_deck, link: x_down } }
+  x_ward: { label: the iron door to the ward chamber, role: dead_end, to: { location: ward_chamber, link: x_in } }
 gates_per_location: 1
 ```
 
@@ -251,22 +300,48 @@ Generator keys are defined in [generation.md](generation.md). Each entry in `lin
 
 ## npcs/*.yaml
 
+Excerpt of `spec/examples/sunken_archive/npcs/vantane.yaml`:
+
 ```yaml
-id: archivist
-name: Archivist Oyelaran
-template: base:civilian
+id: vantane
+name: Oriel Vantane
+template: coast:commoner
 disposition: wary
 topics:
-  core:
-    label: the power core
-    when: { not: { flag: alarm_level, gte: 2 } }
-    brief: The core powers the lift. It is sealed in the lower archive.
-    effects: []
-  self:
-    label: herself
-    brief: She has maintained the archive alone for years.
+  rising:
+    label: how Perpetua sank
+    brief: >-
+      She saw the dead rise from the sea, sailors with no eyes painted on their lids. They climbed the
+      sides of the ship and tore at the hatches until the holds flooded, and she locked herself in the
+      vault, which opens only from outside.
+  ration:
+    label: a ship's biscuit from your pack
+    when: { has_item: coast:ration }
+    brief: >-
+      Vantane takes the biscuit in both hands and eats it slowly, crumb by crumb, as if it might be
+      the last. When she looks up she has stopped counting the halls, and she talks to you the way
+      she once talked to her crew.
+    effects:
+      - remove_item: { target: actor, ref: coast:ration }
+      - set_flag: { flag: keeper_fed, value: true }
+  ring:
+    label: the ring in the open box
+    when: { any: [ { flag: clues, gte: 2 }, { flag: keeper_fed } ] }
+    brief: She calls the ring in the ward chamber a false seal, and asks what you have heard of it.
+    effects:
+      - set_flag: { flag: ward_known, value: true }
+      - reveal: { secret: vantane.forgery }
+  seal:
+    label: sealing the archive
+    when: { flag: ward_sealed }
+    brief: >-
+      With the false seal shut in iron, Vantane agrees to leave the vault. She asks you to close the
+      iron doors behind you and flood the lower stacks, so the archive stays beneath the water.
 secrets:
-  sabotage: She disabled the lift deliberately.
+  forgery: >-
+    The ring is a recent forgery. Its three faces follow the Reliquary's registry drawing of the head,
+    not the Chapter's liturgical order, so whoever forged it had the registry open in front of them. It
+    commands the dead who died unseen.
 ```
 
 | Key | Meaning |
@@ -277,7 +352,7 @@ secrets:
 | `topics` | Topics available to the `talk` tool. A topic is available when its `when` holds. |
 | `brief` | Facts the narrator MAY state when the topic is discussed. |
 | `effects` | Effects applied when the topic is discussed. |
-| `secrets` | Facts withheld from the narrator until revealed with `reveal: { secret: archivist.sabotage }`. |
+| `secrets` | Facts withheld from the narrator until revealed with `reveal: { secret: vantane.forgery }`. |
 
 ## What the models receive
 
@@ -325,7 +400,7 @@ The Content Compiler accepts an adventure directory, or an adventure editor draf
 Errors identify file, path, and cause:
 
 ```
-plot/core.yaml: triggers[1].on.item: unknown ref 'reactor_cor'
+plot/the_archive.yaml: triggers[15].on.ref: unknown ref 'antique_priest_rng'
 ```
 
 The compiler exits with a non-zero status on any error and emits no bundle.

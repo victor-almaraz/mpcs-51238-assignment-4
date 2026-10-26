@@ -88,7 +88,6 @@ export interface DoorTemplate extends Common {
 }
 
 export type EntityTemplate = CreatureTemplate | ItemTemplate | ContainerTemplate | FixtureTemplate | ObstacleTemplate | DoorTemplate;
-export type EntityKind = EntityTemplate["kind"];
 
 export interface TerrainDef {
   label: string;

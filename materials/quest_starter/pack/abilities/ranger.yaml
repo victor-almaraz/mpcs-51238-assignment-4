@@ -1,39 +1,33 @@
-# The Ranger's quick start (Quest Creators Resource, chapter 3). Name, learning path,
-# and short description from the Creators Resource; costs are its lowest listed activation cost.
+# The Ranger's quick start (Quest Creators Resource, chapter 3). Name and learning path
+# from the Creators Resource, short description in ../../descriptions.yaml; costs are its lowest listed activation cost.
 
 commune:
   label: Commune
-  # Invent a local saying to charm information out of a commoner.
   target: self
   system_stats: {"roles": ["ranger"], "path": "story and song", "cost": {"ap": 1}}
   effects: []
 read_the_winds:
   label: Read the Winds
-  # You sense weather patterns, and can predict the weather in the days ahead.
   target: self
   system_stats: {"roles": ["ranger"], "path": "pathfinder", "cost": {"ap": 0}}
   effects: []
 speak_with_animal:
   label: Speak with Animal
-  # You form a bond with an animal, allowing you to interpret its thoughts and feelings.
   target: entity
   system_stats: {"roles": ["ranger"], "path": "friend", "cost": {"ap": 1}}
   effects: []
 animal_partner:
   label: Animal Partner
-  # You bond with a nearby animal who becomes your companion and follows your instructions.
   target: entity
   system_stats: {"roles": ["ranger"], "path": "friend", "cost": {"ap": 4}}
   effects: []
 track:
   label: Track
-  # You can pick up on tracks left nearby and identify the type of creature that left them.
   target: self
   system_stats: {"roles": ["ranger"], "path": "hunter", "cost": {"ap": 0}}
   effects: []
 remedy:
   label: Remedy
-  # Scavenge your area to find a plant-based remedy for an ailment.
   target: self
   system_stats: {"roles": ["ranger"], "path": "survivalist", "cost": {"ap": 1}}
   effects: []

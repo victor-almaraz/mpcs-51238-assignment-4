@@ -5,7 +5,7 @@ import { deflateRawSync } from "node:zlib";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { unzip, zip } from "../export/zip";
 import { draftFiles } from "../materials";
-import { guideAdventure } from "../materials/testing/fixtures";
+import { stationAdventure } from "../materials/testing/fixtures";
 import type { Store } from "../store";
 import type { testDb } from "../store/testing/pglite";
 import { createCampaign } from "./campaigns";
@@ -126,7 +126,7 @@ describe("drafts", () => {
   });
 
   it("imports and exports adventure directories as ZIPs", async () => {
-    const files = [...guideAdventure()].map(([name, data]) => ({ name: `sunken_archive/${name}`, data: String(data) }));
+    const files = [...stationAdventure()].map(([name, data]) => ({ name: `sunken_archive/${name}`, data }));
     const { draft, diagnostics } = await importDraft(store, "user_a", zip(files), e);
     expect(diagnostics).toEqual([]);
     expect(draft.material_id).toBe("sunken_archive");

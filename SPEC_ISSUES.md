@@ -948,20 +948,6 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 
 **Proposed resolution.** Define the asset fields of the bundle and the archive `publish_bundle` accepts, or make bundles carry files.
 
-## exemplar-location
-
-| Field | Value |
-|---|---|
-| Document | `briefs/example-adventure.md` |
-| Section | Goal; Deliverables; Documentation updates; Acceptance |
-| Marker | `materials/sunken_archive/README.md` |
-
-**Problem.** The brief places `lantern_coast` and `sunken_archive` in the specification's `spec/examples/` and edits `spec/README.md`, `docs/guides/adventure-authoring.md`, `docs/adventure-packs.md`, and `AGENTS.md` in the same change. This application vendors the specification at a pinned commit and does not change it. The brief also names `sunken_archive` for both the exemplar (1.0.0, `lantern_coast`, Cadmium) and the existing guide adventure (0.1.0, `derelict_station`, Quest), whose snippets `docs/adventure-packs.md` quotes.
-
-**Implemented.** Both packs live in `materials/lantern_coast/pack` and `materials/sunken_archive/pack`, in the brief's file layout, as a proposal for `spec/examples/`. `materials/sunken_archive/README.md` holds the schema and semantic pass report and the walkthroughs. The documentation updates are not made. The guide adventure stays the fixture for the guide's snippets; `pnpm bundles` publishes the exemplar instead of it.
-
-**Proposed resolution.** Copy both pack directories into `spec/examples/`, then make the four documentation updates. Rename the guide adventure, or make the guide build a subset of the exemplar as the brief asks.
-
 ## generation-order
 
 | Field | Value |
@@ -1126,7 +1112,7 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 
 **Problem.** Margin lays every editing and play screen out as one 34rem page column with a 14rem margin of numbered notes beside it, and sets the interface in Libertinus Serif and Sans. In use, the narrow column wastes the window on the play and editor screens, numbered notes make the reader match numbers to lines, and round status hidden in the margin is easy to miss. Comparable tools give each of the margin's jobs its own established place: inline field errors with an error summary, a problems panel with a count in the status bar, a persistent turn tracker, and a selection-driven side pane.
 
-**Implemented.** The application's own pattern library, `docs/design/README.md`, replaces Margin for this application: size classes, hub, detail, form, and workspace layouts, the components in `components/ui/`, and per-screen patterns, with sources. The Graphite neutrals and contrast minimums, the Lucide icon vocabulary, and the writing rules stay. The accent is cadmium orange instead of Graphite's lavender, after the product's name; danger moves to crimson and warning to ochre so that neither reads as the accent; cadmium yellow is added as the mark of what is happening now. The software is set in the system font and the story in self-hosted Libertinus Serif (`app/theme.css`).
+**Implemented.** The application's own pattern library, `docs/design/README.md`, replaces Margin for this application: size classes, hub, detail, form, and workspace layouts, the components in `components/ui/`, and per-screen patterns, with sources. The Graphite neutrals and contrast minimums, the Lucide icon vocabulary, and the writing rules stay. The accent is cadmium orange instead of Graphite's lavender, after the product's name; danger, warning, and success are cadmium red deep, cadmium yellow deep, and cadmium green, chosen so that neither danger nor warning reads as the accent; cadmium yellow is the mark of what is happening now. The software is set in the system font and the story in self-hosted Libertinus Serif (`app/theme.css`).
 
 **Proposed resolution.** Replace the Margin documents with a pattern library along these lines, or keep Margin for the specification and state that applications may substitute their own design system that meets the same accessibility and contrast requirements.
 
@@ -1157,3 +1143,17 @@ Points where the specification in `cadmium-spec/` is silent, contradictory, or i
 **Implemented.** The play page plays the character named by `?character=<id>`, or the user's first character in the instance. In the turn tracker, the user's other characters are links that switch the page to them.
 
 **Proposed resolution.** Add the choice to the Play interface: the turn tracker, or a character menu, switches between the user's characters in the instance.
+
+## campaign-unarchive
+
+| Field | Value |
+|---|---|
+| Document | `docs/api.md`; `docs/app-flow.md` |
+| Section | Campaigns (`archive_campaign`, `delete_campaign`, `restore_campaign`); Campaign editor |
+| Marker | `lib/api/campaigns.ts` |
+
+**Problem.** `archive_campaign` has no inverse, so an archived campaign stays archived. `restore_campaign` takes the id of a deleted campaign, but no operation lists deleted campaigns, so the interface cannot offer the restore that the 30-day recovery stage promises.
+
+**Implemented.** `unarchive_campaign` (author; `conflict` unless archived) clears `archived`. `list_deleted_campaigns` returns the caller's campaigns deleted less than 30 days ago, each with `restorable_until` and `erased_by`. The Campaigns page lists archived campaigns with Unarchive and recently deleted ones with Restore; the campaign editor offers Unarchive and Delete campaign. Migration `20261025000000_campaign_archive` adds the two SQL functions.
+
+**Proposed resolution.** Add `unarchive_campaign` and `list_deleted_campaigns` to api.md's Campaigns operations and the HTTP binding, and the archived and deleted lists to app-flow.md's Campaigns hub and Campaign editor.

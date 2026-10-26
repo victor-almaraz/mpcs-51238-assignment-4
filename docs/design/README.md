@@ -2,8 +2,8 @@
 
 The interface patterns of this application. They replace the specification's Margin design
 (`cadmium-spec/docs/design/`) for this application; see
-[SPEC_ISSUES.md](../../SPEC_ISSUES.md#design-system). Routes, contents, and behaviour stay as
-`cadmium-spec/docs/app-flow.md` specifies them. The patterns follow how comparable tools lay out the
+[SPEC_ISSUES.md](../../SPEC_ISSUES.md#design-system). Routes, contents, and behaviour follow
+`cadmium-spec/docs/app-flow.md`. The patterns follow how comparable tools lay out the
 same tasks; [Sources](#sources) lists them.
 
 ## Principles
@@ -15,7 +15,7 @@ same tasks; [Sources](#sources) lists them.
 | Problems appear where they are and in one list | A field or entity shows its own error; a count in the toolbar opens the list of all of them. No numbered footnotes. |
 | Status is always in view | Round, turn, save state, and connection sit in a bar that does not scroll away. |
 | The story is set like a book; the software is not | Narration, room text, briefs, and page and section titles use Libertinus Serif. Controls, data, and card titles use the system font. |
-| Colour means something | The cadmium orange accent marks what can be acted on and the current selection; cadmium yellow marks what is happening now; crimson marks errors and destructive actions. Every status also has an icon or a word. |
+| Colour means something | The cadmium orange accent marks what can be acted on and the current selection; cadmium yellow marks what is happening now; cadmium red marks errors and destructive actions. Every status also has an icon or a word. |
 
 ## Foundations
 
@@ -45,14 +45,15 @@ The Graphite neutrals stay, with their light and dark values and contrast minimu
 |---|---|---|---|
 | `accent` | `#B4490F` cadmium orange | `#F5A66A` | Links, primary buttons, selection, the current item, focus rings, the logo |
 | `pigment` | `#F2C14E` cadmium yellow | `#EDB93B` | What is happening now (see Identity); a fill behind `pigment-ink` only |
-| `danger` | `#A8233F` crimson | `#F59DB5` | Errors and destructive actions |
-| `warning` | `#7A5E00` ochre | `#DDC873` | Waiting states (lobby, maybe, draft) and warnings |
-| `success` | `#376F44` green | `#96CAA0` | Done, available, published |
+| `danger` | `#A81E2A` cadmium red deep | `#FF9AA2` | Errors and destructive actions |
+| `warning` | `#7F5B00` cadmium yellow deep | `#E5C65C` | Waiting states (lobby, maybe, draft) and warnings |
+| `success` | `#006B3C` cadmium green | `#86CFA4` | Done, available, published |
 
 Each has `-soft` (a tinted background) and the accent also `-strong` (hover) and `-line` (decorative
-borders); `selection` tints selected rows. Accent and danger text meet 4.5:1 on `page`, `desk`, and
-their `-soft` tint in both themes, and white text meets 4.5:1 on an accent fill. Danger and warning
-sit away from the accent's hue, crimson and ochre, so no status reads as an action (`app/theme.css`).
+borders); `selection` tints selected rows. Accent, danger, warning, and success text meet 4.5:1 on
+`page`, `desk`, and their `-soft` tint in both themes, and white text meets 4.5:1 on an accent fill.
+Danger takes the deep, blue side of cadmium red and warning the deep side of cadmium yellow, so
+neither shares the accent's hue and no status reads as an action (`app/theme.css`).
 Surfaces: `desk` behind workspaces and hub pages; `page` for cards, panels, and
 inputs; `raised` for menus, dialogs, and sheets. The theme follows the system unless the user picks
 Light or Dark in Settings.
@@ -186,7 +187,7 @@ otherwise.
 |---|---|---|
 | Hub | Dashboard, Characters, Campaigns, Adventures, Notifications | Page header (title, one-line description, primary action); a "Needs you" strip when anything does; titled sections of cards or rows; an empty state per section with the action that fills it |
 | Detail | Campaign, game lobby, character, schedule, history | Page header with breadcrumb, title, status badge, and actions; a main column of sections; an aside (summary facts, people, next session) beside it on expanded screens and under it otherwise |
-| Form | New character, new campaign, new adventure, campaign editor, settings sections, accept terms | Page header; an error summary at the top after a failed submit; fields in titled groups; actions at the foot, primary first |
+| Form | New character, new campaign, new adventure, campaign editor, settings sections, accept terms | Page header; fields in titled groups; actions at the foot, primary first; after a failed submit, the error in a `danger` notice under the fields |
 | Workspace | Play, adventure editor | A toolbar; panes; a status bar. See [Play](#play) and [Adventure editor](#adventure-editor) |
 
 ## Components
@@ -208,7 +209,6 @@ All live in `components/ui/`. Each is the only way the application draws that th
 | `Badge` | A word on a tint, with an optional icon (a dot only for a live state): neutral, accent, success, warning, danger, and pigment (Your turn, Live now) | Colour is never the only signal |
 | `Field` | Label above the control, hint under the label, error under the control with an icon | `label` bound to the control; hint and error joined by `aria-describedby`; `aria-invalid` on error |
 | `TextInput`, `TextArea`, `Select`, `Checkbox`, `Radio` | 40 px controls (checkboxes 20 px with a 40 px hit area) | Native elements |
-| `ErrorSummary` | A `danger` box at the top of a form listing each error as a link to its field | Receives focus after a failed submit; `role="alert"` |
 | `Notice` | Inline message with icon: info, success, warning, danger | `role="status"` for success, `alert` for errors |
 | `Tabs` | Underlined tabs for sections of one page; labels sit on the content edge, 24 px apart | APG tabs: arrow keys move, `aria-selected` |
 | `EmptyState` | Centred icon, one sentence, and the action that fills the space | |
@@ -227,6 +227,15 @@ game, RSVP buttons, Join when it is live). Then **Your games**: cards with the g
 user's character, a status badge, and Continue. Then **Campaigns**, **Characters**, and
 **Adventures** as card grids with a New button in each section header and an empty state when empty.
 
+### Campaigns
+
+A hub: **You run** and **You play** as card grids, the code form, then **Archived** as a list with
+Unarchive on each campaign the viewer runs, and **Recently deleted** (shown when not empty) with each
+deletion's date, the last day to restore it, and Restore. The campaign editor ends with Archive
+campaign in a plain card (or the archived notice with Unarchive), then Delete campaign in the danger
+zone, confirmed by typing the title. An archived campaign's page shows the archived notice under its
+header.
+
 ### Character creation
 
 One page in titled steps that can be revisited: System, Role, Abilities (a checklist counted against
@@ -234,6 +243,14 @@ six, with the remaining count beside the heading), Name and description, and, fo
 campaign with its module facts. A summary card beside the steps (under them on compact) lists each
 choice with a Change link. Create character is the primary button, disabled with its reason until the
 choices are complete.
+
+Information for new players sits behind info icons (`components/ui/with-info.tsx`), so the choices stay
+short: an icon button beside the subject, named for it ("About the fighter"), with `aria-expanded`,
+shows the details under it. Beside the Role step's hint, "New to Quest?" (or Cadmium) gives attributes,
+roles, AP, rolls, and HP in one sentence each, with the system's numbers. A role's icon gives its
+learning paths and how many abilities suggest it. An ability's icon gives its description where its
+pack ships one, its cost, roll, target, and path, and its effect in a sentence. The character page's
+abilities have the same icons (`components/systems/ability-info.tsx`, for Quest and Cadmium).
 
 ### Campaign
 
@@ -334,8 +351,7 @@ Every screen meets WCAG 2.2 AA:
 - GitHub dashboard: https://docs.github.com/en/account-and-profile/reference/personal-dashboard
 - Linear inbox: https://linear.app/docs/inbox
 - AI Dungeon play modes: https://help.aidungeon.com/faq/how-to-play
-- GOV.UK error summary and check answers: https://design-system.service.gov.uk/components/error-summary/,
-  https://design-system.service.gov.uk/patterns/check-answers/
+- GOV.UK check answers: https://design-system.service.gov.uk/patterns/check-answers/
 - Android window size classes:
   https://developer.android.com/develop/ui/compose/layouts/adaptive/use-window-size-classes
 - WAI-ARIA APG grid and modal dialog: https://www.w3.org/WAI/ARIA/apg/patterns/grid/,

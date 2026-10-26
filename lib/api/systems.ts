@@ -64,10 +64,10 @@ export function getSystemSchema(id: unknown, kind: unknown, modules: unknown = [
 }
 
 /** What a creation form offers: the system's roles and how many starting abilities it requires. */
-export function creationRules(id: unknown): { roles: string[]; starting_abilities: number } {
+export function creationRules(id: unknown): { roles: string[]; starting_abilities: number; hp_max: number; ap_start: number } {
   const system = systemOrThrow(id);
-  const data = SYSTEM_DATA[system.ID]!.data as { roles: string[]; starting_abilities: number };
-  return { roles: data.roles.slice(), starting_abilities: data.starting_abilities };
+  const data = SYSTEM_DATA[system.ID]!.data as { roles: string[]; starting_abilities: number; hp_max: number; ap_start: number };
+  return { roles: data.roles.slice(), starting_abilities: data.starting_abilities, hp_max: data.hp_max, ap_start: data.ap_start };
 }
 
 /** The declared systems a campaign of `id` accepts (systems/README.md, Compatibility). */

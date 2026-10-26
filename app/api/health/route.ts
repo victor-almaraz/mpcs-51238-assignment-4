@@ -20,6 +20,7 @@ const PROBES: [migration: string, fn: string, args: Record<string, unknown>][] =
   ["20261023001000_assets", "cadmium_get_asset", { p_hash: "health" }],
   ["20261023001100_portraits", "cadmium_asset_meta", { p_hash: "health" }],
   ["20261024000000_access_hardening", "cadmium_user_active", { p_id: "health" }],
+  ["20261025000000_campaign_archive", "cadmium_deleted_campaigns", { p_author: "health" }],
 ];
 
 /** Whether the caller presented the cron secret, and so may see the details. */
@@ -30,7 +31,7 @@ function operator(request: Request): boolean {
 
 export async function GET(request: Request) {
   const detailed = operator(request);
-  const settings = configured();
+  const settings = { ...configured(), webPush: !!process.env.VAPID_PUBLIC_KEY?.trim() && !!process.env.VAPID_PRIVATE_KEY?.trim() };
   if (!settings.supabaseUrl || !settings.supabaseServiceRoleKey) {
     return Response.json(detailed ? { status: "unconfigured", database: "unconfigured", settings } : { status: "unconfigured" }, { status: 503 });
   }

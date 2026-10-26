@@ -44,4 +44,3 @@ export function IconLink({ label, icon, href, dense, tone = "ink", tip, tipSide,
 /** Lucide props for interface icons: 20 px (16 dense), 1.75 stroke at every size. */
 export const ICON = { size: 20, strokeWidth: 1.75, absoluteStrokeWidth: true, "aria-hidden": true } as const;
 export const ICON_DENSE = { ...ICON, size: 16 } as const;
-export type IconNode = ReactNode;

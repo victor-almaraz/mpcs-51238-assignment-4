@@ -66,11 +66,6 @@ export async function requiredSettingsAction(draftId: string, requires: unknown)
   return "ok" in r ? r.ok : null;
 }
 
-export async function validateDraftAction(draftId: string) {
-  const r = await attempt((uid) => validateDraft(serverStore(), uid, draftId));
-  return "error" in r ? [] : r.ok;
-}
-
 export async function publishDraftAction(_: FormState, form: FormData): Promise<FormState> {
   const id = str(form, "draft_id");
   const r = await attempt((uid) => publishDraft(serverStore(), uid, { draft_id: id, version: str(form, "version") }));

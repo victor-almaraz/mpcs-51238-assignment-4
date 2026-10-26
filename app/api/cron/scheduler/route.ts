@@ -3,11 +3,14 @@
 import { runScheduler } from "@/lib/scheduler/run";
 import { notifier } from "@/lib/notifier";
 import { serverDeps } from "@/lib/server/coordinator";
+import { webPushFromEnv } from "@/lib/server/push";
 
 export async function GET(request: Request): Promise<Response> {
   const secret = process.env.CRON_SECRET;
   if (!secret) return Response.json({ error: "CRON_SECRET is not set" }, { status: 503 });
   if (request.headers.get("authorization") !== `Bearer ${secret}`) return Response.json({ error: "unauthorized" }, { status: 401 });
   const deps = serverDeps();
-  return Response.json(await runScheduler({ ...deps, defer: undefined }, notifier(deps.broadcast)));
+  const summary = await runScheduler({ ...deps, defer: undefined }, notifier(deps.broadcast, webPushFromEnv(deps.store)));
+  for (const e of summary.errors) console.error(`scheduler: ${e.step} failed for instance ${e.instance_id}: ${e.message}`);
+  return Response.json(summary);
 }
