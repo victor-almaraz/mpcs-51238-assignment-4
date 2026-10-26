@@ -18,6 +18,7 @@ import { zip } from "../export/zip";
 import { compileAdventure, compileSetting, formatDiagnostic } from "../materials";
 import { readPackDir } from "../materials/fs";
 import type { Store } from "../store";
+import { quickStartFor } from "../systems/creation";
 
 export const DEMO_USERS = [
   { id: "user_demo", email: "vera@example.org", display_name: "Vera Lindqvist", operator: true },
@@ -71,7 +72,9 @@ export async function seedDemo(store: Store, now = new Date()): Promise<DemoWorl
 
   // Characters.
   const options = await abilityOptions(store, "cadmium");
-  const six = (role: string) => options.filter((a) => a.roles.includes(role)).slice(0, 6).map((a) => a.ref);
+  // Each character is the role's Quick Start, from Quest Quick Start, which the campaigns below include.
+  const starter = options.filter((a) => a.ref.startsWith("starter:"));
+  const six = (role: string) => quickStartFor(role, starter, 6);
   const wren = await createCharacter(store, "user_demo", { system: "cadmium", name: "Wren Halloway", choices: { role: "fighter", abilities: six("fighter") } }, e);
   await updateCharacter(store, "user_demo", { character_id: wren.id, profile: { description: "A former lamplighter from Salinara who still counts the beacons as she walks." } });
   await createCharacter(store, "user_demo", { system: "quest", name: "Rook", choices: { role: "spy", abilities: six("spy") } }, e);
