@@ -7,10 +7,11 @@
 // (4.5:1, or 3:1 for large text); a visible focus indicator on the first focusable elements; no
 // horizontal scrolling; console errors, page errors, and hydration failures; and the Hierarchy rules
 // (headings only at the type scale's sizes, no serif heading inside a card, a 16 px card inset, and page
-// title, section headings, and tab labels on one content edge). Views that need a click to open, such as
+// title, section headings, and tab labels on one content edge); and spacing (a box at least 8 px from the
+// blocks beside it, and text at least 8 px inside its box). Views that need a click to open, such as
 // the adventure editor's arc graph and YAML view, are audited after their screen.
 import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, resolve } from "node:path";
 import { chromium, type Page } from "@playwright/test";
 
 /** Views reached by acting on a screen: the screen whose path matches `on`, then `open`. */
@@ -40,7 +41,7 @@ const arg = (name: string, fallback: string) => {
   return i > 0 && process.argv[i + 1] ? process.argv[i + 1]! : fallback;
 };
 const base = arg("base", "http://localhost:3100");
-const out = join(process.cwd(), arg("out", "screenshots/audit.md"));
+const out = resolve(arg("out", "screenshots/audit.md"));
 const scheme = arg("scheme", "light") === "dark" ? "dark" : "light";
 /** Audits only the screens whose path matches. */
 const only = new RegExp(arg("screens", ""));
@@ -53,7 +54,7 @@ interface Finding {
 /** The in-page checks; returns findings. Runs in the browser. */
 function pageChecks(): Finding[] {
   const found: Finding[] = [];
-  const add = (rule: string, detail: string) => found.push({ rule, detail: detail.slice(0, 160) });
+  const add = (rule: string, detail: string) => found.push({ rule, detail: detail.slice(0, 260) });
   const visible = (el: Element) => {
     const r = el.getBoundingClientRect();
     const s = getComputedStyle(el);
@@ -201,6 +202,71 @@ function pageChecks(): Finding[] {
     for (const h of [...document.querySelectorAll("main section > div > div > h2")].filter(shown)) if (/Libertinus/.test(getComputedStyle(h).fontFamily) && !h.closest("aside, [data-aside]")) off(h, h.getBoundingClientRect().left);
     const tab = [...document.querySelectorAll("main [role=tablist]")].filter(shown)[0]?.querySelector("[role=tab]");
     if (tab) off(tab, tab.getBoundingClientRect().left + parseFloat(getComputedStyle(tab).paddingLeft));
+  }
+
+  // Spacing (docs/design/README.md, Foundations: Spacing): a bordered or filled box at least 8 px from
+  // the block above and below it, and text at least 8 px inside the box around it. Rows of a divided
+  // list share their borders; controls, pills, and the editor's own widgets are their own boxes.
+  const alpha = (c: string) => {
+    const m = c.match(/[\d.]+/g) ?? [];
+    return m.length >= 4 ? Number(m[3]) : m.length === 3 ? 1 : 0;
+  };
+  /** The sides with a visible border. */
+  const sides = (el: Element) => {
+    const s = getComputedStyle(el);
+    return (["Top", "Right", "Bottom", "Left"] as const).filter((k) => parseFloat(s[`border${k}Width`]) > 0 && alpha(s[`border${k}Color`]) > 0);
+  };
+  const bordered = (el: Element) => sides(el).length > 0;
+  const filled = (el: Element) => {
+    const s = getComputedStyle(el);
+    return alpha(s.backgroundColor) > 0.05 && s.backgroundColor !== getComputedStyle(el.parentElement ?? el).backgroundColor;
+  };
+  const where = (el: Element) => `${describe(el)} .${String(el.className).split(" ").slice(0, 6).join(".")}`;
+  // A box is outlined on every side or filled; a one-sided border is a divider, not a box.
+  const isBox = (el: Element) => (sides(el).length === 4 || filled(el)) && !el.matches("input, select, textarea, button, a, hr, img, svg, [role=separator]");
+  // Controls, pills, inline code, table parts, and the editor's widgets are their own boxes.
+  const own = "button, a, input, select, textarea, label, code, kbd, thead, tbody, tr, th, td, [role=tab], [role=tooltip], .rounded-full, .monaco-editor, .react-flow, [data-workspace]";
+  const main = document.querySelector("main");
+  for (const p of main ? [...main.querySelectorAll("*")] : []) {
+    if (!shown(p) || p.closest(own) || /\bdivide-/.test(String(p.className))) continue;
+    const kids = [...p.children].filter((c) => shown(c) && !["absolute", "fixed"].includes(getComputedStyle(c).position) && getComputedStyle(c).display !== "inline");
+    for (let i = 1; i < kids.length; i++) {
+      const a = kids[i - 1]!;
+      const b = kids[i]!;
+      if (!(isBox(a) || isBox(b)) || (a.tagName === "LI" && b.tagName === "LI")) continue;
+      const ra = a.getBoundingClientRect();
+      const rb = b.getBoundingClientRect();
+      if (Math.min(ra.right, rb.right) <= Math.max(ra.left, rb.left) || rb.top < ra.bottom - 1) continue;
+      const gap = Math.round(rb.top - ra.bottom);
+      if (gap < 8) add("stacked-gap", `${gap}px between ${where(a)} and ${where(b)}`);
+    }
+  }
+  const inset = new Set<Element>();
+  const texts = main ? document.createTreeWalker(main, NodeFilter.SHOW_TEXT) : undefined;
+  for (let n = texts?.nextNode(); n; n = texts!.nextNode()) {
+    const el = n.parentElement;
+    if (!(n.textContent ?? "").trim() || !el || !shown(el) || el.closest(own) || el.closest("[aria-hidden=true], svg")) continue;
+    let box: Element | null = null;
+    for (let e: Element | null = el; e && e !== main; e = e.parentElement) {
+      if (bordered(e) || filled(e)) {
+        box = e;
+        break;
+      }
+    }
+    if (!box || box.closest(own) || inset.has(box)) continue;
+    const range = document.createRange();
+    range.selectNodeContents(n);
+    const t = range.getBoundingClientRect();
+    const r = box.getBoundingClientRect();
+    // Text scrolled out of view in an overflow box is not measured.
+    if (t.width < 1 || t.left < r.left || t.right > r.right) continue;
+    // Against each bordered side, or every side of a filled box.
+    const gaps = { Top: t.top - r.top, Right: r.right - t.right, Bottom: r.bottom - t.bottom, Left: t.left - r.left };
+    const d = Math.round(Math.min(...(filled(box) ? Object.values(gaps) : sides(box).map((k) => gaps[k]))));
+    if (d < 8) {
+      inset.add(box);
+      add("text-inset", `${d}px: "${(n.textContent ?? "").trim().slice(0, 30)}" in ${where(box)}`);
+    }
   }
 
   // Horizontal overflow.

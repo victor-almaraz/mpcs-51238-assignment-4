@@ -4,7 +4,7 @@
 // Writes <out>/NN-<screen>-wide.png (1280 px) and -narrow.png (390 px), full page, and <out>/README.md
 // listing each screen with the browser console errors it logged.
 import { mkdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { chromium } from "@playwright/test";
 
 const arg = (name: string, fallback: string) => {
@@ -12,7 +12,7 @@ const arg = (name: string, fallback: string) => {
   return i > 0 && process.argv[i + 1] ? process.argv[i + 1]! : fallback;
 };
 const base = arg("base", "http://localhost:3100");
-const out = join(process.cwd(), arg("out", "screenshots"));
+const out = resolve(arg("out", "screenshots"));
 mkdirSync(out, { recursive: true });
 
 const browser = await chromium.launch({ channel: "chrome", headless: true });

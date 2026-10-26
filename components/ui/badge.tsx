@@ -5,7 +5,8 @@ import { cx } from "./cx";
 export type Tone = "neutral" | "accent" | "success" | "warning" | "danger" | "pigment";
 
 const tones: Record<Tone, string> = {
-  neutral: "bg-desk text-muted",
+  // On a desk-coloured page the tint alone disappears, so the neutral pill has a hairline ring.
+  neutral: "bg-desk text-muted ring-1 ring-inset ring-rule",
   accent: "bg-accent-soft text-accent",
   success: "bg-success-soft text-success",
   warning: "bg-warning-soft text-warning",

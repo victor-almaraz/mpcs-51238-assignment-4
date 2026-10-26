@@ -42,7 +42,7 @@ export function EnterCode({ id = "code" }: { id?: string }) {
         <Field id={id} label="Invitation or invite link code" hint={hint} className="min-w-0 flex-1">
           <TextInput name="code" required autoComplete="off" spellCheck={false} className="font-mono text-code" {...described(id, { hint })} />
         </Field>
-        <Button type="submit" className="h-10">
+        <Button type="submit" className="h-10 self-start sm:self-auto">
           Open
         </Button>
       </div>

@@ -66,9 +66,13 @@ export default async function Campaigns() {
           </Section>
         </>
       )}
-      <div className="mt-2 mb-10 max-w-form">
-        <EnterCode />
-      </div>
+      <Section id="join" title="Join a campaign" description="With the code or link from an invitation.">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="sm:col-span-2">
+            <EnterCode />
+          </div>
+        </div>
+      </Section>
       <Section id="archived" title={`Archived (${archived.items.length})`} description="Archived campaigns keep their games and members, and accept no new games, members, or invitations.">
         {archived.items.length === 0 ? (
           <EmptyState icon={<Archive {...ICON} />}>No archived campaigns. Archive a campaign from its editor; you can unarchive it here.</EmptyState>

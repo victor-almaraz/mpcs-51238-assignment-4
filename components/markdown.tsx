@@ -75,8 +75,23 @@ export function Markdown({ source, children }: { source: string; children?: Reac
         );
       }
       const [head, ...body] = rows;
+      // A table on expanded screens; on compact ones each row stacks as its column names and values.
       blocks.push(
-        <div key={k} className="mt-4 max-w-full relative overflow-x-auto rounded-card border border-rule bg-page">
+        <dl key={`${k}s`} className="mt-4 flex flex-col divide-y divide-rule rounded-card border border-rule bg-page text-caption sm:hidden">
+          {body.map((r, n) => (
+            <div key={n} className="grid grid-cols-[minmax(0,7rem)_minmax(0,1fr)] gap-x-3 gap-y-1 px-4 py-3">
+              {r.map((c, j) => (
+                <div key={j} className="contents">
+                  <dt className="text-label font-medium text-muted">{inline(head![j] ?? "", `${k}s${n}h${j}`)}</dt>
+                  <dd className="min-w-0 break-words">{inline(c, `${k}s${n}c${j}`)}</dd>
+                </div>
+              ))}
+            </div>
+          ))}
+        </dl>,
+      );
+      blocks.push(
+        <div key={k} className="relative mt-4 hidden max-w-full overflow-x-auto rounded-card border border-rule bg-page sm:block">
           <table className="w-full border-collapse text-left text-caption">
           <thead>
             <tr>
@@ -126,9 +141,12 @@ export function Markdown({ source, children }: { source: string; children?: Reac
     );
   }
   return (
-    <article className="mx-auto w-full min-w-0 max-w-prose px-4 py-8 text-body text-ink sm:px-6 sm:py-10">
-      {blocks}
-      {children}
+    // On the pages' shared content edge, with the text at prose width.
+    <article className="mx-auto w-full min-w-0 max-w-page px-4 pt-8 pb-12 text-body text-ink sm:px-6">
+      <div className="max-w-prose">
+        {blocks}
+        {children}
+      </div>
     </article>
   );
 }
