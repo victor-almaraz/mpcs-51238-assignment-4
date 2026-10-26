@@ -110,11 +110,11 @@ function GameCard({ game: i, userId }: { game: GameItem; userId: string }) {
 export default async function Dashboard() {
   const user = await pageUser();
   const store = serverStore();
-  const [characters, campaigns] = await Promise.all([listCharacters(store, user.id, { limit: 100 }), listCampaigns(store, user.id, { archived: false, limit: 100 })]);
+  const [characters, campaigns] = await Promise.all([listCharacters(store, user.id, { archived: false, limit: 100 }), listCampaigns(store, user.id, { archived: false, limit: 100 })]);
   const instances = await gamesOf(store, user.id, campaigns.items);
   const active = instances.filter((i) => i.status !== "ended");
   const finished = instances.filter((i) => i.status === "ended");
-  const drafts = await listDrafts(store, user.id, { limit: 20 });
+  const drafts = await listDrafts(store, user.id, { archived: false, limit: 20 });
   const where = new Map(instances.map((i) => [i.id, i.name]));
   // The next 7 days across all instances (app-flow.md, Dashboard: Upcoming sessions).
   const now = requestTime();

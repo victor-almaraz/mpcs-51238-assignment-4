@@ -1,11 +1,10 @@
 "use client";
 import { useFormAction } from "@/components/form-action";
-import { retireCharacterAction, updateCharacterAction } from "@/lib/server/actions";
+import { updateCharacterAction } from "@/lib/server/actions";
 import type { FormState } from "@/lib/server/forms";
 import { Button } from "@/components/ui/button";
 import { Field, TextInput, described } from "@/components/ui/field";
 import { Notice } from "@/components/ui/notice";
-import { DangerZone } from "@/components/ui/card";
 import { Section } from "@/components/ui/page";
 
 const QUESTIONS = [
@@ -13,14 +12,12 @@ const QUESTIONS = [
   { key: "look", label: "How you look" },
 ];
 
-export function CharacterEditor({ id, name, profile, editable, retirable }: { id: string; name: string; profile: Record<string, string>; editable: boolean; retirable: boolean }) {
+export function CharacterEditor({ id, name, profile, editable }: { id: string; name: string; profile: Record<string, string>; editable: boolean }) {
   const [saved, save, saving] = useFormAction<FormState>(updateCharacterAction, { error: null });
-  const [retired, retire, retiring] = useFormAction<FormState>(retireCharacterAction, { error: null });
   const keys = [...QUESTIONS, ...Object.keys(profile).filter((k) => !QUESTIONS.some((q) => q.key === k)).map((k) => ({ key: k, label: k.charAt(0).toUpperCase() + k.slice(1) }))];
   const locked = editable ? undefined : "character-locked";
   return (
-    <>
-      <Section id="details" title="Details">
+    <Section id="details" title="Details">
         <form {...save} className="flex flex-col gap-4 rounded-card border border-rule bg-page p-4">
           <input type="hidden" name="character_id" value={id} />
           {!editable && (
@@ -47,23 +44,6 @@ export function CharacterEditor({ id, name, profile, editable, retirable }: { id
             </Button>
           </div>
         </form>
-      </Section>
-      {retirable && (
-        <DangerZone id="retire" title="Retire character">
-          <form {...retire} className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-            <input type="hidden" name="character_id" value={id} />
-            <p className="text-muted">A retired character can no longer join games.</p>
-            <Button type="submit" variant="danger" disabled={retiring} className="shrink-0">
-              {retiring ? "Retiring…" : "Retire character"}
-            </Button>
-            {retired.error && (
-              <Notice tone="danger" live className="sm:basis-full">
-                {retired.error}
-              </Notice>
-            )}
-          </form>
-        </DangerZone>
-      )}
-    </>
+    </Section>
   );
 }

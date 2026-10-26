@@ -55,7 +55,7 @@ export default async function Lobby({ params }: { params: Promise<{ id: string }
   const campaign = await getCampaign(store, user.id, instance.campaign_id);
   const author = campaign.author_id === user.id;
   const names = new Map(campaign.members.map((m) => [m.user_id, m.display_name]));
-  const mine = (await listCharacters(store, user.id, { status: "available", limit: 100 })).items.filter((c) => accepted(instance.system).includes(c.system));
+  const mine = (await listCharacters(store, user.id, { status: "available", archived: false, limit: 100 })).items.filter((c) => accepted(instance.system).includes(c.system));
   const open = instance.status === "lobby" || instance.status === "paused";
   const now = requestTime();
   const next = (await listOccurrences(store, user.id, { instance_id: instance.id, from: new Date(now).toISOString(), to: new Date(now + 92 * 86_400_000).toISOString() })).find((o) => o.status !== "cancelled");
