@@ -6,7 +6,7 @@ import { unzip } from "../export/zip";
 import type { Store } from "../store";
 import type { testDb } from "../store/testing/pglite";
 import { addPushSubscription, MAX_PUSH_SUBSCRIPTIONS, exportMyData, listPushSubscriptions, removePushSubscription, requestAccountDeletion, restoreAccount, runPurge, updateMe } from "./account";
-import { createCampaign, getCampaign, joinByLink, rotateInviteLink } from "./campaigns";
+import { createCampaign, deleteCampaign, getCampaign, joinByLink, listDeletedCampaigns, restoreCampaign, rotateInviteLink } from "./campaigns";
 import { createCharacter } from "./characters";
 import type { Entropy } from "./entropy";
 import { addCharacter, createInstance, startInstance, submitAction, type Deps } from "./instances";
@@ -125,6 +125,27 @@ describe("deletion", () => {
     expect(rows.every((r) => r.payload.actor_label === "Former player")).toBe(true);
     expect((await db.query("select 1 from input_logs where user_id = 'user_b'")).rows).toHaveLength(0);
     expect((await db.query("select 1 from rsvps where user_id = 'user_b'")).rows).toHaveLength(0);
+  });
+
+  it("erases a deleted campaign after 90 days with its games, schedule, and invitations; members keep their characters", async () => {
+    const { k, instance, rook } = await lives();
+    await invite(store, "user_a", { campaign_id: k.id, note: "for Cy" }, e);
+    await deleteCampaign(deps, "user_a", { campaign_id: k.id, confirm: "Archive" });
+    expect(await code(getCampaign(store, "user_b", k.id))).toBe("not_found");
+    expect(await store.getCharacter(rook.id)).toMatchObject({ status: "available" });
+    const purge = () => runPurge(store, async () => undefined);
+    await db.query("update campaigns set deleted_at = now() - interval '31 days' where id = $1", [k.id]);
+    expect(await code(restoreCampaign(store, "user_a", k.id))).toBe("conflict");
+    expect(await listDeletedCampaigns(store, "user_a")).toEqual([]);
+    await db.query("update campaigns set deleted_at = now() - interval '89 days' where id = $1", [k.id]);
+    expect(await purge()).toMatchObject({ campaigns: 0 });
+    await db.query("update campaigns set deleted_at = now() - interval '91 days' where id = $1", [k.id]);
+    expect(await purge()).toMatchObject({ users: 0, campaigns: 1 });
+    expect(await store.deletedCampaign(k.id)).toBeUndefined();
+    for (const [table, column, id] of [["instances", "campaign_id", k.id], ["invitations", "campaign_id", k.id], ["campaign_members", "campaign_id", k.id], ["events", "instance_id", instance.id], ["commits", "instance_id", instance.id], ["scheduled_sessions", "instance_id", instance.id]] as const)
+      expect((await db.query(`select 1 from ${table} where ${column} = $1`, [id])).rows, table).toHaveLength(0);
+    expect((await db.query("select 1 from rsvps where user_id = 'user_b'")).rows).toHaveLength(0);
+    expect(await store.getCharacter(rook.id)).toMatchObject({ status: "available", instance_id: null });
   });
 
   it("erases the account when the identity provider fails, and reports the failure", async () => {
