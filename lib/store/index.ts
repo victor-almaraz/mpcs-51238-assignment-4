@@ -117,7 +117,7 @@ export interface CharacterRecord {
   portrait_asset: string | null;
   status: "available" | "in_instance" | "dead" | "retired";
   instance_id: string | null;
-  /** Kept out of the owner's lists and out of games until unarchived (SPEC_ISSUES.md#character-draft-archive). */
+  /** Kept out of games until unarchived (api.md, Characters). */
   archived: boolean;
   created_at: string;
 }
@@ -211,7 +211,7 @@ export interface DraftRecord {
   revision: number;
   diagnostics: { pointer: string; severity: "error" | "warning"; code: string; message: string }[];
   last_published_version: string | null;
-  /** Kept out of the owner's drafts and from publishing until unarchived (SPEC_ISSUES.md#character-draft-archive). */
+  /** Kept from publishing until unarchived (api.md, Adventure drafts). */
   archived: boolean;
   created_at: string;
   updated_at: string;
@@ -279,6 +279,11 @@ export class Store {
 
   async getBundle(kind: "setting" | "adventure", id: string, version: string): Promise<SettingBundle | AdventureBundle | undefined> {
     return (await this.rpc.call<SettingBundle | AdventureBundle | null>("cadmium_get_bundle", { p_kind: kind, p_id: id, p_version: version })) ?? undefined;
+  }
+
+  /** Deletes the bundle version unless a campaign or game uses it; returns how many do (both zero when deleted). */
+  async deleteBundle(kind: string, id: string, version: string): Promise<{ campaigns: number; games: number }> {
+    return this.rpc.call("cadmium_delete_bundle", { p_kind: kind, p_id: id, p_version: version });
   }
 
   async setListed(kind: string, id: string, version: string, listed: boolean): Promise<void> {

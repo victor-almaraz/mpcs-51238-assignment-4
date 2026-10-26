@@ -1,7 +1,7 @@
 "use server";
 // Server actions for the operator console.
 import { revalidatePath } from "next/cache";
-import { applyReport, inspectInstance, publishBundle, replayInstance, restoreInstance, setListed } from "../api/admin";
+import { applyReport, deleteBundle, inspectInstance, publishBundle, replayInstance, restoreInstance, setListed } from "../api/admin";
 import { serverDeps } from "./coordinator";
 import { attempt, save, str, type FormState } from "./forms";
 
@@ -26,6 +26,11 @@ export async function publishAction(_: FormState, form: FormData): Promise<FormS
 export async function listedAction(_: FormState, form: FormData): Promise<FormState> {
   const listed = str(form, "listed") === "true";
   return save((uid) => setListed(serverDeps().store, uid, { kind: str(form, "kind"), id: str(form, "id"), version: str(form, "version"), listed }), consolePage, `${listed ? "Listed" : "Unlisted"} ${str(form, "id")} ${str(form, "version")}.`);
+}
+
+/** Deletes a bundle version that no campaign or game uses; one in use stays, and the error says how many use it. */
+export async function deleteBundleAction(_: FormState, form: FormData): Promise<FormState> {
+  return save((uid) => deleteBundle(serverDeps().store, uid, { kind: str(form, "kind"), id: str(form, "id"), version: str(form, "version") }), consolePage, `Deleted ${str(form, "kind")} ${str(form, "id")} ${str(form, "version")}.`);
 }
 
 export async function restoreAction(_: FormState, form: FormData): Promise<FormState> {

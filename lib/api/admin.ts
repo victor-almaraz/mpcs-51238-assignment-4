@@ -14,6 +14,7 @@ import { SYSTEMS } from "../systems";
 import { endGames } from "./campaigns";
 import { ApiError, onlyFields } from "./errors";
 import { coordinated, endAny, type Deps } from "./instances";
+import { bundleRef, deleteUnused } from "./materials";
 import { caller } from "./users";
 
 export async function operator(store: Store, userId: string | null, operation: string): Promise<UserRecord> {
@@ -40,7 +41,7 @@ const text = (v: unknown, field: string, max = 500): string => {
 export async function publishBundle(store: Store, userId: string | null, input: unknown) {
   const user = await operator(store, userId, "publish_bundle");
   const req = onlyFields(input, ["kind", "bundle"]);
-  // SPEC_ISSUES.md#asset-delivery: the asset files travel beside the bundle, keyed by SHA-256.
+  // The asset files travel beside the bundle, keyed by SHA-256 (spec/README.md, "Asset files").
   const { files = {}, ...json } = (req.bundle && typeof req.bundle === "object" ? req.bundle : {}) as { files?: Record<string, { mime: string; data: string; width?: number; height?: number }> };
   let bundle: SettingBundle | AdventureBundle;
   try {
@@ -93,6 +94,15 @@ export async function setListed(store: Store, userId: string | null, input: unkn
   if (!(await store.getBundle(req.kind, req.id, req.version))) throw new ApiError("not_found", "no such bundle");
   await store.setListed(req.kind, req.id, req.version, req.listed);
   await store.logOperation(user.id, req.listed ? "list" : "unlist", `${req.kind}:${req.id}@${req.version}`);
+}
+
+/** delete_bundle: the operator deletes a bundle version that no campaign or game uses. */
+export async function deleteBundle(store: Store, userId: string | null, input: unknown) {
+  const user = await operator(store, userId, "delete_bundle");
+  const ref = bundleRef(input);
+  if (!(await store.getBundle(ref.kind, ref.id, ref.version))) throw new ApiError("not_found", "no such bundle");
+  await deleteUnused(store, ref);
+  await store.logOperation(user.id, "delete_bundle", `${ref.kind}:${ref.id}@${ref.version}`);
 }
 
 export async function listBundles(store: Store, userId: string | null) {

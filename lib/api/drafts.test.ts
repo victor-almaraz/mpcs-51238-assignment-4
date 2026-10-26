@@ -14,7 +14,7 @@ import { DAY } from "./deletion";
 import { copyDraft, createDraft, deleteDraft, exportDraft, getDraft, importDraft, listDrafts, publishDraft, publishSuggestion, restoreDraft, saveDraft, validateDraft } from "./drafts";
 import type { Entropy } from "./entropy";
 import { addCharacter, createInstance, startInstance, submitAction, type Deps } from "./instances";
-import { listMaterials } from "./materials";
+import { deleteMaterial, listMaterials } from "./materials";
 import { code, entropy, SIX, world } from "./testing/fixtures";
 
 let db: Awaited<ReturnType<typeof testDb>>;
@@ -104,6 +104,20 @@ describe("drafts", () => {
       await submitAction(deps, "user_a", { instance_id: instance.id, tool: "move", args: { to_id: "east" }, idempotency_key: `cross-move-${n}` }, e);
     }
     expect(await store.instanceView(instance.id)).toMatchObject({ status: "ended", ending: "won" });
+  });
+
+  it("lets the author delete a published version nothing uses, and keeps one a campaign uses", async () => {
+    const d = await fresh();
+    await saveDraft(store, "user_a", { draft_id: d.id, document: threeRooms(d.document), revision: 1 });
+    await publishDraft(store, "user_a", { draft_id: d.id, version: "1.0.0" });
+    const ref = { kind: "adventure", id: "three_rooms", version: "1.0.0" };
+    expect(await code(deleteMaterial(store, "user_b", ref))).toBe("not_found");
+    await createCampaign(store, "user_a", { title: "Crossing", system: "quest", system_versions: "^1.0", materials: [{ kind: "setting", id: "derelict_station", version: "3.0.0" }, ref] }, e);
+    await expect(deleteMaterial(store, "user_a", ref)).rejects.toThrow("used by 1 campaign");
+    await publishDraft(store, "user_a", { draft_id: d.id, version: "1.1.0" });
+    await deleteMaterial(store, "user_a", { ...ref, version: "1.1.0" });
+    expect((await listMaterials(store, "user_a", { owner: "me" })).map((m) => m.version)).toEqual(["1.0.0"]);
+    expect(await code(deleteMaterial(store, "user_a", { kind: "setting", id: "derelict_station", version: "3.0.0" }))).toBe("invalid_request");
   });
 
   it("reports an unreachable ending before publishing, and publishes with the warning", async () => {

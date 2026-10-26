@@ -2,7 +2,7 @@
 // content-reports.md, instance-recovery.md): materials, instance inspection, reports, and the log.
 // Non-operators get the 404 page.
 import { ActionForm } from "@/components/action-form";
-import { ScrollText, Upload } from "lucide-react";
+import { ScrollText, Trash2, Upload } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -13,7 +13,7 @@ import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
 import { Page, PageHeader, Section } from "@/components/ui/page";
 import { listBundles, operatorLog, REPORT_ACTIONS, settingDependents } from "@/lib/api/admin";
 import { orNotFound } from "@/lib/server/pages";
-import { listedAction, publishAction } from "@/lib/server/admin-actions";
+import { deleteBundleAction, listedAction, publishAction } from "@/lib/server/admin-actions";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
 import { InspectPanel, ReportForm } from "./forms";
@@ -104,6 +104,20 @@ export default async function Admin() {
                               {b.listed ? "Unlist" : "List"}
                             </Button>
                           )}
+                        </ActionForm>
+                        <ActionForm action={deleteBundleAction}>
+                          <input type="hidden" name="kind" value={b.kind} />
+                          <input type="hidden" name="id" value={b.id} />
+                          <input type="hidden" name="version" value={b.version} />
+                          <ConfirmButton
+                            as="icon"
+                            tip="end"
+                            label={`Delete ${b.id} ${b.version}`}
+                            icon={<Trash2 {...ICON} />}
+                            title={`Delete ${b.kind} ${b.id} ${b.version}?`}
+                            description="It is deleted for good, with any art no other bundle uses. A version that a campaign or a game uses cannot be deleted, since games replay from it; unlist it instead."
+                            confirm="Delete"
+                          />
                         </ActionForm>
                       </div>
                     </td>

@@ -6,7 +6,7 @@ import { sunkenBundles } from "../harness/scenarios";
 import { openWhenClosed, shutdownPhase } from "../ops/shutdown";
 import type { Store } from "../store";
 import type { testDb } from "../store/testing/pglite";
-import { applyReport, endGame, hold, inspectInstance, listBundles, operatorLog, publishBundle, removeAssetContent, removeCampaignContent, removeCharacterContent, replayInstance, setListed, settingDependents, suspend } from "./admin";
+import { applyReport, deleteBundle, endGame, hold, inspectInstance, listBundles, operatorLog, publishBundle, removeAssetContent, removeCampaignContent, removeCharacterContent, replayInstance, setListed, settingDependents, suspend } from "./admin";
 import { createDraft } from "./drafts";
 import { createCampaign, joinByLink, listDeletedCampaigns, restoreCampaign, rotateInviteLink } from "./campaigns";
 import { createCharacter, deleteCharacter, getCharacter, listDeletedCharacters, restoreCharacter } from "./characters";
@@ -41,6 +41,22 @@ async function game() {
 }
 
 describe("materials", () => {
+  it("deletes a bundle version nothing uses, and keeps one a campaign or game uses", async () => {
+    const setting = variant(richSetting(), { version: "3.2.0" });
+    await publishBundle(store, "user_op", { kind: "setting", bundle: setting });
+    expect(await code(deleteBundle(store, "user_a", { kind: "setting", id: "derelict_station", version: "3.2.0" }))).toBe("not_found");
+    await deleteBundle(store, "user_op", { kind: "setting", id: "derelict_station", version: "3.2.0" });
+    expect(await store.getBundle("setting", "derelict_station", "3.2.0")).toBeUndefined();
+    expect(await code(deleteBundle(store, "user_op", { kind: "setting", id: "derelict_station", version: "3.2.0" }))).toBe("not_found");
+
+    const { k, instance } = await game();
+    await expect(deleteBundle(store, "user_op", { kind: "setting", id: "derelict_station", version: "3.0.0" })).rejects.toThrow("used by 1 campaign and 1 game");
+    await db.query("delete from campaign_materials where campaign_id = $1", [k.id]);
+    await expect(deleteBundle(store, "user_op", { kind: "setting", id: "derelict_station", version: "3.0.0" })).rejects.toThrow("used by 1 game");
+    expect(instance.id).toBeTruthy();
+    expect((await operatorLog(store, "user_op")).map((l) => l.action)).toContain("delete_bundle");
+  });
+
   it("is not found for non-operators", async () => {
     expect(await code(listBundles(store, "user_a"))).toBe("not_found");
   });

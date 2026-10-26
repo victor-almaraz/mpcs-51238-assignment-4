@@ -27,6 +27,7 @@ const PROBES: [migration: string, fn: string, args: Record<string, unknown>][] =
   ["20261025000300_play_fixes", "cadmium_instance_roster", { p_instance: "health" }],
   ["20261025000400_editor_fixes", "cadmium_setting_dependents", { p_id: "health" }],
   ["20261025000500_account_fixes", "cadmium_reminder_marks", { p_user: "health", p_keys: [] }],
+  ["20261026000000_bundle_delete", "cadmium_delete_bundle", { p_kind: "setting", p_id: "health", p_version: "0.0.0" }],
 ];
 
 export async function GET(request: Request) {

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import type { SettingBundle } from "../bundle/setting";
 import { archiveDraft, copyDraft, createDraft, deleteDraft, importDraft, publishDraft, restoreDraft, saveDraft, unarchiveDraft } from "../api/drafts";
 import { editorReferences, type EditorReferences } from "../api/editor";
-import { defaultRange } from "../api/materials";
+import { defaultRange, deleteMaterial } from "../api/materials";
 import { attempt, save, str, type FormState } from "./forms";
 import { serverStore } from "./supabase";
 
@@ -61,6 +61,11 @@ export async function publishDraftAction(_: FormState, form: FormData): Promise<
 }
 
 /** Delete, Archive, Unarchive, and Restore, which change the My adventures page and the draft's own pages. */
+/** Deletes a version of the caller's published adventure that no campaign or game uses. */
+export async function deleteMaterialAction(_: FormState, form: FormData): Promise<FormState> {
+  return save((uid) => deleteMaterial(serverStore(), uid, { kind: "adventure", id: str(form, "id"), version: str(form, "version") }), () => revalidatePath("/adventures", "layout"), `Deleted ${str(form, "id")} ${str(form, "version")}.`);
+}
+
 function onAdventures(op: (store: ReturnType<typeof serverStore>, userId: string | null, draftId: unknown) => Promise<unknown>) {
   return (form: FormData): Promise<FormState> => save((uid) => op(serverStore(), uid, str(form, "draft_id")), () => revalidatePath("/adventures", "layout"));
 }
