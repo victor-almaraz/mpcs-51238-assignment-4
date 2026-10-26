@@ -14,6 +14,7 @@ import { quickStartFor } from "../systems/creation";
 import { example } from "../materials/testing/fixtures";
 import { abilityOptions, createCharacter, effectSentences } from "./characters";
 import type { Entropy } from "./entropy";
+import { ApiError } from "./errors";
 import { addCharacter, createInstance, startInstance, submitAction, type Deps } from "./instances";
 import { entropy, SUNKEN, world } from "./testing/fixtures";
 
@@ -80,6 +81,18 @@ describe("Quest Quick Start", () => {
     expect(options.filter((a) => a.roles.length === 1 && a.roles[0] === "invoker").length).toBe(7);
     for (const role of ROLES) expect(quickStartFor(role, options, 6).every((ref) => ref.startsWith("starter:"))).toBe(true);
     expect(ROLES.map((role) => quickStartFor(role, options, 6).length)).toEqual(ROLES.map(() => 6));
+  });
+
+  it("refuses a character whose abilities come from a setting the game lacks, naming the setting, in the lobby and at Start", async () => {
+    const campaign = await createCampaign(store, "user_a", { title: "Archive", system: "quest", system_versions: "^1.0", materials: SUNKEN }, e);
+    const instance = await createInstance(store, "user_a", { campaign_id: campaign.id, name: "Solo" }, e);
+    const ranger = await createCharacter(store, "user_a", { system: "quest", name: "Tamsin", choices: { role: "ranger", abilities: await quickStart("ranger") } }, e);
+    const refused = await addCharacter(deps, "user_a", { instance_id: instance.id, character_id: ranger.id }).catch((x: ApiError) => x);
+    expect(refused).toMatchObject({ code: "conflict" });
+    expect((refused as ApiError).detail).toContain("Tamsin uses abilities or items from Quest Quick Start, which this game does not include");
+    // A character that joined the lobby before this check is named at Start instead of failing in the engine.
+    await store.joinInstance(instance.id, ranger.id, "user_a");
+    expect(((await startInstance(deps, "user_a", instance.id).catch((x: ApiError) => x)) as ApiError).detail).toContain("Take Tamsin out of the lobby, or add Quest Quick Start");
   });
 
   it("plays: a wizard spends 1 AP on Blink", async () => {
