@@ -7,13 +7,15 @@ import type { Store } from "../store";
 import type { testDb } from "../store/testing/pglite";
 import { addPushSubscription, MAX_PUSH_SUBSCRIPTIONS, exportMyData, listPushSubscriptions, removePushSubscription, requestAccountDeletion, restoreAccount, runPurge, updateMe } from "./account";
 import { createCampaign, deleteCampaign, getCampaign, joinByLink, listDeletedCampaigns, restoreCampaign, rotateInviteLink } from "./campaigns";
-import { createCharacter } from "./characters";
+import { createCharacter, deleteCharacter } from "./characters";
+import { createDraft, deleteDraft } from "./drafts";
 import type { Entropy } from "./entropy";
 import { addCharacter, createInstance, startInstance, submitAction, type Deps } from "./instances";
 import { invite } from "./invitations";
 import { rsvp, scheduleSession } from "./schedules";
 import { code, entropy, SIX, SUNKEN, world } from "./testing/fixtures";
-import { getMe } from "./users";
+import { acceptTerms, getMe } from "./users";
+import { TERMS_VERSION } from "./terms";
 
 let db: Awaited<ReturnType<typeof testDb>>;
 let store: Store;
@@ -89,6 +91,65 @@ describe("export", () => {
     expect(read("invitations.json")[0]).toMatchObject({ note: "for Ada" });
     expect(JSON.stringify(read(`campaigns/${own.id}.json`))).not.toContain("token_hash");
   });
+
+  it("leaves out the operator flag, suspension, and holds", async () => {
+    const { own, rook } = await lives();
+    await store.setHold("character", rook.id, "report");
+    await store.setHold("campaign", own.id, "report");
+    await store.setSuspended("user_b", true);
+    const files = unzip(await exportMyData(store, "user_b"));
+    const text = [...files.entries()].filter(([name]) => name.endsWith(".json")).map(([, data]) => new TextDecoder().decode(data)).join("\n");
+    expect(text).not.toMatch(/held_at|hold_reason|hold_direct|suspended_at|"operator"|report/);
+    expect(JSON.parse(new TextDecoder().decode(files.get("profile.json")!))).toMatchObject({ id: "user_b", display_name: "B" });
+  });
+});
+
+describe("identity sync", () => {
+  it("updates the email address from Clerk and keeps the display name set in Settings", async () => {
+    await updateMe(store, "user_b", { display_name: "Rook's player" });
+    const u = await store.upsertUser({ id: "user_b", email: "new@example.org", display_name: "From Clerk", terms_accepted_at: null });
+    expect(u).toMatchObject({ email: "new@example.org", display_name: "Rook's player" });
+    expect(await store.upsertUser({ id: "user_n", email: "n@example.org", display_name: "Newcomer", terms_accepted_at: null })).toMatchObject({ display_name: "Newcomer" });
+  });
+});
+
+describe("holds", () => {
+  const user = async (id: string) => (await db.query<{ held_at: string | null }>("select held_at from users where id = $1", [id])).rows[0]!.held_at;
+  const later = new Date(Date.now() + 91 * 86_400_000);
+
+  it("keeps a held user's deleted drafts, characters, and uploaded images through the purge", async () => {
+    const d = await createDraft(store, "user_b", { material_id: "three_rooms", title: "Three Rooms", system: "quest", requires_settings: [{ id: "derelict_station", versions: "^3.0" }] }, e);
+    await deleteDraft(store, "user_b", d.id);
+    const rook = await createCharacter(store, "user_b", { system: "quest", name: "Rook", choices: { role: "spy", abilities: SIX } }, e);
+    await deleteCharacter(store, "user_b", rook.id);
+    await store.putAsset({ hash: "a".repeat(64), kind: "portrait", mime: "image/png", alt: "Reported", uploader_id: "user_b" }, new Uint8Array([1, 2, 3]), null);
+    await store.setHold("user", "user_b", "report");
+    expect([await store.purgeDrafts(later), await store.purgeContent(later)]).toEqual([0, { characters: 0, assets: 0 }]);
+    await store.setHold("user", "user_b", null);
+    expect([await store.purgeDrafts(later), await store.purgeContent(later)]).toEqual([1, { characters: 1, assets: 1 }]);
+  });
+
+  it("releases a user only when none of their records is held, and leaves other records' holds", async () => {
+    const { rook, own } = await lives();
+    await store.setHold("character", rook.id, "report 1");
+    await store.setHold("campaign", own.id, "report 2");
+    await store.setHold("character", rook.id, null);
+    expect(await user("user_b")).not.toBeNull();
+    await store.setHold("campaign", own.id, null);
+    expect(await user("user_b")).toBeNull();
+
+    await store.setHold("user", "user_b", "report 3");
+    await store.setHold("character", rook.id, "report 4");
+    await store.setHold("character", rook.id, null);
+    expect(await user("user_b")).not.toBeNull();
+    await store.setHold("character", rook.id, "report 4");
+    await store.setHold("user", "user_b", null);
+    expect(await user("user_b")).not.toBeNull();
+    expect((await db.query("select 1 from characters where id = $1 and held_at is not null", [rook.id])).rows).toHaveLength(1);
+    await store.setHold("character", rook.id, null);
+    expect(await user("user_b")).toBeNull();
+    expect(await store.setHold("user", "user_nobody", "report")).toBe(false);
+  });
 });
 
 describe("deletion", () => {
@@ -106,6 +167,16 @@ describe("deletion", () => {
     await requestAccountDeletion(store, "user_b", { confirm: "B" });
     await db.query("update users set deletion_requested_at = now() - interval '31 days' where id = 'user_b'");
     expect(await code(restoreAccount(store, "user_b"))).toBe("conflict");
+  });
+
+  it("restores and exports a closing account after the terms change, then asks for the new terms", async () => {
+    await requestAccountDeletion(store, "user_b", { confirm: "B" });
+    await db.query("update users set terms_version = 'old' where id = 'user_b'");
+    expect(await code(acceptTerms(store, "user_b", TERMS_VERSION))).toBe("forbidden");
+    expect(await code(exportMyData(store, "user_b"))).toBe("ok");
+    expect((await restoreAccount(store, "user_b")).terms_current).toBe(false);
+    expect(await code(createCharacter(store, "user_b", { system: "quest", name: "X", choices: {} }, e))).toBe("forbidden");
+    expect(await code(acceptTerms(store, "user_b", TERMS_VERSION))).toBe("ok");
   });
 
   it("purges after 90 days: the account and what it owns, naming it a former player elsewhere", async () => {

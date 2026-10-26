@@ -1,5 +1,6 @@
-// Notifications (app-flow.md, Route map: session reminders, user stream): the reminders the Scheduler
-// has sent in the last 7 days, newest first, and those it will send in the next 7 days, soonest first.
+// Notifications (app-flow.md, Route map: session reminders, user stream): the reminders due in the last
+// 7 days, newest first, each marked Sent once the Scheduler has sent it, and those due in the next 7
+// days, soonest first.
 // Each row leads to the instance lobby, where Web Push reminders also open (api.md, Messages).
 import { BellRing, CalendarClock, Clock, Settings } from "lucide-react";
 import { LiveReminders } from "@/components/notifications/live-reminders";
@@ -21,6 +22,9 @@ function lead(minutes: number): string {
   return `${minutes} minutes`;
 }
 
+const BADGE = { sent: ["neutral", "Sent"], due: ["warning", "Due"], upcoming: ["accent", "Upcoming"] } as const;
+const VERB = { sent: "sent", due: "due", upcoming: "sends" } as const;
+
 function Reminders({ list, timezone, empty }: { list: ReminderView[]; timezone: string; empty: string }) {
   if (list.length === 0) return <EmptyState icon={<BellRing {...ICON} />}>{empty}</EmptyState>;
   return (
@@ -28,21 +32,21 @@ function Reminders({ list, timezone, empty }: { list: ReminderView[]; timezone: 
       {list.map((r) => (
         <ListRow
           key={`${r.session_id}:${r.occurrence_start}:${r.lead_minutes}`}
-          icon={r.sent ? <BellRing {...ICON_DENSE} /> : <Clock {...ICON_DENSE} />}
+          icon={r.state === "sent" ? <BellRing {...ICON_DENSE} /> : <Clock {...ICON_DENSE} />}
           title={r.title}
           href={`/instances/${r.instance_id}`}
-          badge={<Badge tone={r.sent ? "neutral" : "accent"}>{r.sent ? "Sent" : "Due"}</Badge>}
+          badge={<Badge tone={BADGE[r.state][0]}>{BADGE[r.state][1]}</Badge>}
           meta={
             <>
               <span className="text-ink">Starts {formatWhen(r.starts_at, timezone)}</span> · {r.instance_name} · {r.campaign_title}
               <br />
               <span className="tabular">
-                {lead(r.lead_minutes)} before · {r.sent ? "sent" : "sends"} {formatWhen(r.remind_at, timezone)}
+                {lead(r.lead_minutes)} before · {VERB[r.state]} {formatWhen(r.remind_at, timezone)}
               </span>
             </>
           }
           actions={
-            <ButtonLink href={`/instances/${r.instance_id}/schedule`} size="sm" variant="quiet" icon={<CalendarClock {...ICON_DENSE} />} aria-label={`Schedule for ${r.instance_name}`}>
+            <ButtonLink href={`/instances/${r.instance_id}/schedule`} size="sm" variant="quiet" className="-ml-3 sm:-mr-3 sm:ml-0" icon={<CalendarClock {...ICON_DENSE} />} aria-label={`Schedule for ${r.instance_name}`}>
               Schedule
             </ButtonLink>
           }
@@ -73,7 +77,7 @@ export default async function Notifications() {
         <LiveReminders userId={user.id} realtime={url && key ? { url, key } : null} />
       </div>
 
-      <Section id="recent" title="Recent" description="Sent in the last 7 days, newest first.">
+      <Section id="recent" title="Recent" description="Due in the last 7 days, newest first.">
         <Reminders list={recent} timezone={user.timezone} empty="No reminders in the last 7 days." />
       </Section>
 

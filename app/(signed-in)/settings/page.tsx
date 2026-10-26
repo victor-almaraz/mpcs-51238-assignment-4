@@ -1,20 +1,21 @@
 // Settings (app-flow.md, Settings; docs/design/README.md, Screens: Settings): a form page with
 // Account, Appearance, Reminders, Calendar, Your data, and, set apart, Delete account.
 import { UserProfile } from "@clerk/nextjs";
-import { CalendarSync, Download, Monitor, Trash2 } from "lucide-react";
+import { CalendarSync, Monitor, Trash2 } from "lucide-react";
 import { demoMode } from "@/lib/server/demo";
 import { ActionForm } from "@/components/action-form";
 import { CopyButton } from "@/components/invite-form";
 import { DeleteAccount } from "@/components/settings/delete-account";
+import { ExportData } from "@/components/settings/export";
 import { EnablePush } from "@/components/settings/push";
 import { ThemePicker } from "@/components/settings/theme";
-import { Button, buttonClass } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Choice, described, Field, FieldGroup, TextInput } from "@/components/ui/field";
 import { ICON_DENSE, IconButton } from "@/components/ui/icon-button";
 import { DangerZone } from "@/components/ui/card";
 import { Page, PageHeader } from "@/components/ui/page";
 import { listPushSubscriptions } from "@/lib/api/account";
-import { getCalendarFeed } from "@/lib/api/schedules";
+import { calendarFeedKey, getCalendarFeed } from "@/lib/api/schedules";
 import { disableFeedAction, profileAction, remindersAction, removePushAction } from "@/lib/server/account-actions";
 import { origin } from "@/lib/server/pages";
 import { createFeedAction } from "@/lib/server/schedule-actions";
@@ -34,7 +35,7 @@ export default async function Settings() {
   const user = await pageUser();
   const store = serverStore();
   const browsers = await listPushSubscriptions(store, user.id);
-  const feedKey = process.env.CALENDAR_FEED_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const feedKey = calendarFeedKey();
   const feed = feedKey ? await getCalendarFeed(store, user.id, { key: feedKey, origin: await origin() }) : { url: null };
   const vapid = process.env.VAPID_PUBLIC_KEY;
   const leadHint = "Minutes before a session, separated by commas. For example: 1440, 60.";
@@ -44,7 +45,8 @@ export default async function Settings() {
       <PageHeader title="Settings" />
       <div className="grid gap-8 lg:grid-cols-[12rem_minmax(0,40rem)]">
         <nav aria-label="Settings sections" className="hidden lg:block">
-          <ul className="sticky top-[calc(var(--size-topbar)+24px)] flex flex-col gap-1">
+          {/* The top padding sets the first item level with the first card's heading. */}
+          <ul className="sticky top-[calc(var(--size-topbar)+24px)] flex flex-col gap-1 pt-2.5">
             {SECTIONS.map(([id, label]) => (
               <li key={id}>
                 <a href={`#${id}`} className="-mx-3 flex h-9 items-center rounded-control px-3 text-control text-ink hover:bg-page">
@@ -65,20 +67,18 @@ export default async function Settings() {
                 <Field id="timezone" label="Time zone" hint="An IANA name, such as Europe/London or America/Chicago.">
                   <TextInput name="timezone" required defaultValue={user.timezone} {...described("timezone", { hint: true })} />
                 </Field>
+                {demoMode() && <p className="text-caption text-muted">Email, password, and sign-in methods are managed by Clerk here.</p>}
                 <div>
                   <Button type="submit">Save account</Button>
                 </div>
               </FieldGroup>
             </ActionForm>
-            <div className="mt-4">
-              {demoMode() ? (
-                <p className="text-caption text-muted">Email, password, and sign-in methods are managed by Clerk here.</p>
-              ) : (
-                <div className="relative overflow-x-auto">
-                  <UserProfile routing="hash" />
-                </div>
-              )}
-            </div>
+            {!demoMode() && (
+              <div className="relative mt-4 overflow-x-auto">
+                {/* Delete account is Cadmium's own, below, so the account goes through its 30-day recovery stage. */}
+                <UserProfile routing="hash" appearance={{ elements: { profileSection__danger: { display: "none" } } }} />
+              </div>
+            )}
           </section>
 
           <section id="appearance" aria-label="Appearance">
@@ -93,7 +93,8 @@ export default async function Settings() {
                 <Field id="lead_minutes" label="Remind me" hint={leadHint}>
                   <TextInput name="lead_minutes" defaultValue={user.reminders.lead_minutes.join(", ")} inputMode="numeric" {...described("lead_minutes", { hint: leadHint })} />
                 </Field>
-                <Choice name="push" defaultChecked={user.reminders.push} label="Also as browser notifications" />
+                {/* Keyed so turning on a browser below, which turns this on, shows here. */}
+                <Choice key={String(user.reminders.push)} name="push" defaultChecked={user.reminders.push} label="Also as browser notifications" />
                 <div>
                   <Button type="submit">Save reminders</Button>
                 </div>
@@ -143,6 +144,8 @@ export default async function Settings() {
                   </div>
                   <p className="text-caption text-muted">New URL replaces this one; the old URL stops working.</p>
                 </>
+              ) : !feedKey ? (
+                <p className="text-caption text-muted">Calendar feeds are not configured on this server.</p>
               ) : (
                 <ActionForm action={createFeedAction}>
                   <Button type="submit" icon={<CalendarSync {...ICON_DENSE} />}>
@@ -156,10 +159,7 @@ export default async function Settings() {
           <section id="data" aria-label="Your data">
             <FieldGroup legend="Your data" description="Everything your account owns, as a ZIP archive.">
               <div>
-                <a href="/v1/me/export.zip" className={buttonClass("secondary")}>
-                  <Download {...ICON_DENSE} />
-                  Export my data
-                </a>
+                <ExportData />
               </div>
             </FieldGroup>
           </section>

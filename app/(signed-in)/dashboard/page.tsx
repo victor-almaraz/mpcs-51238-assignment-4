@@ -1,5 +1,7 @@
 // Dashboard (app-flow.md, "Dashboard"; docs/design/README.md, Screens: Dashboard): a hub. Needs you,
-// the next session with RSVP, your games, then campaigns, characters, and adventures.
+// the next session with RSVP, your games, then campaigns, characters, and adventures. Sessions and games
+// come from all the user's campaigns, archived ones included, as reminders and the calendar feed do;
+// a game of an archived campaign is marked so. The campaign cards show unarchived campaigns.
 import Link from "next/link";
 import { DateTile, ElementTile, elementSymbol } from "@/components/ui/tile";
 import { ArrowRight, BookOpen, CalendarClock, CalendarDays, Castle, Check, CircleAlert, Gamepad2, History, Play, Plus, Users } from "lucide-react";
@@ -42,7 +44,7 @@ interface Upcoming {
 /** Yes, Maybe, No for one occurrence; the current answer is pressed and ticked. */
 function Rsvp({ o, label }: { o: Upcoming; label: string }) {
   return (
-    <div role="group" aria-label={label} className="flex flex-wrap items-start gap-1">
+    <div role="group" aria-label={label} className="flex flex-wrap items-start gap-2">
       {RESPONSES.map((r) => {
         const pressed = o.mine === r;
         return (
@@ -71,7 +73,7 @@ function SectionAll({ href, label }: { href: string; label: string }) {
   );
 }
 
-function GameCard({ game: i, userId }: { game: GameItem; userId: string }) {
+function GameCard({ game: i, userId, archived }: { game: GameItem; userId: string; archived: boolean }) {
   const mine = i.characters.filter((c) => c.user_id === userId).map((c) => c.name);
   const action = i.status === "active" ? { href: `/instances/${i.id}/play`, label: "Continue", icon: <Play {...ICON_DENSE} /> } : { href: `/instances/${i.id}`, label: i.status === "lobby" ? "Open lobby" : "Open", icon: <ArrowRight {...ICON_DENSE} /> };
   return (
@@ -96,7 +98,10 @@ function GameCard({ game: i, userId }: { game: GameItem; userId: string }) {
             </p>
           </div>
         </div>
-        <StatusBadge status={i.status} />
+        <div className="flex shrink-0 flex-wrap justify-end gap-1">
+          {archived && <Badge>Archived campaign</Badge>}
+          <StatusBadge status={i.status} />
+        </div>
       </div>
       <div className="mt-auto">
         <ButtonLink href={action.href} size="sm" icon={action.icon} aria-label={`${action.label}: ${i.name}`}>
@@ -110,8 +115,10 @@ function GameCard({ game: i, userId }: { game: GameItem; userId: string }) {
 export default async function Dashboard() {
   const user = await pageUser();
   const store = serverStore();
-  const [characters, campaigns] = await Promise.all([listCharacters(store, user.id, { archived: false, limit: 100 }), listCampaigns(store, user.id, { archived: false, limit: 100 })]);
-  const instances = await gamesOf(store, user.id, campaigns.items);
+  const [characters, every] = await Promise.all([listCharacters(store, user.id, { archived: false, limit: 100 }), listCampaigns(store, user.id, { limit: 100 })]);
+  const campaigns = { items: every.items.filter((c) => !c.archived) };
+  const archived = new Set(every.items.filter((c) => c.archived).map((c) => c.id));
+  const instances = await gamesOf(store, user.id, every.items);
   const active = instances.filter((i) => i.status !== "ended");
   const finished = instances.filter((i) => i.status === "ended");
   const drafts = await listDrafts(store, user.id, { archived: false, limit: 20 });
@@ -226,7 +233,7 @@ export default async function Dashboard() {
         ) : (
           <CardGrid>
             {active.map((i) => (
-              <GameCard key={i.id} game={i} userId={user.id} />
+              <GameCard key={i.id} game={i} userId={user.id} archived={archived.has(i.campaign_id)} />
             ))}
           </CardGrid>
         )}
@@ -235,7 +242,7 @@ export default async function Dashboard() {
             <h3 className="mb-2 text-label font-medium text-muted">Finished</h3>
             <List>
               {finished.map((i) => (
-                <ListRow key={i.id} icon={<History {...ICON_DENSE} />} title={i.name} href={`/instances/${i.id}/history`} meta={i.campaign} badge={<StatusBadge status="ended" label="Ended" />} />
+                <ListRow key={i.id} icon={<History {...ICON_DENSE} />} title={i.name} href={`/instances/${i.id}/history`} meta={archived.has(i.campaign_id) ? `${i.campaign} (archived)` : i.campaign} badge={<StatusBadge status="ended" label="Ended" />} />
               ))}
             </List>
           </div>

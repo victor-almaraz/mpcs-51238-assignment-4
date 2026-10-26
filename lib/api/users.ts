@@ -14,9 +14,10 @@ export function termsCurrent(u: UserRecord): boolean {
 }
 
 /**
- * The caller's user record, for any operation. Every operation except get_me, accept_terms, and logout
- * fails with forbidden until the current terms are accepted; a closing account may call only get_me,
- * restore_account, export_my_data, and logout.
+ * The caller's user record, for any operation. Every operation except get_me, accept_terms,
+ * restore_account, export_my_data, and logout fails with forbidden until the current terms are accepted,
+ * so a closing or suspended account, which cannot accept them, can still restore or export; a closing
+ * account may call only get_me, restore_account, export_my_data, and logout.
  */
 export async function caller(store: Store, userId: string | null, operation: string): Promise<UserRecord> {
   if (userId === null) throw new ApiError("unauthenticated", "sign in first");
@@ -27,7 +28,8 @@ export async function caller(store: Store, userId: string | null, operation: str
   if (user.status === "closing" && !["get_me", "restore_account", "export_my_data", "logout"].includes(operation)) {
     throw new ApiError("forbidden", "the account is being deleted");
   }
-  if (!termsCurrent(user) && !["get_me", "accept_terms", "logout"].includes(operation)) {
+  // SPEC_ISSUES.md#terms-gate-recovery: restoring and exporting do not wait for the terms.
+  if (!termsCurrent(user) && !["get_me", "accept_terms", "restore_account", "export_my_data", "logout"].includes(operation)) {
     throw new ApiError("forbidden", "accept the current Terms of Service and Privacy Policy first");
   }
   return user;
@@ -41,6 +43,6 @@ export async function getMe(store: Store, userId: string | null) {
 
 export async function acceptTerms(store: Store, userId: string | null, version: unknown) {
   const user = await caller(store, userId, "accept_terms");
-  if (version !== TERMS_VERSION) throw new ApiError("invalid_request", "version is not the current terms version");
+  if (version !== TERMS_VERSION) throw new ApiError("invalid_request", "the terms have changed; reload the page to read the current version");
   return userView((await store.acceptTerms(user.id, TERMS_VERSION))!);
 }

@@ -7,6 +7,7 @@ import { MainNav, MobileMenu, UtilityLinks } from "@/components/app-nav";
 import { buttonClass } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
 import { demoMode } from "@/lib/server/demo";
+import { ExportData } from "@/components/settings/export";
 import { THEME_SCRIPT } from "@/components/settings/theme-script";
 import { TOOLTIP_SCRIPT } from "@/components/ui/tip";
 import { shutdownPhase } from "@/lib/ops/shutdown";
@@ -27,9 +28,7 @@ function ShutdownBanner() {
       <TriangleAlert size={18} aria-hidden="true" className="shrink-0 text-warning" />
       <p>
         Cadmium closes on {s.at.toUTCString().slice(0, 16)}.{" "}
-        <a href="/v1/me/export.zip" className="font-medium text-accent underline">
-          Export my data
-        </a>
+        <ExportData inline />
       </p>
     </div>
   );

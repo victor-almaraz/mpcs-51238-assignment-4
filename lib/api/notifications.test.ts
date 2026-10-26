@@ -56,11 +56,11 @@ describe("listReminders", () => {
       ["2026-10-20T18:00:00Z", 1440],
     ]);
     expect(recent.map((r) => r.session_id)).toEqual(sent("user_b").map((m) => m.session_id));
-    expect(recent[0]).toMatchObject({ instance_id: instance.id, instance_name: "Tuesday group", campaign_title: campaign.title, title: "Weekly game", starts_at: "2026-10-20T18:00:00Z", remind_at: "2026-10-20T17:45:00.000Z", sent: true });
+    expect(recent[0]).toMatchObject({ instance_id: instance.id, instance_name: "Tuesday group", campaign_title: campaign.title, title: "Weekly game", starts_at: "2026-10-20T18:00:00Z", remind_at: "2026-10-20T17:45:00.000Z", state: "sent" });
     // The next week's occurrence is at 19:00 UTC after the end of summer time in Berlin.
     // Its 15-minute reminder falls just outside the 7-day window.
     expect(upcoming.map((r) => [r.starts_at, r.lead_minutes, r.remind_at])).toEqual([["2026-10-27T19:00:00Z", 1440, "2026-10-26T19:00:00.000Z"]]);
-    expect(upcoming.every((r) => !r.sent)).toBe(true);
+    expect(upcoming.every((r) => r.state === "upcoming")).toBe(true);
     expect(s.id).toBe(recent[0]!.session_id);
   });
 
@@ -78,6 +78,26 @@ describe("listReminders", () => {
     await startInstance(deps, "user_a", instance.id);
     expect((await endInstance(deps, "user_a", instance.id)).status).toBe("ended");
     expect((await listReminders(store, "user_a", { days: 14 }, now)).upcoming).toEqual([]);
+  });
+
+  it("marks a past reminder due until the Scheduler has sent it", async () => {
+    const { instance } = await table();
+    await weekly(instance.id, { recurrence: null });
+    const now = new Date("2026-10-20T17:50:00Z");
+    expect((await listReminders(store, "user_b", {}, now)).recent.map((r) => r.state)).toEqual(["due", "due"]);
+    await runScheduler(deps, notifier(deps.broadcast), now);
+    expect((await listReminders(store, "user_b", {}, now)).recent.map((r) => r.state)).toEqual(["sent", "sent"]);
+    // Another member's marks do not count for this one.
+    expect((await listReminders(store, "user_a", {}, now)).recent.map((r) => r.state)).toEqual(["sent", "sent"]);
+  });
+
+  it("sends no reminders to a suspended member", async () => {
+    const { instance } = await table();
+    await weekly(instance.id, { recurrence: null });
+    await store.setSuspended("user_b", true);
+    await runScheduler(deps, notifier(deps.broadcast), new Date("2026-10-20T17:50:00Z"));
+    expect(sent("user_b")).toHaveLength(0);
+    expect(sent("user_a")).toHaveLength(2);
   });
 
   it("follows the user's own lead times", async () => {

@@ -2,7 +2,8 @@
 // Reminders are not stored as records: the Scheduler sends `session_reminder` at each of a member's
 // `reminders.lead_minutes` before an occurrence, unless they answered `no` (api.md, Scheduling). This
 // derives the same moments from the schedules, so the page lists recent and upcoming reminders without
-// a separate table. See SPEC_ISSUES.md#notification-records.
+// a separate table, and reads the Scheduler's marks to tell which past ones it sent. See
+// SPEC_ISSUES.md#notification-records.
 
 import { occurrencesOf } from "../scheduler/occurrences";
 import type { Store } from "../store";
@@ -24,8 +25,11 @@ export interface ReminderView {
   lead_minutes: number;
   /** When the Scheduler sends (or sent) this reminder: `starts_at` less the lead time. */
   remind_at: string;
-  /** True once `remind_at` has passed, so the user stream has carried it. */
-  sent: boolean;
+  /**
+   * `upcoming` until `remind_at`; after it, `sent` once the Scheduler has marked it done (it marks a
+   * reminder just before sending it), and `due` until then.
+   */
+  state: "upcoming" | "due" | "sent";
 }
 
 /**
@@ -43,7 +47,7 @@ export async function listReminders(store: Store, userId: string | null, input: 
   const instances = await store.userInstances(user.id);
   const byId = new Map(instances.map((i) => [i.id, i]));
   const s = await store.schedules(instances.map((i) => i.id));
-  const reminders: ReminderView[] = [];
+  const reminders: (Omit<ReminderView, "state"> & { key: string; past: boolean })[] = [];
   for (const session of s.sessions) {
     const instance = byId.get(session.instance_id);
     if (!instance) continue;
@@ -56,10 +60,13 @@ export async function listReminders(store: Store, userId: string | null, input: 
       for (const lead of user.reminders.lead_minutes) {
         const at = start - lead * 60_000;
         if (at < from || at > to) continue;
-        const sent = at <= t;
+        const past = at <= t;
         // The Scheduler sends nothing for an instance that has ended.
-        if (!sent && instance.status === "ended") continue;
+        if (!past && instance.status === "ended") continue;
         reminders.push({
+          // The Scheduler's mark for this reminder (lib/scheduler/run.ts).
+          key: `reminder:${session.id}:${o.occurrence_start}:${user.id}:${lead}`,
+          past,
           instance_id: instance.id,
           instance_name: instance.name,
           campaign_title: instance.campaign_title,
@@ -69,14 +76,15 @@ export async function listReminders(store: Store, userId: string | null, input: 
           starts_at: o.starts_at,
           lead_minutes: lead,
           remind_at: new Date(at).toISOString(),
-          sent,
         });
       }
     }
   }
+  const marks = await store.reminderMarks(user.id, reminders.filter((r) => r.past).map((r) => r.key));
+  const views: ReminderView[] = reminders.map(({ key, past, ...r }) => ({ ...r, state: !past ? "upcoming" : marks.has(key) ? "sent" : "due" }));
   const order = (a: ReminderView, b: ReminderView) => Date.parse(a.remind_at) - Date.parse(b.remind_at) || (a.session_id < b.session_id ? -1 : a.session_id > b.session_id ? 1 : 0);
   return {
-    recent: reminders.filter((r) => r.sent).sort((a, b) => order(b, a)),
-    upcoming: reminders.filter((r) => !r.sent).sort(order),
+    recent: views.filter((r) => r.state !== "upcoming").sort((a, b) => order(b, a)),
+    upcoming: views.filter((r) => r.state === "upcoming").sort(order),
   };
 }
