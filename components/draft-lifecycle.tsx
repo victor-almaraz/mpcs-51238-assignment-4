@@ -10,10 +10,13 @@ import { archiveDraftAction, deleteDraftAction, restoreDraftAction, unarchiveDra
 
 export const ARCHIVE_NOTE = "An archived draft keeps its content and published versions, and cannot be published.";
 
-/** A draft row's Archive and Delete. */
+/**
+ * A draft row's Archive and Delete. Stacked under the title on compact screens, the row pulls them back
+ * by the icon buttons' 8 px inset so the icons, not the buttons' edges, line up with the title.
+ */
 export function DraftActions({ draftId, title }: { draftId: string; title: string }) {
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 max-sm:-ml-2">
       <ActionForm action={archiveDraftAction}>
         <input type="hidden" name="draft_id" value={draftId} />
         <IconButton type="submit" tip="end" label={`Archive ${title}`} icon={<Archive {...ICON} />} />

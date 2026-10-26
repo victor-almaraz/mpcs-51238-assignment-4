@@ -10,7 +10,7 @@ import type { Store } from "../store";
 import type { testDb } from "../store/testing/pglite";
 import { createCampaign } from "./campaigns";
 import { createCharacter } from "./characters";
-import { createDraft, deleteDraft, exportDraft, getDraft, importDraft, listDrafts, publishDraft, restoreDraft, saveDraft, validateDraft } from "./drafts";
+import { copyDraft, createDraft, deleteDraft, exportDraft, getDraft, importDraft, listDrafts, publishDraft, publishSuggestion, restoreDraft, saveDraft, validateDraft } from "./drafts";
 import type { Entropy } from "./entropy";
 import { addCharacter, createInstance, startInstance, submitAction, type Deps } from "./instances";
 import { listMaterials } from "./materials";
@@ -170,5 +170,61 @@ describe("drafts", () => {
     await deleteDraft(store, "user_a", d.id);
     expect(await code(getDraft(store, "user_a", d.id))).toBe("not_found");
     expect((await restoreDraft(store, "user_a", d.id)).id).toBe(d.id);
+  });
+
+  it("asks for a required setting in plain words", async () => {
+    const r = createDraft(store, "user_a", { material_id: "bare", title: "Bare", system: "quest", requires_settings: [] }, e);
+    await expect(r).rejects.toMatchObject({ code: "invalid_request", detail: expect.not.stringContaining("requires_settings") });
+  });
+
+  it("follows the document's adventure id until the first publication, then keeps it fixed", async () => {
+    const d = await fresh();
+    await fresh("user_a", "taken");
+    const renamed = (doc: Record<string, unknown>, id: string) => ({ ...doc, adventure: { ...(doc.adventure as object), id } });
+    const doc = threeRooms(d.document);
+    expect(await code(saveDraft(store, "user_a", { draft_id: d.id, document: renamed(doc, "taken"), revision: 1 }))).toBe("conflict");
+    await expect(saveDraft(store, "user_a", { draft_id: d.id, document: renamed(doc, "taken"), revision: 1 })).rejects.toMatchObject({ detail: expect.stringContaining("choose a different id") });
+    expect((await getDraft(store, "user_a", d.id)).material_id).toBe("three_rooms");
+
+    await saveDraft(store, "user_a", { draft_id: d.id, document: renamed(doc, "crossing_hall"), revision: 1 });
+    expect((await getDraft(store, "user_a", d.id)).material_id).toBe("crossing_hall");
+    expect((await publishDraft(store, "user_a", { draft_id: d.id, version: "1.0.0" })).id).toBe("crossing_hall");
+    expect((await saveDraft(store, "user_a", { draft_id: d.id, document: renamed(doc, "crossing_hall"), revision: 2 })).revision).toBe(3);
+    expect(await code(saveDraft(store, "user_a", { draft_id: d.id, document: renamed(doc, "elsewhere"), revision: 3 }))).toBe("invalid_request");
+  });
+
+  it("reports placements left in the namespace of an old adventure id", async () => {
+    const d = await fresh();
+    const doc = threeRooms(d.document) as ReturnType<typeof threeRooms> & { entities: Record<string, unknown> };
+    doc.entities = { lamp: { kind: "item", label: "lamp" } };
+    (doc.locations.hall.map as Record<string, unknown>).contents = [{ ref: "old_name:lamp", at: [2, 2] }];
+    await saveDraft(store, "user_a", { draft_id: d.id, document: doc, revision: 1 });
+    expect(await validateDraft(store, "user_a", d.id)).toContainEqual(expect.objectContaining({ severity: "error", message: expect.stringContaining("old_name:lamp") }));
+  });
+
+  it("keeps a conflicting copy as a new draft under a free id, with its own refs renamed", async () => {
+    const d = await fresh();
+    const doc = threeRooms(d.document) as ReturnType<typeof threeRooms> & { entities: Record<string, unknown> };
+    doc.entities = { lamp: { kind: "item", label: "lamp" } };
+    (doc.locations.hall.map as Record<string, unknown>).contents = [{ ref: "three_rooms:lamp", at: [2, 2] }];
+    (doc.adventure as unknown as { requires_settings: unknown[] }).requires_settings = [];
+    const first = await copyDraft(store, "user_a", { document: doc, title: "Three Rooms (copy)" }, e);
+    expect(first).toMatchObject({ material_id: "three_rooms_copy", title: "Three Rooms (copy)" });
+    expect(((first.document.locations as typeof doc.locations).hall.map as unknown as { contents: { ref: string }[] }).contents[0]!.ref).toBe("three_rooms_copy:lamp");
+    expect((first.document.adventure as { id: string }).id).toBe("three_rooms_copy");
+    expect((await copyDraft(store, "user_a", { document: doc }, e)).material_id).toBe("three_rooms_copy_2");
+  });
+
+  it("suggests a version past the newest published one of the id, whichever draft published it", async () => {
+    const d = await fresh();
+    expect(await publishSuggestion(store, "user_a", d.id)).toMatchObject({ latest: null, version: "1.0.0" });
+    await saveDraft(store, "user_a", { draft_id: d.id, document: threeRooms(d.document), revision: 1 });
+    await publishDraft(store, "user_a", { draft_id: d.id, version: "1.4.0" });
+    await deleteDraft(store, "user_a", d.id);
+    const again = await fresh();
+    await saveDraft(store, "user_a", { draft_id: again.id, document: threeRooms(again.document), revision: 1 });
+    const s = await publishSuggestion(store, "user_a", again.id);
+    expect(s).toMatchObject({ latest: "1.4.0", increment: "patch", version: "1.4.1" });
+    expect((await publishDraft(store, "user_a", { draft_id: again.id, version: s.version })).version).toBe("1.4.1");
   });
 });

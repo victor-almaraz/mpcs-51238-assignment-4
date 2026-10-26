@@ -3,20 +3,23 @@
 // workspace with a toolbar (title, save state, Undo, Redo, Edit as YAML, Playtest, Snapshots, Export,
 // Publish), the outline of sections on the left (a menu on compact screens), the selected section's
 // editor in the centre, Playtest as a pane beside it, the Problems panel at the foot, and a status bar
-// whose problem count toggles the panel. Saves 2 seconds after the last edit with the draft revision; a
-// local backup in IndexedDB keeps unsaved changes across reloads. Every edit is also validated in the
-// browser after 400 ms (live-validation.ts); a save's diagnostics from the server replace the browser's.
+// whose problem count toggles the panel. Saves 2 seconds after the last edit with the draft revision,
+// one save at a time, retrying a failed save with backoff; a local backup in IndexedDB keeps unsaved
+// changes across reloads, and the browser asks before leaving with changes unsaved. Publish and Export
+// save first. Every edit is also validated in the browser after 400 ms (live-validation.ts); a save's
+// diagnostics from the server replace the browser's.
 import { Braces, ChevronDown, ChevronUp, CircleAlert, CircleCheck, CircleDot, Download, FileText, Flag, History, LoaderCircle, Map as MapIcon, Menu, Package, Play, Redo2, TriangleAlert, Undo2, Users, Workflow, X } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { copyDraftAction, requiredSettingsAction, saveDraftAction } from "@/lib/server/draft-actions";
-import { Button, ButtonLink } from "@/components/ui/button";
+import { copyDraftAction, requiredSettingsAction, saveDraftAction, type SaveResult } from "@/lib/server/draft-actions";
+import { Button } from "@/components/ui/button";
 import { cx } from "@/components/ui/cx";
 import { TextInput } from "@/components/ui/field";
 import { ICON, ICON_DENSE, IconButton } from "@/components/ui/icon-button";
-import { Tip } from "@/components/ui/tip";
+import { Notice } from "@/components/ui/notice";
 import { Sheet } from "@/components/ui/sheet";
-import { content, type Doc, type Problem, type Refs } from "./doc";
+import { RemoveButton } from "./controls";
+import { content, renameNamespace, type Doc, type Problem, type Refs } from "./doc";
 import { EntitiesSection } from "./entities";
 import { useLiveValidation } from "./live-validation";
 import { PlotSection } from "./plot";
@@ -26,6 +29,10 @@ import { Flags, Locations, Npcs, Overview, YamlPanel, type Reveal } from "./sect
 import type { SettingBundle } from "@/lib/bundle/setting";
 
 const PROBLEMS_ID = "editor-problems";
+/** The largest draft the server saves, as JSON (save_draft), and the size from which the editor warns. */
+const MAX_DRAFT = 2_000_000;
+const NEAR_MAX = 0.8 * MAX_DRAFT;
+const megabytes = (n: number) => `${(n / 1_000_000).toFixed(1)} MB`;
 
 // Local backup -------------------------------------------------------------------------------------
 
@@ -43,6 +50,20 @@ function idb<T>(run: (store: IDBObjectStore) => IDBRequest<T>, mode: IDBTransact
   });
 }
 const backup = { put: (id: string, v: unknown) => idb((s) => s.put(v, id), "readwrite"), get: (id: string) => idb<{ revision: number; doc: Doc }>((s) => s.get(id), "readonly"), drop: (id: string) => idb((s) => s.delete(id), "readwrite") };
+
+/**
+ * Applies a section's YAML. A new adventure id carries the refs into the old id's namespace with it, so
+ * placements of the adventure's own entities keep pointing at them.
+ */
+function applySection(d: Doc, key: keyof Doc, value: unknown) {
+  const before = d.adventure.id;
+  (d as unknown as Record<string, unknown>)[key] = value;
+  const after = d.adventure?.id;
+  if (key === "adventure" && typeof after === "string" && after && before && after !== before) {
+    const { adventure, ...rest } = renameNamespace(d, before, after);
+    Object.assign(d, rest, { adventure: { ...adventure, id: after } });
+  }
+}
 
 // Outline ------------------------------------------------------------------------------------------
 
@@ -145,6 +166,7 @@ export function Editor(props: EditorProps) {
   const [problemsOpen, setProblemsOpen] = useRemembered("cadmium-editor-problems-open", false);
   // The required settings' bundles for validation and playtest; reloaded when requires_settings changes.
   const [settings, setSettings] = useState<SettingBundle[]>(props.settings);
+  const [refs, setRefs] = useState<Refs>(props.refs);
   const [loadingSettings, setLoadingSettings] = useState(false);
   const live = useLiveValidation(props.diagnostics, loadingSettings ? null : settings);
   const problems = live.problems;
@@ -156,6 +178,14 @@ export function Editor(props: EditorProps) {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Increases with every change of the document, so results apply only to the edit they checked. */
   const seq = useRef(0);
+  /** The `seq` of the document the server holds. */
+  const savedSeq = useRef(0);
+  /** The save in flight, and whether another should follow it for edits made meanwhile. */
+  const running = useRef<Promise<boolean> | null>(null);
+  const queued = useRef(false);
+  const failures = useRef(0);
+  const conflicted = useRef(false);
+  const saveRef = useRef<(() => Promise<boolean>) | null>(null);
   const requires = useRef(JSON.stringify(props.document.adventure.requires_settings));
   const settingsRequest = useRef(0);
   const pane = useRef<HTMLDivElement>(null);
@@ -169,16 +199,80 @@ export function Editor(props: EditorProps) {
   }, [props.draftId, props.revision, props.document]);
 
   const { check, fromServer } = live;
-  const save = useCallback(async () => {
+  /** One save of the current document; false when it failed, after scheduling a retry with backoff. */
+  const saveOnce = useCallback(async (): Promise<boolean> => {
+    if (conflicted.current) return false;
+    if (savedSeq.current === seq.current) return true;
     setStatus({ state: "saving" });
     const at = seq.current;
-    const r = await saveDraftAction({ draft_id: props.draftId, document: latest.current as unknown as Record<string, unknown>, revision: revision.current });
-    if (r.error) return setStatus({ state: r.conflict ? "conflict" : "error", message: r.error });
+    let r: SaveResult;
+    try {
+      r = await saveDraftAction({ draft_id: props.draftId, document: latest.current as unknown as Record<string, unknown>, revision: revision.current });
+    } catch {
+      r = { error: "Not saved: the connection failed." };
+    }
+    if (r.error) {
+      if (r.conflict) {
+        conflicted.current = true;
+        setStatus({ state: "conflict", message: r.error });
+        return false;
+      }
+      failures.current += 1;
+      const wait = Math.min(60_000, 2000 * 2 ** (failures.current - 1));
+      setStatus({ state: "error", message: `${r.error} Trying again in ${Math.round(wait / 1000)} s.` });
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => void saveRef.current?.(), wait);
+      return false;
+    }
+    failures.current = 0;
     revision.current = r.revision!;
+    savedSeq.current = at;
     fromServer(r.diagnostics ?? [], at);
-    setStatus({ state: "saved", at: r.saved_at });
-    void backup.drop(props.draftId);
+    // Edits made while this save ran are still unsaved, and stay in the backup.
+    if (seq.current === at) {
+      setStatus({ state: "saved", at: r.saved_at });
+      void backup.drop(props.draftId);
+    } else setStatus({ state: "pending" });
+    return true;
   }, [props.draftId, fromServer]);
+
+  /**
+   * Saves now, one save at a time: called during a save, it runs another after it. Resolves true when
+   * the document as it was at the call is saved.
+   */
+  const save = useCallback((): Promise<boolean> => {
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = null;
+    if (running.current) {
+      queued.current = true;
+      return running.current;
+    }
+    const run = (async () => {
+      let ok: boolean;
+      do {
+        queued.current = false;
+        ok = await saveOnce();
+      } while (ok && queued.current);
+      running.current = null;
+      return ok;
+    })();
+    running.current = run;
+    return run;
+  }, [saveOnce]);
+  useEffect(() => {
+    saveRef.current = save;
+  }, [save]);
+
+  // The browser asks before leaving with changes not yet saved (app-flow.md, Redirect rules).
+  useEffect(() => {
+    if (status.state === "saved") return;
+    const ask = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", ask);
+    return () => window.removeEventListener("beforeunload", ask);
+  }, [status.state]);
 
   /** A new current document: validated in the browser now, saved 2 seconds after the last change. */
   const changed = useCallback(
@@ -191,11 +285,16 @@ export function Editor(props: EditorProps) {
         requires.current = key;
         const n = ++settingsRequest.current;
         setLoadingSettings(true);
-        void requiredSettingsAction(props.draftId, next.adventure?.requires_settings).then((s) => {
-          if (n !== settingsRequest.current) return;
-          if (s) setSettings(s);
-          setLoadingSettings(false);
-        });
+        void requiredSettingsAction(props.draftId, next.adventure?.requires_settings)
+          .catch(() => null)
+          .then((r) => {
+            if (n !== settingsRequest.current) return;
+            if (r) {
+              setSettings(r.settings);
+              setRefs(r.refs);
+            }
+            setLoadingSettings(false);
+          });
       }
       check(next as unknown as Record<string, unknown>, seq.current);
       if (timer.current) clearTimeout(timer.current);
@@ -204,22 +303,32 @@ export function Editor(props: EditorProps) {
     [props.draftId, check, save],
   );
 
-  const commit = useCallback(
-    (next: Doc, from: Doc) => {
-      setPast((p) => [...p.slice(-99), from]);
-      setFuture([]);
-      setStatus({ state: "pending" });
+  /** An unsaved document: backed up in this browser, then validated and saved. */
+  const unsaved = useCallback(
+    (next: Doc) => {
+      if (!conflicted.current) setStatus({ state: "pending" });
       void backup.put(props.draftId, { revision: revision.current, doc: next });
       changed(next);
     },
     [props.draftId, changed],
   );
 
+  const commit = useCallback(
+    (next: Doc, from: Doc) => {
+      setPast((p) => [...p.slice(-99), from]);
+      setFuture([]);
+      unsaved(next);
+    },
+    [unsaved],
+  );
+
+  /** Applies `f` to a copy of the document; an edit that changes nothing is not recorded. */
   const edit = useCallback(
     (f: (d: Doc) => void) => {
       const from = latest.current;
       const next = structuredClone(from);
       f(next);
+      if (JSON.stringify(next) === JSON.stringify(from)) return;
       commit(next, from);
     },
     [commit],
@@ -230,15 +339,32 @@ export function Editor(props: EditorProps) {
     if (!prev) return;
     setPast(past.slice(0, -1));
     setFuture([latest.current, ...future]);
-    changed(prev);
+    unsaved(prev);
   };
   const redo = () => {
     const next = future[0];
     if (!next) return;
     setFuture(future.slice(1));
     setPast([...past, latest.current]);
-    changed(next);
+    unsaved(next);
   };
+
+  /** Saves, then runs `then`; when the save fails, the save state says why and nothing else happens. */
+  const [leaving, setLeaving] = useState(false);
+  const afterSave = async (then: () => void) => {
+    setLeaving(true);
+    const ok = await save();
+    setLeaving(false);
+    if (ok) then();
+  };
+  /** The export, downloaded through a link so the editor stays open. */
+  const download = () => {
+    const link = document.createElement("a");
+    link.href = `/v1/drafts/${props.draftId}/export.zip`;
+    link.download = "";
+    link.click();
+  };
+  const size = useMemo(() => JSON.stringify(doc).length, [doc]);
 
   /** Opens a section, and for Plot arcs and Locations one of its arcs or locations. */
   const open = (s: Section, sub?: string) => {
@@ -304,9 +430,9 @@ export function Editor(props: EditorProps) {
         </span>
       </>
     ) : (
-      <ButtonLink variant="primary" href={`/adventures/${props.draftId}/publish`}>
+      <Button variant="primary" disabled={leaving} onClick={() => void afterSave(() => router.push(`/adventures/${props.draftId}/publish`))}>
         Publish
-      </ButtonLink>
+      </Button>
     );
 
   const outline = <Outline doc={doc} problems={problems} section={section} location={currentLocation} arc={currentArc} open={navigate} />;
@@ -337,9 +463,9 @@ export function Editor(props: EditorProps) {
             size="sm"
             onClick={async () => {
               const a = latest.current.adventure;
-              const r = await copyDraftAction({ document: latest.current as unknown as Record<string, unknown>, material_id: a.id, title: `${a.title} (copy)`.slice(0, 80), system: a.system.id, requires: a.requires_settings });
+              const r = await copyDraftAction({ document: latest.current as unknown as Record<string, unknown>, title: `${a.title} (copy)`.slice(0, 80) }).catch(() => ({ error: "The copy failed: the connection failed.", id: undefined }));
               if (r.id) router.push(`/adventures/${r.id}/edit`);
-              else setStatus({ state: "error", message: r.error ?? "copy failed" });
+              else setStatus({ state: "conflict", message: r.error ?? "The copy failed." });
             }}
           >
             Keep mine as a new draft
@@ -355,6 +481,12 @@ export function Editor(props: EditorProps) {
             {title}
           </h1>
           <SaveState status={status} />
+          {size >= NEAR_MAX && (
+            <button type="button" onClick={() => setSnapshotsOpen(true)} className="inline-flex shrink-0 items-center gap-1 rounded-control px-1 text-caption text-warning hover:bg-desk">
+              <TriangleAlert {...ICON_DENSE} />
+              {megabytes(size)} of 2 MB
+            </button>
+          )}
           <span className="ml-auto shrink-0 sm:hidden">{publish("compact")}</span>
         </div>
         <div className="-mx-1 flex items-center gap-1 relative overflow-x-auto px-1 py-0.5 max-sm:w-full">
@@ -368,10 +500,7 @@ export function Editor(props: EditorProps) {
             Playtest
           </Button>
           <IconButton label="Snapshots" icon={<History {...ICON} />} aria-haspopup="dialog" onClick={() => setSnapshotsOpen(true)} />
-          <a href={`/v1/drafts/${props.draftId}/export.zip`} aria-label="Export as a ZIP of YAML files" className="relative inline-flex size-9 shrink-0 items-center justify-center rounded-control text-ink hover:bg-desk">
-            <Download {...ICON} />
-            <Tip label="Export as a ZIP of YAML files" />
-          </a>
+          <IconButton label="Export as a ZIP of YAML files" icon={<Download {...ICON} />} disabled={leaving} onClick={() => void afterSave(download)} />
           <span className="hidden items-center gap-1 sm:flex">
             <Divider />
             {publish("wide")}
@@ -399,17 +528,17 @@ export function Editor(props: EditorProps) {
             </div>
             <ProblemsProvider problems={problems}>
               {yaml ? (
-                <YamlPanel key={`${section}:${past.length}:${future.length}`} label={`${meta.label} as YAML`} pointer={`/${key}`} value={doc[key]} onApply={(v) => edit((d) => void ((d as unknown as Record<string, unknown>)[key] = v))} />
+                <YamlPanel key={`${section}:${past.length}:${future.length}`} label={`${meta.label} as YAML`} pointer={`/${key}`} value={doc[key]} onApply={(v) => edit((d) => applySection(d, key, v))} />
               ) : section === "overview" ? (
-                <Overview doc={doc} refs={props.refs} edit={edit} general={general} />
+                <Overview doc={doc} refs={refs} edit={edit} general={general} />
               ) : section === "flags" ? (
                 <Flags doc={doc} edit={edit} />
               ) : section === "plot" ? (
-                <PlotSection doc={doc} refs={props.refs} edit={edit} current={currentArc} select={(id) => setArc(id)} reveal={reveal} />
+                <PlotSection doc={doc} refs={refs} edit={edit} current={currentArc} select={(id) => setArc(id)} reveal={reveal} />
               ) : section === "locations" ? (
-                <Locations doc={doc} refs={props.refs} edit={edit} current={currentLocation} select={(id) => setLocation(id)} reveal={reveal} />
+                <Locations doc={doc} refs={refs} edit={edit} current={currentLocation} select={(id) => setLocation(id)} reveal={reveal} />
               ) : section === "npcs" ? (
-                <Npcs doc={doc} refs={props.refs} edit={edit} />
+                <Npcs doc={doc} refs={refs} edit={edit} />
               ) : (
                 <EntitiesSection doc={doc} edit={edit} />
               )}
@@ -485,7 +614,7 @@ export function Editor(props: EditorProps) {
               Snapshot name
             </label>
             <p id="snapshot-name-hint" className="text-caption text-muted">
-              A copy of the whole draft, kept with it, that you can restore later.
+              A copy of the whole draft, kept with it, that you can restore later. Snapshots count toward the draft&rsquo;s 2 MB limit; the draft is {megabytes(size)}.
             </p>
             <div className="flex gap-2">
               <TextInput id="snapshot-name" aria-describedby="snapshot-name-hint" value={snapshotName} maxLength={80} onChange={(e) => setSnapshotName(e.target.value)} />
@@ -494,6 +623,11 @@ export function Editor(props: EditorProps) {
               </Button>
             </div>
           </form>
+          {size >= NEAR_MAX && (
+            <Notice tone="warning" live>
+              The draft is {megabytes(size)} of the 2 MB it may hold, and saving stops at the limit. Delete snapshots you no longer need.
+            </Notice>
+          )}
           {doc.editor.snapshots.length === 0 ? (
             <p className="text-caption text-muted">No snapshots yet.</p>
           ) : (
@@ -504,9 +638,12 @@ export function Editor(props: EditorProps) {
                     <p className="truncate text-body">{s.name}</p>
                     <p className="text-caption text-muted">{new Date(s.saved_at).toLocaleString()}</p>
                   </div>
-                  <Button variant="secondary" size="sm" aria-label={`Restore ${s.name}`} onClick={() => edit((d) => Object.assign(d, structuredClone(s.document as object)))}>
-                    Restore
-                  </Button>
+                  <span className="flex shrink-0 items-center gap-1">
+                    <Button variant="secondary" size="sm" aria-label={`Restore ${s.name}`} onClick={() => edit((d) => Object.assign(d, structuredClone(s.document as object)))}>
+                      Restore
+                    </Button>
+                    <RemoveButton label={`Delete snapshot ${s.name}`} onClick={() => edit((d) => void d.editor.snapshots.splice(i, 1))} />
+                  </span>
                 </li>
               ))}
             </ul>

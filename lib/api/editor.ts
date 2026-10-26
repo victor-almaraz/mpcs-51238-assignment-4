@@ -15,10 +15,11 @@ export interface EditorReferences {
   settings: { id: string; version: string; title: string }[];
 }
 
-export async function editorReferences(store: Store, userId: string | null, draftId: unknown): Promise<EditorReferences> {
+/** The references from the draft's required settings, or from `requires` when the editor has changed them. */
+export async function editorReferences(store: Store, userId: string | null, draftId: unknown, requires?: unknown[]): Promise<EditorReferences> {
   const user = await caller(store, userId, "get_draft");
   const draft = await getDraft(store, user.id, draftId);
-  const settings = await requiredSettings(store, draft.document);
+  const settings = await requiredSettings(store, requires ? { adventure: { requires_settings: requires } } : draft.document);
   const terrain = new Map<string, string>(Object.entries(builtinTerrain()).map(([id, t]) => [id, t.label]));
   for (const s of settings) for (const [id, t] of Object.entries(s.manifest.terrain ?? {})) terrain.set(id, t.label);
   return {

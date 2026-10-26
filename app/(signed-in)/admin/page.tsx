@@ -3,23 +3,30 @@
 // Non-operators get the 404 page.
 import { notFound } from "next/navigation";
 import { ActionForm } from "@/components/action-form";
-import { Gavel, RotateCcw, ScrollText, Search, Upload } from "lucide-react";
-import { Badge, StatusBadge } from "@/components/ui/badge";
+import { ScrollText, Upload } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { described, Field, Select, TextArea, TextInput } from "@/components/ui/field";
+import { ConfirmButton } from "@/components/ui/confirm";
+import { described, Field, Select, TextArea } from "@/components/ui/field";
 import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
-import { DescriptionList } from "@/components/ui/list";
-import { Notice } from "@/components/ui/notice";
 import { Page, PageHeader, Section } from "@/components/ui/page";
-import { inspectInstance, listBundles, operatorLog, replayInstance } from "@/lib/api/admin";
+import { listBundles, operatorLog, REPORT_ACTIONS, settingDependents } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/errors";
-import { listedAction, publishAction, reportAction, restoreAction } from "@/lib/server/admin-actions";
+import { listedAction, publishAction } from "@/lib/server/admin-actions";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
+import { InspectPanel, ReportForm } from "./forms";
 
-export default async function Admin({ searchParams }: { searchParams: Promise<{ inspect?: string; reason?: string }> }) {
+/** What unlisting a setting version takes away, for its confirmation. */
+function unlistWarning(id: string, version: string, d: { drafts: number; adventures: number }): string {
+  const n = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
+  if (d.drafts === 0 && d.adventures === 0) return `No draft or listed adventure depends on ${id} ${version} alone. New drafts and campaigns can no longer choose it.`;
+  return `${n(d.drafts, "draft")} and ${n(d.adventures, "listed adventure")} depend on ${id} ${version}. Those drafts lose its terrain, templates, and conditions until it is listed again, and new campaigns can no longer choose it.`;
+}
+
+export default async function Admin() {
   const user = await pageUser();
   const store = serverStore();
   let bundles;
@@ -29,9 +36,8 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     if (e instanceof ApiError && e.code === "not_found") notFound();
     throw e;
   }
-  const { inspect, reason } = await searchParams;
-  const inspected = inspect && reason ? await inspectInstance(store, user.id, inspect, reason).catch((e: Error) => e.message) : null;
-  const replayed = inspected && typeof inspected !== "string" ? await replayInstance(store, user.id, { instance_id: inspected.id }).catch((e: Error) => ({ error: e.message })) : null;
+  const dependents = new Map<string, { drafts: number; adventures: number }>();
+  for (const b of bundles) if (b.kind === "setting" && b.listed) dependents.set(`${b.id}@${b.version}`, await settingDependents(store, user.id, { id: b.id, version: b.version }));
   const log = await operatorLog(store, user.id);
 
   return (
@@ -62,38 +68,49 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
               </div>
             </ActionForm>
           </Card>
-          <div className="mt-4 relative overflow-x-auto rounded-card border border-rule bg-page">
+          <div className="mt-6 relative overflow-x-auto rounded-card border border-rule bg-page">
             <table className="w-full text-left text-caption">
               <caption className="sr-only">Published bundles</caption>
               <thead className="border-b border-rule bg-desk text-label text-muted">
                 <tr>
-                  <th scope="col" className="px-4 py-2 font-medium">Kind</th>
+                  <th scope="col" className="hidden px-4 py-2 font-medium sm:table-cell">Kind</th>
                   <th scope="col" className="px-4 py-2 font-medium">Bundle</th>
-                  <th scope="col" className="px-4 py-2 font-medium">System and origin</th>
+                  <th scope="col" className="hidden px-4 py-2 font-medium md:table-cell">System and origin</th>
                   <th scope="col" className="px-4 py-2 font-medium">Listing</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-rule">
                 {bundles.map((b) => (
                   <tr key={`${b.kind}:${b.id}@${b.version}`}>
-                    <td className="px-4 py-2 capitalize">{b.kind}</td>
-                    <td className="px-4 py-2 font-mono">
-                      {b.id} <span className="tabular">{b.version}</span>
+                    <td className="hidden px-4 py-2 capitalize sm:table-cell">{b.kind}</td>
+                    <td className="px-4 py-2">
+                      <span className="font-mono">
+                        {b.id} <span className="tabular">{b.version}</span>
+                      </span>
+                      {/* Narrow screens show the kind, system, and origin under the bundle instead of in columns. */}
+                      <span className="block text-muted md:hidden">
+                        <span className="capitalize sm:hidden">{b.kind} · </span>
+                        {b.system} {b.system_versions} · {b.origin}
+                      </span>
                     </td>
-                    <td className="px-4 py-2 text-muted">
+                    <td className="hidden whitespace-nowrap px-4 py-2 text-muted md:table-cell">
                       {b.system} {b.system_versions} · {b.origin}
                     </td>
                     <td className="px-4 py-2">
-                      <div className="flex items-center gap-3">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <Badge tone={b.listed ? "success" : "neutral"}>{b.listed ? "Listed" : "Unlisted"}</Badge>
                         <ActionForm action={listedAction}>
                           <input type="hidden" name="kind" value={b.kind} />
                           <input type="hidden" name="id" value={b.id} />
                           <input type="hidden" name="version" value={b.version} />
                           <input type="hidden" name="listed" value={b.listed ? "false" : "true"} />
-                          <Button type="submit" variant="quiet" size="sm" aria-label={`${b.listed ? "Unlist" : "List"} ${b.id} ${b.version}`}>
-                            {b.listed ? "Unlist" : "List"}
-                          </Button>
+                          {b.listed && b.kind === "setting" ? (
+                            <ConfirmButton size="sm" label="Unlist" title={`Unlist ${b.id} ${b.version}?`} description={unlistWarning(b.id, b.version, dependents.get(`${b.id}@${b.version}`)!)} confirm="Unlist" />
+                          ) : (
+                            <Button type="submit" variant="quiet" size="sm" aria-label={`${b.listed ? "Unlist" : "List"} ${b.id} ${b.version}`}>
+                              {b.listed ? "Unlist" : "List"}
+                            </Button>
+                          )}
                         </ActionForm>
                       </div>
                     </td>
@@ -104,93 +121,15 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
           </div>
         </Section>
 
-        <Section id="instances" title="Instances" description="Inspect a game's state, or restore a paused one to an earlier version.">
-          <Card className="flex flex-col gap-4">
-            <form className="flex flex-col gap-4">
-              <Field id="inspect" label="Instance id">
-                <TextInput id="inspect" name="inspect" required defaultValue={inspect} className="font-mono text-code" />
-              </Field>
-              <Field id="inspect-reason" label="Reason" hint="Such as a report date.">
-                <TextInput name="reason" required defaultValue={reason} {...described("inspect-reason", { hint: true })} />
-              </Field>
-              <div>
-                <Button type="submit" icon={<Search {...ICON_DENSE} />}>
-                  Inspect
-                </Button>
-              </div>
-            </form>
-            {typeof inspected === "string" && <Notice tone="danger">{inspected}</Notice>}
-            {inspected && typeof inspected !== "string" && (
-              <div className="flex flex-col gap-4 border-t border-rule pt-4">
-                <DescriptionList
-                  items={[
-                    ["Name", inspected.name],
-                    ["Status", <StatusBadge key="s" status={inspected.status} />],
-                    ["Version", <span key="v" className="tabular">{inspected.version}</span>],
-                    ["Replay", replayed && "matches_stored" in replayed ? (replayed.matches_stored ? "Matches the stored state" : `Diverges at ${replayed.diverges_at}`) : JSON.stringify(replayed)],
-                  ]}
-                />
-                <details className="rounded-control border border-rule">
-                  <summary className="cursor-pointer px-3 py-2 text-label font-medium">Full state</summary>
-                  <pre className="relative max-h-96 overflow-auto border-t border-rule bg-desk p-3 font-mono text-code">{JSON.stringify(inspected.state, null, 2)}</pre>
-                </details>
-                <ActionForm action={restoreAction} className="flex flex-col gap-4">
-                  <input type="hidden" name="instance_id" value={inspected.id} />
-                  <div className="grid gap-4 sm:grid-cols-[8rem_minmax(0,1fr)]">
-                    <Field id="to-version" label="To version">
-                      <TextInput id="to-version" type="number" name="to_version" required min={1} className="tabular" />
-                    </Field>
-                    <Field id="restore-reason" label="Reason">
-                      <TextInput id="restore-reason" name="reason" required />
-                    </Field>
-                  </div>
-                  <div>
-                    <Button type="submit" variant="danger" icon={<RotateCcw {...ICON_DENSE} />}>
-                      Restore (paused only)
-                    </Button>
-                  </div>
-                </ActionForm>
-              </div>
-            )}
+        <Section id="instances" title="Instances" description="Inspect a game's state, or restore a paused one to an earlier version." className="flex flex-col">
+          <Card className="flex flex-1 flex-col gap-4">
+            <InspectPanel />
           </Card>
         </Section>
 
-        <Section id="reports" title="Reports" description="Act on a content report: hold, remove, end a game, or suspend an account.">
-          <Card>
-            <ActionForm action={reportAction} className="flex flex-col gap-4">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field id="report-action" label="Action">
-                  <Select id="report-action" name="action">
-                    <option value="hold">Hold</option>
-                    <option value="release">Release hold</option>
-                    <option value="remove">Remove content</option>
-                    <option value="end">End game</option>
-                    <option value="suspend">Suspend account</option>
-                    <option value="unsuspend">Lift suspension</option>
-                  </Select>
-                </Field>
-                <Field id="report-kind" label="Target kind">
-                  <Select id="report-kind" name="kind">
-                    <option value="user">User</option>
-                    <option value="character">Character</option>
-                    <option value="campaign">Campaign</option>
-                    <option value="instance">Instance</option>
-                    <option value="asset">Asset (hash)</option>
-                  </Select>
-                </Field>
-              </div>
-              <Field id="report-id" label="Id">
-                <TextInput id="report-id" name="id" required className="font-mono text-code" />
-              </Field>
-              <Field id="report-reason" label="Reason or note">
-                <TextInput id="report-reason" name="reason" required />
-              </Field>
-              <div>
-                <Button type="submit" icon={<Gavel {...ICON_DENSE} />}>
-                  Apply
-                </Button>
-              </div>
-            </ActionForm>
+        <Section id="reports" title="Reports" description="Act on a content report: hold, remove, end a game, or suspend an account." className="flex flex-col">
+          <Card className="flex-1">
+            <ReportForm actions={REPORT_ACTIONS} />
           </Card>
         </Section>
 

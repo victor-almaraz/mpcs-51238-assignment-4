@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import type { SettingBundle } from "../bundle/setting";
-import { archiveDraft, createDraft, deleteDraft, getDraft, importDraft, publishDraft, requiredSettings, restoreDraft, saveDraft, unarchiveDraft, validateDraft } from "../api/drafts";
+import { archiveDraft, copyDraft, createDraft, deleteDraft, getDraft, importDraft, publishDraft, requiredSettings, restoreDraft, saveDraft, unarchiveDraft, validateDraft } from "../api/drafts";
+import { editorReferences, type EditorReferences } from "../api/editor";
 import { attempt, type FormState } from "./forms";
 import { serverStore } from "./supabase";
 
@@ -42,26 +43,21 @@ export async function saveDraftAction(input: { draft_id: string; document: Recor
 }
 
 /** A copy of the editor's current document as a new draft, after a save conflict. */
-export async function copyDraftAction(input: { document: Record<string, unknown>; material_id: string; title: string; system: string; requires: { id: string; versions: string }[] }): Promise<{ error: string | null; id?: string }> {
-  const r = await attempt(async (uid) => {
-    const id = `${input.material_id}_copy`.slice(0, 64);
-    const d = await createDraft(serverStore(), uid, { material_id: id, title: input.title, system: input.system, requires_settings: input.requires });
-    const document = { ...input.document, adventure: { ...(input.document.adventure as object), id } };
-    await saveDraft(serverStore(), uid, { draft_id: d.id, document, revision: d.revision });
-    return d;
-  });
+export async function copyDraftAction(input: { document: Record<string, unknown>; title: string }): Promise<{ error: string | null; id?: string }> {
+  const r = await attempt((uid) => copyDraft(serverStore(), uid, input));
   return "error" in r ? { error: r.error } : { error: null, id: r.ok.id };
 }
 
 /**
- * The bundles that satisfy `requires`, for the editor's in-browser validation and playtest after the
- * author changes the required settings; null when the caller does not own the draft.
+ * The bundles that satisfy `requires`, for the editor's in-browser validation and playtest, and the
+ * pickers' references from them, after the author changes the required settings; null when the caller
+ * does not own the draft.
  */
-export async function requiredSettingsAction(draftId: string, requires: unknown): Promise<SettingBundle[] | null> {
+export async function requiredSettingsAction(draftId: string, requires: unknown): Promise<{ settings: SettingBundle[]; refs: EditorReferences } | null> {
   if (!Array.isArray(requires)) return null;
   const r = await attempt(async (uid) => {
-    await getDraft(serverStore(), uid, draftId);
-    return requiredSettings(serverStore(), { adventure: { requires_settings: requires } });
+    const refs = await editorReferences(serverStore(), uid, draftId, requires);
+    return { settings: await requiredSettings(serverStore(), { adventure: { requires_settings: requires } }), refs };
   }, { read: true });
   return "ok" in r ? r.ok : null;
 }

@@ -2,7 +2,7 @@
 // The editor's form sections (app-flow.md, Adventure editor: Sections): Overview, Flags, Locations,
 // NPCs, and the YAML view every section also has. Plot is plot.tsx; Items & creatures is entities.tsx.
 // Every field marks the draft value it edits with `data-pointer` and shows its own problems.
-import { MapPinned, Plus, Trash2 } from "lucide-react";
+import { MapPinned, Plus } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Fragment, useState } from "react";
 import { parse, stringify } from "yaml";
@@ -11,10 +11,10 @@ import { Button } from "@/components/ui/button";
 import { cx } from "@/components/ui/cx";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Choice, FieldGroup, Select, TextArea, TextInput } from "@/components/ui/field";
-import { ICON, ICON_DENSE, IconButton } from "@/components/ui/icon-button";
+import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
 import { Notice } from "@/components/ui/notice";
-import { denseInput, denseSelect, NewId, Panel, RemoveButton } from "./controls";
-import { freshId, type Adventure, type AuthoredLocation, type Doc, type Flag, type Npc, type Problem, type Refs } from "./doc";
+import { DeleteButton, denseInput, denseSelect, NewId, Panel, RemoveButton } from "./controls";
+import { freshId, usesOf, type Adventure, type AuthoredLocation, type Doc, type Flag, type Npc, type Problem, type Refs } from "./doc";
 import { MapEditor } from "./map-editor";
 import type { YamlFile } from "./yaml-editor";
 import { EditorField, fieldId, InlineProblems, problemProps, useProblems } from "./problems";
@@ -215,7 +215,7 @@ export function Overview({ doc, refs, edit, general }: { doc: Doc; refs: Refs; e
                       {id}
                     </label>
                     <TextInput {...problemProps(fid, here)} value={e.label} onChange={(ev) => set((x) => void (x.endings[id]!.label = ev.target.value))} />
-                    <RemoveButton label={`Remove ending ${id}`} onClick={() => set((x) => void delete x.endings[id])} />
+                    <DeleteButton dense label={`Remove ending ${id}`} name={`ending ${id}`} doc={doc} target={{ kind: "ending", id }} onDelete={() => set((x) => void delete x.endings[id])} />
                   </div>
                   <InlineProblems id={`${fid}-problems`} problems={here} className="pl-34" />
                 </li>
@@ -235,11 +235,6 @@ export function Overview({ doc, refs, edit, general }: { doc: Doc; refs: Refs; e
 }
 
 // Flags --------------------------------------------------------------------------------------------
-
-function usesOf(doc: Doc, flag: string): number {
-  const text = JSON.stringify([doc.arcs, doc.npcs, doc.locations, doc.adventure.start]);
-  return (text.match(new RegExp(`"flag":"${flag}"`, "g")) ?? []).length;
-}
 
 export function Flags({ doc, edit }: { doc: Doc; edit: Edit }) {
   const [blocked, setBlocked] = useState<string | null>(null);
@@ -317,7 +312,7 @@ export function Flags({ doc, edit }: { doc: Doc; edit: Edit }) {
                           <input {...tie} data-pointer={`${pointer}/max`} aria-label={`${id} maximum`} type="number" value={f.max ?? 0} onChange={(e) => edit((d) => void (d.flags[id]!.max = Number(e.target.value)))} className={cx(denseInput, "w-16 tabular")} />
                         </span>
                       )}
-                      {f.type === "enum" && <input {...tie} data-pointer={`${pointer}/values`} aria-label={`${id} values, comma-separated`} defaultValue={(f.values ?? []).join(", ")} onBlur={(e) => edit((d) => void (d.flags[id]!.values = e.target.value.split(/[,\s]+/).filter(Boolean)))} className={cx(denseInput, "w-44")} />}
+                      {f.type === "enum" && <input key={(f.values ?? []).join(", ")} {...tie} data-pointer={`${pointer}/values`} aria-label={`${id} values, comma-separated`} defaultValue={(f.values ?? []).join(", ")} onBlur={(e) => edit((d) => void (d.flags[id]!.values = e.target.value.split(/[,\s]+/).filter(Boolean)))} className={cx(denseInput, "w-44")} />}
                       {f.type === "bool" && <span className="text-caption text-muted">true or false</span>}
                     </td>
                     <td className="px-3 py-2" data-pointer={`${pointer}/initial`}>
@@ -333,13 +328,13 @@ export function Flags({ doc, edit }: { doc: Doc; edit: Edit }) {
                         </select>
                       )}
                     </td>
-                    <td className="px-3 py-2 text-right tabular">{usesOf(doc, id)}</td>
+                    <td className="px-3 py-2 text-right tabular">{usesOf(doc, { kind: "flag", id }).count}</td>
                     <td className="px-1 py-1 text-right">
                       <RemoveButton
                         label={`Delete flag ${id}`}
                         onClick={() => {
-                          const n = usesOf(doc, id);
-                          if (n > 0) return setBlocked(`${id} is used ${n} time${n === 1 ? "" : "s"}; remove those uses first.`);
+                          const uses = usesOf(doc, { kind: "flag", id });
+                          if (uses.count > 0) return setBlocked(`${id} is used ${uses.count} time${uses.count === 1 ? "" : "s"}, by ${uses.places.join(", ")}; remove those uses first.`);
                           setBlocked(null);
                           edit((d) => void delete d.flags[id]);
                         }}
@@ -396,7 +391,7 @@ export function Locations({ doc, refs, edit, current, select, reveal }: { doc: D
       <div className="flex flex-wrap items-center gap-3">
         <h3 className="font-mono text-heading font-semibold">{current}</h3>
         <Badge>{loc.kind === "authored" ? "Authored map" : "Generated"}</Badge>
-        <IconButton tone="danger" tip="end" className="ml-auto" label="Delete location" icon={<Trash2 {...ICON} />} onClick={() => edit((d) => void delete d.locations[current])} />
+        <DeleteButton tip="end" className="ml-auto" label="Delete location" name={`location ${current}`} doc={doc} target={{ kind: "location", id: current }} onDelete={() => edit((d) => void delete d.locations[current])} />
       </div>
       {loc.kind === "authored" && top.length > 0 && (
         <Panel pointer={`${pointer}/map`} aria-label={`Problems with ${current}`}>
@@ -426,7 +421,7 @@ export function Locations({ doc, refs, edit, current, select, reveal }: { doc: D
 
 // NPCs ---------------------------------------------------------------------------------------------
 
-function NpcCard({ n, creatures, edit }: { n: Npc; creatures: Refs["templates"]; edit: Edit }) {
+function NpcCard({ n, doc, creatures, edit }: { n: Npc; doc: Doc; creatures: Refs["templates"]; edit: Edit }) {
   const { under, rest } = useProblems();
   const set = (f: (n: Npc) => void) => edit((d) => f(d.npcs[n.id]!));
   const base = `/npcs/${n.id}`;
@@ -445,7 +440,7 @@ function NpcCard({ n, creatures, edit }: { n: Npc; creatures: Refs["templates"];
           </h3>
           <p className="font-mono text-caption text-muted">{n.id}</p>
         </div>
-        <IconButton tone="danger" tip="end" label={`Delete ${n.name || n.id}`} icon={<Trash2 {...ICON} />} onClick={() => edit((d) => void delete d.npcs[n.id])} />
+        <DeleteButton tip="end" label={`Delete ${n.name || n.id}`} name={n.name || n.id} doc={doc} target={{ kind: "npc", id: n.id }} onDelete={() => edit((d) => void delete d.npcs[n.id])} />
       </div>
       <InlineProblems problems={top} />
       <div className="grid gap-4 @2xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
@@ -500,6 +495,7 @@ function NpcCard({ n, creatures, edit }: { n: Npc; creatures: Refs["templates"];
               <EditorField pointer={`${tp}/when`} label="When" optional hint="A condition as YAML, such as { flag: met_archivist }. Applied when you leave the field.">
                 {(p) => (
                   <TextInput
+                    key={t.when === undefined ? "" : stringify(t.when, { version: "1.2" }).trim()}
                     {...p}
                     defaultValue={t.when === undefined ? "" : stringify(t.when, { version: "1.2" }).trim()}
                     spellCheck={false}
@@ -562,7 +558,7 @@ export function Npcs({ doc, refs, edit }: { doc: Doc; refs: Refs; edit: Edit }) 
       <InlineProblems problems={top} />
       {npcs.length === 0 && <EmptyState>No NPCs yet. NPCs talk about topics and keep secrets.</EmptyState>}
       {npcs.map((n) => (
-        <NpcCard key={n.id} n={n} creatures={creatures} edit={edit} />
+        <NpcCard key={n.id} n={n} doc={doc} creatures={creatures} edit={edit} />
       ))}
       <NewId label="Add NPC" noun="NPC id" taken={Object.keys(doc.npcs)} onAdd={(id) => edit((d) => void (d.npcs[id] = { id, name: id.replace(/_/g, " "), template: creatures[0]?.ref ?? "" }))} />
     </div>

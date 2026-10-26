@@ -364,6 +364,7 @@ export function MapEditor({ loc, doc, refs, change, reveal }: { loc: AuthoredLoc
                   {!p.npc && (
                     <Labelled label="Id, for triggers">
                       <input
+                        key={p.id ?? ""}
                         {...problemProps(idId, problems)}
                         placeholder="optional"
                         defaultValue={p.id ?? ""}
@@ -400,7 +401,7 @@ export function MapEditor({ loc, doc, refs, change, reveal }: { loc: AuthoredLoc
                     <RemoveButton label={`Remove link ${id}`} onClick={() => change((l) => void delete l.map.links![id])} />
                   </div>
                   <Labelled label="Label">
-                    <input {...problemProps(`${lid}-label`, problems.filter((q) => inside(q.pointer, `${pointer}/label`)))} defaultValue={k.label} onBlur={(e) => change((l) => void (l.map.links![id]!.label = e.target.value || "passage"))} className={denseInput} />
+                    <input {...problemProps(`${lid}-label`, problems.filter((q) => inside(q.pointer, `${pointer}/label`)))} key={k.label} defaultValue={k.label} onBlur={(e) => e.target.value !== k.label && change((l) => void (l.map.links![id]!.label = e.target.value || "passage"))} className={denseInput} />
                   </Labelled>
                   <div className="grid grid-cols-2 gap-2">
                     <Labelled label="To location">
@@ -413,7 +414,7 @@ export function MapEditor({ loc, doc, refs, change, reveal }: { loc: AuthoredLoc
                       </select>
                     </Labelled>
                     <Labelled label="Its link">
-                      <input defaultValue={k.to.link} onBlur={(e) => change((l) => void (l.map.links![id]!.to.link = e.target.value))} className={cx(denseInput, "font-mono")} />
+                      <input key={k.to.link} defaultValue={k.to.link} onBlur={(e) => e.target.value !== k.to.link && change((l) => void (l.map.links![id]!.to.link = e.target.value))} className={cx(denseInput, "font-mono")} />
                     </Labelled>
                   </div>
                   <InlineProblems id={`${lid}-problems`} problems={problems} />
@@ -459,7 +460,7 @@ export function MapEditor({ loc, doc, refs, change, reveal }: { loc: AuthoredLoc
                   <li key={id} data-pointer={pointer} className="flex flex-col gap-1">
                     <div className="flex items-center gap-2">
                       <span aria-hidden="true" className="size-4 shrink-0 rounded-[3px] border border-rule" style={{ background: tint(roomIds.indexOf(id)) }} />
-                      <input {...problemProps(rid, problems)} aria-label={`${id} label`} defaultValue={loc.map.rooms[id]!.label} onBlur={(e) => change((l) => void (l.map.rooms[id]!.label = e.target.value || id))} className={cx(denseInput, "min-w-0 flex-1")} />
+                      <input {...problemProps(rid, problems)} aria-label={`${id} label`} key={loc.map.rooms[id]!.label} defaultValue={loc.map.rooms[id]!.label} onBlur={(e) => e.target.value !== loc.map.rooms[id]!.label && change((l) => void (l.map.rooms[id]!.label = e.target.value || id))} className={cx(denseInput, "min-w-0 flex-1")} />
                       <RemoveButton label={`Delete room ${id}`} onClick={() => change((l) => void delete l.map.rooms[id])} />
                     </div>
                     <div className="flex items-center gap-2 pl-6 text-caption text-muted">

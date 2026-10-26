@@ -2,6 +2,8 @@
 // editor: Validation, Saving, Publishing). Validation and publication run the shared Content Compiler.
 
 import { inflateRawSync } from "node:zlib";
+import { renameNamespace } from "../../components/editor/doc";
+import type { AdventureBundle } from "../bundle/adventure";
 import type { SettingBundle } from "../bundle/setting";
 import { zip, unzip } from "../export/zip";
 import { compileDraft, draftFiles } from "../materials";
@@ -39,7 +41,7 @@ async function owned(store: Store, userId: string, draftId: unknown): Promise<Dr
 }
 
 function requirements(v: unknown): { id: string; versions: string }[] {
-  if (!Array.isArray(v) || v.length === 0) throw new ApiError("invalid_request", "requires_settings must list at least one setting");
+  if (!Array.isArray(v) || v.length === 0) throw new ApiError("invalid_request", "choose at least one setting for the adventure to require");
   return v.map((r, i) => {
     const x = onlyFields(r, ["id", "versions"]);
     if (typeof x.id !== "string" || typeof x.versions !== "string") throw new ApiError("invalid_request", `requires_settings[${i}] needs id and versions`);
@@ -69,6 +71,20 @@ export async function requiredSettings(store: Store, draft: Record<string, unkno
 export async function diagnose(store: Store, document: Record<string, unknown>): Promise<DraftDiagnostic[]> {
   const r = compileDraft(document, await requiredSettings(store, document));
   return [...toDraftDiagnostics(r.diagnostics), ...plotWarnings(document)];
+}
+
+/**
+ * Gives a never-published draft the adventure id its document now has. Ids that are not valid are
+ * left to the compiler's diagnostics; after the first publication the id is fixed.
+ */
+async function followId(store: Store, d: DraftRecord, id: unknown): Promise<void> {
+  if (d.last_published_version || typeof id !== "string" || !ID.test(id) || id === d.material_id) return;
+  try {
+    await store.setDraftMaterial(d.id, id);
+  } catch (e) {
+    if ((e as { code?: string }).code === "23505") throw new ApiError("conflict", `another of your drafts already has the adventure id ${id}; choose a different id`);
+    throw e;
+  }
 }
 
 export async function createDraft(store: Store, userId: string | null, input: unknown, entropy: Entropy = cryptoEntropy) {
@@ -178,6 +194,7 @@ export async function saveDraft(store: Store, userId: string | null, input: unkn
   if (d.last_published_version && a.id !== d.material_id) throw new ApiError("invalid_request", `the adventure id is fixed after publication: ${d.material_id}`);
   if (JSON.stringify(document).length > MAX_DRAFT) throw new ApiError("invalid_request", "the draft is larger than 2 MB");
   const title = typeof a.title === "string" && a.title.trim() !== "" ? a.title.slice(0, 80) : d.title;
+  await followId(store, d, a.id);
   const saved = await store.saveDraft(d.id, req.revision, document, title, await diagnose(store, document));
   if (!saved) throw new ApiError("conflict", "the draft was saved elsewhere; reload it or keep yours as a new draft");
   return saved;
@@ -212,6 +229,7 @@ export async function publishDraft(store: Store, userId: string | null, input: u
   const adventure = document.adventure as Record<string, unknown>;
   adventure.version = req.version;
   const id = String(adventure.id);
+  if (d.last_published_version && id !== d.material_id) throw new ApiError("invalid_request", `the adventure id is fixed after publication: ${d.material_id}`);
   const versions = await store.adventureVersions(id);
   if (versions.some((v) => v.publisher_id !== user.id)) throw new ApiError("conflict", `the adventure id ${id} belongs to another publisher`);
   if (versions.some((v) => compareVersions(parseVersion(v.version)!, parseVersion(req.version as string)!) >= 0)) throw new ApiError("conflict", `version ${req.version} is not greater than every published version of ${id}`);
@@ -223,9 +241,73 @@ export async function publishDraft(store: Store, userId: string | null, input: u
   }
   const system = SYSTEMS[r.bundle.manifest.system.id];
   if (!system || !satisfies(system.VERSION, r.bundle.manifest.system.versions)) throw new ApiError("system_mismatch", `no installed ${r.bundle.manifest.system.id} version satisfies ${r.bundle.manifest.system.versions}`);
+  await followId(store, d, id);
   await store.putBundle(r.bundle, { origin: "author", publisher_id: user.id, draft_id: d.id, listed: true });
   await store.setDraftPublished(d.id, req.version);
   return materialView((await store.material("adventure", r.bundle.id, r.bundle.version))!);
+}
+
+/** The increment content-publishing.md asks for: major on a removed ending, minor on added records. */
+function increment(previous: AdventureBundle | undefined, d: Record<string, unknown>): { increment: "major" | "minor" | "patch"; why: string } {
+  if (!previous) return { increment: "major", why: "first version" };
+  const doc = d as { adventure?: { endings?: Record<string, unknown> }; arcs?: object; locations?: object; npcs?: object };
+  const removed = Object.keys(previous.manifest.endings).filter((k) => !(k in (doc.adventure?.endings ?? {})));
+  if (removed.length) return { increment: "major", why: `removed ending ${removed.join(", ")}` };
+  const count = (o: object | undefined) => Object.keys(o ?? {}).length;
+  const before = (previous.arcs?.length ?? 0) + count(previous.locations) + count(previous.npcs) + Object.keys(previous.manifest.endings).length;
+  const after = count(doc.arcs) + count(doc.locations) + count(doc.npcs) + count(doc.adventure?.endings);
+  if (after > before) return { increment: "minor", why: "added arcs, locations, NPCs, or endings" };
+  return { increment: "patch", why: "text, balance, or trigger changes" };
+}
+
+/**
+ * The version the Publish page suggests: the increment from the newest published version of the
+ * draft's adventure id (whichever draft published it), or 1.0.0 for a first version.
+ */
+export async function publishSuggestion(store: Store, userId: string | null, draftId: unknown) {
+  const user = await caller(store, userId, "get_draft");
+  const d = await owned(store, user.id, draftId);
+  const named = (d.document.adventure as { id?: unknown } | undefined)?.id;
+  const id = typeof named === "string" ? named : d.material_id;
+  const latest = (await store.adventureVersions(id)).map((v) => v.version).filter((v) => parseVersion(v)).sort((a, b) => compareVersions(parseVersion(b)!, parseVersion(a)!))[0] ?? null;
+  const previous = latest ? ((await store.getBundle("adventure", id, latest)) as AdventureBundle | undefined) : undefined;
+  const s = increment(previous, d.document);
+  const [major, minor, patch] = (latest ?? "0.0.0").split(".").map(Number) as [number, number, number];
+  const version = !latest ? "1.0.0" : s.increment === "major" ? `${major + 1}.0.0` : s.increment === "minor" ? `${major}.${minor + 1}.0` : `${major}.${minor}.${patch + 1}`;
+  return { latest, ...s, version };
+}
+
+/**
+ * A new draft holding `document`, for the editor after a save conflict. It takes a free adventure id
+ * made from the document's own (`<id>_copy`, `<id>_copy_2`, …), with the refs into the old id's
+ * namespace rewritten, and is created with the document in one step.
+ */
+export async function copyDraft(store: Store, userId: string | null, input: unknown, entropy: Entropy = cryptoEntropy) {
+  const user = await caller(store, userId, "create_draft");
+  const req = onlyFields(input, ["document", "title"]);
+  if (req.document === null || typeof req.document !== "object" || Array.isArray(req.document)) throw new ApiError("invalid_request", "document must be an object");
+  const source = req.document as Record<string, unknown>;
+  if (JSON.stringify(source).length > MAX_DRAFT) throw new ApiError("invalid_request", "the draft is larger than 2 MB");
+  const a = (source.adventure ?? {}) as { id?: unknown; title?: unknown; system?: { id?: unknown } };
+  const system = systemOrThrow(a.system?.id);
+  const own = typeof a.id === "string" && ID.test(a.id) ? a.id : null;
+  const base = own ?? "adventure";
+  const named = typeof req.title === "string" && req.title.trim() !== "" ? req.title : typeof a.title === "string" && a.title.trim() !== "" ? a.title : base;
+  const title = named.slice(0, 80);
+  for (let n = 1; n <= 100; n++) {
+    const suffix = n === 1 ? "_copy" : `_copy_${n}`;
+    const id = `${base.slice(0, 64 - suffix.length)}${suffix}`;
+    const document = own ? renameNamespace(source, own, id) : structuredClone(source);
+    document.adventure = { ...(document.adventure as object), id, title };
+    try {
+      const d = await store.createDraft({ id: entropy.id("d"), owner_id: user.id, material_id: id, system: system.ID, title, document });
+      await store.setDraftDiagnostics(d.id, await diagnose(store, document));
+      return (await store.getDraft(d.id))!;
+    } catch (e) {
+      if ((e as { code?: string }).code !== "23505") throw e;
+    }
+  }
+  throw new ApiError("conflict", `you already have too many copies of ${base}`);
 }
 
 export async function deleteDraft(store: Store, userId: string | null, draftId: unknown) {
