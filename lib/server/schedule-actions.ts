@@ -1,8 +1,8 @@
 "use server";
-// Server actions for the schedule page and the dashboard's RSVP buttons.
+// Server actions for the schedule page, and the RSVP buttons of the dashboard and the instance lobby.
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
-import { cancelSession, moveOccurrence, rotateCalendarFeed, rsvp, scheduleSession } from "../api/schedules";
+import { calendarFeedKey, cancelSession, moveOccurrence, rotateCalendarFeed, rsvp, scheduleSession, updateSession } from "../api/schedules";
 import { localInstant } from "../scheduler/zone";
 import { attempt, type FormState } from "./forms";
 import { serverStore } from "./supabase";
@@ -13,6 +13,7 @@ const str = (form: FormData, name: string) => {
 };
 
 function refresh(instanceId: unknown): FormState {
+  revalidatePath(`/instances/${String(instanceId)}`);
   revalidatePath(`/instances/${String(instanceId)}/schedule`);
   revalidatePath("/dashboard");
   revalidatePath("/settings");
@@ -40,6 +41,27 @@ export async function scheduleSessionAction(_: FormState, form: FormData): Promi
   return "error" in r ? r : refresh(id);
 }
 
+/**
+ * Changes a series from the schedule page: title, duration, weekly recurrence, auto-resume and auto-pause,
+ * and notes. The change applies to the whole series (SPEC_ISSUES.md#session-updates).
+ */
+export async function updateSessionAction(_: FormState, form: FormData): Promise<FormState> {
+  const every = Number(str(form, "every") ?? "0");
+  const count = Number(str(form, "count") ?? "");
+  const r = await attempt((uid) =>
+    updateSession(serverStore(), uid, {
+      session_id: str(form, "session_id"),
+      title: str(form, "title") ?? "",
+      duration_minutes: Number(str(form, "duration_minutes")),
+      recurrence: every > 0 ? { freq: "weekly", interval: every, ...(Number.isInteger(count) && count > 0 ? { count } : {}) } : null,
+      auto_resume: form.get("auto_resume") === "on",
+      auto_pause: form.get("auto_pause") === "on",
+      notes: str(form, "notes") ?? "",
+    }),
+  );
+  return "error" in r ? r : { ...refresh(str(form, "instance_id")), saved: "Session saved." };
+}
+
 export async function rsvpAction(_: FormState, form: FormData): Promise<FormState> {
   const r = await attempt((uid) => rsvp(serverStore(), uid, { session_id: str(form, "session_id"), occurrence_start: str(form, "occurrence_start"), response: str(form, "response") }));
   return "error" in r ? r : refresh(str(form, "instance_id"));
@@ -62,7 +84,7 @@ export async function createFeedAction(_: FormState, form: FormData): Promise<Fo
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
   const origin = `${h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https")}://${host}`;
-  const key = process.env.CALENDAR_FEED_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const key = calendarFeedKey();
   // Without a key every feed secret would be guessable from the user id.
   if (!key) return { error: "Calendar feeds are not configured." };
   const r = await attempt((uid) => rotateCalendarFeed(serverStore(), uid, { key, origin }));

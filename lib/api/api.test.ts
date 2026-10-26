@@ -98,6 +98,18 @@ describe("characters", () => {
     expect(await code(updateCharacter(store, "user_b", { character_id: c.id, hp: 99 }))).toBe("invalid_request");
   });
 
+  it("updates the profile of a sheet that carries module fields from a game", async () => {
+    // A Cadmium game with armor writes `armor` back, to a Cadmium character or to a Quest character it accepted.
+    const e = entropy();
+    for (const system of ["cadmium", "quest"]) {
+      const c = await createCharacter(store, "user_b", { system, name: "Rook", choices: { role: "fighter", abilities: SIX } }, e);
+      await db.query(`update characters set sheet = sheet || '{"armor": {"value": 2, "max": 6}}'::jsonb where id = $1`, [c.id]);
+      const updated = await updateCharacter(store, "user_b", { character_id: c.id, profile: { look: "dented" } });
+      expect(updated.sheet).toMatchObject({ profile: { look: "dented" }, armor: { value: 2, max: 6 } });
+      expect(await code(updateCharacter(store, "user_b", { character_id: c.id, profile: { look: "x".repeat(201) } }))).toBe("invalid_request");
+    }
+  });
+
   it("hides other users' characters as not_found", async () => {
     await acceptTerms(store, "user_a", TERMS_VERSION);
     const c = await createCharacter(store, "user_b", { system: "quest", name: "Rook", choices: { role: "fighter", abilities: SIX } }, entropy());

@@ -1,15 +1,18 @@
 // Instance lobby (app-flow.md, Instance lobby): header, party with Add my character, the author's
-// controls shown only when the status allows them, and the next session. A detail page
+// controls shown only when the status allows them, and the next session with RSVP buttons. The party
+// shows the adventure's player range; Start and Resume wait for its minimum, and Add character stops at
+// its maximum. An ended game lists every character that played. A detail page
 // (docs/design/README.md, Game lobby): the party in the main column, the next session and the
 // game's facts in the aside.
-import { CalendarClock, History, Pause, Play, Square, UserMinus, Users } from "lucide-react";
+import { CalendarClock, Check, History, Pause, Play, Square, UserMinus, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { ActionForm } from "@/components/action-form";
 import { getCampaign } from "@/lib/api/campaigns";
 import { listCharacters } from "@/lib/api/characters";
-import { getInstance } from "@/lib/api/instances";
+import { getInstance, instanceRoster, missingFor, playerRange } from "@/lib/api/instances";
 import { accepted, systemView } from "@/lib/api/systems";
 import { addCharacterAction, instanceControlAction, removeCharacterAction } from "@/lib/server/campaign-actions";
+import { rsvpAction } from "@/lib/server/schedule-actions";
 import { listOccurrences } from "@/lib/api/schedules";
 import { formatWhen } from "@/components/when";
 import { orNotFound, requestTime } from "@/lib/server/pages";
@@ -17,13 +20,14 @@ import { pageUser } from "@/lib/server/session";
 import { serverDeps } from "@/lib/server/coordinator";
 import { serverStore } from "@/lib/server/supabase";
 import { Badge, StatusBadge } from "@/components/ui/badge";
-import { Button, ButtonLink, type Variant } from "@/components/ui/button";
+import { Button, ButtonLink, buttonClass, type Variant } from "@/components/ui/button";
 import { ConfirmButton } from "@/components/ui/confirm";
 import { Card, Panel } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Field, Select, described } from "@/components/ui/field";
 import { ICON, ICON_DENSE, IconButton } from "@/components/ui/icon-button";
 import { DescriptionList, List, ListRow } from "@/components/ui/list";
+import { Notice } from "@/components/ui/notice";
 import { Page, PageHeader, Section, WithAside } from "@/components/ui/page";
 import { DateTile } from "@/components/ui/tile";
 
@@ -40,6 +44,10 @@ const CONTROLS: Record<string, { control: string; label: string; danger?: boolea
   ended: [],
 };
 
+const RESPONSES = ["yes", "maybe", "no"] as const;
+const word = (r: string) => r[0]!.toUpperCase() + r.slice(1);
+const characters = (n: number) => `${n} character${n === 1 ? "" : "s"}`;
+
 const ICONS: Record<string, ReactNode> = {
   start: <Play {...ICON_DENSE} />,
   resume: <Play {...ICON_DENSE} />,
@@ -47,19 +55,41 @@ const ICONS: Record<string, ReactNode> = {
   end: <Square {...ICON_DENSE} />,
 };
 
-export default async function Lobby({ params }: { params: Promise<{ id: string }> }) {
+export default async function Lobby({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ pick?: string }> }) {
   const { id } = await params;
+  // Play sends a user without a character here with ?pick=1 (app-flow.md, Redirect rules): the picker opens focused.
+  const pick = (await searchParams).pick === "1";
   const user = await pageUser();
   const store = serverStore();
   const { instance } = await orNotFound(getInstance(serverDeps(), user.id, { instance_id: id }));
   const campaign = await getCampaign(store, user.id, instance.campaign_id);
   const author = campaign.author_id === user.id;
   const names = new Map(campaign.members.map((m) => [m.user_id, m.display_name]));
-  const mine = (await listCharacters(store, user.id, { status: "available", archived: false, limit: 100 })).items.filter((c) => accepted(instance.system).includes(c.system));
+  const ended = instance.status === "ended";
+  // An ended game's characters have left it; the party is every character that played.
+  const party = ended ? await instanceRoster(store, user.id, instance.id) : instance.characters;
+  const range = await playerRange(store, instance).catch(() => null);
+  const n = instance.characters.length;
+  const full = range !== null && n >= range[1];
+  const short = range !== null && n < range[0];
   const open = instance.status === "lobby" || instance.status === "paused";
+  // The user's characters for the system; those whose abilities need a setting the game lacks are listed disabled with the reason.
+  const mine = open
+    ? await Promise.all(
+        (await listCharacters(store, user.id, { status: "available", archived: false, limit: 100 })).items
+          .filter((c) => accepted(instance.system).includes(c.system))
+          .map(async (c) => ({ ...c, missing: await missingFor(store, instance, c.sheet) })),
+      )
+    : [];
+  const joinable = mine.filter((c) => c.missing.length === 0);
   const now = requestTime();
   const next = (await listOccurrences(store, user.id, { instance_id: instance.id, from: new Date(now).toISOString(), to: new Date(now + 92 * 86_400_000).toISOString() })).find((o) => o.status !== "cancelled");
   const controls = (author && CONTROLS[instance.status]) || [];
+  // Start and Resume need the adventure's player range: the reason shows under the party's count.
+  const blocked = (control: string) => (control === "start" && range !== null && (n < range[0] || n > range[1])) || (control === "resume" && short);
+  const rangeText = range && (range[0] === range[1] ? `${range[0]}` : `${range[0]}–${range[1]}`);
+  const reason = short ? `The adventure needs at least ${characters(range![0])}; add ${characters(range![0] - n)} to ${instance.status === "paused" ? "resume" : "start"}.` : null;
+  const mineNext = next && RESPONSES.find((r) => next.rsvps[r].includes(user.id));
   const playing = instance.status === "active" && instance.characters.some((c) => c.user_id === user.id);
   const system = systemView(instance.system);
   // One primary per view: Enter game when the viewer plays, else Start or Resume.
@@ -96,7 +126,7 @@ export default async function Lobby({ params }: { params: Promise<{ id: string }
                       confirm="End game"
                     />
                   ) : (
-                    <Button type="submit" variant={variant(c)} icon={ICONS[c.control]}>
+                    <Button type="submit" variant={variant(c)} icon={ICONS[c.control]} disabled={blocked(c.control)} {...(blocked(c.control) ? { "aria-describedby": "party-range", title: reason ?? undefined } : {})}>
                       {c.label}
                     </Button>
                   )}
@@ -111,10 +141,28 @@ export default async function Lobby({ params }: { params: Promise<{ id: string }
           <>
             <Panel title="Next session">
               {next ? (
-                <div className="flex items-center gap-3">
-                  <DateTile date={new Date(next.starts_at)} timeZone={user.timezone} tone={Date.parse(next.starts_at) - now < 86_400_000 ? "pigment" : "accent"} />
-                  <p className="text-heading font-semibold text-ink">{formatWhen(next.starts_at, user.timezone)}</p>
-                </div>
+                <>
+                  <div className="flex items-center gap-3">
+                    <DateTile date={new Date(next.starts_at)} timeZone={user.timezone} tone={Date.parse(next.starts_at) - now < 86_400_000 ? "pigment" : "accent"} />
+                    <p className="text-heading font-semibold text-ink">{formatWhen(next.starts_at, user.timezone)}</p>
+                  </div>
+                  {!ended && (
+                    <div role="group" aria-label={`Your answer for ${formatWhen(next.starts_at, user.timezone)}`} className="flex flex-wrap items-center gap-2">
+                      {RESPONSES.map((r) => (
+                        <ActionForm key={r} action={rsvpAction}>
+                          <input type="hidden" name="instance_id" value={instance.id} />
+                          <input type="hidden" name="session_id" value={next.session_id} />
+                          <input type="hidden" name="occurrence_start" value={next.occurrence_start} />
+                          <input type="hidden" name="response" value={r} />
+                          <button type="submit" aria-pressed={mineNext === r} className={mineNext === r ? buttonClass("quiet", "sm", "border border-accent bg-accent-soft") : buttonClass("secondary", "sm")}>
+                            {mineNext === r && <Check {...ICON_DENSE} />}
+                            {word(r)}
+                          </button>
+                        </ActionForm>
+                      ))}
+                    </div>
+                  )}
+                </>
               ) : (
                 <p className="text-muted">None scheduled.</p>
               )}
@@ -133,19 +181,28 @@ export default async function Lobby({ params }: { params: Promise<{ id: string }
                   ["Campaign", campaign.title],
                   ["System", `${system.title} ${instance.system_version}`],
                   ["Modules", instance.modules.length > 0 ? instance.modules.map((m) => system.modules.find((x) => x.id === m)?.title ?? m).join(", ") : "None"],
-                  ["Party", `${instance.characters.length} character${instance.characters.length === 1 ? "" : "s"}`],
+                  ["Party", ended ? `${characters(party.length)} played` : rangeText ? `${n} of ${rangeText} characters` : characters(n)],
                 ]}
               />
             </Panel>
           </>
         }
       >
-        <Section id="party" title="Party">
-          {instance.characters.length === 0 ? (
+        <Section
+          id="party"
+          title="Party"
+          description={
+            <span id="party-range">
+              {ended ? `${characters(party.length)} played in this game.` : rangeText ? `${n} of ${rangeText} characters. ` : ""}
+              {!ended && (reason ?? (full ? "The party is full." : ""))}
+            </span>
+          }
+        >
+          {party.length === 0 ? (
             <EmptyState icon={<Users {...ICON} />}>No characters yet.</EmptyState>
           ) : (
             <List>
-              {instance.characters.map((c) => (
+              {party.map((c) => (
                 <ListRow
                   key={c.id}
                   title={c.name}
@@ -154,7 +211,8 @@ export default async function Lobby({ params }: { params: Promise<{ id: string }
                   actions={
                     open &&
                     (c.user_id === user.id || author) && (
-                      <ActionForm action={removeCharacterAction}>
+                      // Stacked under the name on compact screens, the icon sits on the name's edge.
+                      <ActionForm action={removeCharacterAction} className="-ml-2 sm:ml-0">
                         <input type="hidden" name="instance_id" value={instance.id} />
                         <input type="hidden" name="character_id" value={c.id} />
                         <IconButton type="submit" tone="danger" tip="end" label={`Remove ${c.name}`} icon={<UserMinus {...ICON} />} />
@@ -166,9 +224,21 @@ export default async function Lobby({ params }: { params: Promise<{ id: string }
             </List>
           )}
         </Section>
+        {pick && !open && !ended && (
+          <Notice title="You have no character in this game." className="mb-6">
+            Characters join while the game is in the lobby or paused.
+          </Notice>
+        )}
         {open && (
           <Section id="add-character" title="Add character">
-            {mine.length === 0 ? (
+            {pick && !full && joinable.length > 0 && (
+              <Notice title="Add a character to play." className="mb-4">
+                Choose one of your characters below.
+              </Notice>
+            )}
+            {full ? (
+              <p className="text-muted">The party is full: the adventure takes at most {characters(range![1])}.</p>
+            ) : mine.length === 0 ? (
               <EmptyState
                 action={
                   <ButtonLink href={`/characters/new?system=${instance.system}`} size="sm">
@@ -182,16 +252,21 @@ export default async function Lobby({ params }: { params: Promise<{ id: string }
               <Card>
                 <ActionForm action={addCharacterAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
                   <input type="hidden" name="instance_id" value={instance.id} />
-                  <Field id="add-character-select" label="Your character" className="sm:max-w-sm sm:flex-1">
-                    <Select {...described("add-character-select")} name="character_id">
+                  <Field
+                    id="add-character-select"
+                    label="Your character"
+                    hint={joinable.length < mine.length ? "Characters with abilities or items from a setting this game does not include cannot join it." : undefined}
+                    className="sm:max-w-sm sm:flex-1"
+                  >
+                    <Select {...described("add-character-select", { hint: joinable.length < mine.length })} name="character_id" autoFocus={pick} defaultValue={joinable[0]?.id}>
                       {mine.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}
+                        <option key={c.id} value={c.id} disabled={c.missing.length > 0}>
+                          {c.missing.length > 0 ? `${c.name} (needs ${c.missing.join(" and ")})` : c.name}
                         </option>
                       ))}
                     </Select>
                   </Field>
-                  <Button type="submit" variant={controls.length > 0 ? "secondary" : "primary"} className="h-10">
+                  <Button type="submit" variant={controls.length > 0 ? "secondary" : "primary"} className="h-10" disabled={joinable.length === 0}>
                     Add my character
                   </Button>
                 </ActionForm>

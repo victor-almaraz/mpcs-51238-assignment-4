@@ -1,17 +1,18 @@
 // Schedule (app-flow.md, Schedule): occurrences from yesterday through the next 91 days grouped by week
 // in the user's time zone, RSVPs by member, the author's session controls, Add to calendar, and
-// Subscribe. A detail page (docs/design/README.md, Game lobby, schedule, history): the sessions in the
-// main column; the calendar links and the author's New session form in the aside.
+// Subscribe. Occurrences that have ended are a record, without answers or controls. A detail page
+// (docs/design/README.md, Game lobby, schedule, history): the sessions in the main column; the calendar
+// links and the author's New session and Edit sessions forms in the aside.
 import { CalendarDays, CalendarPlus, Check, Rss } from "lucide-react";
 import { ActionForm } from "@/components/action-form";
 import { CopyButton } from "@/components/invite-form";
 import { formatWhen, weekOf } from "@/components/when";
 import { getCampaign } from "@/lib/api/campaigns";
 import { getInstance } from "@/lib/api/instances";
-import { getCalendarFeed, listOccurrences } from "@/lib/api/schedules";
+import { calendarFeedKey, getCalendarFeed, listOccurrences, listSessions } from "@/lib/api/schedules";
 import { serverDeps } from "@/lib/server/coordinator";
 import { orNotFound, origin, requestTime } from "@/lib/server/pages";
-import { cancelAction, createFeedAction, moveOccurrenceAction, rsvpAction, scheduleSessionAction } from "@/lib/server/schedule-actions";
+import { cancelAction, createFeedAction, moveOccurrenceAction, rsvpAction, scheduleSessionAction, updateSessionAction } from "@/lib/server/schedule-actions";
 import { pageUser } from "@/lib/server/session";
 import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button, buttonClass } from "@/components/ui/button";
@@ -45,7 +46,8 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
   const tz = user.timezone;
   const weeks = new Map<string, typeof list>();
   for (const o of list) weeks.set(weekOf(o.starts_at, tz), [...(weeks.get(weekOf(o.starts_at, tz)) ?? []), o]);
-  const feedKey = process.env.CALENDAR_FEED_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const sessions = author && !ended ? await listSessions(store, user.id, id) : [];
+  const feedKey = calendarFeedKey();
   const feed = feedKey ? await getCalendarFeed(store, user.id, { key: feedKey, origin: await origin() }) : { url: null };
   const hidden = (o: { session_id: string; occurrence_start: string }) => (
     <>
@@ -140,6 +142,52 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
                 </ActionForm>
               </Panel>
             )}
+            {sessions.length > 0 && (
+              <Panel title="Edit sessions" className="gap-3">
+                <p className="text-caption text-muted">A change applies to the whole series. To move one session, use Change this session.</p>
+                {sessions.map((x) => (
+                  <details key={x.id} className="border-t border-rule pt-3">
+                    <summary className="cursor-pointer text-label font-medium text-accent">{x.title || `Starting ${formatWhen(x.starts_at, tz)}`}</summary>
+                    <ActionForm action={updateSessionAction} className="mt-3 flex flex-col gap-4">
+                      <input type="hidden" name="instance_id" value={id} />
+                      <input type="hidden" name="session_id" value={x.id} />
+                      <Field id={`edit-${x.id}-title`} label="Title" optional>
+                        <TextInput {...described(`edit-${x.id}-title`)} name="title" maxLength={80} defaultValue={x.title} placeholder="Weekly game" />
+                      </Field>
+                      <Field id={`edit-${x.id}-minutes`} label="Minutes">
+                        <TextInput {...described(`edit-${x.id}-minutes`)} type="number" name="duration_minutes" required min={15} max={720} defaultValue={x.duration_minutes} className="tabular" />
+                      </Field>
+                      <div className="grid grid-cols-[1fr_7.5rem] gap-3">
+                        <Field id={`edit-${x.id}-every`} label="Repeats">
+                          <Select {...described(`edit-${x.id}-every`)} name="every" defaultValue={String(x.recurrence?.interval ?? 0)}>
+                            <option value="0">Once</option>
+                            <option value="1">Every week</option>
+                            <option value="2">Every 2 weeks</option>
+                            <option value="3">Every 3 weeks</option>
+                            <option value="4">Every 4 weeks</option>
+                          </Select>
+                        </Field>
+                        <Field id={`edit-${x.id}-count`} label="Times" optional>
+                          <TextInput {...described(`edit-${x.id}-count`)} type="number" name="count" min={1} max={52} defaultValue={x.recurrence?.count} placeholder="52" className="tabular" />
+                        </Field>
+                      </div>
+                      <div className="flex flex-col">
+                        <Choice name="auto_resume" defaultChecked={x.auto_resume} label="Resume a paused game at each start" />
+                        <Choice name="auto_pause" defaultChecked={x.auto_pause} label="Pause the game at each end" />
+                      </div>
+                      <Field id={`edit-${x.id}-notes`} label="Notes" optional>
+                        <TextArea {...described(`edit-${x.id}-notes`)} name="notes" maxLength={500} rows={2} defaultValue={x.notes} />
+                      </Field>
+                      <div>
+                        <Button type="submit" size="sm">
+                          Save session
+                        </Button>
+                      </div>
+                    </ActionForm>
+                  </details>
+                ))}
+              </Panel>
+            )}
           </>
         }
       >
@@ -156,12 +204,14 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
                 const mine = RESPONSES.find((r) => o.rsvps[r].includes(user.id));
                 const minutes = Math.round((Date.parse(o.ends_at) - Date.parse(o.starts_at)) / 60000);
                 const answered = RESPONSES.filter((r) => o.rsvps[r].length > 0);
+                const over = Date.parse(o.ends_at) <= now;
                 return (
                   <li key={`${o.session_id}:${o.occurrence_start}`} className="rounded-card border border-rule bg-page p-4">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <p className="text-heading font-semibold text-ink">{formatWhen(o.starts_at, tz)}</p>
                       <span className="text-caption text-muted tabular">{minutes} min</span>
                       {o.status !== "scheduled" && <Badge tone={o.status === "moved" ? "warning" : "neutral"}>{o.status}</Badge>}
+                      {over && o.status !== "cancelled" && <Badge tone="neutral">ended</Badge>}
                     </div>
                     {answered.length === 0 ? (
                       <p className="mt-1 text-caption text-muted">No answers yet.</p>
@@ -175,7 +225,7 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
                         ))}
                       </ul>
                     )}
-                    {o.status !== "cancelled" && !ended && (
+                    {o.status !== "cancelled" && !ended && !over && (
                       <div className="mt-3 flex flex-col gap-3 border-t border-rule pt-3">
                         <div role="group" aria-label={`Your answer for ${formatWhen(o.starts_at, tz)}`} className="flex flex-wrap items-center gap-2">
                           <span className="text-label font-medium text-muted">Your answer</span>
@@ -218,8 +268,8 @@ export default async function Schedule({ params }: { params: Promise<{ id: strin
                                   <ConfirmButton
                                     size="sm"
                                     label="Cancel the series"
-                                    title="Cancel the whole series?"
-                                    description="Every session of this series is cancelled, including moved ones. This cannot be undone."
+                                    title="Cancel the series?"
+                                    description="Every session of this series from now on is cancelled, including moved ones. Sessions that have already started stay in the schedule. This cannot be undone."
                                     confirm="Cancel the series"
                                   />
                                 </ActionForm>

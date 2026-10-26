@@ -11,6 +11,7 @@ import { sendActionMenus } from "./menus";
 import { Rng } from "../rng";
 import { VersionConflict, type CharacterRecord, type InstanceRecord, type InstanceStatus, type Store } from "../store";
 import { pinnedBundles } from "./admin";
+import { rejectionText } from "./rejections";
 
 export class CoordinatorError extends Error {
   constructor(
@@ -218,7 +219,8 @@ export async function catchUp(deps: Deps, instanceId: string): Promise<boolean> 
   }
 }
 
-export type ActOutcome = { committed: number } | { rejected: { code: string; detail: string } };
+/** A rejection carries the engine's code and detail, and `text`, a sentence for the player. */
+export type ActOutcome = { committed: number } | { rejected: { code: string; detail: string; text: string } };
 
 /**
  * Runs one tool call for `actor` through the engine and commits it, first advancing past an expired
@@ -230,7 +232,7 @@ export async function act(deps: Deps, instanceId: string, actor: string, call: {
     requireStatus(instance, ["active"], "act in");
     const bundles = await pinnedBundles(deps.store, instance);
     const result = submit(instance.state!, bundles, actor, call, rngFor(instance, instance.state!));
-    if (!result.ok) return { rejected: result.error };
+    if (!result.ok) return { rejected: { ...result.error, text: rejectionText(instance.state!, bundles, result.error) } };
     const c = await commit(deps, instance, bundles, result, { call: { actor, tool: call.tool, args: call.args } }, { actor, inputLog });
     return { committed: c.version };
   });
@@ -247,11 +249,19 @@ export async function advanceRound(deps: Deps, instanceId: string): Promise<Comm
   });
 }
 
-/** Pauses, resumes, or ends an instance without a commit; ending writes every sheet back. */
+/**
+ * Pauses, resumes, or ends an instance without a commit; ending writes every sheet back. Resuming needs
+ * at least the adventure's minimum of players, since a game without its party is lost at once.
+ */
 export async function setStatus(deps: Deps, instanceId: string, status: "active" | "paused" | "ended"): Promise<void> {
   await serialized(deps, instanceId, async (instance) => {
     const from: Record<typeof status, InstanceStatus[]> = { paused: ["active"], active: ["paused"], ended: ["active", "paused"] };
     requireStatus(instance, from[status], status === "active" ? "resume" : status === "paused" ? "pause" : "end");
+    if (status === "active" && instance.state) {
+      const [min] = (await pinnedBundles(deps.store, instance)).adventure.manifest.players;
+      const n = Object.keys(instance.state.characters).length;
+      if (n < min) throw new CoordinatorError("conflict", `the adventure needs at least ${min} character${min === 1 ? "" : "s"} and the game has ${n}; add a character before resuming`);
+    }
     // A resumed wait gets a full timeout; a paused or ended instance has none.
     const seconds = status === "active" && instance.state ? timeoutOf(deps, instance.state) : null;
     const deadline = seconds === null ? null : new Date(deps.now().getTime() + seconds * 1000);

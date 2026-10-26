@@ -25,6 +25,7 @@ import { Notice } from "@/components/ui/notice";
 import { ElementTile, elementSymbol } from "@/components/ui/tile";
 import { cx } from "@/components/ui/cx";
 import { ArtIcon } from "@/components/art";
+import { formatWhen } from "@/components/when";
 import { QuickActions, TargetActions } from "./action-bar";
 import { MapPanel } from "./map-panel";
 import { PaneTabs } from "./pane-tabs";
@@ -50,6 +51,9 @@ export interface PlayProps {
   textInput: boolean;
   /** Character portraits by character id. */
   portraits: Record<string, { hash: string; alt: string }>;
+  /** The start of the next session, for the Paused banner, and the user's time zone. */
+  nextSession: string | null;
+  timezone: string;
 }
 
 /** How often to poll history while the Realtime channel is down. */
@@ -69,6 +73,16 @@ const clockNow = () => Math.floor(Date.now() / 1000);
 const clockServer = () => null;
 
 const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** The character whose turn it is: in a sequential round, the one the round waits on. */
+const currentOf = (round: View["round"]) => (round.resolution === "sequential" ? round.waiting_on[0] : undefined);
+
+/** Sentences for `input_rejected` reasons, for a message without a detail. */
+const REASONS: Record<string, string> = {
+  not_your_turn: "It is not your turn.",
+  choice_pending: "Choose an option first.",
+  rate_limited: "Your last input is still being worked on.",
+};
 
 function Countdown({ deadline }: { deadline: string | null }) {
   const now = useSyncExternalStore(subscribeClock, clockNow, clockServer);
@@ -123,7 +137,7 @@ export function PlayClient(props: PlayProps) {
   const [status, setStatus] = useState(props.instance.status);
   const [ending, setEnding] = useState<string | null>(props.instance.ending);
   const [log, setLog] = useState<LogEntry[]>(() => logOf(props.history));
-  const [round, setRound] = useState<{ declared: string[]; waiting_on: string[]; current?: string; deadline: string | null }>({ declared: view.round.declared, waiting_on: view.round.waiting_on, deadline: props.deadline });
+  const [round, setRound] = useState<{ declared: string[]; waiting_on: string[]; current?: string; deadline: string | null }>({ declared: view.round.declared, waiting_on: view.round.waiting_on, current: currentOf(view.round), deadline: props.deadline });
   const [stream, setStream] = useState<StreamStatus>("connecting");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -151,8 +165,11 @@ export function PlayClient(props: PlayProps) {
     setStatus(r.instance.status);
     setEnding(r.instance.ending);
     if (r.view) {
+      const next = r.view.round;
       setView(r.view);
-      setRound((x) => ({ ...x, declared: r.view!.round.declared, waiting_on: r.view!.round.waiting_on }));
+      setRound({ declared: next.declared, waiting_on: next.waiting_on, current: currentOf(next), deadline: r.deadline });
+      // The stored declaration, for clients without the user channel's `declaration` message.
+      setDeclaration((d) => (next.declared.includes(characterId) ? (d ?? { tool: "", label: lastLabel.current || "your action" }) : null));
     }
   }, [instanceId, characterId]);
 
@@ -197,7 +214,7 @@ export function PlayClient(props: PlayProps) {
       if (m.type === "declaration" && m.character_id === characterId) setDeclaration({ tool: String(m.tool), label: lastLabel.current || String(m.label) });
       if (m.type === "choice") void refresh();
       if (m.type === "action_menu" && m.character_id === characterId) setMenu((m.options as { label: string; tool: string; args: Record<string, unknown> }[]) ?? []);
-      if (m.type === "input_rejected") setError(`That did not work: ${String(m.detail ?? m.reason)}.`);
+      if (m.type === "input_rejected") setError(typeof m.detail === "string" ? m.detail : (REASONS[String(m.reason)] ?? "That did not work."));
     });
     const t = setInterval(() => {
       if (down) void s.backfill();
@@ -208,6 +225,14 @@ export function PlayClient(props: PlayProps) {
       stopUser();
     };
   }, [instanceId, characterId, props.realtime, props.userId, props.history, props.instance.version, session, onMessage, refresh]);
+
+  // At the deadline the next request advances the round (coordinator catchUp); this one is it, so a
+  // client without Realtime sees the new round too.
+  useEffect(() => {
+    if (status !== "active" || !round.deadline) return;
+    const t = setTimeout(() => void refresh(), Math.max(0, Date.parse(round.deadline) - Date.now()) + 1000);
+    return () => clearTimeout(t);
+  }, [status, round.deadline, refresh]);
 
   // Paused: back to the lobby after 5 seconds.
   useEffect(() => {
@@ -230,6 +255,7 @@ export function PlayClient(props: PlayProps) {
       const r = await actAction({ instance_id: instanceId, character_id: characterId, tool, args, idempotency_key: crypto.randomUUID() });
       setBusy(false);
       if (r.error) setError(r.error);
+      else if (r.rejected) setError(r.rejected);
       else {
         setSelected(null);
         void refresh();
@@ -314,18 +340,21 @@ export function PlayClient(props: PlayProps) {
           Advance
         </Button>
       )}
+      {/* Compact: the bar scrolls sideways; a fade on its right edge shows that more follows. */}
+      <span aria-hidden="true" className="pointer-events-none sticky -right-3 order-last -ml-3 w-10 shrink-0 self-stretch bg-linear-to-l from-page to-transparent sm:hidden" />
     </section>
   );
 
   const notice =
     status === "paused" ? (
       <Notice tone="warning" live title="The game is paused.">
+        {props.nextSession ? `Next session: ${formatWhen(props.nextSession, props.timezone)}. ` : "No session is scheduled. "}
         Returning to the lobby…
       </Notice>
     ) : status === "ended" ? (
-      <Notice tone="info" live title={`The adventure has ended${ending ? `: ${props.endings[ending] ?? ending}` : ""}.`}>
-        <Link href={`/instances/${instanceId}`} className="font-medium text-accent underline">
-          Back to the lobby
+      <Notice tone="info" live title={`The adventure has ended${ending && props.endings[ending] ? `: ${props.endings[ending]}` : ""}.`}>
+        <Link href={`/instances/${instanceId}/history`} className="font-medium text-accent underline">
+          Read the history
         </Link>
       </Notice>
     ) : null;
@@ -354,7 +383,7 @@ export function PlayClient(props: PlayProps) {
         {s.status !== "active" && <StatusBadge status={s.status} />}
       </div>
       <dl className="grid grid-cols-[repeat(auto-fill,minmax(6rem,1fr))] gap-2">
-        <div className="col-span-full flex flex-col gap-1.5 rounded-card border border-rule p-3">
+        <div className="flex flex-col gap-1.5 rounded-card border border-rule p-3">
           <dt className="text-caption text-muted">Health</dt>
           <dd className="tabular text-heading font-semibold text-ink">{s.health}</dd>
           <HealthBar health={s.health} />
@@ -367,16 +396,16 @@ export function PlayClient(props: PlayProps) {
         ))}
       </dl>
       <section aria-labelledby="inventory-title">
-        <h3 id="inventory-title" className="mb-1 px-2 text-label font-medium text-muted">
+        <h3 id="inventory-title" className="mb-1 text-label font-medium text-muted">
           Inventory
         </h3>
-        {view.actions.inventory.length === 0 ? <p className="px-2 text-caption text-muted">Empty</p> : <ul className="flex flex-col">{view.actions.inventory.map((i) => pickRow(i.id, i.label, i.art))}</ul>}
+        {view.actions.inventory.length === 0 ? <p className="text-caption text-muted">Empty</p> : <ul className="-mx-2 flex flex-col">{view.actions.inventory.map((i) => pickRow(i.id, i.label, i.art))}</ul>}
       </section>
       <section aria-labelledby="abilities-title">
-        <h3 id="abilities-title" className="mb-1 px-2 text-label font-medium text-muted">
+        <h3 id="abilities-title" className="mb-1 text-label font-medium text-muted">
           Abilities
         </h3>
-        {view.actions.abilities.length === 0 ? <p className="px-2 text-caption text-muted">None</p> : <ul className="flex flex-col">{view.actions.abilities.map((a) => pickRow(a.id, a.label, a.art))}</ul>}
+        {view.actions.abilities.length === 0 ? <p className="text-caption text-muted">None</p> : <ul className="-mx-2 flex flex-col">{view.actions.abilities.map((a) => pickRow(a.id, a.label, a.art))}</ul>}
       </section>
     </div>
   );
@@ -430,7 +459,7 @@ export function PlayClient(props: PlayProps) {
           ? "Working on your last action…"
           : props.textInput
             ? "What do you do?"
-            : "Text input is not available; use the actions.";
+            : "Use the actions below.";
   const typing = live && props.textInput && !busy && !view.pending_choice && !notMyTurn;
 
   const say = async () => {
@@ -441,7 +470,9 @@ export function PlayClient(props: PlayProps) {
     lastLabel.current = t;
     const r = await inputAction({ instance_id: instanceId, character_id: characterId, text: t, idempotency_key: crypto.randomUUID() });
     setBusy(false);
+    // A rejected input keeps its text, so the player can change it and send again.
     if (r.error) setError(r.error);
+    else if (r.rejected) setError(r.rejected);
     else {
       setText("");
       void refresh();
@@ -449,44 +480,47 @@ export function PlayClient(props: PlayProps) {
   };
 
   const composer = (
-    <section aria-labelledby="composer-title" aria-busy={busy} className="relative col-start-1 row-start-2 flex max-h-[45dvh] min-h-0 flex-col overflow-y-auto bg-page px-3 py-3 sm:row-start-3 sm:px-4 lg:col-start-2">
+    <section aria-labelledby="composer-title" aria-busy={busy} className="relative col-start-1 row-start-2 flex max-h-[45dvh] min-h-0 flex-col overflow-y-auto bg-page py-3 sm:row-start-3 lg:col-start-2">
       <h2 id="composer-title" className="sr-only">
         Your action
       </h2>
-      {/* Rejected actions and failed calls; always mounted, so a new message is announced. */}
-      <div role="alert" className="[&:not(:empty)]:mb-2">
-        {error && (
-          <div className="flex items-start gap-2 rounded-card border border-danger bg-danger-soft py-1.5 pr-1 pl-3 text-body text-ink">
-            <CircleAlert {...ICON_DENSE} className="mt-[3px] shrink-0 text-danger" />
-            <p className="min-w-0 flex-1 py-0.5">{error}</p>
-            <IconButton label="Dismiss" icon={<X {...ICON_DENSE} />} dense tip="end" onClick={() => setError(null)} className="text-muted hover:bg-page hover:text-ink" />
-          </div>
-        )}
-      </div>
-      <div className="flex flex-col gap-2">
-        {live && menu.length > 0 && (
-          <div role="group" aria-label="Suggested actions" className="flex flex-wrap gap-2">
-            {menu.map((o, i) => (
-              <button key={i} type="button" disabled={busy} onClick={() => void act(o.tool, o.args, o.label)} className="inline-flex h-8 items-center rounded-full border border-accent-line bg-accent-soft px-3 text-label font-medium text-accent hover:border-accent disabled:cursor-not-allowed disabled:opacity-55">
-                {o.label}
-              </button>
-            ))}
-          </div>
-        )}
-        {live && !notMyTurn && <TargetActions view={view} selected={selected} onSelect={setSelected} act={act} busy={busy} />}
-        <form
-          className="flex items-center gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void say();
-          }}
-        >
-          <TextInput disabled={!typing} value={text} maxLength={500} onChange={(e) => setText(e.target.value)} aria-label="What do you do?" placeholder={placeholder} className="min-w-0 flex-1" />
-          <Button type="submit" variant="primary" disabled={!typing || !text.trim()} icon={<Send {...ICON_DENSE} />} className="h-10">
-            <span className="max-sm:sr-only">Send</span>
-          </Button>
-        </form>
-        {live && !notMyTurn && <QuickActions view={view} act={act} busy={busy} declaration={declaration} />}
+      {/* The log's prose column, so the composer starts on the narration's edge. */}
+      <div className="mx-auto flex w-full max-w-prose flex-col px-4 sm:px-6">
+        {/* Rejected actions and failed calls; always mounted, so a new message is announced. */}
+        <div role="alert" className="[&:not(:empty)]:mb-2">
+          {error && (
+            <div className="flex items-start gap-2 rounded-card border border-danger bg-danger-soft py-1.5 pr-1 pl-3 text-body text-ink">
+              <CircleAlert {...ICON_DENSE} className="mt-[3px] shrink-0 text-danger" />
+              <p className="min-w-0 flex-1 py-0.5">{error}</p>
+              <IconButton label="Dismiss" icon={<X {...ICON_DENSE} />} dense tip="end" onClick={() => setError(null)} className="text-muted hover:bg-page hover:text-ink" />
+            </div>
+          )}
+        </div>
+        <div className="flex flex-col gap-2">
+          {live && menu.length > 0 && (
+            <div role="group" aria-label="Suggested actions" className="flex flex-wrap gap-2">
+              {menu.map((o, i) => (
+                <button key={i} type="button" disabled={busy} onClick={() => void act(o.tool, o.args, o.label)} className="inline-flex h-8 items-center rounded-full border border-accent-line bg-accent-soft px-3 text-label font-medium text-accent hover:border-accent disabled:cursor-not-allowed disabled:opacity-55">
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {live && !notMyTurn && <TargetActions view={view} selected={selected} onSelect={setSelected} act={act} busy={busy} />}
+          <form
+            className="flex items-center gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void say();
+            }}
+          >
+            <TextInput disabled={!typing} value={text} maxLength={500} onChange={(e) => setText(e.target.value)} aria-label="What do you do?" placeholder={placeholder} className="min-w-0 flex-1" />
+            <Button type="submit" variant="primary" disabled={!typing || !text.trim()} icon={<Send {...ICON_DENSE} />} className="h-10">
+              <span className="max-sm:sr-only">Send</span>
+            </Button>
+          </form>
+          {live && !notMyTurn && <QuickActions view={view} act={act} busy={busy} declaration={declaration} />}
+        </div>
       </div>
     </section>
   );

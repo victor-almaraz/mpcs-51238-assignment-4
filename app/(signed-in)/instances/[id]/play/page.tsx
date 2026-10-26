@@ -5,8 +5,9 @@ import { PlayClient } from "@/components/play/play-client";
 import type { AdventureBundle } from "@/lib/bundle/adventure";
 import { getCampaign } from "@/lib/api/campaigns";
 import { getHistory, getInstance } from "@/lib/api/instances";
+import { listOccurrences } from "@/lib/api/schedules";
 import { serverDeps } from "@/lib/server/coordinator";
-import { orNotFound } from "@/lib/server/pages";
+import { orNotFound, requestTime } from "@/lib/server/pages";
 import { pageUser } from "@/lib/server/session";
 
 export default async function Play({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ character?: string }> }) {
@@ -33,6 +34,9 @@ export default async function Play({ params, searchParams }: { params: Promise<{
     const meta = record?.portrait_asset ? await deps.store.assetMeta(record.portrait_asset) : undefined;
     if (meta && !meta.removed_at) portraits[c.id] = { hash: meta.hash, alt: meta.alt };
   }
+  // The next session, for the Paused banner (app-flow.md, Play interface: Paused).
+  const now = requestTime();
+  const next = (await listOccurrences(deps.store, user.id, { instance_id: id, from: new Date(now).toISOString(), to: new Date(now + 92 * 86_400_000).toISOString() })).find((o) => o.status !== "cancelled");
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
   return (
@@ -52,6 +56,8 @@ export default async function Play({ params, searchParams }: { params: Promise<{
         realtime={url && key ? { url, key } : null}
         textInput={deps.parser !== undefined}
         portraits={portraits}
+        nextSession={next?.starts_at ?? null}
+        timezone={user.timezone}
       />
     </>
   );

@@ -82,7 +82,8 @@ export interface View {
   // SPEC_ISSUES.md#view-direct-play: labels and verbs from parser context, so play works without the parser.
   actions: {
     inventory: { id: string; label: string; art?: ArtSet }[];
-    abilities: { id: string; label: string; art?: ArtSet }[];
+    /** `target` is what the ability aims at: the user, a visible entity, a door, or nothing. */
+    abilities: { id: string; label: string; target: "self" | "entity" | "door" | "none"; art?: ArtSet }[];
     npcs: { id: string; name: string; topics: { id: string; label: string }[] }[];
   };
 }
@@ -254,8 +255,9 @@ export function view(state: State, bundles: Bundles, characterId: string): View 
         return { id, label: labelOf(c, state, id), ...(art ? { art } : {}) };
       }),
       abilities: ((ch.sheet.abilities as string[] | undefined) ?? []).map((ref) => {
-        const art = artOf(bundles, (c.ability(ref) as { art?: string[] } | undefined)?.art);
-        return { id: ref, label: c.ability(ref)?.label ?? ref, ...(art ? { art } : {}) };
+        const def = c.ability(ref);
+        const art = artOf(bundles, (def as { art?: string[] } | undefined)?.art);
+        return { id: ref, label: def?.label ?? ref, target: def?.target ?? "none", ...(art ? { art } : {}) };
       }),
       npcs: visible
         .filter((v) => state.entities[v.id]?.npc !== undefined && roomOf(state, v.id)?.room === here)

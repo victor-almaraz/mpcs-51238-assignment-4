@@ -8,6 +8,7 @@ import type { ParseResult } from "../parser/adapter";
 import { pinnedBundles } from "./admin";
 import { CoordinatorError, catchUp, commit, load, requireStatus, rngFor, serialized, type Deps } from "./instance";
 import { menuOptions, valid } from "./menus";
+import { rejectionText } from "./rejections";
 
 type Call = { tool: string; args: Record<string, unknown> };
 
@@ -92,7 +93,7 @@ export async function processInput(deps: Deps, instanceId: string, actor: string
       outcome = "fallback";
       result = submit(fresh.state!, bundles, actor, used, rngFor(fresh, fresh.state!));
     }
-    if (!result.ok) throw new CoordinatorError("conflict", result.error.detail, result.error.code);
+    if (!result.ok) throw new CoordinatorError("conflict", rejectionText(fresh.state!, bundles, result.error), result.error.code);
     const c = await commit(deps, fresh, bundles, result, { call: { actor, tool: used.tool, args: used.args } }, { actor, inputLog, outcome });
     return { version: c.version, outcome };
   });

@@ -11,7 +11,7 @@ import type { testDb } from "../store/testing/pglite";
 import { createCharacter } from "./characters";
 import { createCampaign } from "./campaigns";
 import type { Entropy } from "./entropy";
-import { addCharacter, createInstance, getHistory, startInstance, submitInput, type Deps } from "./instances";
+import { addCharacter, createInstance, getHistory, inputWithOutcome, pauseInstance, startInstance, submitInput, type Deps } from "./instances";
 import { code, entropy, SIX, SUNKEN, world } from "./testing/fixtures";
 
 let db: Awaited<ReturnType<typeof testDb>>;
@@ -127,6 +127,23 @@ describe("submit_input", () => {
     expect(await code(say(instance.id, "wait", "text-busy-00001"))).toBe("rate_limited");
     deps.parser = undefined;
     expect(await code(say(instance.id, "wait", "text-none-00001"))).toBe("unavailable");
+  });
+
+  it("reports an input that did not commit as a sentence, on the user channel and to the play page", async () => {
+    // The author pauses the game while the parser works, so the parsed call finds the game stopped.
+    let instanceId = "";
+    deps.parser = {
+      async parse() {
+        await pauseInstance(deps, "user_a", instanceId);
+        return { ok: true, call: { tool: "wait", args: {} }, raw: null, ms: 0 };
+      },
+    };
+    const { instance } = await solo();
+    instanceId = instance.id;
+    const r = await inputWithOutcome(deps, "user_a", { instance_id: instance.id, text: "wait", idempotency_key: "text-paused-0001" }, e);
+    expect(r.rejected).toBe("The game is not running.");
+    expect(broadcast.on("user:user_a").at(-1)).toMatchObject({ type: "input_rejected", input_id: r.input_id, reason: "conflict", detail: "The game is not running." });
+    expect((await inputRow(r.input_id)).outcome).toBe("rejected");
   });
 });
 

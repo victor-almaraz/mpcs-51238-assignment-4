@@ -100,6 +100,18 @@ export async function updateSession(store: Store, userId: string | null, input: 
   return sessionView(await store.putSession({ ...session, ...fieldsOf(req, session) }));
 }
 
+// SPEC_ISSUES.md#session-updates: the schedule page edits a series, which list_occurrences does not describe.
+/** The instance's sessions that are not cancelled, oldest first, for the author's edit forms. */
+export async function listSessions(store: Store, userId: string | null, instanceId: unknown) {
+  const user = await caller(store, userId, "list_occurrences");
+  const { instance } = await instanceOf(store, user, instanceId);
+  const { sessions } = await store.schedules([instance.id]);
+  return sessions
+    .filter((s) => s.status === "scheduled")
+    .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
+    .map(sessionView);
+}
+
 /** The occurrence of a session that started at `occurrenceStart`, or invalid_request. */
 function occurrenceOf(session: SessionRecord, schedules: Schedules, occurrenceStart: unknown): Occurrence {
   const at = instant(occurrenceStart, "occurrence_start");
@@ -183,6 +195,14 @@ export interface FeedConfig {
 }
 
 const feedUrl = (c: FeedConfig, secret: string) => `${c.origin}/v1/calendar/${secret}.ics`;
+
+/**
+ * The key calendar feed secrets derive from, or undefined when calendar feeds are not configured. Only
+ * its own variable: a feed URL must not depend on, or change with, any other secret.
+ */
+export function calendarFeedKey(env: Record<string, string | undefined> = process.env): string | undefined {
+  return env.CALENDAR_FEED_KEY?.trim() || undefined;
+}
 
 export async function getCalendarFeed(store: Store, userId: string | null, config: FeedConfig) {
   const user = await caller(store, userId, "get_calendar_feed");
