@@ -1,12 +1,12 @@
 # Cadmium
 
-The web application for Cadmium, a multiplayer text dungeon crawler run by software. The specification lives in [`cadmium-spec/`](cadmium-spec/); start with [`cadmium-spec/AGENTS.md`](cadmium-spec/AGENTS.md) and [`cadmium-spec/docs/README.md`](cadmium-spec/docs/README.md). The specification is a working draft that changes with the product: where it is silent or wrong, the code and the specification change together; see [Specification version](#specification-version).
+The web application for Cadmium, a multiplayer text dungeon crawler run by software. The specification lives in [`docs/spec/`](docs/spec/); start with [`docs/spec/AGENTS.md`](docs/spec/AGENTS.md) and [`docs/spec/docs/README.md`](docs/spec/docs/README.md). The specification is a working draft that changes with the product: where it is silent or wrong, the code and the specification change together; see [Specification version](#specification-version).
 
 The work is planned in [SPRINTS.md](SPRINTS.md). Gaps in the specification found during implementation are recorded in [SPEC_ISSUES.md](SPEC_ISSUES.md).
 
 ## Stack
 
-Next.js (App Router), TypeScript in strict mode, Tailwind CSS, Clerk, Supabase, Vercel, and Groq, as listed in [`app-flow.md`](cadmium-spec/docs/app-flow.md#stack). Schemas are validated with Ajv (`Ajv2020`), YAML is read with `yaml` as YAML 1.2, and tests run on Vitest.
+Next.js (App Router), TypeScript in strict mode, Tailwind CSS, Clerk, Supabase, Vercel, and Groq, as listed in [`app-flow.md`](docs/spec/docs/app-flow.md#stack). Schemas are validated with Ajv (`Ajv2020`), YAML is read with `yaml` as YAML 1.2, and tests run on Vitest.
 
 ## Setup
 
@@ -91,10 +91,10 @@ Clerk keeps the `users` table current through a webhook endpoint at `https://<ho
 | `pnpm audit:ui` | Design and accessibility audit of every demo screen, and of the editor's arc graph and YAML view, at 1280 and 390 px into `screenshots/audit.md` (run `pnpm demo` first); `--scheme dark` for the dark theme, `--screens REGEX` for the screens whose path matches; it checks spacing too, and exits 1 when it finds anything |
 | `pnpm db:fresh` | Write `supabase/fresh.sql`: delete every Cadmium table and function and apply every migration, in one transaction |
 
-The Content Compiler's command line follows [`spec/README.md`](cadmium-spec/spec/README.md#compiler-interface). pnpm prints the script line on stdout, so run `build` directly when its output is piped:
+The Content Compiler's command line follows [`spec/README.md`](docs/spec/spec/README.md#compiler-interface). pnpm prints the script line on stdout, so run `build` directly when its output is piped:
 
 ```bash
-pnpm exec tsx lib/materials/cli.ts build -o bundle.json cadmium-spec/spec/examples/derelict_station
+pnpm exec tsx lib/materials/cli.ts build -o bundle.json docs/spec/spec/examples/derelict_station
 ```
 
 Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before every commit; it is the gate that the specification's CI requirement describes.
@@ -103,7 +103,7 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 
 | Path | Contents |
 |---|---|
-| `cadmium-spec/` | The specification: documents, JSON Schemas, example packs, rules data, design tokens |
+| `docs/spec/` | The specification: documents, JSON Schemas, example packs, rules data, design tokens |
 | `app/` | Next.js routes and pages |
 | `lib/rng/` | `splitmix64_v1` draws, dice, selection by RNG, `fnv1a64` |
 | `lib/grid/` | Map parsing, distance, adjacency, line of sight, pathfinding, movement allowance |
@@ -132,18 +132,18 @@ Vercel deploys from GitHub and runs `pnpm build` only. Run `pnpm check` before e
 | `lib/bundle/` | Schema registry and generated types; generated files are never edited by hand |
 | `lib/materials/` | Content Compiler: pack reading, schema explanations, rules-system, cross-reference, map, and art checks, bundles, and the `materials` command line |
 | `scripts/` | Build-time scripts, such as type generation |
-| `materials/` | Material packs shipped with the application: `quest_starter` (the Quest Quick Start abilities, CC BY 4.0), and the ability descriptions of `lantern_coast`. The exemplar `sunken_archive` and its setting `lantern_coast`, with six abilities per role, are specification examples in `cadmium-spec/spec/examples/` |
+| `materials/` | Material packs shipped with the application: `quest_starter` (the Quest Quick Start abilities, CC BY 4.0), and the ability descriptions of `lantern_coast`. The exemplar `sunken_archive` and its setting `lantern_coast`, with six abilities per role, are specification examples in `docs/spec/spec/examples/` |
 | `docs/exemplar/` | The exemplar's report: coverage, validation passes, walkthroughs, and departures from the draft |
 | `tools/sim/` | The balance simulation |
 | `public/fonts/` | Libertinus Serif (SIL Open Font License, `OFL.txt`) for story text |
 | `tests/` | Tests that span modules, such as specification validation |
 
-Modules under `lib/` follow the boundaries in [`engine-implementation.md`](cadmium-spec/docs/guides/engine-implementation.md#module-boundaries). `rng`, `grid`, `generator`, and `engine` perform no I/O.
+Modules under `lib/` follow the boundaries in [`engine-implementation.md`](docs/spec/docs/guides/engine-implementation.md#module-boundaries). `rng`, `grid`, `generator`, and `engine` perform no I/O.
 
 ## Specification version
 
-`cadmium-spec/` is a copy of the specification at commit `54f4adcdffe5bf3c8547a5c89a9f55fefbeb2fef` with two changes applied. The first is the exemplar of `briefs/example-adventure.md`, which adds `spec/examples/lantern_coast` (with six abilities per role) and `spec/examples/sunken_archive` and updates `spec/README.md`, `AGENTS.md`, `docs/adventure-packs.md`, and `docs/guides/adventure-authoring.md`. The second is `docs/legal/privacy.md`, which matches `legal/privacy.md` on archived and deleted campaigns, characters, and drafts, and on revoked invitations. Both changes belong in the specification repository. The copy becomes a git submodule, pinned to a commit that contains the change, when the specification repository's URL is available. Updating the specification is its own change, with the specification diff summarized.
+`docs/spec/` is the specification, kept in this repository. It began as a copy of the specification at commit `54f4adcdffe5bf3c8547a5c89a9f55fefbeb2fef` and is a working draft that changes with the product: a change to the application's behaviour updates the specification in the same commit, and `SPEC_ISSUES.md` lists any gap left open. The specification keeps its own layout, so `docs/spec/docs/` holds its documents, `docs/spec/spec/` its schemas and example packs, and `docs/spec/systems/` the rules systems' data.
 
 ## License
 
-Application code: MIT. The specification's licenses are in [`cadmium-spec/LICENSES.md`](cadmium-spec/LICENSES.md).
+Application code: MIT. The specification's licenses are in [`docs/spec/LICENSES.md`](docs/spec/LICENSES.md).

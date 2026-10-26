@@ -43,5 +43,5 @@ are in `materials/lantern_coast/descriptions.yaml`.
 Check it with:
 
 ```bash
-pnpm materials check cadmium-spec/spec/examples/lantern_coast
+pnpm materials check docs/spec/spec/examples/lantern_coast
 ```

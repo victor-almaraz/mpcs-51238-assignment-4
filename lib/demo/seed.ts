@@ -34,7 +34,7 @@ function counting(): Entropy {
 
 // Each read starts from a fixed folder, so the bundler traces only those folders.
 type Pack = { materials: string } | { example: string };
-const pack = (p: Pack) => ("materials" in p ? readPackDir(join(process.cwd(), "materials", p.materials, "pack")) : readPackDir(join(process.cwd(), "cadmium-spec", "spec", "examples", p.example)));
+const pack = (p: Pack) => ("materials" in p ? readPackDir(join(process.cwd(), "materials", p.materials, "pack")) : readPackDir(join(process.cwd(), "docs/spec", "spec", "examples", p.example)));
 
 /** The packs an operator publishes on a fresh deployment (runbooks/content-publishing.md): settings in material order, then the exemplar adventure. */
 const PUBLISHED: { settings: Pack[]; adventure: Pack } = {

@@ -1,14 +1,14 @@
 // Cadmium rules data, module data, and schemas, read from the specification at build time
 // (docs/systems/cadmium.md).
 
-import data from "../../../cadmium-spec/systems/cadmium/data.json";
-import modules from "../../../cadmium-spec/systems/cadmium/modules.json";
-import ability from "../../../cadmium-spec/systems/cadmium/ability.schema.json";
-import character from "../../../cadmium-spec/systems/cadmium/character.schema.json";
-import check from "../../../cadmium-spec/systems/cadmium/check.schema.json";
-import creature from "../../../cadmium-spec/systems/cadmium/creature.schema.json";
-import item from "../../../cadmium-spec/systems/cadmium/item.schema.json";
-import structure from "../../../cadmium-spec/systems/cadmium/structure.schema.json";
+import data from "../../../docs/spec/systems/cadmium/data.json";
+import modules from "../../../docs/spec/systems/cadmium/modules.json";
+import ability from "../../../docs/spec/systems/cadmium/ability.schema.json";
+import character from "../../../docs/spec/systems/cadmium/character.schema.json";
+import check from "../../../docs/spec/systems/cadmium/check.schema.json";
+import creature from "../../../docs/spec/systems/cadmium/creature.schema.json";
+import item from "../../../docs/spec/systems/cadmium/item.schema.json";
+import structure from "../../../docs/spec/systems/cadmium/structure.schema.json";
 import type { QuestData } from "../quest/data";
 
 export interface ModuleData {

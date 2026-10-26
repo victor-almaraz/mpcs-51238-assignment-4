@@ -11,7 +11,7 @@ import { SCHEMAS } from "@/lib/bundle/schemas.generated";
 import { anyLayoutEntry } from "@/lib/materials/layout";
 import { docBlocks, docPackFiles } from "./doc-blocks";
 
-const SPEC = fileURLToPath(new URL("../cadmium-spec", import.meta.url));
+const SPEC = fileURLToPath(new URL("../docs/spec", import.meta.url));
 
 // YAML 1.2 core schema: only true and false are booleans (AGENTS.md, Conventions).
 const readYaml = (source: string): unknown => parse(source, { schema: "core", version: "1.2" });

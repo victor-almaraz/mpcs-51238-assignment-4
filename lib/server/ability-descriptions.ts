@@ -1,6 +1,6 @@
 // Short ability descriptions that ship beside the application's own packs (materials/<pack>/descriptions.yaml),
 // keyed by ref. A pack's namespace comes from materials/<pack>/pack/manifest.yaml, or, for a directory without
-// a pack, from the specification's example of that name (cadmium-spec/spec/examples/<pack>/manifest.yaml).
+// a pack, from the specification's example of that name (docs/spec/spec/examples/<pack>/manifest.yaml).
 // Packs have no description field, so these reach only the creation form and the sheet.
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -8,7 +8,7 @@ import { join } from "node:path";
 import { parse } from "yaml";
 
 const MATERIALS = join(process.cwd(), "materials");
-const EXAMPLES = join(process.cwd(), "cadmium-spec/spec/examples");
+const EXAMPLES = join(process.cwd(), "docs/spec/spec/examples");
 
 let cache: Map<string, string> | undefined;
 

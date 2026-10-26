@@ -1,10 +1,10 @@
 # Sprints
 
-The work in `cadmium-spec/AGENTS.md` ("Phases") split into sprints that each fit one working session. Each sprint names the specification sections it implements, the modules it touches, and an exit criterion that is checked by tests before the sprint closes.
+The work in `docs/spec/AGENTS.md` ("Phases") split into sprints that each fit one working session. Each sprint names the specification sections it implements, the modules it touches, and an exit criterion that is checked by tests before the sprint closes.
 
 ## Working agreement
 
-- Start every sprint by reading `cadmium-spec/AGENTS.md` and the "Read" column of the sprint. The specification is the requirement.
+- Start every sprint by reading `docs/spec/AGENTS.md` and the "Read" column of the sprint. The specification is the requirement.
 - A sprint closes when `pnpm check` passes (generated files current, type checking, linting, tests, build) and its exit criterion holds. There is no CI service: Vercel deploys from GitHub and runs only the build, so `pnpm check` runs locally before every commit.
 - Gaps or contradictions in the specification are fixed in the specification in the same change as the code; a gap left open goes to `SPEC_ISSUES.md` with a matching `SPEC_ISSUES.md#<anchor>` comment in code.
 - Each sprint ends with a commit and a handoff note in [Status](#status): what was done, what is open, and anything the next sprint needs to know.
@@ -44,7 +44,6 @@ The work in `cadmium-spec/AGENTS.md` ("Phases") split into sprints that each fit
 
 | Needed by sprint | Item |
 |---|---|
-| 0 | Git URL of the specification repository, to replace the vendored `cadmium-spec/` with a submodule pinned at `54f4adcdffe5bf3c8547a5c89a9f55fefbeb2fef` |
 | 10 | Supabase project (URL, anon and service keys) |
 | 11 | Clerk application (publishable and secret keys, webhook secret) |
 | 13 | Vercel project linked to the repository |
@@ -59,7 +58,7 @@ All eighteen migrations are applied to the remote database (rebuilt from `supaba
 
 Done:
 
-- Next.js App Router shell with TypeScript strict, Tailwind importing `cadmium-spec/design/theme.css`; `pnpm build` passes.
+- Next.js App Router shell with TypeScript strict, Tailwind importing `docs/spec/design/theme.css`; `pnpm build` passes.
 - Node 24 pinned through pnpm `devEngines.runtime`; run tools with `pnpm exec` or `pnpm <script>`.
 - TypeScript 6 (typescript-eslint does not support TypeScript 7).
 - `scripts/gen-bundle.ts` generates `lib/bundle/schemas.generated.ts` (schema index and rules data) and `lib/bundle/types/` from all 28 schemas.
@@ -71,7 +70,7 @@ Done:
 
 Open:
 
-- `cadmium-spec/` is a vendored copy of `cadmium-spec.zip`, not a submodule; see External prerequisites.
+- `docs/spec/` holds the specification, kept in this repository rather than as a submodule.
 - Playwright is deferred to sprint 14, the first sprint with browser journeys.
 
 ### Sprint 1: Random numbers and grid — closed
@@ -523,8 +522,8 @@ Open:
 
 Built from the author's campaign draft, supplied separately and not committed.
 
-- `cadmium-spec/spec/examples/lantern_coast`: the setting for Cadmium with `armor` and `stash`. It adds the floret currency, sea and shore terrain (with `window` and `low_wall`, which block movement but not sight), people and creatures, goods with `armor` and `slots`, chests with `capacity`, the `vault_door` lock-and-key pair, and the `registry_vault` room template.
-- `cadmium-spec/spec/examples/sunken_archive`: the adventure, 1.0.0. It has 13 locations (one generated), 33 NPCs, six arcs with 76 triggers, and the endings `escaped` (six variants), `archive_sealed` (two), and `lost`. `docs/exemplar/sunken_archive.md` maps the brief's coverage list to the pack, reports the schema and semantic passes, gives a walkthrough per ending, and lists departures from the draft.
+- `docs/spec/spec/examples/lantern_coast`: the setting for Cadmium with `armor` and `stash`. It adds the floret currency, sea and shore terrain (with `window` and `low_wall`, which block movement but not sight), people and creatures, goods with `armor` and `slots`, chests with `capacity`, the `vault_door` lock-and-key pair, and the `registry_vault` room template.
+- `docs/spec/spec/examples/sunken_archive`: the adventure, 1.0.0. It has 13 locations (one generated), 33 NPCs, six arcs with 76 triggers, and the endings `escaped` (six variants), `archive_sealed` (two), and `lost`. `docs/exemplar/sunken_archive.md` maps the brief's coverage list to the pack, reports the schema and semantic passes, gives a walkthrough per ending, and lists departures from the draft.
 - Scripted runs reach every ending: the golden scenarios `exemplar_escaped` (contract path), `exemplar_archive_sealed` (rumor path), and `exemplar_lost`. `lib/harness/exemplar.test.ts` covers room-wide rewards, purchases and affordability, stash capacity, the strongbox lock, the fog bank's lit-lamp lock, `item_given`, `set_hostile`, and NPCs moved between locations, and checks the coverage list against the pack files.
 - `tools/sim` (`pnpm sim`): seeded, replayable Monte Carlo fights of the exemplar's twelve encounters through the engine, sweeping party size, loadout, `armor.max`, and the octopus's hit points; it writes `tools/sim/REPORT.md`. One character finishes about one time in five to two in five, because of the octopus and the gallery ambush; two or more win every required fight. Tests: `tools/sim/sim.test.ts` (4).
 - `pnpm bundles` publishes `lantern_coast` and the exemplar in place of the guide adventure. The campaign material picker lists an adventure's required settings first (`generation-order`).
