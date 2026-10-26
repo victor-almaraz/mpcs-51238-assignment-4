@@ -53,7 +53,7 @@ The work in `cadmium-spec/AGENTS.md` ("Phases") split into sprints that each fit
 
 ## Status
 
-All twelve migrations are applied to the remote database (rebuilt from `supabase/fresh.sql`, 2026-10-24).
+All thirteen migrations are applied to the remote database (rebuilt from `supabase/fresh.sql` on 2026-10-24; `20261025000000_campaign_archive` applied on 2026-10-25).
 
 ### Sprint 0: Foundations — closed
 
@@ -517,7 +517,6 @@ Open:
 
 Open:
 
-- Apply migration `20261025000000_campaign_archive` to the remote database; until then `/api/health` reports it missing and the Campaigns page's lists fail.
 
 ### Sprint 24: Exemplar adventure — open
 
