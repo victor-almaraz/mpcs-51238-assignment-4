@@ -231,7 +231,8 @@ function pageChecks(): Finding[] {
   const own = "button, a, input, select, textarea, label, code, kbd, thead, tbody, tr, th, td, [role=tab], [role=tooltip], .rounded-full, .monaco-editor, .react-flow, [data-workspace]";
   const main = document.querySelector("main");
   for (const p of main ? [...main.querySelectorAll("*")] : []) {
-    if (!shown(p) || p.closest(own) || /\bdivide-/.test(String(p.className))) continue;
+    // A table's header and body sections meet by design.
+    if (!shown(p) || p.closest(own) || p.matches("table") || /\bdivide-/.test(String(p.className))) continue;
     const kids = [...p.children].filter((c) => shown(c) && !["absolute", "fixed"].includes(getComputedStyle(c).position) && getComputedStyle(c).display !== "inline");
     for (let i = 1; i < kids.length; i++) {
       const a = kids[i - 1]!;
