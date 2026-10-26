@@ -321,7 +321,7 @@ Done:
 
 Open:
 
-- Realtime private channels need Supabase's Clerk third-party auth integration (Supabase dashboard, Authentication, Third-party auth, Clerk) so Supabase accepts Clerk session tokens; until then subscriptions fail and clients see commits only through `get_history`.
+- Done: Supabase's Clerk third-party auth integration is configured (the project owner, by 2026-10-25), so Supabase accepts Clerk session tokens on the Realtime private channels.
 - Two browsers over the deployed binding are verified only in tests with an in-memory broadcaster.
 - `narration` (template and model), `action_menu`, and `submit_input` come with sprints 14 and 15.
 
@@ -380,7 +380,7 @@ Done:
 - `/notifications` lists recent and upcoming session reminders, derived from schedules by the Scheduler's rules, refreshed by `session_reminder` on the user channel and every minute ([notification-records](SPEC_ISSUES.md#notification-records)). No migration.
 Open:
 
-- Web Push: needs `pnpm add web-push` and a VAPID key pair (`VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`); the Notifier takes a push function once they exist. Push subscriptions and Settings come with sprint 19.
+- Done: Web Push sends reminders through `web-push` (polish pass), and the VAPID key pair is set (the project owner, by 2026-10-25).
 - The cron schedule is not configured: Vercel Hobby allows daily cron jobs only, and a more frequent schedule fails the deployment. Every-minute runs need a plan that allows them, or an external scheduler calling `/api/cron/scheduler` with `CRON_SECRET`. Deadlines are also enforced on every request to an instance.
 
 ### Sprint 19: Settings, export, deletion — open
@@ -397,7 +397,6 @@ Done:
 Open:
 
 - In the Clerk dashboard, turn off users deleting their own accounts, so deletion goes through Settings and its 30-day recovery. A deletion at Clerk still marks the user deleted, and the purge erases the data after 90 days.
-- Sending Web Push needs `web-push` and VAPID keys; subscriptions are stored meanwhile.
 - `drafts/` and `assets/` in the export arrive with the adventure editor and portrait uploads.
 
 ### Sprint 20: Operations — open
@@ -518,7 +517,6 @@ Open:
 
 Open:
 
-- `VAPID_PRIVATE_KEY` (and optionally `VAPID_SUBJECT`) in Vercel; `/api/health` reports `settings.webPush` to the operator.
 - Apply migration `20261025000000_campaign_archive` to the remote database; until then `/api/health` reports it missing and the Campaigns page's lists fail.
 
 ### Sprint 24: Exemplar adventure — open

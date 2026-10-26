@@ -56,7 +56,7 @@ The migrations in `supabase/migrations/` create the store's tables and functions
 
 ### Realtime
 
-Instance and user messages travel on Supabase Realtime private channels, `instance:{id}` and `user:{id}`, admitted by the policy in the fifth migration. Browsers authenticate with their Clerk session token, which Supabase accepts once Clerk is added under Authentication, Third-party auth in the Supabase dashboard (and Supabase is enabled under Integrations in the Clerk dashboard).
+Instance and user messages travel on Supabase Realtime private channels, `instance:{id}` and `user:{id}`, admitted by the policy in the fifth migration. Browsers authenticate with their Clerk session token, which Supabase accepts through the Clerk third-party auth integration (Authentication, Third-party auth in the Supabase dashboard, with Supabase enabled under Integrations in the Clerk dashboard).
 
 ### Materials
 
