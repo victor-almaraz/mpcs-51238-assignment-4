@@ -47,9 +47,9 @@ export function RestoreForm({ campaignId, title }: { campaignId: string; title: 
 }
 
 /** The archived state, with Unarchive for the author. */
-export function ArchivedNotice({ campaignId, author }: { campaignId: string; author: boolean }) {
+export function ArchivedNotice({ campaignId, author, className }: { campaignId: string; author: boolean; className?: string }) {
   return (
-    <Notice title="This campaign is archived">
+    <Notice title="This campaign is archived" className={className}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p>{ARCHIVE_NOTE}</p>
         {author && <UnarchiveForm campaignId={campaignId} />}
