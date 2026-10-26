@@ -53,7 +53,7 @@ The work in `cadmium-spec/AGENTS.md` ("Phases") split into sprints that each fit
 
 ## Status
 
-All thirteen migrations are applied to the remote database (rebuilt from `supabase/fresh.sql` on 2026-10-24; `20261025000000_campaign_archive` applied on 2026-10-25).
+Thirteen of the fourteen migrations are applied to the remote database (rebuilt from `supabase/fresh.sql` on 2026-10-24; `20261025000000_campaign_archive` applied on 2026-10-25). `20261025000100_character_draft_archive` is not.
 
 ### Sprint 0: Foundations — closed
 
@@ -513,6 +513,7 @@ Open:
 - `pnpm audit:ui` also audits the editor's arc graph and YAML view, and `--screens REGEX` audits a subset.
 - Character creation and the character page explain roles and abilities behind info icons, for Quest and Cadmium.
 - Campaigns: the hub lists archived campaigns with Unarchive and recently deleted ones with Restore; the editor offers Unarchive and Delete campaign (title confirmed). Migration `20261025000000_campaign_archive` adds `cadmium_unarchive_campaign` and `cadmium_deleted_campaigns` ([campaign-unarchive](SPEC_ISSUES.md#campaign-unarchive)). The Privacy Policy (both copies) states how archived and deleted campaigns are kept, and its effective date and `TERMS_VERSION` change, so users accept it again.
+- Characters and adventure drafts are archived, unarchived, deleted, and restored as campaigns are ([character-draft-archive](SPEC_ISSUES.md#character-draft-archive)): the Characters and My adventures pages list archived and recently deleted records, the character page offers Archive and Delete character (name confirmed), an archived character cannot join a game, and an archived draft cannot be published. `components/lifecycle.tsx` holds the forms all three share. Migration `20261025000100_character_draft_archive` adds the `archived` columns and the SQL functions; the deployment needs it applied before this code runs, since `list_characters` and `list_drafts` call the new signatures. The Privacy Policy (both copies) covers archived and deleted characters and drafts.
 - Assignment 4: `AGENTS.md` at the root holds the data model and access rules, and `pnpm e2e` (`e2e/isolation.e2e.ts`) signs two Clerk test users in and checks that neither can list or open the other's drafts. It passes against the deployment's Supabase project with the bundles published.
 
 Open:

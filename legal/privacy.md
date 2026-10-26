@@ -75,8 +75,8 @@ We make no promise to retain any data for any period. Data may be lost or delete
 | Data | Deleted |
 |---|---|
 | Account and content | When you delete it (see section 6), or at any time after the takedown |
-| Archived campaigns, with their games | Kept until the campaign or its author's account is deleted. The author can unarchive the campaign at any time. |
-| Deleted campaigns, with their games and invitations | Kept, hidden from every member, until erased within 90 days of the deletion. The author can restore the campaign within 30 days. If the author deletes their account in the meantime, the campaign is erased with the account (section 6). |
+| Archived campaigns (with their games), characters, and adventure drafts | Kept until deleted, or until the owner's account is deleted. The owner can unarchive them at any time. |
+| Deleted campaigns (with their games and invitations), characters, and adventure drafts | Kept, hidden (a campaign from every member), until erased within 90 days of the deletion. The owner can restore them within 30 days. If the owner deletes their account in the meantime, they are erased with the account (section 6). A deleted draft's published versions are not deleted. |
 | Game history | With its campaign, or at any time after the takedown |
 | Push notification subscriptions | When you remove the browser in Settings, the browser revokes the subscription, or you delete your account |
 | Invitations | With their campaign |
@@ -99,7 +99,7 @@ The following controls are built into Cadmium and available to every user withou
 | Access | All data Cadmium holds about you is shown in Cadmium and included in full in your data export. |
 | Data portability | **Settings, Your data, Export my data** provides a ZIP archive in machine-readable formats (JSON, with adventures also as YAML) containing your profile and settings, characters, adventures, the campaigns you authored with their games, the campaigns you joined, every game input you made with its results, invitations you created or accepted, sessions and RSVPs, and every image you uploaded. |
 | Rectification | **Settings, Account** for your email address, display name, and time zone. Characters, adventures, campaigns, sessions, and RSVPs are edited where you created them; portraits and their alt text in the character editor. |
-| Erasure | **Settings, Your data, Delete account** for your whole account. Characters, adventures, and invitations are deleted where you created them; a campaign with **Delete campaign** in its editor, and restored from **Campaigns, Recently deleted**; portraits with **Remove portrait** in the character editor. |
+| Erasure | **Settings, Your data, Delete account** for your whole account. Invitations are deleted where you created them; a character with **Delete character** on its page, an adventure draft with **Delete** on **My adventures**, and a campaign with **Delete campaign** in its editor, each restored from **Recently deleted** on the Characters, My adventures, or Campaigns page; portraits with **Remove portrait** in the character editor. |
 | Withdrawing reminders | **Settings, Reminders** to disable notifications or remove a browser; **Settings, Calendar** to disable your calendar feed. |
 
 ### Deleting your data
@@ -119,7 +119,7 @@ Effects on other users:
 - Games in your campaigns that use an adventure you published end, and the adventure is removed.
 - AI narration in other users' games is stored as free text and may continue to mention your character's name.
 
-Characters, drafts, and campaigns deleted individually follow the same stages. Until they are erased, within 90 days of the deletion, they are kept and hidden, and they may be restored within 30 days. Deleting a campaign ends its games, and its members lose access to it at once; their characters stay with them. Archiving a campaign deletes nothing: the campaign and its games stay visible to its members, and its author can unarchive it.
+Characters, drafts, and campaigns deleted individually follow the same stages. Until they are erased, within 90 days of the deletion, they are kept and hidden, and they may be restored within 30 days. Deleting a campaign ends its games, and its members lose access to it at once; their characters stay with them. Archiving a campaign deletes nothing: the campaign and its games stay visible to its members, and its author can unarchive it. Archiving a character or an adventure draft deletes nothing either: an archived character cannot join games, and an archived draft cannot be published, until its owner unarchives it.
 
 Data under an internal hold is kept until the hold is released, even if you ask for its deletion, and is then deleted.
 
