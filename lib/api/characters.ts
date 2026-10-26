@@ -13,8 +13,10 @@ import { caller } from "./users";
 
 const validators = new Map<string, ValidateFunction>();
 
+/** The validator of a configured system's character sheet, one per system, version, and module set. */
 function sheetValidator(system: RulesSystem): ValidateFunction {
-  const key = `${system.ID}@${system.VERSION}`;
+  const enabled = (system as { ENABLED?: readonly string[] }).ENABLED ?? [];
+  const key = `${system.ID}@${system.VERSION}[${enabled.join(",")}]`;
   let v = validators.get(key);
   if (!v) {
     v = new Ajv2020({ allErrors: true, strict: false }).compile(system.SCHEMAS.character!);
@@ -42,19 +44,50 @@ const NAME = (v: unknown): string => {
 export async function createCharacter(store: Store, userId: string | null, input: unknown, entropy: Entropy = cryptoEntropy) {
   const user = await caller(store, userId, "create_character");
   const req = onlyFields(input, ["system", "name", "choices"]);
-  // Characters are created without modules; module fields come from the campaign (app-flow.md).
-  const system = systemOrThrow(req.system).configure([]);
   const name = NAME(req.name);
+  const { system, sheet } = buildSheet(req.system, name, req.choices, entropy);
+  const record = await store.createCharacter({ id: entropy.id("ch"), owner_id: user.id, system: system.ID, system_version: system.VERSION, name, sheet });
+  return characterView(record);
+}
+
+/** The sheet the rules system builds from the player's choices, with a server-generated seed. */
+function buildSheet(systemId: unknown, name: string, choices: unknown, entropy: Entropy) {
+  // Characters are built without modules; module fields come from the campaign (app-flow.md).
+  const system = systemOrThrow(systemId).configure([]);
   let sheet: CharacterRecord["sheet"];
   try {
-    sheet = system.create_character(name, req.choices ?? {}, new Rng(entropy.seed())) as CharacterRecord["sheet"];
+    sheet = system.create_character(name, choices ?? {}, new Rng(entropy.seed())) as CharacterRecord["sheet"];
   } catch (e) {
     if (e instanceof RulesError) throw new ApiError("rules_rejected", e.detail, { rules_code: e.code });
     throw e;
   }
   if (!sheetValidator(system)(sheet)) throw new ApiError("rules_rejected", "the rules system built a sheet its schema rejects");
-  const record = await store.createCharacter({ id: entropy.id("ch"), owner_id: user.id, system: system.ID, system_version: system.VERSION, name, sheet });
-  return characterView(record);
+  return { system, sheet };
+}
+
+// SPEC_ISSUES.md#character-rebuild: the sheet is otherwise read-only after creation.
+/** Whether the caller may rebuild the character's role and abilities: available, and never in a game. */
+export async function characterRebuildable(store: Store, userId: string | null, characterId: unknown): Promise<boolean> {
+  const user = await caller(store, userId, "get_character");
+  const c = await owned(store, user.id, characterId);
+  return c.status === "available" && !(await store.characterPlayed(c.id));
+}
+
+/**
+ * Builds the character again from new choices, as create_character does, keeping its id and portrait;
+ * only while it is available and has never joined a game, so no play is lost.
+ */
+export async function rebuildCharacter(store: Store, userId: string | null, input: unknown, entropy: Entropy = cryptoEntropy) {
+  const user = await caller(store, userId, "rebuild_character");
+  const req = onlyFields(input, ["character_id", "name", "choices"]);
+  const c = await owned(store, user.id, req.character_id);
+  if (c.status !== "available") throw new ApiError("conflict", `a character that is ${c.status.replace("_", " ")} cannot be rebuilt`);
+  if (await store.characterPlayed(c.id)) throw new ApiError("conflict", "the character has played in a game, so its role and abilities are fixed");
+  const name = NAME(req.name ?? c.name);
+  const { sheet } = buildSheet(c.system, name, req.choices, entropy);
+  const rebuilt = await store.rebuildCharacter(c.id, name, sheet);
+  if (!rebuilt) throw new ApiError("conflict", "the character joined a game, so its role and abilities are fixed");
+  return characterView(rebuilt);
 }
 
 /** The caller's own character, or not_found: other users' characters are never revealed here. */
@@ -103,8 +136,12 @@ export async function updateCharacter(store: Store, userId: string | null, input
   const name = req.name === undefined ? c.name : NAME(req.name);
   const sheet: CharacterRecord["sheet"] = { ...c.sheet, name };
   if (req.profile !== undefined) sheet.profile = req.profile as never;
+  // A sheet back from a game can carry module fields, such as Cadmium's `armor`, which the edit leaves as
+  // they are; only the fields of the system without modules are checked.
   const system = systemOrThrow(c.system).configure([]);
-  if (!sheetValidator(system)(sheet)) throw new ApiError("invalid_request", "the profile does not fit the system's character sheet");
+  const known = Object.keys((system.SCHEMAS.character as { properties?: object }).properties ?? {});
+  const base = Object.fromEntries(Object.entries(sheet).filter(([k]) => known.includes(k)));
+  if (!sheetValidator(system)(base)) throw new ApiError("invalid_request", "the profile does not fit the system's character sheet");
   return characterView((await store.updateCharacter(c.id, name, sheet))!);
 }
 

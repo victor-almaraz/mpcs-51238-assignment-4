@@ -31,7 +31,7 @@ export function RetireForm({ characterId }: { characterId: string }) {
     <ActionForm action={retireCharacterAction} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <input type="hidden" name="character_id" value={characterId} />
       <p className="text-muted">A retired character can never join a game again.</p>
-      <Button type="submit" variant="danger" className="shrink-0">
+      <Button type="submit" variant="danger" className="shrink-0 self-start sm:self-center">
         Retire character
       </Button>
     </ActionForm>

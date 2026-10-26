@@ -1,10 +1,12 @@
 // Character creation (app-flow.md, Character creation and editor; docs/design/README.md, Character
-// creation): the System step first; once a system is chosen, its form's steps and summary.
+// creation): the System step first; once a system is chosen, its form's steps and summary, with the
+// caller's campaigns whose games take the system, each with its settings.
 import { notFound } from "next/navigation";
 import { listCampaigns } from "@/lib/api/campaigns";
 import { abilityOptions } from "@/lib/api/characters";
 import { campaignChoices } from "@/lib/systems/creation";
-import { creationRules, listSystems } from "@/lib/api/systems";
+import { accepted, creationRules, listSystems } from "@/lib/api/systems";
+import { settingsOf } from "@/lib/api/instances";
 import { withDescriptions } from "@/lib/server/ability-descriptions";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
@@ -40,11 +42,9 @@ export default async function NewCharacter({ searchParams }: { searchParams: Pro
   if (!chosen || !ui) notFound();
   const rules = creationRules(system);
   const store = serverStore();
-  // A system with modules shows module fields for the chosen campaign (app-flow.md): offer the caller's campaigns.
-  const [abilities, campaigns] = await Promise.all([
-    abilityOptions(store, system).then(withDescriptions),
-    chosen.modules.length > 0 ? listCampaigns(store, user.id, { archived: false, limit: 100 }).then((p) => campaignChoices(p.items, system)) : [],
-  ]);
+  const [abilities, joined] = await Promise.all([abilityOptions(store, system).then(withDescriptions), listCampaigns(store, user.id, { archived: false, limit: 100 })]);
+  const candidates = joined.items.filter((c) => accepted(c.system).includes(system));
+  const campaigns = campaignChoices(await Promise.all(candidates.map(async (c) => ({ ...c, settings: await settingsOf(store, c.materials) }))), system, accepted);
   return (
     <Page>
       <PageHeader crumbs={crumbs} title={`New ${chosen.title} character`} description={`Choose a role, ${rules.starting_abilities} abilities, and a name. You can change any step before you create the character.`} />

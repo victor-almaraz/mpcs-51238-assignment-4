@@ -3,7 +3,8 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { uploadAsset } from "../api/assets";
-import { archiveCharacter, createCharacter, deleteCharacter, getCharacter, restoreCharacter, retireCharacter, unarchiveCharacter, updateCharacter } from "../api/characters";
+import { archiveCharacter, createCharacter, deleteCharacter, getCharacter, rebuildCharacter, restoreCharacter, retireCharacter, unarchiveCharacter, updateCharacter } from "../api/characters";
+import { checkFitsCampaign } from "../api/instances";
 import { acceptTerms } from "../api/users";
 import { attempt, safeNext, type FormState } from "./forms";
 import { serverStore } from "./supabase";
@@ -13,18 +14,44 @@ function profileFrom(form: FormData): Record<string, string> | undefined {
   return entries.length === 0 ? undefined : Object.fromEntries(entries.map(([k, v]) => [k.slice("profile.".length), (v as string).trim()]));
 }
 
-export async function acceptTermsAction(form: FormData): Promise<void> {
+/** Accepts the terms and continues to `next`; a stale page or the rate limit is shown on the form. */
+export async function acceptTermsAction(_: FormState, form: FormData): Promise<FormState> {
   const r = await attempt((id) => acceptTerms(serverStore(), id, form.get("version")));
-  if ("error" in r) throw new Error(r.error);
+  if ("error" in r) return { error: r.error };
   redirect(safeNext(form.get("next")));
 }
 
-export async function createCharacterAction(_: FormState, form: FormData): Promise<FormState> {
+/** The creation form's choices: role, abilities, and the profile answers. */
+function choicesFrom(form: FormData) {
   const profile = profileFrom(form);
-  const choices = { role: form.get("role"), abilities: form.getAll("abilities"), ...(profile ? { profile } : {}) };
-  const r = await attempt((id) => createCharacter(serverStore(), id, { system: form.get("system"), name: form.get("name"), choices }));
+  return { role: form.get("role"), abilities: form.getAll("abilities"), ...(profile ? { profile } : {}) };
+}
+
+/** With a campaign chosen in the form, its games must be able to use the abilities. */
+const forCampaign = (form: FormData) => async (uid: string | null) => {
+  const campaign = form.get("campaign");
+  if (typeof campaign === "string" && campaign !== "") await checkFitsCampaign(serverStore(), uid, campaign, form.getAll("abilities"));
+};
+
+export async function createCharacterAction(_: FormState, form: FormData): Promise<FormState> {
+  const r = await attempt(async (id) => {
+    await forCampaign(form)(id);
+    return createCharacter(serverStore(), id, { system: form.get("system"), name: form.get("name"), choices: choicesFrom(form) });
+  });
   if ("error" in r) return { error: r.error };
   redirect(`/characters/${r.ok.id}`);
+}
+
+/** Change role and abilities: the creation form again, for a character that has not played. */
+export async function rebuildCharacterAction(_: FormState, form: FormData): Promise<FormState> {
+  const id = form.get("character_id");
+  const r = await attempt(async (uid) => {
+    await forCampaign(form)(uid);
+    return rebuildCharacter(serverStore(), uid, { character_id: id, name: form.get("name"), choices: choicesFrom(form) });
+  });
+  if ("error" in r) return { error: r.error };
+  revalidatePath("/characters", "layout");
+  redirect(`/characters/${String(id)}`);
 }
 
 export async function updateCharacterAction(_: FormState, form: FormData): Promise<FormState> {
@@ -66,7 +93,7 @@ export async function deleteCharacterAction(_: FormState, form: FormData): Promi
   const id = form.get("character_id");
   const r = await attempt(async (uid) => {
     const c = await getCharacter(serverStore(), uid, id);
-    if (form.get("confirm") !== c.name) return { mismatch: true };
+    if (String(form.get("confirm") ?? "").trim() !== c.name.trim()) return { mismatch: true };
     await deleteCharacter(serverStore(), uid, id);
     return { mismatch: false };
   });

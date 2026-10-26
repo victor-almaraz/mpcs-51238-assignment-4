@@ -23,7 +23,7 @@ export function ArchiveForm({ action, field, id, note, label }: Target & { note:
     <ActionForm action={action} className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
       <input type="hidden" name={field} value={id} />
       <p className="text-muted">{note} You can unarchive it at any time.</p>
-      <Button type="submit" variant="secondary" className="shrink-0">
+      <Button type="submit" variant="secondary" className="shrink-0 self-start sm:self-center">
         {label}
       </Button>
     </ActionForm>

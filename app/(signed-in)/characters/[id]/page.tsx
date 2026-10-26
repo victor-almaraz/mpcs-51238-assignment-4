@@ -3,8 +3,9 @@
 // and Delete, none while the character is in a game (SPEC_ISSUES.md#character-draft-archive). A detail page
 // (docs/design/README.md, Page layouts): the sheet and details in the main column, the portrait and
 // summary facts in the aside.
+import Link from "next/link";
 import { notFound } from "next/navigation";
-import { abilityOptions, getCharacter } from "@/lib/api/characters";
+import { abilityOptions, characterRebuildable, getCharacter } from "@/lib/api/characters";
 import { withDescriptions } from "@/lib/server/ability-descriptions";
 import { ApiError } from "@/lib/api/errors";
 import { systemView } from "@/lib/api/systems";
@@ -12,8 +13,10 @@ import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
 import { systemUi } from "@/components/systems";
 import { StatusBadge } from "@/components/ui/badge";
+import { ButtonLink } from "@/components/ui/button";
 import { ArchivedNotice, ArchiveForm, DeleteCharacterForm, RetireForm } from "@/components/character-lifecycle";
 import { Card, DangerZone, Panel } from "@/components/ui/card";
+import { Notice } from "@/components/ui/notice";
 import { elementSymbol } from "@/components/ui/tile";
 import { Page, PageHeader, Section, WithAside } from "@/components/ui/page";
 import { CharacterEditor } from "./editor";
@@ -37,10 +40,22 @@ export default async function CharacterPage({ params }: { params: Promise<{ id: 
   const portrait = character.portrait ? await store.assetMeta(character.portrait) : undefined;
   const system = systemView(character.system);
   const inGame = character.status === "in_instance";
+  // The game the character is in, linked to its lobby.
+  const game = inGame && character.instance_id ? await store.instanceView(character.instance_id) : undefined;
+  const rebuildable = await characterRebuildable(store, user.id, character.id);
   return (
     <Page>
       <PageHeader crumbs={[{ label: "Characters", href: "/characters" }]} title={character.name} status={<StatusBadge status={character.archived ? "archived" : character.status} />} description={`${system.title} · ${character.summary.health}`} />
       {character.archived && <ArchivedNotice characterId={character.id} className="mb-6" />}
+      {game && (
+        <Notice title="In a game." className="mb-6">
+          {character.name} is playing in{" "}
+          <Link href={`/instances/${game.id}`} className="font-medium text-accent underline">
+            {game.name}
+          </Link>
+          .
+        </Notice>
+      )}
       <WithAside
         aside={
           <Panel title="Portrait" className="gap-4">
@@ -57,29 +72,41 @@ export default async function CharacterPage({ params }: { params: Promise<{ id: 
         }
       >
         {ui && (
-          <Section id="sheet" title="Sheet" description="Read-only; it changes in play.">
+          <Section
+            id="sheet"
+            title="Sheet"
+            description={rebuildable ? "Until the character first joins a game, you can change its role and abilities." : "Read-only; it changes in play."}
+            actions={
+              rebuildable ? (
+                <ButtonLink href={`/characters/${character.id}/rebuild`} size="sm">
+                  Change role and abilities
+                </ButtonLink>
+              ) : undefined
+            }
+          >
             <Card>
               <ui.SheetView sheet={character.sheet} labels={labels} abilities={options} />
             </Card>
           </Section>
         )}
         <CharacterEditor id={character.id} name={character.name} profile={profile} editable={!inGame} />
-        <div className="mt-10 flex flex-col gap-6">
-          {!character.archived && !inGame && (
-            <Panel title="Archive character">
-              <ArchiveForm characterId={character.id} />
-            </Panel>
-          )}
-          {(character.status === "available" || character.status === "dead") && (
-            <DangerZone id="retire" title="Retire character">
-              <RetireForm characterId={character.id} />
-            </DangerZone>
-          )}
-          <DangerZone id="danger-zone" title="Delete character">
-            {inGame ? <p className="text-muted">The character is in a game. Take it out of the game to delete it.</p> : <DeleteCharacterForm characterId={character.id} name={character.name} />}
-          </DangerZone>
-        </div>
       </WithAside>
+      {/* Destructive actions come last on the page, after the aside on compact screens, under the main column. */}
+      <div className="mt-10 flex flex-col gap-6 lg:mr-[22rem]">
+        {!character.archived && !inGame && (
+          <Panel title="Archive character">
+            <ArchiveForm characterId={character.id} />
+          </Panel>
+        )}
+        {(character.status === "available" || character.status === "dead") && (
+          <DangerZone id="retire" title="Retire character">
+            <RetireForm characterId={character.id} />
+          </DangerZone>
+        )}
+        <DangerZone id="danger-zone" title="Delete character">
+          {inGame ? <p className="text-muted">The character is in a game. Take it out of the game to delete it.</p> : <DeleteCharacterForm characterId={character.id} name={character.name} />}
+        </DangerZone>
+      </div>
     </Page>
   );
 }
