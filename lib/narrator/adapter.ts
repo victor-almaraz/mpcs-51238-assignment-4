@@ -10,6 +10,15 @@ export interface Narrator {
   narrate(context: NarratorContext): Promise<NarrateResult>;
 }
 
+/**
+ * Every player reads the same narration, so it names each character; in the second person, "you" is the
+ * whole party (tools.md, Narrator rules).
+ */
+const PERSON = {
+  second: 'Write in the second person plural: "you" means the whole party and never one character.',
+  third: "Write in the third person.",
+} as const;
+
 const CATEGORY: Record<string, string> = {
   flavor: "Acknowledge it in one sentence. No redirect.",
   impossible: "State in the fiction why it fails, then point to a suggestion.",
@@ -25,9 +34,12 @@ export function narratorPrompt(context: NarratorContext): string {
     "Describe only what the events and facts state. Do not add entities, doors, passages, items, outcomes, or numbers.",
     "Do not contradict any event.",
     "Do not mention mechanics, ids, or dice unless the narration style asks for it.",
-    `Write at most ${context.style.max_sentences} sentences, in the ${context.style.person} person, in this style: ${context.style.style}.`,
+    `Write at most ${context.style.max_sentences} sentences, in this style: ${context.style.style}.`,
+    PERSON[context.style.person],
+    "Every player in the party reads this narration. Name each character who acts or is acted on, using their label.",
     "Use the labels for names, and positions for where things are. Never output coordinates.",
   ];
+  if (context.actor) lines.push(`${context.actor.name} took this action: say "${context.actor.name}", not "you", for what they do.`);
   if (context.opening) {
     lines.push(
       "This is the game's first narration. Open the scene: the place and its atmosphere as the party arrives, from the opening text and the premise, which count as facts, and the room. Name the party. Do not describe anything happening yet.",

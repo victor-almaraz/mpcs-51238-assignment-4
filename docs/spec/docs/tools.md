@@ -229,6 +229,7 @@ The narrator system prompt MUST state:
 - Do not contradict any event.
 - Do not mention mechanics, ids, or dice unless the setting's narration style requests it.
 - Stay within `max_sentences`.
+- Every player in the party reads the narration, so name each character who acts or is acted on, and the actor by name. In the second person, "you" means the whole party, never one character: "You hear the tide turn. Vale opens the hatch."
 - For `improvise`, follow the category response in [Categories](#categories) and end with a pointer to a suggestion or a visible feature of the room.
 - For `opening`, open the scene: the place and its atmosphere as the party arrives, from the opening text and the premise, which count as facts, and the room. Name the party, and describe nothing happening yet.
 

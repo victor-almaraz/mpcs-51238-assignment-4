@@ -64,7 +64,7 @@ narration:
 | `currency` | no | The setting's money: `id`, `label`, `unit` (the smallest unit's name), and `denominations`, a map of coin id to `label` and integer `value` in the smallest unit. One denomination has value 1. Denominations are for display; amounts are stored as integers in the smallest unit. Flags refer to it as `namespace:id`. |
 | `generation` | yes | `door`: the door template the generator places in every doorway. `locks`: door templates the generator uses for lock-and-key pairs, each mapped to its key item. |
 | `starting_items` | no | Table drawn from when a character joins an instance that uses this setting. |
-| `narration` | yes | Instructions passed to the narrator. |
+| `narration` | yes | Instructions passed to the narrator: `style`, a phrase describing the voice; `person`, `second` or `third`; and `max_sentences`, 1–8. Every player reads the same narration, so characters are always named; in the second person, "you" addresses the whole party. |
 
 A setting pack does not define stats, resources, character creation, or ordering. The rules system defines them.
 
