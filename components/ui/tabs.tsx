@@ -1,6 +1,6 @@
 "use client";
 // Tabs for sections of one page (WAI-ARIA APG tabs: arrow keys move between tabs). A row too wide for
-// the screen scrolls, and fades at the edge that has more tabs beyond it.
+// the screen scrolls without a scrollbar, and fades at the edge that has more tabs beyond it.
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { cx } from "./cx";
 
@@ -40,7 +40,7 @@ export function Tabs({ tabs, initial, label }: { tabs: Tab[]; initial?: string; 
   };
   return (
     <div>
-      <div ref={list} role="tablist" aria-label={label} className={cx("relative mb-6 flex gap-6 overflow-x-auto border-b border-rule", fade)}>
+      <div ref={list} role="tablist" aria-label={label} className={cx("relative mb-6 flex gap-6 overflow-x-auto border-b border-rule [scrollbar-width:none] [&::-webkit-scrollbar]:hidden", fade)}>
         {tabs.map((t, i) => {
           const selected = t.id === current;
           return (
