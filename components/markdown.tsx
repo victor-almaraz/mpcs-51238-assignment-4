@@ -141,9 +141,9 @@ export function Markdown({ source, children }: { source: string; children?: Reac
     );
   }
   return (
-    // On the pages' shared content edge, with the text at prose width.
+    // A prose column, centred like every page.
     <article className="mx-auto w-full min-w-0 max-w-page px-4 pt-8 pb-12 text-body text-ink sm:px-6">
-      <div className="max-w-prose">
+      <div className="mx-auto max-w-prose">
         {blocks}
         {children}
       </div>

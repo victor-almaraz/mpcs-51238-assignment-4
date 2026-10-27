@@ -5,15 +5,15 @@ import type { ReactNode } from "react";
 import { cx } from "./cx";
 
 /**
- * The content container. Every page shares the hub's content edge; a form or prose page narrows only
- * its column (docs/design/README.md, Page widths). The last block's bottom margin is dropped, so every
+ * The content container, centred in the window. A form or prose page is a narrower column, centred
+ * in turn (docs/design/README.md, Page widths). The last block's bottom margin is dropped, so every
  * page ends the same distance above the footer.
  */
 export function Page({ width = "page", children, className }: { width?: "page" | "form" | "prose"; children: ReactNode; className?: string }) {
   const column = { page: undefined, form: "max-w-form", prose: "max-w-prose" }[width];
   return (
     <div className={cx("mx-auto w-full max-w-page px-4 pt-8 pb-12 sm:px-6 [&>*:last-child]:mb-0", className)}>
-      {column ? <div className={cx(column, "[&>*:last-child]:mb-0")}>{children}</div> : children}
+      {column ? <div className={cx(column, "mx-auto [&>*:last-child]:mb-0")}>{children}</div> : children}
     </div>
   );
 }

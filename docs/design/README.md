@@ -32,8 +32,8 @@ same tasks; [Sources](#sources) lists them.
 | Layout | Width |
 |---|---|
 | Hub and detail pages | Up to 72rem, centred, 24 px insets (16 px compact) |
-| Forms | Up to 40rem for the form column |
-| Prose (terms, narration, briefs) | 66 to 72 characters per line |
+| Forms | Up to 40rem, centred |
+| Prose (terms, narration, briefs) | 66 to 72 characters per line, centred |
 | Workspaces | The full window below the top bar |
 
 ### Colour
