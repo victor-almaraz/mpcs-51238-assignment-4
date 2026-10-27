@@ -24,6 +24,8 @@ export const DEMO_USERS = [
   { id: "user_demo", email: "vera@example.org", display_name: "Vera Lindqvist", operator: true },
   { id: "user_ari", email: "ari@example.org", display_name: "Ari Okafor", operator: false },
   { id: "user_bo", email: "bo@example.org", display_name: "Bo Castellan", operator: false },
+  // A user who has just signed up and has nothing yet, for the empty states (/demo/as?user=user_new).
+  { id: "user_new", email: "nell@example.org", display_name: "Nell Ashby", operator: false },
 ] as const;
 
 /** Ids and codes that count up under a prefix, so the seed is the same every time. */

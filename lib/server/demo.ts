@@ -5,6 +5,9 @@
 
 export const DEMO_USER = "user_demo";
 
+/** The cookie that signs the demo in as another seeded user, set by /demo/as. */
+export const DEMO_USER_COOKIE = "cadmium_demo_user";
+
 export function demoMode(): boolean {
   return process.env.CADMIUM_DEMO === "1" && process.env.NODE_ENV === "development" && !process.env.VERCEL;
 }

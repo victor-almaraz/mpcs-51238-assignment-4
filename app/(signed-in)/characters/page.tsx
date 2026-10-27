@@ -42,7 +42,7 @@ export default async function Characters() {
     <Page>
       <PageHeader title="Characters" actions={characters.items.length > 0 ? newCharacter : undefined} />
       {characters.items.length === 0 ? (
-        <EmptyState icon={<Users {...ICON} />} action={newCharacter}>
+        <EmptyState icon={<Users {...ICON} />} action={newCharacter} className="mb-10">
           {archived.items.length > 0 ? "Every character you have is archived. Unarchive one below, or make a new one." : <>No characters yet. Make one to bring to a campaign&rsquo;s games.</>}
         </EmptyState>
       ) : (

@@ -37,7 +37,9 @@ export default async function Campaigns() {
         }
       />
       {campaigns.items.length === 0 ? (
-        <EmptyState icon={<Castle {...ICON} />}>No campaigns yet. Create a campaign, or enter a code you were given.</EmptyState>
+        <EmptyState icon={<Castle {...ICON} />} className="mb-10">
+          No campaigns yet. Create a campaign, or enter a code you were given.
+        </EmptyState>
       ) : (
         <>
           <Section id="run" title={`You run (${run.length})`}>

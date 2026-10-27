@@ -6,7 +6,9 @@ import { TriangleAlert } from "lucide-react";
 import { MainNav, MobileMenu, UtilityLinks } from "@/components/app-nav";
 import { buttonClass } from "@/components/ui/button";
 import { Logo } from "@/components/ui/logo";
+import { signedInId } from "@/lib/server/auth";
 import { demoMode } from "@/lib/server/demo";
+import { serverStore } from "@/lib/server/supabase";
 import { ExportData } from "@/components/settings/export";
 import { THEME_SCRIPT } from "@/components/settings/theme-script";
 import { TOOLTIP_SCRIPT } from "@/components/ui/tip";
@@ -34,6 +36,23 @@ function ShutdownBanner() {
   );
 }
 
+/** In demo mode, the initials of the demo user signed in (lib/server/demo.ts), in place of Clerk's account button. */
+async function DemoAvatar() {
+  const id = await signedInId();
+  const name = (id && (await serverStore().getUser(id))?.display_name) || "Demo";
+  const initials = name
+    .split(/\s+/)
+    .map((w) => w[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  return (
+    <span title={`Demo mode: ${name}`} className="ml-2 inline-flex size-8 items-center justify-center rounded-full bg-accent-soft text-caption font-semibold text-accent">
+      {initials}
+    </span>
+  );
+}
+
 /** The signed-in top bar: destinations, notifications, settings, and the account. */
 function SignedInBar({ demo }: { demo?: boolean }) {
   return (
@@ -42,9 +61,7 @@ function SignedInBar({ demo }: { demo?: boolean }) {
       <div className="ml-auto flex items-center gap-1">
         <UtilityLinks />
         {demo ? (
-          <span title="Demo mode" className="ml-2 inline-flex size-8 items-center justify-center rounded-full bg-accent-soft text-caption font-semibold text-accent">
-            VL
-          </span>
+          <DemoAvatar />
         ) : (
           <span className="ml-2 inline-flex">
             <UserButton />

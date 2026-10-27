@@ -2,7 +2,7 @@
 // design review. Served at / in demo mode only.
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { BookOpen, Castle, Gamepad2, Globe, House, Mail, ShieldCheck, Users } from "lucide-react";
+import { BookOpen, Castle, Gamepad2, Globe, House, Mail, ShieldCheck, UserRound, Users } from "lucide-react";
 import { ICON_DENSE } from "@/components/ui/icon-button";
 import { Page, PageHeader } from "@/components/ui/page";
 import { demoWorld } from "@/lib/server/demo-store";
@@ -16,6 +16,7 @@ const ICONS: Record<string, ReactNode> = {
   Invitations: <Mail {...ICON_DENSE} />,
   Operator: <ShieldCheck {...ICON_DENSE} />,
   Public: <Globe {...ICON_DENSE} />,
+  "New user": <UserRound {...ICON_DENSE} />,
 };
 
 export async function DemoIndex() {
@@ -37,6 +38,11 @@ export async function DemoIndex() {
     ["Adventures", [["Adventures", "/adventures"], ["New adventure", "/adventures/new"], ...(w.draft ? ([["Editor: The Sunken Archive", `/adventures/${w.draft}/edit`], ["Publish", `/adventures/${w.draft}/publish`]] as [string, string][]) : [])]],
     ["Invitations", [["Invitation", `/invite/${w.invitation}`], ["Invite link", `/join/${w.link}`]]],
     ["Operator", [["Operator console", "/admin"]]],
+    [
+      "New user",
+      // Signed in as Nell, who has just signed up and has nothing yet: the hubs' empty states.
+      ["/dashboard", "/characters", "/campaigns", "/adventures", "/notifications"].map((path): [string, string] => [`Empty: ${path.slice(1)}`, `/demo/as?user=user_new&next=${path}`]),
+    ],
     ["Public", [["Terms", "/terms"], ["Privacy", "/privacy"], ["Attribution", "/attribution"], ["Closed notice", "/closed"], ["Page not found", "/no-such-page"], ["Sign in", "/sign-in"], ["Sign up", "/sign-up"]]],
   ];
   return (

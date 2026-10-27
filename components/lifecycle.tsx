@@ -35,8 +35,8 @@ interface Lifecycle {
   notice?: string;
   /** Delete's sentence on what follows, and which of the record's words confirms it; a draft is deleted from its row without either. */
   confirm?: { consequence: string; by: "name" | "title" };
-  /** The hub's Archived section: its description and its empty state. */
-  archived: { description: string; empty: string };
+  /** The hub's Archived section's description. */
+  archived: { description: string };
   /** The hub's Recently deleted section's description. */
   deleted: string;
 }
@@ -55,7 +55,6 @@ const KINDS: Record<Kind, Lifecycle> = {
     },
     archived: {
       description: "Archived campaigns keep their games and members, and accept no new games, members, or invitations.",
-      empty: "No archived campaigns. Archive a campaign from its editor; you can unarchive it here.",
     },
     deleted: "Deleted campaigns are hidden from every member. You can restore one for 30 days; within 90 days it is erased with its games.",
   },
@@ -72,7 +71,6 @@ const KINDS: Record<Kind, Lifecycle> = {
     },
     archived: {
       description: "Archived characters keep their sheets and portraits, and cannot join games.",
-      empty: "No archived characters. Archive a character from its page; you can unarchive it here.",
     },
     deleted: "Deleted characters are hidden. You can restore one for 30 days; within 90 days it is erased with its portrait.",
   },
@@ -86,7 +84,6 @@ const KINDS: Record<Kind, Lifecycle> = {
     notice: "An archived draft keeps its content and published versions, and cannot be published. Unarchive it to publish.",
     archived: {
       description: "Archived drafts keep their content and published versions, and cannot be published.",
-      empty: "No archived drafts. Archive a draft from its row above; you can unarchive it here.",
     },
     deleted: "Deleted drafts are hidden; their published versions stay usable. You can restore one for 30 days; within 90 days it is erased.",
   },
@@ -181,24 +178,22 @@ export interface ArchivedItem {
 /** A hub's Archived section: the archived records, each with Unarchive, or an empty state. */
 export function ArchivedSection({ kind, items }: { kind: Kind; items: ArchivedItem[] }) {
   const k = KINDS[kind].archived;
+  // Like Recently deleted, the section appears only once there is something in it.
+  if (items.length === 0) return null;
   return (
     <Section id="archived" title={`Archived (${items.length})`} description={k.description}>
-      {items.length === 0 ? (
-        <EmptyState icon={<Archive {...ICON} />}>{k.empty}</EmptyState>
-      ) : (
-        <List>
-          {items.map((r) => (
-            <ListRow
-              key={r.id}
-              icon={<Archive {...ICON_DENSE} />}
-              title={r.title}
-              href={r.href}
-              meta={r.meta}
-              actions={r.unarchive === false ? undefined : <UnarchiveForm kind={kind} id={r.id} title={r.title} />}
-            />
-          ))}
-        </List>
-      )}
+      <List>
+        {items.map((r) => (
+          <ListRow
+            key={r.id}
+            icon={<Archive {...ICON_DENSE} />}
+            title={r.title}
+            href={r.href}
+            meta={r.meta}
+            actions={r.unarchive === false ? undefined : <UnarchiveForm kind={kind} id={r.id} title={r.title} />}
+          />
+        ))}
+      </List>
     </Section>
   );
 }
