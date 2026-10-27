@@ -48,6 +48,20 @@
    keyboard focus. The pointer can move onto it (the bridge spans the gap), Escape hides it until the
    pointer or focus moves (TOOLTIP_SCRIPT), and touch screens show it on focus only. */
 @layer components {
+  /*
+   * A detail page's aside starts level with the first card of the main column, not with the heading
+   * above it (docs/design/README.md, Alignment): beside a first section, it drops by the section's
+   * heading, its one-line description if it has one, and the gap under them.
+   */
+  @media (width >= 64rem) {
+    [data-with-aside]:has(> div > section[data-head="plain"]:first-child) > aside {
+      padding-top: calc(var(--text-section--line-height) + 0.75rem);
+    }
+    [data-with-aside]:has(> div > section[data-head="described"]:first-child) > aside {
+      padding-top: calc(var(--text-section--line-height) + var(--text-caption--line-height) + 0.75rem);
+    }
+  }
+
   .tip {
     display: none;
     position: absolute;

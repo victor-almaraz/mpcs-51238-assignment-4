@@ -103,7 +103,7 @@ Typography table are the only heading sizes; nothing between them.
 | One content edge | Breadcrumb, page title, section headings, tab labels, side navigation labels, and card edges start on the content's left edge. Controls with a hover area (tabs, side navigation links) keep their label on the edge: tabs have no side padding, and navigation links take a negative margin equal to their padding. |
 | One card inset | Every card, panel, field group, step, and danger zone has 16 px padding at every size, so the content of stacked cards shares one inner edge. Standalone pages (sign-in, invitations) are the one exception: a single panel at 24 px (32 px from medium). |
 | One right edge | Page actions, section actions, and the aside end on the content's right edge; card actions end on the card's inner edge. |
-| Columns are whole | Anything placed in a card grid spans whole grid columns. A detail page's aside starts level with the first section of the main column. Sections placed side by side keep one-line descriptions, so their cards start on one line. |
+| Columns are whole | Anything placed in a card grid spans whole grid columns. A detail page's aside's first card is level with the main column's first card, below the first section's heading. Sections placed side by side keep one-line descriptions, so their cards start on one line. |
 | A button follows its field | A button that acts on one field sits on the field's bottom edge, 12 px after the control; the control fills its field. |
 | Label and value columns | Facts are a `DescriptionList`: terms in one column, values in the next. |
 

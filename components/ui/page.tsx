@@ -57,7 +57,7 @@ export function PageHeader({ title, description, crumbs, status, actions }: { ti
 export function Section({ title, description, actions, children, className, id }: { title: ReactNode; description?: ReactNode; actions?: ReactNode; children: ReactNode; className?: string; id?: string }) {
   const headingId = id ? `${id}-title` : undefined;
   return (
-    <section aria-labelledby={headingId} id={id} className={cx("mb-10", className)}>
+    <section aria-labelledby={headingId} id={id} data-head={description ? "described" : "plain"} className={cx("mb-10", className)}>
       <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
         <div>
           <h2 id={headingId} className="font-display text-section font-semibold text-ink">
@@ -74,11 +74,12 @@ export function Section({ title, description, actions, children, className, id }
 
 /**
  * A main column with an aside beside it on expanded screens, under it otherwise, one section's
- * distance below the main column's last block.
+ * distance below the main column's last block. Beside a first section, the aside's first card is
+ * level with the section's first card (globals.css).
  */
 export function WithAside({ children, aside }: { children: ReactNode; aside: ReactNode }) {
   return (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-8">
+    <div data-with-aside className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-8">
       <div className="min-w-0 [&>*:last-child]:mb-0">{children}</div>
       <aside className="flex min-w-0 flex-col gap-6">{aside}</aside>
     </div>

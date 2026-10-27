@@ -4,7 +4,7 @@
 // its maximum. An ended game lists every character that played. A detail page
 // (docs/design/README.md, Game lobby): the party in the main column, the next session and the
 // game's facts in the aside.
-import { CalendarClock, History, Pause, Play, Square, UserMinus, Users } from "lucide-react";
+import { CalendarClock, History, Pause, Play, Square, UserMinus, UserPlus, Users } from "lucide-react";
 import type { ReactNode } from "react";
 import { ActionForm } from "@/components/action-form";
 import { getCampaign } from "@/lib/api/campaigns";
@@ -222,6 +222,7 @@ export default async function Lobby({ params, searchParams }: { params: Promise<
               <p className="text-muted">The party is full: the adventure takes at most {characters(range![1])}.</p>
             ) : mine.length === 0 ? (
               <EmptyState
+                icon={<UserPlus {...ICON} />}
                 action={
                   <ButtonLink href={`/characters/new?system=${instance.system}&campaign=${instance.campaign_id}&next=${encodeURIComponent(`/instances/${instance.id}`)}`} size="sm">
                     Create a character
