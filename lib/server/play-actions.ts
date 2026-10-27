@@ -2,7 +2,7 @@
 // Server actions for the play page: direct actions, the author's Advance, and the data a client
 // refreshes after each commit.
 import type { HistoryItem } from "../broadcast/sequencer";
-import { actWithOutcome, advanceRound, getHistory, getInstance, inputWithOutcome } from "../api/instances";
+import { actWithOutcome, advanceRound, getHistory, getInstance, inputWithOutcome, lobbyKey, pauseInstance } from "../api/instances";
 import { serverDeps } from "./coordinator";
 import { attempt } from "./forms";
 
@@ -22,6 +22,18 @@ export async function inputAction(input: { instance_id: string; character_id: st
 export async function advanceAction(instanceId: string): Promise<{ error: string | null }> {
   const r = await attempt((uid) => advanceRound(serverDeps(), uid, instanceId));
   return { error: "error" in r ? r.error : null };
+}
+
+/** The author's Pause: every player's page shows the game paused and returns to the lobby. */
+export async function pauseAction(instanceId: string): Promise<{ error: string | null }> {
+  const r = await attempt((uid) => pauseInstance(serverDeps(), uid, instanceId));
+  return { error: "error" in r ? r.error : null };
+}
+
+/** What the lobby shows that others change: the status, the version, and the party. Null when the game cannot be read. */
+export async function lobbyStateAction(instanceId: string): Promise<{ status: string; key: string } | null> {
+  const r = await attempt((uid) => getInstance(serverDeps(), uid, { instance_id: instanceId }), { read: true });
+  return "error" in r ? null : { status: r.ok.instance.status, key: lobbyKey(r.ok.instance) };
 }
 
 /** The instance and the character's view, with the current wait's deadline. */

@@ -39,6 +39,8 @@ export interface CreationProps {
   /** The system's starting hit points and AP, for the new-player notes. */
   hp?: number;
   ap?: number;
+  /** Where to go once the character is created, such as the campaign page it was started from; else the character's page. */
+  returnTo?: string;
   /** An existing, unplayed character whose choices the form changes instead of creating one. */
   rebuild?: { id: string; name: string; role: string; abilities: string[]; manner?: string; look?: string };
 }
@@ -75,7 +77,7 @@ function CreationStep({ n, id, title, done, status, children }: { n: number; id:
  * Quest's form. `campaignDetails` adds a derived system's notes on the chosen campaign, such as the
  * fields its modules add; they carry no `name`, so `create_character` receives only Quest's choices.
  */
-export function QuestCreationForm({ system, roles, abilities: all, count, campaigns = [], campaign: initialCampaign, systemTitle, systemCredit, systemHref = "/characters/new", hp = 10, ap = 10, rebuild, campaignDetails }: CreationProps & { campaignDetails?: (c: CampaignChoice) => ReactNode }) {
+export function QuestCreationForm({ system, roles, abilities: all, count, campaigns = [], campaign: initialCampaign, systemTitle, systemCredit, systemHref = "/characters/new", hp = 10, ap = 10, returnTo, rebuild, campaignDetails }: CreationProps & { campaignDetails?: (c: CampaignChoice) => ReactNode }) {
   const [state, form, pending] = useFormAction<FormState>(rebuild ? rebuildCharacterAction : createCharacterAction, { error: null });
   const [name, setName] = useState(rebuild?.name ?? "");
   const [role, setRole] = useState(rebuild?.role ?? "");
@@ -149,6 +151,7 @@ export function QuestCreationForm({ system, roles, abilities: all, count, campai
     <form {...form}>
       <input type="hidden" name="system" value={system} />
       {rebuild && <input type="hidden" name="character_id" value={rebuild.id} />}
+      {returnTo && !rebuild && <input type="hidden" name="next" value={returnTo} />}
       <WithAside
         aside={
           <div className="flex flex-col gap-4 rounded-card border border-rule bg-page p-4 lg:sticky lg:top-[calc(var(--size-topbar)+24px)]">

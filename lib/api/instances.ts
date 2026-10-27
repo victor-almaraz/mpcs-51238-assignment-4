@@ -136,6 +136,9 @@ export async function addCharacter(deps: Deps, userId: string | null, input: unk
 const sheetRefs = (sheet: Record<string, unknown>) => [...((sheet.abilities as string[] | undefined) ?? []), ...((sheet.inventory as { ref: string }[] | undefined) ?? []).map((i) => i.ref)];
 
 /** The settings, by title, that a character with `sheet` needs and the instance lacks; empty when it can join. */
+/** What a lobby shows that others change: the status, the version, and the party, as one comparable string. */
+export const lobbyKey = (instance: Pick<InstanceView, "status" | "version" | "characters">) => [instance.status, instance.version, ...instance.characters.map((c) => c.id).sort()].join(" ");
+
 export const missingFor = async (store: Store, instance: InstanceView, sheet: Record<string, unknown>) => missingSettings(store, supplied(await materialBundles(store, instance.materials)), instance.system, sheetRefs(sheet));
 
 type Bundle = SettingBundle | AdventureBundle;

@@ -1,10 +1,10 @@
 "use client";
 // The play workspace's turn tracker (docs/design/README.md, Play): the game's name, the round, its mode
 // and resolution, the turn order with each character's mark, Your turn, Reconnecting, the round's
-// countdown, and the author's Advance. The bar scrolls sideways on compact screens.
+// countdown, and the author's Advance and Pause. The bar scrolls sideways on compact screens.
 import { useSyncExternalStore, type ReactNode } from "react";
 import Link from "next/link";
-import { Check, Compass, Hourglass, ListOrdered, Play, SkipForward, Swords, Timer, Users, WifiOff } from "lucide-react";
+import { Check, Compass, Hourglass, ListOrdered, Pause, Play, SkipForward, Swords, Timer, Users, WifiOff } from "lucide-react";
 import type { View } from "@/lib/engine";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,9 +57,9 @@ function Countdown({ deadline }: { deadline: string | null }) {
 
 /**
  * The tracker for `characterId`, played by the viewer: `members` in turn order, of which `mine` are the
- * viewer's characters. `onAdvance`, when given, shows Advance.
+ * viewer's characters. `onAdvance` and `onPause`, when given, show Advance and Pause.
  */
-export function TurnTracker({ title, instanceId, view, round, characterId, members, mine, yourTurn, reconnecting, onAdvance }: { title: string; instanceId: string; view: View; round: Round; characterId: string; members: { id: string; name: string }[]; mine: Set<string>; yourTurn: boolean; reconnecting: boolean; onAdvance?: () => void }) {
+export function TurnTracker({ title, instanceId, view, round, characterId, members, mine, yourTurn, reconnecting, onAdvance, onPause }: { title: string; instanceId: string; view: View; round: Round; characterId: string; members: { id: string; name: string }[]; mine: Set<string>; yourTurn: boolean; reconnecting: boolean; onAdvance?: () => void; onPause?: () => void }) {
   const resolution = view.round.resolution === "sequential" ? "one at a time" : "everyone acts at once";
   return (
     <section aria-label="Turn tracker" className="relative flex h-12 shrink-0 items-center gap-3 overflow-x-auto border-b border-rule bg-page px-3 whitespace-nowrap sm:px-4">
@@ -115,6 +115,11 @@ export function TurnTracker({ title, instanceId, view, round, characterId, membe
       {onAdvance && (
         <Button size="sm" icon={<SkipForward {...ICON_DENSE} />} className="shrink-0 max-sm:order-4" onClick={onAdvance}>
           Advance
+        </Button>
+      )}
+      {onPause && (
+        <Button size="sm" icon={<Pause {...ICON_DENSE} />} className="shrink-0 max-sm:order-4" onClick={onPause}>
+          Pause
         </Button>
       )}
       {/* Compact: the bar scrolls sideways; a fade on its right edge shows that more follows. */}

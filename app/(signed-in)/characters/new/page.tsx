@@ -4,6 +4,7 @@
 import { notFound } from "next/navigation";
 import { listSystems } from "@/lib/api/systems";
 import { creationData } from "@/lib/server/creation-data";
+import { safeNext } from "@/lib/server/forms";
 import { pageUser } from "@/lib/server/session";
 import { serverStore } from "@/lib/server/supabase";
 import { systemUi } from "@/components/systems";
@@ -12,12 +13,16 @@ import { Page, PageHeader, Section } from "@/components/ui/page";
 
 const crumbs = [{ label: "Characters", href: "/characters" }];
 
-export default async function NewCharacter({ searchParams }: { searchParams: Promise<{ system?: string; campaign?: string }> }) {
+export default async function NewCharacter({ searchParams }: { searchParams: Promise<{ system?: string; campaign?: string; next?: string }> }) {
   const user = await pageUser();
-  const { system, campaign } = await searchParams;
+  const { system, campaign, next } = await searchParams;
+  // The page creation returns to, such as the campaign it was started from: only a path in this site.
+  const returnTo = next && safeNext(next) === next ? next : undefined;
+  // The campaign and the return path, kept when the system is chosen or changed.
+  const kept = new URLSearchParams({ ...(campaign ? { campaign } : {}), ...(returnTo ? { next: returnTo } : {}) }).toString();
   const systems = listSystems();
   if (!system) {
-    const keep = campaign ? `&campaign=${encodeURIComponent(campaign)}` : "";
+    const keep = kept ? `&${kept}` : "";
     return (
       <Page>
         <PageHeader crumbs={crumbs} title="New character" description="Choose a rules system. Role, abilities, and a name come next." />
@@ -43,9 +48,10 @@ export default async function NewCharacter({ searchParams }: { searchParams: Pro
       <ui.CreationForm
         {...data}
         campaign={campaign}
+        returnTo={returnTo}
         systemTitle={chosen.title}
         systemCredit={chosen.credit}
-        systemHref={campaign ? `/characters/new?campaign=${encodeURIComponent(campaign)}` : "/characters/new"}
+        systemHref={kept ? `/characters/new?${kept}` : "/characters/new"}
       />
     </Page>
   );

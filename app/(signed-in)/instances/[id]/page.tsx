@@ -9,10 +9,11 @@ import type { ReactNode } from "react";
 import { ActionForm } from "@/components/action-form";
 import { getCampaign } from "@/lib/api/campaigns";
 import { listCharacters } from "@/lib/api/characters";
-import { getInstance, instanceRoster, missingFor, playerRange } from "@/lib/api/instances";
+import { getInstance, instanceRoster, lobbyKey, missingFor, playerRange } from "@/lib/api/instances";
 import { accepted, systemView } from "@/lib/api/systems";
 import { addCharacterAction, instanceControlAction, removeCharacterAction } from "@/lib/server/campaign-actions";
 import { NextSession } from "@/components/next-session";
+import { LiveLobby } from "@/components/play/live-lobby";
 import { Rsvp, answerOf } from "@/components/rsvp";
 import { formatWhen } from "@/components/when";
 import { orNotFound, requestTime } from "@/lib/server/pages";
@@ -95,6 +96,7 @@ export default async function Lobby({ params, searchParams }: { params: Promise<
 
   return (
     <Page>
+      {!ended && <LiveLobby instanceId={instance.id} status={instance.status} stateKey={lobbyKey(instance)} playing={instance.characters.some((c) => c.user_id === user.id)} />}
       <PageHeader
         crumbs={[
           { label: "Campaigns", href: "/campaigns" },
@@ -221,7 +223,7 @@ export default async function Lobby({ params, searchParams }: { params: Promise<
             ) : mine.length === 0 ? (
               <EmptyState
                 action={
-                  <ButtonLink href={`/characters/new?system=${instance.system}`} size="sm">
+                  <ButtonLink href={`/characters/new?system=${instance.system}&campaign=${instance.campaign_id}&next=${encodeURIComponent(`/instances/${instance.id}`)}`} size="sm">
                     Create a character
                   </ButtonLink>
                 }

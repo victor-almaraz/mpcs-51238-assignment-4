@@ -76,7 +76,7 @@ Every route except those marked public requires a signed-in user. Clerk middlewa
 | `/instances/[id]` | Instance lobby | members | Status, characters, next session, Start/Resume/Pause/End | `get_instance`, `add_character`, `remove_character`, `start_instance`, `pause_instance`, `resume_instance`, `end_instance` |
 | `/instances/[id]/schedule` | Schedule | members | Occurrences, RSVPs, calendar export and subscription; editing for the author | `list_occurrences`, `rsvp`, `schedule_session`, `update_session`, `move_occurrence`, `cancel_session`, `export_calendar`, `get_calendar_feed`, `rotate_calendar_feed` |
 | `/instances/[id]/history` | History | members | Commits with narration, paged | `get_history` |
-| `/instances/[id]/play` | Play | members with a character in the instance | Running interface; see [Play interface](#play-interface) | `get_instance`, `submit_input`, `submit_action`, `advance_round`, instance stream |
+| `/instances/[id]/play` | Play | members with a character in the instance | Running interface; see [Play interface](#play-interface) | `get_instance`, `submit_input`, `submit_action`, `advance_round`, `pause_instance`, instance stream |
 | `/notifications` | Notifications | user | Session reminders of the last 7 days and the next 7, refreshed on `session_reminder` and every minute | `list_reminders`, user stream |
 | `/settings` | Settings | user | See [Settings](#settings) | `update_me`, `get_push_key`, `add_push_subscription`, `list_push_subscriptions`, `remove_push_subscription`, `get_calendar_feed`, `rotate_calendar_feed`, `disable_calendar_feed`, `export_my_data`, `request_account_deletion` |
 | `/accept-terms` | Terms acceptance | user | The current Terms of Service and Privacy Policy with **Accept**; for a closing account, **Restore account**; for a suspended account, a notice with the contact address. Every state offers **Export my data** | `get_me`, `accept_terms`, `restore_account`, `export_my_data` |
@@ -160,7 +160,7 @@ Once a role is chosen, Quest's form offers the role's [quick start](systems/ques
 
 With a campaign chosen, the ability picker offers only the abilities of the campaign's settings, so the character can join its instances, and warns when they are fewer than `starting_abilities`. The server refuses abilities from settings the campaign does not include before it calls `create_character`; `create_character` takes no campaign, and the sheet does not record one. Cadmium's form also shows, as information, the fields of the modules the chosen campaign enables, such as the armor pool and the carrying limit, which the sheet receives when the character joins an instance. `/characters/new?system=<id>&campaign=<id>` preselects both.
 
-The server calls `create_character`; the rules system rolls and builds the sheet. Clients never submit sheet values.
+The server calls `create_character`; the rules system rolls and builds the sheet. Clients never submit sheet values. The new character's page opens next, except when creation started from a campaign page or an instance lobby: `next=<path>`, a path on the site, returns there, so the character can be added to the game at once.
 
 The editor shows the sheet read-only, formatted by the system's `summary` and a system-specific sheet view. Editable fields: name, profile, and portrait. **Upload portrait** takes an image and its alt text, with optional licence, credit, and provenance fields for images made by someone else or with a generative tool. **Remove portrait** deletes it. **Retire** is available when the character is `available` or `dead`. **Change role and abilities** is available while the character is `available` and has never joined an instance; it opens `/characters/[id]/rebuild`, the system's creation form filled with the current choices, which calls `rebuild_character`. **Archive** or **Unarchive**, and **Delete character**, confirmed by typing the character's name, are available while the character is not `in_instance`.
 
@@ -203,6 +203,8 @@ On `/adventures`, each draft also offers **Archive** and **Delete**, and each pu
 | Next session | Date, time, RSVP buttons, link to the schedule |
 | Controls (author) | **Start**, **Resume**, **Pause**, **End**, each shown only when allowed by status |
 | Play | **Enter game** when the instance is `active` and the user has a character in it |
+
+The lobby stays current without a reload: every 4 seconds while the tab is shown, and when it is shown again, it compares the instance's status, version, and party with what it shows, and re-renders when they differ. When the instance becomes `active`, a user with a character in it goes to `/instances/[id]/play`.
 
 **Create instance** lives on the campaign overview, author only.
 
@@ -370,7 +372,7 @@ The desk column holds the character, map, and party; the page holds the log and 
 
 | Region | Source | Behavior |
 |---|---|---|
-| Round status (margin) | `round` messages | Mode, resolution, round number, who has declared or whose turn it is, countdown to `deadline`. The author sees an Advance icon button. |
+| Round status (margin) | `round` messages | Mode, resolution, round number, who has declared or whose turn it is, countdown to `deadline`. The author sees **Advance** and **Pause**; Pause calls `pause_instance`, and every player's page shows Paused. |
 | Narrative log | `narration` and `commit` messages | Player actions under player names, then narration; template narration styled the same as model narration. Rolls, damage, and rule effects appear as trace notes in the margin of the playtest and author views. Scrolls to new content unless the user has scrolled up. |
 | Action bar | `choice`, `action_menu`, `declaration` messages | Pending choice: one labelled button per option, calling `submit_action(choose)`. Action menu: one text chip per suggested action. Action shortcuts: icon buttons for Move, Examine, Talk, Attack, Ability, Item, and Rest that insert their verb. Declaration: shows the stored action with a Change icon button. |
 | Input | `submit_input` | Disabled while an input is in processing, while a choice is pending, and when it is not the actor's turn in sequential rounds; the placeholder states the reason. 500-character limit. |

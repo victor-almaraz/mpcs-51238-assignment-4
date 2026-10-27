@@ -39,7 +39,8 @@ export async function createCharacterAction(_: FormState, form: FormData): Promi
     return createCharacter(serverStore(), id, { system: form.get("system"), name: form.get("name"), choices: choicesFrom(form) });
   });
   if ("error" in r) return { error: r.error };
-  redirect(`/characters/${r.ok.id}`);
+  // Started from a campaign or a game's lobby, creation returns there.
+  redirect(form.get("next") ? safeNext(form.get("next")) : `/characters/${r.ok.id}`);
 }
 
 /** Change role and abilities: the creation form again, for a character that has not played. */

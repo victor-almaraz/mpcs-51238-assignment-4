@@ -16,7 +16,7 @@ import type { View } from "@/lib/engine";
 import type { Message } from "@/lib/broadcast";
 import { realtimeClient, subscribeInstance, subscribeUser, type StreamStatus } from "@/lib/broadcast/client";
 import { Sequencer, type HistoryItem } from "@/lib/broadcast/sequencer";
-import { actAction, advanceAction, historyAction, inputAction, refreshAction } from "@/lib/server/play-actions";
+import { actAction, advanceAction, historyAction, inputAction, pauseAction, refreshAction } from "@/lib/server/play-actions";
 import { Button } from "@/components/ui/button";
 import { TextInput } from "@/components/ui/field";
 import { ICON, ICON_DENSE, IconButton } from "@/components/ui/icon-button";
@@ -250,6 +250,16 @@ export function PlayClient(props: PlayProps) {
     }
   };
 
+  const pause = async () => {
+    try {
+      const r = await pauseAction(instanceId);
+      if (r.error) setError(r.error);
+      else setStatus("paused");
+    } catch {
+      setError(OFFLINE);
+    }
+  };
+
   const notice =
     status === "paused" ? (
       <Notice tone="warning" live title="The game is paused.">
@@ -360,6 +370,7 @@ export function PlayClient(props: PlayProps) {
         yourTurn={yourTurn}
         reconnecting={reconnecting}
         onAdvance={props.author && live ? () => void advance() : undefined}
+        onPause={props.author && live ? () => void pause() : undefined}
       />
       {/* "Your turn" for screen readers; the tracker shows it as a badge. */}
       <div role="alert" className="sr-only">

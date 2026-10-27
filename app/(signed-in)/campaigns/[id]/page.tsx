@@ -178,7 +178,7 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
               />
               <p className="text-caption text-muted">{system.credit}</p>
               {!campaign.archived && (
-                <ButtonLink href={`/characters/new?system=${campaign.system}&campaign=${campaign.id}`} size="sm" icon={<UserPlus {...ICON_DENSE} />} className="self-start">
+                <ButtonLink href={`/characters/new?system=${campaign.system}&campaign=${campaign.id}&next=${encodeURIComponent(`/campaigns/${campaign.id}`)}`} size="sm" icon={<UserPlus {...ICON_DENSE} />} className="self-start">
                   New character for this campaign
                 </ButtonLink>
               )}
