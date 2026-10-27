@@ -37,7 +37,7 @@ export async function DemoIndex() {
     ["Adventures", [["Adventures", "/adventures"], ["New adventure", "/adventures/new"], ...(w.draft ? ([["Editor: The Sunken Archive", `/adventures/${w.draft}/edit`], ["Publish", `/adventures/${w.draft}/publish`]] as [string, string][]) : [])]],
     ["Invitations", [["Invitation", `/invite/${w.invitation}`], ["Invite link", `/join/${w.link}`]]],
     ["Operator", [["Operator console", "/admin"]]],
-    ["Public", [["Terms", "/terms"], ["Privacy", "/privacy"], ["Attribution", "/attribution"], ["Closed notice", "/closed"], ["Sign in", "/sign-in"], ["Sign up", "/sign-up"]]],
+    ["Public", [["Terms", "/terms"], ["Privacy", "/privacy"], ["Attribution", "/attribution"], ["Closed notice", "/closed"], ["Page not found", "/no-such-page"], ["Sign in", "/sign-in"], ["Sign up", "/sign-up"]]],
   ];
   return (
     <Page>

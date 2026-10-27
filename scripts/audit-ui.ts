@@ -319,7 +319,9 @@ async function audit(label: string, href: string, open?: (page: Page) => Promise
     const errors: string[] = [];
     page.on("pageerror", (e) => errors.push(e.message.split("\n")[0]!.slice(0, 160)));
     page.on("console", (m) => {
-      if (m.type() === "error") errors.push(m.text().split("\n")[0]!.slice(0, 160));
+      // The screen's own status is not a failure: the 404 page answers 404 by design.
+      const own = m.text().startsWith("Failed to load resource") && m.location().url === base + href;
+      if (m.type() === "error" && !own) errors.push(m.text().split("\n")[0]!.slice(0, 160));
     });
     await page.goto(base + href, { waitUntil: "networkidle", timeout: 90_000 }).catch((e: Error) => {
       unloaded++;
