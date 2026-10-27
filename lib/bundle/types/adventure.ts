@@ -242,6 +242,10 @@ export interface AdventurePackManifest {
     location: DefsSchema_Id;
     room: DefsSchema_Id;
     effects?: DefsSchema_AdventureEffects;
+    /**
+     * The opening narration: the scene and its atmosphere as the party arrives. The narrator opens the game from it.
+     */
+    narrate?: string;
   };
   endings: {
     [k: string]:

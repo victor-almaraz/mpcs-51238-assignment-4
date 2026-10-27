@@ -28,6 +28,11 @@ export function narratorPrompt(context: NarratorContext): string {
     `Write at most ${context.style.max_sentences} sentences, in the ${context.style.person} person, in this style: ${context.style.style}.`,
     "Use the labels for names, and positions for where things are. Never output coordinates.",
   ];
+  if (context.opening) {
+    lines.push(
+      "This is the game's first narration. Open the scene: the place and its atmosphere as the party arrives, from the opening text and the premise, which count as facts, and the room. Name the party. Do not describe anything happening yet.",
+    );
+  }
   if (context.improvise) {
     lines.push(`The player's input changed nothing (category ${context.improvise.category}). ${CATEGORY[context.improvise.category] ?? ""}`);
     if (context.improvise.streak >= 3) lines.push("Name the valid options explicitly.");

@@ -1,4 +1,4 @@
-// The exemplar adventure (briefs/example-adventure.md): sunken_archive 1.0.0 on lantern_coast. The
+// The exemplar adventure (briefs/example-adventure.md): sunken_archive 1.1.0 on lantern_coast. The
 // golden scenarios play it to every ending; these tests cover the required mechanics the scenarios do
 // not reach, and check the coverage list against the pack files.
 

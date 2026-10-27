@@ -39,7 +39,7 @@ export function sunkenBundles(): Bundles {
 const vale = () => [character("c_1", "Vale", { abilities: [] })];
 
 let exemplar: Bundles | undefined;
-/** The exemplar: sunken_archive 1.0.0 on lantern_coast, for Cadmium with armor and stash. */
+/** The exemplar: sunken_archive 1.1.0 on lantern_coast, for Cadmium with armor and stash. */
 export function exemplarBundles(): Bundles {
   if (!exemplar) {
     const coast = mustCompile(compileSetting(readPackDir(join(EXAMPLES, "lantern_coast"))), "lantern_coast");

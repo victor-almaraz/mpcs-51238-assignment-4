@@ -54,7 +54,8 @@ describe("lifecycle", () => {
     const started = await startInstance(deps, "user_a", instance.id);
     expect(started).toMatchObject({ status: "active", version: 1 });
     expect(started.started_at).not.toBeNull();
-    expect(types(`instance:${instance.id}`)).toEqual(["commit", "round", "instance_status"]);
+    // The start commit is narrated: it opens the game (tools.md, Narrator context).
+    expect(types(`instance:${instance.id}`)).toEqual(["commit", "round", "instance_status", "narration"]);
     const round = broadcast.on(`instance:${instance.id}`)[1]!;
     expect(round).toMatchObject({ version: 1, number: 1, mode: "exploration", resolution: "simultaneous", declared: [], waiting_on: [rook.id, vale.id].sort(), deadline: "2026-10-22T18:02:00.000Z" });
     expect(await code(startInstance(deps, "user_a", instance.id))).toBe("conflict");
@@ -163,7 +164,8 @@ describe("play", () => {
     const page = await getHistory(store, "user_b", { instance_id: instance.id, after_version: 1, limit: 1 });
     expect(page).toMatchObject({ items: [{ version: 2, narration: null }], next_after_version: 2 });
     expect(all.items[2]!.narration).toEqual({ text: "Vale waits. Rook waits.", source: "template" });
-    expect(broadcast.on(`instance:${instance.id}`).filter((m) => m.type === "narration").map((m) => m.version)).toEqual([3]);
+    // Version 1 is the opening; version 2, a declaration, is not narrated.
+    expect(broadcast.on(`instance:${instance.id}`).filter((m) => m.type === "narration").map((m) => m.version)).toEqual([1, 3]);
     // History carries the shared events: the same ones the commit messages carried.
     const commits = broadcast.on(`instance:${instance.id}`).filter((m) => m.type === "commit");
     expect(canonical(all.items.map((i) => i.events))).toBe(canonical(commits.map((m) => m.events)));

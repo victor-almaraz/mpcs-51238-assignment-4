@@ -91,7 +91,7 @@ export async function seedDemo(store: Store, now = new Date()): Promise<DemoWorl
   const materials = [
     { kind: "setting", id: "lantern_coast", version: "1.1.0" },
     { kind: "setting", id: "quest_starter", version: "1.0.0" },
-    { kind: "adventure", id: "sunken_archive", version: "1.0.0" },
+    { kind: "adventure", id: "sunken_archive", version: "1.1.0" },
   ];
   const campaign = await createCampaign(store, "user_demo", { title: "The Sunken Archive", description: "Thursday evenings: a salvage race through the Tessera Isles.", system: "cadmium", system_versions: "^1.0", modules: ["armor", "stash"], materials }, e);
   const link = (await rotateInviteLink(store, "user_demo", campaign.id, e)).invite_link_code!;

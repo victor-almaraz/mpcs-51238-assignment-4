@@ -212,11 +212,14 @@ The prompt SHOULD include the setting packs' `parser.yaml` synonyms and examples
   "facts": ["The archivist mentions a power core sealed below."],
   "improvise": null,
   "room": { "label": "hangar", "summary_tags": ["large", "flooded"], "light": "dim" },
-  "positions": { "e_drone1": { "distance": 1, "direction": "north" } }
+  "positions": { "e_drone1": { "distance": 1, "direction": "north" } },
+  "opening": null
 }
 ```
 
 `positions` gives the distance and direction from the actor to each entity named in the events, so narration can say where things are without coordinates. `facts` contains trigger `narrate` text, topic `brief` text, and revealed secrets produced by the narrated commit. A secret is a fact only in the commit that reveals it; a `brief` is a fact in every commit that discusses its topic. `labels` holds the labels and NPC names of entities named in the events, and `dispositions` the disposition of each NPC among them. Nothing else from materials reaches the narrator: no flags, stages, locks, art, or lore beyond these fields. Art never reaches either model; contexts hold ids and labels only. [adventure-packs.md](adventure-packs.md#what-the-models-receive) summarizes this for authors. When the commit is an `improvise`, `improvise` holds the payload, the validated suggestions with labels, and the streak value.
+
+The start commit is always narrated, even when it resolves no events. Its context has `opening`: `{ title, premise, text, party }`, the adventure's title, its `description`, its `start.narrate`, and the party's character names in ascending character id; `actor` is null, and `room` and `positions` are those of the first character. The opening may use two sentences more than `max_sentences`. Its template text is `start.narrate`, else the first sentence of `description`, else the title, followed by the party and the room, with "the" before a room label that begins in lower case ("Vale and Rook are in the hangar.", "Vale is in Orvelle plaza."). `opening` is null on every other commit.
 
 ### Narrator rules
 
@@ -227,6 +230,7 @@ The narrator system prompt MUST state:
 - Do not mention mechanics, ids, or dice unless the setting's narration style requests it.
 - Stay within `max_sentences`.
 - For `improvise`, follow the category response in [Categories](#categories) and end with a pointer to a suggestion or a visible feature of the room.
+- For `opening`, open the scene: the place and its atmosphere as the party arrives, from the opening text and the premise, which count as facts, and the room. Name the party, and describe nothing happening yet.
 
 Narration is display text. No component parses it.
 

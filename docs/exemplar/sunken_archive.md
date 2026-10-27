@@ -8,7 +8,7 @@ the culprit to someone with access to both the Reliquary and the Salvors' Concor
 
 | Field | Value |
 |---|---|
-| Id, version | `sunken_archive` 1.0.0, `format_version: 2` |
+| Id, version | `sunken_archive` 1.1.0, `format_version: 2` |
 | System | `cadmium ^1.0`, modules `armor`, `stash` |
 | Requires | [`lantern_coast ^1.0`](lantern_coast.md) |
 | Players | 1 to 4 |

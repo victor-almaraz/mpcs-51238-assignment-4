@@ -94,7 +94,8 @@ export interface AdventureManifest {
   /** Each required setting with the version it was compiled against. */
   requires_settings: { id: string; versions: string; resolved: string }[];
   players: [number, number];
-  start: { location: string; room: string; effects: AdventureEffect[] };
+  /** `narrate` is the author's opening narration (adventure-packs.md, Manifest). */
+  start: { location: string; room: string; effects: AdventureEffect[]; narrate?: string };
   endings: Record<string, { label: string }>;
 }
 

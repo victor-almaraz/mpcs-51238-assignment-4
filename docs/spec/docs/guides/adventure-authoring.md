@@ -31,7 +31,7 @@ The exemplar's `spec/examples/sunken_archive/adventure.yaml`:
 format_version: 2
 kind: adventure
 id: sunken_archive
-version: 1.0.0
+version: 1.1.0
 title: The Sunken Archive
 description: >-
   Perpetua, the Ironmasters' fortress-ship, sank among the Tessera Isles carrying the Royal
@@ -46,11 +46,19 @@ start:
   location: orvelle
   room: plaza
   effects: []
+  narrate: >-
+    Morning fog sits on Orvelle plaza, and the lamplighters are still at their poles, coaxing the
+    beacons back to life one by one. Word came in on the night tide: Perpetua, the Ironmasters'
+    fortress-ship, lies sunk among the Tessera Isles with the Reliquary's collection in her holds,
+    and every crew on the coast is already counting hands and rope. The race starts here, among
+    the stalls and the guild posters, with the sea at your backs.
 endings:
   escaped: { label: Escaped with an artifact }
   archive_sealed: { label: Sealed the archive }
   lost: { label: Lost to the tide }
 ```
+
+`start.narrate` is the game's first narration, so it sets the scene: where the party stands, what the air and light are like, and why they are here, in the setting's voice and person. The narrator opens from it and names the party; without it, the game opens from `description`, which is written for the person choosing an adventure and is a weaker opening.
 
 `system` must match the system of every required setting, including its modules: `lantern_coast` declares `armor` and `stash`, so the adventure declares both. `requires_settings` uses semantic version ranges; `^1.0` accepts any 1.x version of the setting.
 

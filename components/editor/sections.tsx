@@ -80,7 +80,7 @@ export function Overview({ doc, refs, edit, general }: { doc: Doc; refs: Refs; e
   const set = (f: (a: Adventure) => void) => edit((d) => f(d.adventure));
   const own = ["title", "description", "requires_settings", "players", "start", "endings"].map((k) => `/adventure/${k}`);
   const top = [...general, ...rest("/adventure", own)];
-  const startRest = rest("/adventure/start", ["/adventure/start/location", "/adventure/start/room"]);
+  const startRest = rest("/adventure/start", ["/adventure/start/location", "/adventure/start/room", "/adventure/start/narrate"]);
   const playersRest = rest("/adventure/players", ["/adventure/players/0", "/adventure/players/1"]);
   const settingsRest = rest(
     "/adventure/requires_settings",
@@ -159,6 +159,9 @@ export function Overview({ doc, refs, edit, general }: { doc: Doc; refs: Refs; e
               )}
             </EditorField>
           </div>
+          <EditorField pointer="/adventure/start/narrate" label="Opening narration" optional hint="How the game opens: the scene and its atmosphere as the party arrives, in the setting's narration voice. Without it, the game opens from the description.">
+            {(p) => <TextArea {...p} value={a.start.narrate ?? ""} maxLength={1000} rows={4} onChange={(e) => set((x) => void (e.target.value ? (x.start.narrate = e.target.value) : delete x.start.narrate))} className="font-prose text-prose-sm" />}
+          </EditorField>
           <InlineProblems problems={startRest} />
         </div>
       </FieldGroup>

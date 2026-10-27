@@ -49,7 +49,7 @@ describe("parser adapter", () => {
 describe("narrator adapter", () => {
   it("clips narration to the style's sentence limit and falls back on failure", async () => {
     expect(clip("One. Two! Three? Four.", 2)).toBe("One. Two!");
-    const context = { style: { style: "terse", person: "second" as const, max_sentences: 1 }, actor: null, events: [], labels: {}, dispositions: {}, facts: [], improvise: null, room: null, positions: {} };
+    const context = { style: { style: "terse", person: "second" as const, max_sentences: 1 }, actor: null, events: [], labels: {}, dispositions: {}, facts: [], improvise: null, room: null, positions: {}, opening: null };
     const ok = await modelNarrator(groqChat("k", fakeFetch(() => ({ body: { choices: [{ message: { content: "You wait. Nothing moves." } }] } }))), "m", 1000).narrate(context);
     expect(ok).toMatchObject({ ok: true, text: "You wait." });
     expect(await modelNarrator(groqChat("k", fakeFetch(() => ({ status: 500 }))), "m", 1000).narrate(context)).toMatchObject({ ok: false });

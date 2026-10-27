@@ -148,6 +148,32 @@ describe("submit_input", () => {
 });
 
 describe("narration", () => {
+  it("opens the game with the scene and the party, from the premise when the adventure has no opening text", async () => {
+    const { instance } = await solo();
+    const [opening] = (await getHistory(store, "user_a", { instance_id: instance.id, after_version: 0 })).items;
+    expect(opening!.narration).toMatchObject({ source: "template" });
+    expect(opening!.narration!.text).toMatch(/^[^.!?]+[.!?] Vale is in the .+\.$/);
+  });
+
+  it("gives the model narrator the opening, with two more sentences to set the scene", async () => {
+    const calls: { opening: unknown; style: { max_sentences: number }; actor: unknown }[] = [];
+    deps.narrator = {
+      async narrate(context) {
+        calls.push(context as never);
+        return { ok: true, text: "Fog lies on the dock. Vale waits by the hatch.", raw: null, ms: 1 };
+      },
+    };
+    const { instance } = await solo();
+    expect(calls[0]).toMatchObject({ opening: { party: ["Vale"], text: null }, actor: null });
+    expect((calls[0]!.opening as { title: string }).title).toBeTruthy();
+    const [opening] = (await getHistory(store, "user_a", { instance_id: instance.id, after_version: 0 })).items;
+    expect(opening!.narration).toMatchObject({ source: "model", text: "Fog lies on the dock. Vale waits by the hatch." });
+    deps.parser = scripted({ tool: "wait", args: {} });
+    await say(instance.id, "wait", "text-open-00001");
+    expect(calls[1]!.opening).toBeNull();
+    expect(calls[1]!.style.max_sentences).toBe(calls[0]!.style.max_sentences - 2);
+  });
+
   it("uses the model narrator when it answers, and template text when it fails", async () => {
     const calls: unknown[] = [];
     let fail = false;
@@ -167,7 +193,8 @@ describe("narration", () => {
     const items = (await getHistory(store, "user_a", { instance_id: instance.id, after_version: 1 })).items;
     expect(items.map((i) => i.narration?.source)).toEqual(["model", "template"]);
     expect(items[1]!.narration!.text).toBe("Vale waits.");
-    const context = calls[0] as { style: { person: string }; actor: { name: string }; labels: Record<string, string> };
+    // The first call opens the game; the second narrates the move.
+    const context = calls[1] as { style: { person: string }; actor: { name: string }; labels: Record<string, string> };
     expect(context).toMatchObject({ style: { person: "second" }, actor: { name: "Vale" } });
     expect(JSON.stringify(context)).not.toMatch(/"at"|"flags"|"stages"/);
   });

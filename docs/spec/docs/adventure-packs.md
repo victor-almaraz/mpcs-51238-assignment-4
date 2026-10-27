@@ -39,7 +39,7 @@ The exemplar's `spec/examples/sunken_archive/adventure.yaml`:
 format_version: 2
 kind: adventure
 id: sunken_archive
-version: 1.0.0
+version: 1.1.0
 title: The Sunken Archive
 description: >-
   Perpetua, the Ironmasters' fortress-ship, sank among the Tessera Isles carrying the Royal
@@ -54,6 +54,12 @@ start:
   location: orvelle
   room: plaza
   effects: []
+  narrate: >-
+    Morning fog sits on Orvelle plaza, and the lamplighters are still at their poles, coaxing the
+    beacons back to life one by one. Word came in on the night tide: Perpetua, the Ironmasters'
+    fortress-ship, lies sunk among the Tessera Isles with the Reliquary's collection in her holds,
+    and every crew on the coast is already counting hands and rope. The race starts here, among
+    the stalls and the guild posters, with the sea at your backs.
 endings:
   escaped: { label: Escaped with an artifact }
   archive_sealed: { label: Sealed the archive }
@@ -66,7 +72,7 @@ endings:
 | `system` | yes | Rules system id and compatible version range. Every required setting MUST bind the same system. |
 | `requires_settings` | yes | Setting pack ids and semantic version ranges. At least one. |
 | `players` | yes | Minimum and maximum characters per instance. |
-| `start` | yes | Starting location, room, and effects applied when an instance starts. Characters are placed on the room's free cells in row-major order, in ascending character id. |
+| `start` | yes | Starting location, room, and effects applied when an instance starts, and `narrate`, the opening narration: the scene and its atmosphere as the party arrives, at most 1,000 characters, in the setting's narration voice. Characters are placed on the room's free cells in row-major order, in ascending character id. |
 | `endings` | yes | Ending ids referenced by `end_campaign`. At least one. |
 | `description` | no | Up to 2,000 characters, shown when choosing materials. |
 

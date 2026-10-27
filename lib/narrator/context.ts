@@ -14,6 +14,15 @@ export interface NarratorContext {
   improvise: { category: string; intent: string; suggestions: { tool: string; args: Record<string, unknown>; label: string }[]; streak: number } | null;
   room: { label: string; summary_tags: string[]; light: string } | null;
   positions: Record<string, { distance: number; direction: string }>;
+  /** On the start commit, what opens the game: the adventure's title, premise, and opening text, and the party. */
+  opening: Opening | null;
+}
+
+export interface Opening {
+  title: string;
+  premise: string | null;
+  text: string | null;
+  party: string[];
 }
 
 const NAMES = ["actor", "target", "entity", "item", "door", "npc", "to", "participant"];
@@ -39,6 +48,7 @@ export function narratorContext(input: {
   /** The actor's view after the commit, for the room and positions. */
   view: View | null;
   improvise: NarratorContext["improvise"];
+  opening?: Opening | null;
 }): NarratorContext {
   const named = namedIds(input.events);
   const labels: Record<string, string> = {};
@@ -69,5 +79,6 @@ export function narratorContext(input: {
     improvise: input.improvise,
     room: v?.room ? { label: v.room.label, summary_tags: v.room.tags, light } : null,
     positions,
+    opening: input.opening ?? null,
   };
 }
