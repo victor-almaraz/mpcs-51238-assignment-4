@@ -221,7 +221,7 @@ The lobby stays current without a reload: every 4 seconds while the tab is shown
 
 | Section | Contents |
 |---|---|
-| Account | Clerk `<UserProfile />`: email address, password, sign-in methods, sessions. Display name, time zone. |
+| Account | Display name, time zone. **Email and sign-in** opens Clerk's user profile in its own dialog (`openUserProfile`), at the size Clerk lays it out for: email addresses, password, connected accounts, sessions. Its delete section is hidden; Delete account below is Cadmium's. |
 | Appearance | Theme: System, Light, Dark |
 | Reminders | Lead times (default 24 hours and 15 minutes); **Browser notifications** on this browser; the list of browsers with notifications, each with **Remove** |
 | Calendar | Feed URL with **Copy**, **New URL**, and **Turn off** |

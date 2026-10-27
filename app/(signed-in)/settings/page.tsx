@@ -1,12 +1,12 @@
 // Settings (app-flow.md, Settings; docs/design/README.md, Screens: Settings): a form page with
 // Account, Appearance, Reminders, Calendar, Your data, and, set apart, Delete account.
-import { UserProfile } from "@clerk/nextjs";
 import { CalendarSync, Monitor, Trash2 } from "lucide-react";
 import { demoMode } from "@/lib/server/demo";
 import { ActionForm } from "@/components/action-form";
 import { CopyButton } from "@/components/invite-form";
 import { DeleteAccount } from "@/components/settings/delete-account";
 import { ExportData } from "@/components/settings/export";
+import { SignInMethods } from "@/components/settings/sign-in-methods";
 import { EnablePush } from "@/components/settings/push";
 import { ThemePicker } from "@/components/settings/theme";
 import { Button } from "@/components/ui/button";
@@ -69,18 +69,14 @@ export default async function Settings() {
                   <Field id="timezone" label="Time zone" hint="An IANA name, such as Europe/London or America/Chicago.">
                     <TextInput name="timezone" required defaultValue={user.timezone} {...described("timezone", { hint: true })} />
                   </Field>
-                  {demoMode() && <p className="text-caption text-muted">Email, password, and sign-in methods are managed by Clerk here.</p>}
                   <div>
                     <Button type="submit">Save account</Button>
                   </div>
                 </FieldGroup>
               </ActionForm>
-              {!demoMode() && (
-                <div className="relative mt-4 overflow-x-auto">
-                  {/* Delete account is Cadmium's own, below, so the account goes through its 30-day recovery stage. */}
-                  <UserProfile routing="hash" appearance={{ elements: { profileSection__danger: { display: "none" } } }} />
-                </div>
-              )}
+              <FieldGroup legend="Email and sign-in" description="Email addresses, password, connected accounts, and signed-in devices." className="mt-4">
+                <div>{demoMode() ? <p className="text-caption text-muted">Managed by Clerk outside demo mode.</p> : <SignInMethods />}</div>
+              </FieldGroup>
             </section>
 
             <section id="appearance" aria-label="Appearance">
