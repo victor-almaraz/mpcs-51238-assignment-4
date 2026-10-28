@@ -68,15 +68,20 @@ export function validateCall(call: unknown): asserts call is ToolCall {
   }
 }
 
-/** Checks that apply to every tool before resolution: status, conditions, mode, and pending choices. */
+/**
+ * Checks that apply to every tool before resolution: status, turn, conditions, mode, and pending
+ * choices. A character that is not active calls no tool, free tools included; under sequential
+ * resolution, a character out of turn calls only `choose` (engine.md, Free tools).
+ */
 export function checkActor(ctx: Ctx, actor: string, call: ToolCall): void {
   const ch = ctx.state.characters[actor];
   if (!ch) reject("unknown_id", `'${actor}' is not a character in this instance`);
+  if (ch.sheet.status !== "active") reject("blocked_by_condition", `the character is ${ch.sheet.status}`);
   const free = FREE_TOOLS.has(call.tool);
   if (ctx.state.pending_choices[actor] && call.tool !== "choose" && !free) reject("choice_pending", "choose an option of the pending choice first");
   if (call.tool === "choose" && !ctx.state.pending_choices[actor]) reject("requirement_unmet", "there is no pending choice");
+  if (call.tool !== "choose" && outOfTurn(ctx.state, actor)) reject("not_your_turn", "it is not this character's turn");
   if (free) return;
-  if (ch.sheet.status !== "active") reject("blocked_by_condition", `the character is ${ch.sheet.status}`);
   for (const k of ch.conditions) {
     const blocks = ctx.c.condition(k.id)?.blocks ?? [];
     if (blocks.includes(call.tool)) reject("blocked_by_condition", `'${k.id}' blocks ${call.tool}`);
@@ -94,16 +99,23 @@ export function checkActor(ctx: Ctx, actor: string, call: ToolCall): void {
 export function availableTools(ctx: Ctx, actor: string): { tools: string[]; can_act: boolean } {
   const s = ctx.state;
   const ch = s.characters[actor];
-  if (!ch) return { tools: [], can_act: false };
+  if (!ch || ch.sheet.status !== "active") return { tools: [], can_act: false };
   const all = Object.keys(ARGS);
+  const can_act = !outOfTurn(s, actor);
+  // Out of turn, only a pending choice can be answered.
+  if (!can_act) return { tools: s.pending_choices[actor] ? ["choose"] : [], can_act };
   const free = all.filter((t) => FREE_TOOLS.has(t) && (t !== "choose" || s.pending_choices[actor]));
-  const current = s.round.resolution === "sequential" && s.round.order && s.round.turn_index !== null ? s.round.order[s.round.turn_index] : undefined;
-  const can_act = !(s.round.resolution === "sequential" && current !== actor) && ch.sheet.status === "active";
-  if (!can_act || s.pending_choices[actor]) return { tools: free, can_act };
+  if (s.pending_choices[actor]) return { tools: free, can_act };
   const blocked = new Set(ch.conditions.flatMap((k) => ctx.c.condition(k.id)?.blocks ?? []));
   const combat = s.round.mode === "combat" && inCombatAreaOf(ctx, actor);
   const tools = all.filter((t) => t !== "choose" && !blocked.has(t) && !(combat && EXPLORATION_ONLY.has(t)));
   return { tools, can_act };
+}
+
+/** Under sequential resolution, while another participant's turn is under way. */
+function outOfTurn(s: Ctx["state"], actor: string): boolean {
+  if (s.round.resolution !== "sequential" || !s.round.order || s.round.turn_index === null) return false;
+  return s.round.order[s.round.turn_index] !== actor;
 }
 
 const str = (v: unknown) => v as string;

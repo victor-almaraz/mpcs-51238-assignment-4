@@ -373,7 +373,7 @@ The parser and the narrator see only the fields below. Everything else in an adv
 | Topic `label` | Parser, while the topic's `when` holds and the NPC is in reach for `talk` | 60 characters |
 | Topic `brief` | Narrator, in each commit that discusses the topic | 500 characters |
 | Secret, after `reveal` | Narrator, in the commit that reveals it | 500 characters |
-| Entity `label`, NPC `name` | Parser, while visible; narrator, when named in an event | 60 characters |
+| Entity `label`, NPC `name` | Parser, while visible; narrator, when named in an event or among the 12 nearest visible entities, and for carried items | 60 characters |
 | Room `label` | Parser and narrator, for the actor's room; parser, for destinations | 60 characters |
 | Room and entity `tags` | Parser and narrator, as summary tags of the actor's room | Ids |
 | NPC `disposition` | Narrator, with the NPC's `talked` events | One of four values |

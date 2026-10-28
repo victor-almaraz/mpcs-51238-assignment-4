@@ -334,7 +334,7 @@ Some rules give the player a decision in the middle of resolution, such as Quest
 
 1. Commits the rest of the resolution and stores the choice in `state.pending_choices[actor]`.
 2. Emits `choice_offered` with the options' ids and labels.
-3. Accepts only the `choose` tool, or free tools, from that actor until the choice is resolved.
+3. Accepts only the `choose` tool, or free tools, from that actor until the choice is resolved; out of turn, only `choose`.
 4. Applies the chosen option's updates, events, and effects, emits `choice_made`, and continues the round.
 
 A round cannot close while a choice is pending. When the round or turn timeout expires, the Coordinator resolves each pending choice with its first option.
@@ -377,7 +377,12 @@ In both methods, a character with no action when its turn is skipped or the roun
 
 ### Free tools
 
-`examine`, `improvise`, and `choose` are free tools. They resolve immediately on submission in any mode and at any point in a round. They do not occupy a turn or a declaration.
+`examine`, `improvise`, and `choose` are free tools. They resolve immediately on submission in either mode, and they do not occupy a turn or a declaration. They are still the character's own actions:
+
+- A character whose status is not `active`, such as a dead or retired one, calls no tool, free tools included (`blocked_by_condition`).
+- Under `sequential` resolution, a character calls free tools only on its own turn; out of turn it may call only `choose`, to answer a pending choice (`not_your_turn`).
+
+So a player cannot reach the narrator through `examine` or `improvise` while their character cannot act.
 
 ### Ordering policy
 

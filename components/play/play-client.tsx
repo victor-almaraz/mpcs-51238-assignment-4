@@ -225,6 +225,8 @@ export function PlayClient(props: PlayProps) {
   );
 
   const notMyTurn = view.round.resolution === "sequential" && round.waiting_on.length > 0 && !round.waiting_on.includes(characterId);
+  // A character that is not active (dead, retired) takes no actions and sends no input; the server refuses them too.
+  const inactive = (view.character.sheet as { status?: string }).status !== "active";
   const live = status === "active";
   const yourTurn = live && round.waiting_on.includes(characterId);
   const names = props.names;
@@ -276,7 +278,9 @@ export function PlayClient(props: PlayProps) {
 
   const placeholder = !live
     ? "The game is not running."
-    : view.pending_choice
+    : inactive
+      ? `${myName} is ${view.character.summary.status.toLowerCase()} and can no longer act.`
+      : view.pending_choice
       ? "Choose an option first."
       : notMyTurn
         ? `It is ${names[round.current ?? ""] ?? "another character"}'s turn.`
@@ -285,7 +289,7 @@ export function PlayClient(props: PlayProps) {
           : props.textInput
             ? "What do you do?"
             : "Use the actions below.";
-  const typing = live && props.textInput && !busy && !view.pending_choice && !notMyTurn;
+  const typing = live && props.textInput && !busy && !view.pending_choice && !notMyTurn && !inactive;
 
   const say = async () => {
     const t = text.trim();
@@ -336,7 +340,7 @@ export function PlayClient(props: PlayProps) {
               ))}
             </div>
           )}
-          {live && !notMyTurn && <TargetActions view={view} selected={selected} onSelect={setSelected} act={act} busy={busy} />}
+          {live && !notMyTurn && !inactive && <TargetActions view={view} selected={selected} onSelect={setSelected} act={act} busy={busy} />}
           <form
             className="flex items-center gap-2"
             onSubmit={(e) => {
@@ -349,7 +353,7 @@ export function PlayClient(props: PlayProps) {
               <span className="max-sm:sr-only">Send</span>
             </Button>
           </form>
-          {live && !notMyTurn && <QuickActions view={view} act={act} busy={busy} declaration={declaration} />}
+          {live && !notMyTurn && !inactive && <QuickActions view={view} act={act} busy={busy} declaration={declaration} />}
         </div>
       </div>
     </section>

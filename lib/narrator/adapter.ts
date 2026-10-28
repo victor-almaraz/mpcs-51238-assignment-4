@@ -31,7 +31,7 @@ const CATEGORY: Record<string, string> = {
 export function narratorPrompt(context: NarratorContext): string {
   const lines = [
     "You narrate a text adventure from the events the game committed.",
-    "Describe only what the events and facts state. Do not add entities, doors, passages, items, outcomes, or numbers.",
+    "Describe only what the events, facts, room, and scene state. The scene is what the actor sees and carries and the party's condition; mention nothing outside them: no other entities, doors, passages, items, people, outcomes, or numbers.",
     "Do not contradict any event.",
     "Do not mention mechanics, ids, or dice unless the narration style asks for it.",
     `Write at most ${context.style.max_sentences} sentences, in this style: ${context.style.style}.`,
@@ -46,7 +46,12 @@ export function narratorPrompt(context: NarratorContext): string {
     );
   }
   if (context.improvise) {
-    lines.push(`The player's input changed nothing (category ${context.improvise.category}). ${CATEGORY[context.improvise.category] ?? ""}`);
+    lines.push(`The player's input changed nothing in the world (category ${context.improvise.category}). ${CATEGORY[context.improvise.category] ?? ""}`);
+    lines.push(
+      context.improvise.category === "flavor"
+        ? "The character may make the harmless gesture, but nothing is gained, found, moved, opened, or harmed."
+        : "The attempt does not happen or does not work: never narrate its success or its result, and describe nothing new.",
+    );
     if (context.improvise.streak >= 3) lines.push("Name the valid options explicitly.");
     lines.push("End with a pointer to a suggestion or a visible feature of the room.");
   }

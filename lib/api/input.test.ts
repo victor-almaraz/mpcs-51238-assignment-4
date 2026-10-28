@@ -145,6 +145,18 @@ describe("submit_input", () => {
     expect(broadcast.on("user:user_a").at(-1)).toMatchObject({ type: "input_rejected", input_id: r.input_id, reason: "conflict", detail: "The game is not running." });
     expect((await inputRow(r.input_id)).outcome).toBe("rejected");
   });
+
+  it("refuses a character that is not active before the parser, so no model hears it and nothing is narrated", async () => {
+    deps.parser = scripted({ tool: "improvise", args: { category: "flavor", intent: "haunt the hangar", suggestions: [] } });
+    const { instance, vale } = await solo();
+    await db.query(`update instances set state = jsonb_set(state, '{characters,${vale.id},sheet,status}', '"dead"') where id = $1`, [instance.id]);
+    const before = (await store.instanceView(instance.id))!.version;
+    const r = await inputWithOutcome(deps, "user_a", { instance_id: instance.id, text: "I haunt the hangar", idempotency_key: "text-dead-0001" }, e);
+    expect(r.rejected).toBe("You are dead.");
+    expect(seen).toHaveLength(0);
+    expect((await store.instanceView(instance.id))!.version).toBe(before);
+    expect((await inputRow(r.input_id)).outcome).toBe("rejected");
+  });
 });
 
 describe("narration", () => {
@@ -172,6 +184,11 @@ describe("narration", () => {
     await say(instance.id, "wait", "text-open-00001");
     expect(calls[1]!.opening).toBeNull();
     expect(calls[1]!.style.max_sentences).toBe(calls[0]!.style.max_sentences - 2);
+    // The scene bounds what narration may mention: labels only, with the party's condition.
+    const scene = (calls[1] as unknown as { scene: { visible: { label: string }[]; exits: string[]; party: { name: string; health: string }[] } }).scene;
+    expect(scene.party[0]).toMatchObject({ name: "Vale", health: expect.stringMatching(/HP/) });
+    expect(scene.exits.length + scene.visible.length).toBeGreaterThan(0);
+    expect(JSON.stringify(scene)).not.toMatch(/"id"|"at"|e_|c_/);
   });
 
   it("uses the model narrator when it answers, and template text when it fails", async () => {

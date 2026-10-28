@@ -12,6 +12,7 @@ const context = (over: Partial<NarratorContext> = {}): NarratorContext => ({
   improvise: null,
   room: null,
   positions: {},
+  scene: null,
   opening: null,
   ...over,
 });
@@ -22,6 +23,12 @@ describe("narratorPrompt", () => {
     expect(p).toContain('Rook took this action: say "Rook", not "you"');
     expect(p).toContain('"you" means the whole party and never one character');
     expect(p).not.toContain("second person,");
+  });
+
+  it("tells the narrator that an improvise changed nothing, and lets flavor be a harmless gesture", () => {
+    const improvise = (category: string) => narratorPrompt(context({ improvise: { category, intent: "climb the mast", suggestions: [], streak: 1 } }));
+    expect(improvise("impossible")).toContain("never narrate its success or its result");
+    expect(improvise("flavor")).toContain("nothing is gained, found, moved, opened, or harmed");
   });
 
   it("writes in the third person when the setting asks for it", () => {

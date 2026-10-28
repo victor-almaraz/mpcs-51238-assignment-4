@@ -870,7 +870,7 @@ Idempotency-Key: 6c1e0b7a-action-0043
 { "tool": "choose", "args": { "option_id": "strain" } }
 ```
 
-An out-of-turn `submit_action`. Parsed input does not produce this message: when it is not the actor's turn, the parser receives only free tools.
+An out-of-turn `submit_action` or `submit_input`. For `submit_input`, the Coordinator rejects the input before the parser runs, so no model sees it.
 
 ```json
 { "type": "input_rejected", "instance_id": "i_7", "version": 131, "input_id": "in_772", "reason": "not_your_turn" }

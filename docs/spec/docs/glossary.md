@@ -37,7 +37,7 @@ Terms are used with these meanings throughout the documentation.
 | Participant | A creature included in the current round. |
 | Ordering policy | A rules system's resolution method and sort keys for a mode. |
 | Declaration | A validated action stored until a simultaneous round closes. |
-| Free tool | A tool that resolves immediately and is never ordered: `examine`, `improvise`, `choose`. |
+| Free tool | A tool that resolves immediately and is never ordered: `examine`, `improvise`, `choose`. Only an active character calls one, and under sequential resolution only on its turn, except `choose`. |
 | Exploration-only tools | `interact`, `search`, `take`, `drop`, `give`, and `rest`, which a character in the combat area cannot use during combat. See [engine.md](engine.md#rounds). |
 | Pending choice | A decision the rules system asks a player to make mid-resolution, answered with `choose`. |
 | Situation | Roll adjustments the engine derives from conditions and passes to the rules system. |

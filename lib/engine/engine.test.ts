@@ -5,7 +5,7 @@ import type { RulesSystem } from "../systems";
 import { content } from "./content";
 import { Ctx } from "./ctx";
 import { applyEffects } from "./effects";
-import { advance, submit, view, type GameEvent, type Result, type State } from "./index";
+import { advance, submit, toolsFor, view, type GameEvent, type Result, type State } from "./index";
 import { holds } from "./requirements";
 import { situation } from "./situation";
 import { character, start, trialBundles } from "./testing/world";
@@ -156,9 +156,22 @@ describe("error codes", () => {
     const t = start([character("c_1"), character("c_2")], SEED, bundles);
     expect(t.round.order).toEqual(["c_1", "c_2"]);
     expect(err(act(t, "c_2", "wait", {}, new Rng(SEED, t.rng_counter), bundles))).toBe("not_your_turn");
+    // Free tools wait for the turn too, so a player out of turn cannot reach the narrator.
+    expect(err(act(t, "c_2", "examine", {}, new Rng(SEED, t.rng_counter), bundles))).toBe("not_your_turn");
+    expect(err(act(t, "c_2", "improvise", { category: "flavor", intent: "hum", suggestions: [] }, new Rng(SEED, t.rng_counter), bundles))).toBe("not_your_turn");
+    expect(toolsFor(t, bundles, "c_2")).toEqual({ tools: [], can_act: false });
     const after = ok(act(t, "c_1", "wait", {}, new Rng(SEED, t.rng_counter), bundles));
     expect(after.state.round.turn_index).toBe(1);
     expect(types(after.events)).toEqual(["waited", "turn_started"]);
+  });
+
+  it("blocked_by_condition: a character that is not active calls no tool, free tools included", () => {
+    const t = structuredClone(s);
+    t.characters.c_1!.sheet = { ...t.characters.c_1!.sheet, status: "dead" };
+    for (const [tool, args] of [["wait", {}], ["examine", {}], ["improvise", { category: "flavor", intent: "hum", suggestions: [] }]] as const) {
+      expect(err(act(t, "c_1", tool, args))).toBe("blocked_by_condition");
+    }
+    expect(toolsFor(t, B, "c_1")).toEqual({ tools: [], can_act: false });
   });
 
   it("rejections return no state and leave the input unchanged", () => {

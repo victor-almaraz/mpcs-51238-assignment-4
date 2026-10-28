@@ -17,7 +17,7 @@ const RETRYABLE = new Set(["invalid_call", "unknown_id", "not_reachable", "requi
 
 /** `improvise` with category `unclear` and a valid suggestion, for inputs the parser could not turn into a valid call. */
 function fallbackCall(state: State, bundles: Bundles, actor: string, text: string, error: EngineError | null): Call {
-  const preferred = error?.code === "not_your_turn" ? ["examine"] : ["move", "examine", "interact", "take", "wait"];
+  const preferred = ["move", "examine", "interact", "take", "wait"];
   const options = menuOptions(state, bundles, actor, 12);
   const suggestion = options.find((o) => preferred.includes(o.tool)) ?? options[0];
   return { tool: "improvise", args: { category: "unclear", intent: text.slice(0, 120), suggestions: suggestion ? [{ tool: suggestion.tool, args: suggestion.args }] : [] } };
@@ -28,6 +28,14 @@ function checkedSuggestions(state: State, bundles: Bundles, actor: string, call:
   const suggestions = Array.isArray(call.args.suggestions) ? (call.args.suggestions as Call[]) : [];
   const ok = suggestions.filter((s) => s && typeof s.tool === "string" && s.tool !== "improvise" && s.args && typeof s.args === "object" && valid(state, bundles, actor, s)).slice(0, 2);
   return { tool: "improvise", args: { ...call.args, suggestions: ok } };
+}
+
+/** Why a character cannot submit any input now: not active, or under sequential resolution, out of turn. */
+function refusal(state: State, actor: string, tools: string[]): EngineError | null {
+  const status = state.characters[actor]?.sheet.status;
+  if (status !== "active") return { code: "blocked_by_condition", detail: `the character is ${status}` };
+  if (tools.length === 0) return { code: "not_your_turn", detail: "it is not this character's turn" };
+  return null;
 }
 
 function exchange(attempt: number, r: ParseResult) {
@@ -51,6 +59,10 @@ export async function processInput(deps: Deps, instanceId: string, actor: string
   const trial = (call: Call) => submit(state, bundles, actor, call, rngFor(instance, state));
 
   const { tools, can_act } = toolsFor(state, bundles, actor);
+  // A character that cannot act now is refused before the parser, so the input reaches no model and
+  // nothing is narrated (engine.md, Free tools).
+  const refused = refusal(state, actor, tools);
+  if (refused) throw new CoordinatorError("conflict", rejectionText(state, bundles, refused), refused.code);
   const context: ParserContext = parserContext(view(state, bundles, actor), {
     conditions: state.characters[actor]!.conditions.map((c) => c.id),
     speed: speedOf(state, bundles, actor),
