@@ -83,6 +83,8 @@ function line(e: GameEvent, l: Labels): string | null {
       const ideas = Array.isArray(p.suggestions) ? (p.suggestions as { tool: string; args: Record<string, unknown> }[]).map((c) => describeCall(c, l)) : [];
       return ideas.length > 0 ? `${n("actor")} hesitates. Perhaps ${ideas.join(", or ")}.` : `${n("actor")} hesitates.`;
     }
+    case "altered":
+      return `${n("actor")} makes it so: ${String(p.intent).replace(/[.!?]+$/, "")}.`;
     case "action_voided":
       return `${n("actor")}'s action comes to nothing.`;
     case "attacked":

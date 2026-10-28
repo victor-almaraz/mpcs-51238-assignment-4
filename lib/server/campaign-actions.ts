@@ -171,7 +171,7 @@ export async function enterCodeAction(_: FormState, form: FormData): Promise<For
 }
 
 export async function createInstanceAction(_: FormState, form: FormData): Promise<FormState> {
-  const r = await attempt((uid) => createInstance(serverStore(), uid, { campaign_id: str(form, "campaign_id"), name: str(form, "name") }));
+  const r = await attempt((uid) => createInstance(serverStore(), uid, { campaign_id: str(form, "campaign_id"), name: str(form, "name"), sandbox: form.get("sandbox") === "1" }));
   if ("error" in r) return { error: r.error };
   redirect(`/instances/${r.ok.id}`);
 }

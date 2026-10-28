@@ -28,7 +28,7 @@ export async function DemoIndex() {
     [
       "Games",
       [
-        ["Lobby: Sunday one-shot", `/instances/${w.lobby}`],
+        ["Sandbox lobby: Sunday one-shot", `/instances/${w.lobby}`],
         ["Game: Thursday table", `/instances/${w.game}`],
         ["Play", `/instances/${w.game}/play`],
         ["Schedule", `/instances/${w.game}/schedule`],

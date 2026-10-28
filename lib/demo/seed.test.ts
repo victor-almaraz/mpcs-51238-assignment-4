@@ -18,6 +18,7 @@ describe("demo mode", () => {
     expect((await store.getInstance(w.game))!.status).toBe("active");
     expect((await store.getInstance(w.game))!.version).toBeGreaterThan(5);
     expect((await store.getInstance(w.lobby))!.status).toBe("lobby");
+    expect((await store.getInstance(w.lobby))!.sandbox).toBe(true);
     expect(w.draft).not.toBeNull();
     const count = async (t: string) => (await db.query<{ n: number }>(`select count(*)::int as n from ${t}`)).rows[0]!.n;
     expect([await count("users"), await count("campaigns"), await count("scheduled_sessions"), await count("invitations")]).toEqual([4, 4, 1, 1]);

@@ -52,7 +52,7 @@ The work in `docs/spec/AGENTS.md` ("Phases") split into sprints that each fit on
 
 ## Status
 
-The database is built from the final set of twelve migrations (`supabase/migrations/20261027…`), one per domain, each creating its tables and functions in their final form. `pnpm db:fresh` writes `supabase/fresh.sql`, which deletes every Cadmium table and function and applies the set in one transaction; the owner rebuilds the remote database from it (not yet done). The rebuild deletes all data: afterwards the owner signs in again (which recreates their user), sets their operator flag again, and publishes the five `pnpm bundles` files at `/admin` again, Lantern Coast 1.1.0 included. Clerk's account self-deletion is turned off, so accounts are deleted only through Settings and its 30-day stage.
+The database is built from twelve migrations (`supabase/migrations/20261027…`), one per domain, each creating its tables and functions in their final form, and the migrations added since, each small: `20261028000000_sandbox` (sandbox games; applied by the owner in the SQL Editor, reported by `/api/health`). `pnpm db:fresh` writes `supabase/fresh.sql`, which deletes every Cadmium table and function and applies them all in one transaction; the owner rebuilt the remote database from it on 2026-10-26. The rebuild deletes all data: afterwards the owner signs in again (which recreates their user), sets their operator flag again, and publishes the five `pnpm bundles` files at `/admin` again, Lantern Coast 1.1.0 included. Clerk's account self-deletion is turned off, so accounts are deleted only through Settings and its 30-day stage.
 
 ### Sprint 0: Foundations — closed
 

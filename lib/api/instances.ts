@@ -42,8 +42,9 @@ export async function instanceOf(store: Store, user: UserRecord, instanceId: unk
 
 export async function createInstance(store: Store, userId: string | null, input: unknown, entropy: Entropy = cryptoEntropy) {
   const user = await caller(store, userId, "create_instance");
-  const req = onlyFields(input, ["campaign_id", "name"]);
+  const req = onlyFields(input, ["campaign_id", "name", "sandbox"]);
   const { campaign } = await membership(store, user, req.campaign_id, "author");
+  if (req.sandbox !== undefined && typeof req.sandbox !== "boolean") throw new ApiError("invalid_request", "sandbox must be a boolean");
   if (campaign.archived) throw new ApiError("conflict", "an archived campaign accepts no new instances");
   if (typeof req.name !== "string" || req.name.trim().length < 1 || req.name.length > 80) throw new ApiError("invalid_request", "name must have 1 to 80 characters");
   const name = req.name;
@@ -62,6 +63,7 @@ export async function createInstance(store: Store, userId: string | null, input:
     modules: campaign.modules,
     materials: campaign.materials.map((m, position) => ({ ...m, position })),
     seed: entropy.seed(),
+    sandbox: req.sandbox === true,
   });
   return (await store.instanceView(id))!;
 }

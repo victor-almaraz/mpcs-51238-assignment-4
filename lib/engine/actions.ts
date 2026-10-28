@@ -2,6 +2,7 @@
 // resolution of each tool. Resolution functions mutate the context's state or throw `Reject`.
 
 import type { Requirement } from "../bundle/types/defs";
+import type { Effect } from "../systems";
 import { PASSING } from "../systems";
 import { reject, rules, type Ctx } from "./ctx";
 import { applyEffects, carry, closeDoor, detach, dropAt, openDoor } from "./effects";
@@ -9,11 +10,12 @@ import { approach, cellSees, inAttackReach, inTouch, isHostile, moveAway, moveTo
 import { startCombat } from "./combat";
 import { holds, roomOf } from "./requirements";
 import { situation } from "./situation";
+import { ALTER_MAX_EFFECTS, alter, validateEffect } from "./sandbox";
 import type { ToolCall } from "./types";
 import { Perception, cellsOfAny, footprintOf, placement, type Body } from "./world";
 import { distance, footprintCells, type Cell } from "../grid";
 
-export const TOOLS = ["move", "attack", "ability", "use", "interact", "examine", "search", "take", "drop", "give", "talk", "rest", "wait", "choose", "improvise"] as const;
+export const TOOLS = ["move", "attack", "ability", "use", "interact", "examine", "search", "take", "drop", "give", "talk", "rest", "wait", "choose", "improvise", "alter"] as const;
 export type Tool = (typeof TOOLS)[number];
 export const FREE_TOOLS: ReadonlySet<string> = new Set(["examine", "improvise", "choose"]);
 const EXPLORATION_ONLY: ReadonlySet<string> = new Set(["interact", "search", "take", "drop", "give", "rest"]);
@@ -41,6 +43,7 @@ const ARGS: Readonly<Record<Tool, ArgSpec>> = {
     intent: { type: "string", required: true, max: 120 },
     suggestions: { type: "array", required: true, max: 2 },
   },
+  alter: { effects: { type: "array", required: true, max: ALTER_MAX_EFFECTS }, intent: { type: "string", required: true, max: 120 } },
 };
 
 /** Schema validation of a tool call: name, argument names, types, and lengths. */
@@ -60,6 +63,11 @@ export function validateCall(call: unknown): asserts call is ToolCall {
   }
   for (const [name, s] of Object.entries(spec)) if (s.required && !(name in args)) reject("invalid_call", `${tool} needs '${name}'`);
   if (tool === "move" && ("to_id" in args) === ("away_from_id" in args)) reject("invalid_call", "move needs exactly one of to_id and away_from_id");
+  if (tool === "alter") {
+    const effects = (args as { effects: unknown[] }).effects;
+    if (effects.length === 0) reject("invalid_call", "alter needs at least one effect");
+    for (const e of effects) validateEffect(e);
+  }
   if (tool === "improvise") {
     for (const s of (args as { suggestions: unknown[] }).suggestions) {
       const ok = typeof s === "object" && s !== null && typeof (s as ToolCall).tool === "string" && typeof (s as ToolCall).args === "object" && Object.keys(s).length === 2;
@@ -108,7 +116,7 @@ export function availableTools(ctx: Ctx, actor: string): { tools: string[]; can_
   if (s.pending_choices[actor]) return { tools: free, can_act };
   const blocked = new Set(ch.conditions.flatMap((k) => ctx.c.condition(k.id)?.blocks ?? []));
   const combat = s.round.mode === "combat" && inCombatAreaOf(ctx, actor);
-  const tools = all.filter((t) => t !== "choose" && !blocked.has(t) && !(combat && EXPLORATION_ONLY.has(t)));
+  const tools = all.filter((t) => t !== "choose" && !(t === "alter" && !s.sandbox) && !blocked.has(t) && !(combat && EXPLORATION_ONLY.has(t)));
   return { tools, can_act };
 }
 
@@ -173,6 +181,8 @@ export function resolve(ctx: Ctx, actor: string, call: ToolCall): void {
     }
     case "search":
       return search(ctx, actor);
+    case "alter":
+      return alter(ctx, actor, a.effects as Effect[], str(a.intent));
     case "take":
       return take(ctx, actor, str(a.entity_id));
     case "drop": {

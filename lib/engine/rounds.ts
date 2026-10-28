@@ -131,7 +131,9 @@ export function startRound(ctx: Ctx): void {
   if (state.ended) return;
   const mode = state.mode;
   if (mode === "combat") recruitCombatants(ctx);
-  const policy = ctx.system.ORDERING[mode];
+  // A sandbox game's rounds are simultaneous in every mode: everyone acts at once.
+  const ordering = ctx.system.ORDERING[mode];
+  const policy = state.sandbox ? { ...ordering, resolution: "simultaneous" as const } : ordering;
   const characters = Object.keys(state.characters).filter((id) => state.characters[id]!.sheet.status === "active").sort();
   const entities = mode === "combat" ? state.combatants.filter((id) => ctx.isActive(id)).sort() : [];
   const participants = [...characters, ...entities];

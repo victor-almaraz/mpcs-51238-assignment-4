@@ -121,6 +121,8 @@ export class Ctx {
   /** Applies a rules-system resolution: sheets, events, structure destruction, then effects and any choice. */
   apply(resolution: Resolution, actor: string | undefined, target?: string): void {
     for (const [id, sheet] of Object.entries(resolution.updates)) this.setSheet(id, sheet);
+    // In a sandbox game a character does not fall: one knocked out of `active` is healed by 1 at once.
+    if (this.state.sandbox) for (const id of Object.keys(resolution.updates)) this.keepStanding(id);
     for (const event of resolution.events) {
       this.emit(event);
       if (event.type === "damaged") this.onDamaged(event.target as string);
@@ -128,6 +130,15 @@ export class Ctx {
     this.destroyBroken();
     if (resolution.effects.length > 0) this.runEffects(this, resolution.effects, { actor, target });
     if (resolution.choice) this.offerChoice(resolution.choice);
+  }
+
+  /** Heals a sandbox character that left `active` by 1, through the rules system, which returns it to `active`. */
+  keepStanding(id: string): void {
+    const ch = this.state.characters[id];
+    if (!ch || ch.sheet.status === "active") return;
+    const r = rules(() => this.system.heal(this.combatant(id), 1));
+    for (const [hid, sheet] of Object.entries(r.updates)) this.setSheet(hid, sheet);
+    for (const event of r.events) this.emit(event);
   }
 
   offerChoice(choice: NonNullable<Resolution["choice"]>): void {

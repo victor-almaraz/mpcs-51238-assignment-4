@@ -3,6 +3,7 @@
 // runs once against the state read; the call is then validated again on the write path.
 
 import { speedOf, submit, toolsFor, view, type Bundles, type EngineError, type State } from "../engine";
+import { catalog } from "../engine/sandbox";
 import { parserContext, toolDefinitions, type ParserContext } from "../parser/context";
 import type { ParseResult } from "../parser/adapter";
 import { pinnedBundles } from "./admin";
@@ -70,6 +71,7 @@ export async function processInput(deps: Deps, instanceId: string, actor: string
     declared: state.round.declarations[actor] ?? null,
     recent: await recentNarration(deps, instanceId, instance.version),
     input: text,
+    ...(state.sandbox ? { sandbox: { catalog: catalog(bundles), conditions: [...new Set(bundles.settings.flatMap((s) => Object.keys(s.conditions)))].sort() } } : {}),
   });
   const definitions = toolDefinitions(context, tools);
   const hints = bundles.settings.map((s) => s.parser);

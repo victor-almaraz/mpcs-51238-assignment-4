@@ -30,6 +30,13 @@ export interface ParserContext {
   input: string;
   /** Set on a retry: the engine's rejection of the previous call (tools.md, Retry). */
   error?: { code: string; detail: string };
+  /** In a sandbox game (engine.md, Sandbox): the templates and conditions `alter` may name. */
+  sandbox?: Sandbox;
+}
+
+export interface Sandbox {
+  catalog: { ref: string; label: string; kind: "item" | "creature" }[];
+  conditions: string[];
 }
 
 export interface ContextExtras {
@@ -40,6 +47,7 @@ export interface ContextExtras {
   /** The last narration texts, newest last. */
   recent: string[];
   input: string;
+  sandbox?: Sandbox;
 }
 
 const LIGHT: Record<string, string> = { "2": "bright", "1": "dim", "0": "dark" };
@@ -81,6 +89,7 @@ export function parserContext(v: View, x: ContextExtras): ParserContext {
     // At most the last 3 narration texts, 300 characters each.
     recent: x.recent.slice(-3).map((t) => t.slice(0, 300)),
     input: x.input,
+    ...(x.sandbox ? { sandbox: x.sandbox } : {}),
   };
 }
 
@@ -106,7 +115,43 @@ const DESCRIPTIONS: Record<string, string> = {
   wait: "Do nothing this round.",
   choose: "Choose one option of the pending choice.",
   improvise: "Use ONLY when no other tool can express the input. Changes nothing in the game. Produces a short response that redirects the player to valid actions.",
+  alter:
+    "Sandbox games only. Change the game directly when the input asks for something no other tool does: conjure or remove an item, hurt or heal, apply or remove a condition, open or close a door, move someone or something to a room, spawn or remove a thing, change light, or make a creature friendly or hostile. One to three effects, each an object with one effect name. Use ids from the context, 'actor' for the acting character, and refs from the sandbox catalog.",
 };
+
+/** The schema of `alter`'s effects: one object per effect name, each with its arguments' enums. */
+function alterEffects(c: ParserContext): Record<string, unknown> | null {
+  const sb = c.sandbox;
+  if (!sb) return null;
+  const targets = ["actor", ...ids(c.visible)];
+  const things = ids(c.visible.filter((e) => e.kind !== "character"));
+  const creatures = ids(c.visible.filter((e) => e.kind === "creature"));
+  const doors = [...new Set([...ids(c.visible.filter((e) => e.kind === "door")), ...ids(c.destinations.filter((d) => d.kind === "door"))])];
+  const rooms = [...new Set([...(c.room ? [c.room.id] : []), ...ids(c.destinations.filter((d) => d.kind === "room"))])];
+  const items = sb.catalog.filter((t) => t.kind === "item").map((t) => t.ref);
+  const refs = sb.catalog.map((t) => t.ref);
+  const amount = { type: "integer", minimum: 1, maximum: 20 };
+  const effect = (args: Record<string, unknown>, required: string[]) =>
+    required.every((r) => !(args[r] as { enum?: string[] }).enum || (args[r] as { enum: string[] }).enum.length > 0) ? { type: "object", properties: args, required, additionalProperties: false } : null;
+  const all: Record<string, unknown> = {
+    damage: effect({ target: enumOf(targets), amount }, ["target", "amount"]),
+    heal: effect({ target: enumOf(targets), amount }, ["target", "amount"]),
+    apply_condition: effect({ target: enumOf(targets), condition: enumOf(sb.conditions), duration: { type: "integer", minimum: 1, maximum: 10 } }, ["target", "condition"]),
+    remove_condition: effect({ target: enumOf(targets), condition: enumOf(sb.conditions) }, ["target", "condition"]),
+    give_item: effect({ target: enumOf(["actor"]), ref: enumOf(items) }, ["target", "ref"]),
+    remove_item: effect({ target: enumOf(["actor"]), ref: enumOf(items) }, ["target", "ref"]),
+    spawn: effect({ ref: enumOf(refs), room: enumOf(rooms) }, ["ref", "room"]),
+    despawn: effect({ target: enumOf(things) }, ["target"]),
+    move_entity: effect({ target: enumOf(targets), room: enumOf(rooms) }, ["target", "room"]),
+    open_door: effect({ door: enumOf(doors) }, ["door"]),
+    close_door: effect({ door: enumOf(doors) }, ["door"]),
+    set_light: effect({ target: enumOf(targets), lit: { type: "boolean" } }, ["target", "lit"]),
+    set_room_light: effect({ room: enumOf(rooms), level: enumOf(["bright", "dim", "dark"]) }, ["room", "level"]),
+    set_hostile: effect({ target: enumOf(creatures), hostile: { type: "boolean" } }, ["target", "hostile"]),
+  };
+  const properties = Object.fromEntries(Object.entries(all).filter(([, v]) => v !== null));
+  return { type: "array", minItems: 1, maxItems: 3, items: { type: "object", properties, minProperties: 1, maxProperties: 1, additionalProperties: false } };
+}
 
 const ids = (list: readonly { id: string }[]) => [...new Set(list.map((e) => e.id))];
 const enumOf = (values: string[]) => ({ type: "string", enum: values });
@@ -147,6 +192,7 @@ export function toolDefinitions(c: ParserContext, tools: readonly string[]): Too
       },
       required: ["category", "intent", "suggestions"],
     },
+    alter: alterEffects(c) ? { properties: { effects: alterEffects(c), intent: { type: "string", maxLength: 120 } }, required: ["effects", "intent"] } : null,
   };
 
   const out: ToolDefinition[] = [];

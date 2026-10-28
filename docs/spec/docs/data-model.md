@@ -206,6 +206,7 @@ Each campaign has one adventure and one or more settings. An `author` bundle is 
 | `version` | int | starts at 0; increments on every commit |
 | `state` | json | see [Instance state](#instance-state) |
 | `ending` | string | ending id, or null |
+| `sandbox` | bool | set at creation; immutable. A [sandbox game](engine.md#sandbox) |
 | `created_at`, `started_at`, `ended_at` | timestamp | null until reached |
 
 ### Instance character
@@ -466,6 +467,8 @@ An entity is placed, with `location` and `at`, or carried, with `carrier` naming
 `sheet` values are owned by the rules system: character sheets follow the system's `character` schema, creature sheets are produced by the system's `instantiate`, and structure sheets by `instantiate_structure`. `conditions` are engine conditions declared by setting packs.
 
 `combat_area` lists the rooms of the combat area and `combatants` the entity ids taking part in combat; both are empty outside combat. See [engine.md](engine.md#modes).
+
+`sandbox` is `true` in a [sandbox game](engine.md#sandbox) and absent otherwise.
 
 Under `sequential` resolution, `round.order` holds participant ids in resolution order and `round.turn_index` indexes the current participant. Under `simultaneous` resolution, `round.order` is null until the round closes; on close it holds the resolution order, and `round.turn_index` counts the actions resolved. `round.initiative` holds the last list returned by the system's `initiative` function and persists according to the policy's `reroll`.
 

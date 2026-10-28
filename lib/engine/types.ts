@@ -151,6 +151,8 @@ export interface State {
   ended: { ending: string | null } | null;
   /** Counter for engine-created entity ids `_e<n>`. */
   next_entity: number;
+  /** Set in a sandbox game (engine.md, Sandbox): `alter` is offered, rounds are simultaneous, and characters do not fall. */
+  sandbox?: true;
 }
 
 /** A character as it joins an instance: its id, owner, and system sheet. */

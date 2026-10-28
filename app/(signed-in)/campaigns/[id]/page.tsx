@@ -22,7 +22,7 @@ import { Badge, StatusBadge } from "@/components/ui/badge";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { Card, Panel } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
-import { Field, TextInput, described } from "@/components/ui/field";
+import { Choice, Field, TextInput, described } from "@/components/ui/field";
 import { ICON, ICON_DENSE } from "@/components/ui/icon-button";
 import { DescriptionList, List, ListRow } from "@/components/ui/list";
 import { Page, PageHeader, Section, WithAside } from "@/components/ui/page";
@@ -68,7 +68,12 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
                   key={i.id}
                   title={i.name}
                   href={`/instances/${i.id}`}
-                  badge={<StatusBadge status={i.status} />}
+                  badge={
+                    <>
+                      <StatusBadge status={i.status} />
+                      {i.sandbox && <Badge>Sandbox</Badge>}
+                    </>
+                  }
                   meta={
                     <>
                       {plural(i.characters.length, "character")}
@@ -84,12 +89,18 @@ export default async function CampaignPage({ params }: { params: Promise<{ id: s
       {author && !campaign.archived && (
         <Section id="new-game" title="New game">
           <Card>
-            <ActionForm action={createInstanceAction} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+            <ActionForm action={createInstanceAction} className="flex flex-col gap-3">
               <input type="hidden" name="campaign_id" value={campaign.id} />
-              <Field id="game-name" label="Game name" className="sm:max-w-sm sm:flex-1">
+              <Field id="game-name" label="Game name" className="sm:max-w-sm">
                 <TextInput {...described("game-name")} name="name" required maxLength={80} placeholder="Tuesday group" />
               </Field>
-              <Button type="submit" variant="primary" className="h-10 self-start sm:self-auto">
+              <Choice
+                name="sandbox"
+                value="1"
+                label="Sandbox"
+                hint="Players can change the game by describing it: conjure items, open locks, fell creatures. Everyone acts at once, characters get back up, and nothing carries back to character sheets."
+              />
+              <Button type="submit" variant="primary" className="self-start">
                 Create game
               </Button>
             </ActionForm>

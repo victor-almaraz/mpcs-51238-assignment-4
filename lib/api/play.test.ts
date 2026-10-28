@@ -287,3 +287,25 @@ describe("party changes", () => {
     expect((await restoreCampaign(store, "user_a", campaign.id)).id).toBe(campaign.id);
   });
 });
+
+describe("sandbox games", () => {
+  it("are marked, let alter change the game, and write nothing back to the sheets", async () => {
+    const campaign = await createCampaign(store, "user_a", { title: "Playground", system: "quest", system_versions: "^1.0", materials: SUNKEN }, e);
+    expect(await code(createInstance(store, "user_a", { campaign_id: campaign.id, name: "Bad", sandbox: "yes" }, e))).toBe("invalid_request");
+    const instance = await createInstance(store, "user_a", { campaign_id: campaign.id, name: "Sandbox", sandbox: true }, e);
+    expect(instance.sandbox).toBe(true);
+    const vale = await createCharacter(store, "user_a", { system: "quest", name: "Vale", choices: { role: "fighter", abilities: SIX } }, e);
+    await addCharacter(deps, "user_a", { instance_id: instance.id, character_id: vale.id });
+    await startInstance(deps, "user_a", instance.id);
+    const joined = (await store.getCharacter(vale.id))!.sheet;
+    const health = async () => (await getInstance(deps, "user_a", { instance_id: instance.id, character_id: vale.id })).view!.character.summary.health;
+    const before = await health();
+    const r = await actWithOutcome(deps, "user_a", { instance_id: instance.id, character_id: vale.id, tool: "alter", args: { effects: [{ damage: { target: "actor", amount: 3 } }], intent: "stub a toe" }, idempotency_key: "sandbox-alter-0001" }, e);
+    expect(r.rejected).toBeUndefined();
+    expect(await health()).not.toBe(before);
+    await endInstance(deps, "user_a", instance.id);
+    const after = (await store.getCharacter(vale.id))!;
+    expect(after.sheet).toEqual(joined);
+    expect(after.status).toBe("available");
+  });
+});

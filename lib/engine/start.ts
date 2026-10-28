@@ -18,6 +18,8 @@ export interface StartInput {
   bundles: Bundles;
   characters: readonly JoiningCharacter[];
   seed: U64;
+  /** A sandbox game (engine.md, Sandbox). */
+  sandbox?: boolean;
 }
 
 const BUILTIN_LEGEND: Readonly<Record<string, string>> = { ".": "floor", "#": "wall", " ": "void" };
@@ -140,6 +142,7 @@ export function startInstance(input: StartInput): Result {
   const { bundles, characters, seed } = input;
   const c = content(bundles);
   const state = emptyState();
+  if (input.sandbox) state.sandbox = true;
   const rng = new Rng(seed, 0);
   const ctx = new Ctx(state, c, rng, applyEffects);
   try {

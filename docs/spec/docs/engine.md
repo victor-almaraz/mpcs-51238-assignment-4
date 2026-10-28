@@ -492,6 +492,32 @@ Rules systems MAY return effects in a resolution, for example Quest's `drop_item
 
 When a structure's status leaves `active`, the engine emits `destroyed`, removes the entity, and places its `remains`, if any, at its anchor cell.
 
+## Sandbox
+
+The author may create an instance as a sandbox. The game then lets players change the world by describing the change, and the model applies it. `state.sandbox` is `true` from the start; it changes three rules and adds one tool:
+
+1. Every round uses `simultaneous` resolution, in either mode, whatever the rules system's ordering policy says: everyone acts at once.
+2. A character does not fall. When a resolution takes a character out of `active`, the engine calls the system's `heal` with amount 1 at once, which returns it to `active`. In Quest, a character reduced to 0 HP is back at 1 HP instead of at death's door.
+3. Nothing is written back. When a character leaves or the instance ends, the character keeps the sheet and status it had when it joined.
+4. The `alter` tool is offered to the parser, and only in a sandbox.
+
+`alter` takes `effects`, one to three effects, and `intent`, the player's request in at most 120 characters. It is an ordered tool: it takes the actor's turn or declaration like `attack`. Its effects are adventure effects from this subset, with these checks:
+
+| Effect | Checks |
+|---|---|
+| `damage`, `heal` | `target` is `actor` or an entity or character the actor sees; `amount` is an integer from 1 to 20 |
+| `apply_condition`, `remove_condition` | `target` as above; `condition` is a condition of the pinned settings; `duration?` is an integer from 1 to 10 |
+| `give_item`, `remove_item` | `target` is `actor` or a character the actor sees; `ref` is an item template |
+| `spawn` | `ref` is an item or creature template; `room` is a room in the actor's location |
+| `despawn` | `target` is an entity the actor sees, never a character |
+| `move_entity` | `target` as above; `room` is a room in the actor's location |
+| `open_door`, `close_door` | `door` is a door the actor sees; opening a locked door unlocks it |
+| `set_light` | `target` as above; `lit` is a boolean |
+| `set_room_light` | `room` is a room in the actor's location; `level` is `bright`, `dim`, or `dark` |
+| `set_hostile` | `target` as above; `hostile` is a boolean |
+
+Any other effect, including `set_flag`, `add_flag`, `set_stage`, `reveal`, `start_combat`, `end_campaign`, and `if`, is `invalid_call`, so the adventure's plot, flags, and endings still decide how the game ends. A failed check rejects the whole call with its code, and nothing is applied. `alter` outside a sandbox is `invalid_call`.
+
 ## Action resolution
 
 | Tool | Validation | Resolution |
@@ -510,6 +536,7 @@ When a structure's status leaves `active`, the engine emits `destroyed`, removes
 | `wait` | none | Emit `waited`. |
 | `choose` | actor has a pending choice; option id exists | Apply the option. |
 | `improvise` | none | Emit `improvised`. No other state change. |
+| `alter` | sandbox games only; see [Sandbox](#sandbox) | Check every effect, emit `altered`, then apply the effects in order. |
 
 After each action resolves, the engine evaluates triggers (see [adventure-packs.md](adventure-packs.md#triggers)), recomputes illumination, updates seen cells, adds the rooms of combatants to the combat area (see [Modes](#modes)), then evaluates combat end conditions.
 
@@ -529,6 +556,7 @@ Events produced by the engine:
 | `talked` | `actor`, `npc`, `topic?`, `utterance` |
 | `waited` | `actor` |
 | `improvised` | `actor`, `category`, `intent`, `suggestions[]` |
+| `altered` | `actor`, `intent` |
 | `choice_offered` | `actor`, `options[]` of `{ id, label }` |
 | `choice_made` | `actor`, `option` |
 | `door_opened` / `door_closed` | `door`, `actor?` |
@@ -554,7 +582,7 @@ Events produced by the engine:
 
 When a move travels a link, `via` is the id of the link the mover entered, in the location it left; `location`, `to`, and `at` describe the arrival, and `from` is the room the mover left. `moved` is also emitted for entity moves and for `move_entity`, with `steps: 0` for the effect.
 
-An event's *actor* is the creature its payload names in `actor`. Events with an actor: `moved`, `item_taken`, `item_dropped`, `item_given`, `item_used`, `ability_used`, `interacted`, `examined`, `searched`, `talked`, `waited`, `improvised`, `choice_offered`, `choice_made`, `action_declared`, `action_voided`, and `attacked`. `door_opened`, `door_closed`, and `light_changed` have an actor when an action caused them and none when an effect did. Every other event has no actor.
+An event's *actor* is the creature its payload names in `actor`. Events with an actor: `moved`, `item_taken`, `item_dropped`, `item_given`, `item_used`, `ability_used`, `interacted`, `examined`, `searched`, `talked`, `waited`, `improvised`, `altered`, `choice_offered`, `choice_made`, `action_declared`, `action_voided`, and `attacked`. `door_opened`, `door_closed`, and `light_changed` have an actor when an action caused them and none when an effect did. Every other event has no actor.
 
 Events produced by rules systems, passed through unchanged. Every system emits the common events; a system MAY add its own types, which it documents.
 

@@ -375,6 +375,7 @@ export function PlayClient(props: PlayProps) {
         reconnecting={reconnecting}
         onAdvance={props.author && live ? () => void advance() : undefined}
         onPause={props.author && live ? () => void pause() : undefined}
+        sandbox={props.instance.sandbox}
       />
       {/* "Your turn" for screen readers; the tracker shows it as a badge. */}
       <div role="alert" className="sr-only">

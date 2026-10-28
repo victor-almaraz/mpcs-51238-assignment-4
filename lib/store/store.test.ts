@@ -44,6 +44,7 @@ async function install(bundles: Bundles, id = "i_1", seed = 7): Promise<void> {
     modules,
     materials,
     seed,
+    sandbox: false,
   });
 }
 

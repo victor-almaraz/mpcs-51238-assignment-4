@@ -78,14 +78,20 @@ function roundOf(state: State, deadline: Date | null) {
   return { number: r.number, mode: r.mode, resolution: r.resolution, ...(current ? { current } : {}), declared, waiting_on: waiting, ...(deadline ? { deadline: deadline.toISOString() } : {}) };
 }
 
-/** Sheets to write back: a dead character stays dead; everyone else is available again. */
-function sheetsOf(state: State, ids: readonly string[]) {
-  return ids
-    .filter((id) => state.characters[id])
-    .map((id) => {
-      const sheet = state.characters[id]!.sheet as CharacterRecord["sheet"];
-      return { id, sheet, status: (sheet.status === "dead" ? "dead" : "available") as CharacterRecord["status"] };
-    });
+/**
+ * Sheets to write back: a dead character stays dead; everyone else is available again. A sandbox game
+ * writes back nothing it changed (engine.md, Sandbox): each character keeps the sheet it joined with.
+ */
+async function sheetsOf(deps: Deps, instance: InstanceRecord, state: State, ids: readonly string[]) {
+  const present = ids.filter((id) => state.characters[id]);
+  if (instance.sandbox) {
+    const records = await Promise.all(present.map((id) => deps.store.getCharacter(id)));
+    return records.flatMap((r) => (r ? [{ id: r.id, sheet: r.sheet, status: "available" as CharacterRecord["status"] }] : []));
+  }
+  return present.map((id) => {
+    const sheet = state.characters[id]!.sheet as CharacterRecord["sheet"];
+    return { id, sheet, status: (sheet.status === "dead" ? "dead" : "available") as CharacterRecord["status"] };
+  });
 }
 
 export async function send(deps: Deps, topic: string, messages: Message[]): Promise<void> {
@@ -133,7 +139,7 @@ export async function commit(
   } else if (!ended) {
     deadline = await deps.store.deadline(instance.id);
   }
-  if (ended) await deps.store.releaseCharacters(instance.id, sheetsOf(result.state, Object.keys(result.state.characters)));
+  if (ended) await deps.store.releaseCharacters(instance.id, await sheetsOf(deps, instance, result.state, Object.keys(result.state.characters)));
 
   const visible = sharedEvents(instance.state, result.state, bundles, result.events);
   await deps.store.shareEvents(instance.id, version, result.events.flatMap((e, i) => (visible.includes(e) ? [i + 1] : [])));
@@ -202,7 +208,7 @@ export async function start(deps: Deps, instanceId: string, characters: JoiningC
   return serialized(deps, instanceId, async (instance) => {
     requireStatus(instance, ["lobby"], "start");
     const bundles = await pinnedBundles(deps.store, instance);
-    const result = startInstance({ bundles, characters, seed: BigInt(instance.seed) });
+    const result = startInstance({ bundles, characters, seed: BigInt(instance.seed), sandbox: instance.sandbox });
     if (!result.ok) throw new CoordinatorError("conflict", `the instance cannot start: ${result.error.detail}`, result.error.code);
     return commit(deps, instance, bundles, result, { start: { seed: instance.seed, characters } }, { status: "active" });
   });
@@ -275,7 +281,7 @@ export async function setStatus(deps: Deps, instanceId: string, status: "active"
     const deadline = seconds === null ? null : new Date(deps.now().getTime() + seconds * 1000);
     await deps.store.setInstanceStatus(instance.id, instance.version, status, deadline);
     await deps.store.setPauseRequested(instance.id, false);
-    if (status === "ended" && instance.state) await deps.store.releaseCharacters(instance.id, sheetsOf(instance.state, Object.keys(instance.state.characters)));
+    if (status === "ended" && instance.state) await deps.store.releaseCharacters(instance.id, await sheetsOf(deps, instance, instance.state, Object.keys(instance.state.characters)));
     const base = { instance_id: instance.id, version: instance.version };
     const messages: Message[] = [{ type: "instance_status", ...base, status }];
     if (status === "active" && instance.state) messages.push({ type: "round", ...base, ...roundOf(instance.state, deadline) });
@@ -303,7 +309,7 @@ export async function leaveParty(deps: Deps, instanceId: string, characterId: st
     const result = leave(before, bundles, characterId, rngFor(instance, before));
     if (!result.ok) throw new CoordinatorError("conflict", result.error.detail, result.error.code);
     const c = await commit(deps, instance, bundles, result, { leave: { character_id: characterId } });
-    await deps.store.releaseCharacters(instance.id, sheetsOf(before, [characterId]));
+    await deps.store.releaseCharacters(instance.id, await sheetsOf(deps, instance, before, [characterId]));
     return c;
   });
 }

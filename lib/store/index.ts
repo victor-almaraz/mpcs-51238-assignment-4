@@ -47,6 +47,8 @@ export interface InstanceRecord {
   version: number;
   state: State | null;
   ending: string | null;
+  /** A sandbox game (engine.md, Sandbox). */
+  sandbox: boolean;
 }
 
 export interface NewInstance {
@@ -58,6 +60,7 @@ export interface NewInstance {
   modules: string[];
   materials: InstanceRecord["materials"];
   seed: number;
+  sandbox: boolean;
 }
 
 export interface CommitRequest {
@@ -183,6 +186,7 @@ export interface InstanceView {
   started_at: string | null;
   ended_at: string | null;
   ending: string | null;
+  sandbox: boolean;
 }
 
 /** A character that has joined an instance; `left_at` is null while it is in the party. */
@@ -302,6 +306,8 @@ export class Store {
       p_modules: i.modules,
       p_materials: i.materials,
       p_seed: i.seed,
+      // Sent only when set, so ordinary games are created before this migration is applied too.
+      ...(i.sandbox ? { p_sandbox: true } : {}),
     });
   }
 

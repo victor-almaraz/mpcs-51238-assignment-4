@@ -103,8 +103,13 @@ export default async function Lobby({ params, searchParams }: { params: Promise<
           { label: campaign.title, href: `/campaigns/${campaign.id}` },
         ]}
         title={instance.name}
-        status={<StatusBadge status={instance.status} />}
-        description={`${system.title} ${instance.system_version}`}
+        status={
+          <>
+            <StatusBadge status={instance.status} />
+            {instance.sandbox && <Badge>Sandbox</Badge>}
+          </>
+        }
+        description={instance.sandbox ? `${system.title} ${instance.system_version}. A sandbox: players can change the game by describing it, characters get back up, and nothing carries back to character sheets.` : `${system.title} ${instance.system_version}`}
         actions={
           (controls.length > 0 || playing) && (
             <>

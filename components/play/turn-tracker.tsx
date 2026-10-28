@@ -59,13 +59,14 @@ function Countdown({ deadline }: { deadline: string | null }) {
  * The tracker for `characterId`, played by the viewer: `members` in turn order, of which `mine` are the
  * viewer's characters. `onAdvance` and `onPause`, when given, show Advance and Pause.
  */
-export function TurnTracker({ title, instanceId, view, round, characterId, members, mine, yourTurn, reconnecting, onAdvance, onPause }: { title: string; instanceId: string; view: View; round: Round; characterId: string; members: { id: string; name: string }[]; mine: Set<string>; yourTurn: boolean; reconnecting: boolean; onAdvance?: () => void; onPause?: () => void }) {
+export function TurnTracker({ title, instanceId, view, round, characterId, members, mine, yourTurn, reconnecting, onAdvance, onPause, sandbox = false }: { title: string; instanceId: string; view: View; round: Round; characterId: string; members: { id: string; name: string }[]; mine: Set<string>; yourTurn: boolean; reconnecting: boolean; onAdvance?: () => void; onPause?: () => void; sandbox?: boolean }) {
   const resolution = view.round.resolution === "sequential" ? "one at a time" : "everyone acts at once";
   return (
     <section aria-label="Turn tracker" className="relative flex h-12 shrink-0 items-center gap-3 overflow-x-auto border-b border-rule bg-page px-3 whitespace-nowrap sm:px-4">
       <h1 className="max-w-56 shrink-0 truncate text-label font-semibold text-ink max-lg:sr-only">{title}</h1>
       <span aria-hidden="true" className="h-5 w-px shrink-0 bg-rule max-lg:hidden" />
       <span className="tabular shrink-0 text-label font-semibold text-ink">Round {view.round.number}</span>
+      {sandbox && <Badge>Sandbox</Badge>}
       <span className="flex shrink-0 items-center gap-2 max-sm:order-3">
         <span title={`${capitalize(view.mode)}; ${resolution}`} className={cx("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-caption font-medium", view.mode === "combat" ? "bg-danger-soft text-danger" : "bg-desk text-muted")}>
           {view.mode === "combat" ? <Swords {...ICON_DENSE} /> : <Compass {...ICON_DENSE} />}

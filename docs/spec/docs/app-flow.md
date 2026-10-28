@@ -206,7 +206,7 @@ On `/adventures`, each draft also offers **Archive** and **Delete**, and each pu
 
 The lobby stays current without a reload: every 4 seconds while the tab is shown, and when it is shown again, it compares the instance's status, version, and party with what it shows, and re-renders when they differ. When the instance becomes `active`, a user with a character in it goes to `/instances/[id]/play`.
 
-**Create instance** lives on the campaign overview, author only.
+**Create instance** lives on the campaign overview, author only: a name and a **Sandbox** checkbox, described in one line ([engine.md](engine.md#sandbox)). A sandbox game shows a **Sandbox** badge beside its status in the campaign's game list, the lobby header, and the play page's turn tracker, and the lobby's description says what a sandbox changes.
 
 ### Schedule
 

@@ -1,6 +1,6 @@
 // The demo world (lib/server/demo.ts): content for every screen, built through the application's own
 // operations so it is what real use produces. Three users; the published materials; Cadmium and Quest
-// characters; a campaign of the exemplar with a game in progress, a lobby, a weekly session, and an
+// characters; a campaign of the exemplar with a game in progress, a sandbox lobby, a weekly session, and an
 // invitation; a campaign the demo user joined; and an adventure draft.
 
 import { join } from "node:path";
@@ -115,8 +115,8 @@ export async function seedDemo(store: Store, now = new Date()): Promise<DemoWorl
   await act("user_demo", "move", { to_id: "guildhall_door" });
   await act("user_ari", "move", { to_id: "notice_board" });
 
-  // A second game, waiting in the lobby.
-  const lobby = await createInstance(store, "user_demo", { campaign_id: campaign.id, name: "Sunday one-shot" }, e);
+  // A second game, a sandbox, waiting in the lobby.
+  const lobby = await createInstance(store, "user_demo", { campaign_id: campaign.id, name: "Sunday one-shot", sandbox: true }, e);
   await addCharacter(deps, "user_bo", { instance_id: lobby.id, character_id: bo.id });
 
   // A weekly session for the game in progress, starting next Thursday at 19:00 UTC.

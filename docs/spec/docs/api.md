@@ -142,7 +142,8 @@ Adventures add `requires_settings` and `players`.
   "characters": [ { "id": "c_17", "user_id": "u_3", "name": "Vale" },
                   { "id": "c_22", "user_id": "u_8", "name": "Rook" } ],
   "next_session": { "session_id": "s_2", "starts_at": "2026-10-27T18:00:00Z" },
-  "created_at": "2026-10-02T19:05:00Z", "started_at": "2026-10-02T19:10:00Z", "ended_at": null, "ending": null
+  "created_at": "2026-10-02T19:05:00Z", "started_at": "2026-10-02T19:10:00Z", "ended_at": null, "ending": null,
+  "sandbox": false
 }
 ```
 
@@ -405,7 +406,7 @@ Cadmium has no user search, profiles, friends, or following. A user's display na
 
 | Operation | Input | Output | Permitted for | Allowed status |
 |---|---|---|---|---|
-| `create_instance` | `campaign_id`, `name` | `instance` | author | creates in `lobby` |
+| `create_instance` | `campaign_id`, `name`, `sandbox?` | `instance` | author | creates in `lobby`; `sandbox` (default false) makes a [sandbox game](engine.md#sandbox) |
 | `list_instances` | `campaign_id` | `instance[]` | members | any |
 | `get_instance` | `instance_id`, `character_id?` | `instance`, `view?` | members | any |
 | `add_character` | `instance_id`, `character_id` | `instance` | the character's owner, a member | `lobby`, `paused` |
