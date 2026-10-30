@@ -21,8 +21,9 @@ export interface NarrationJob {
 
 const DEFAULT_STYLE = { style: "plain", person: "third" as const, max_sentences: 4 };
 
-/** Extra sentences the opening narration may use beyond the style's limit. */
+/** Extra sentences the opening narration, and a conversation, may use beyond the style's limit. */
 const OPENING_SENTENCES = 2;
+const TALK_SENTENCES = 2;
 
 /** What opens the game, on the start commit: the adventure's premise and opening text, and the party. */
 function openingOf(job: NarrationJob, label: (id: string) => string): Opening | null {
@@ -45,7 +46,9 @@ export async function narrate(deps: Deps, job: NarrationJob): Promise<void> {
   const opening = openingOf(job, labels.entity);
   const first = opening ? Object.keys(job.after.characters).sort()[0] : undefined;
   const openingView = first ? view(job.after, job.bundles, first) : null;
-  const template = [opening && openingTemplate(opening, openingView?.room?.label ?? null), templateNarration(job.events, labels)].filter(Boolean).join(" ") || null;
+  // Facts (trigger text, topic briefs, revealed secrets) are part of the template text, so they reach the
+  // players when the model narrator is down too.
+  const template = [opening && openingTemplate(opening, openingView?.room?.label ?? null), templateNarration(job.events, labels), ...job.facts].filter(Boolean).join(" ") || null;
   // A commit with nothing resolved, such as a declaration, is not narrated; the start commit always is.
   if (!template) return;
   let text = template;
@@ -55,14 +58,17 @@ export async function narrate(deps: Deps, job: NarrationJob): Promise<void> {
     const v = actorId && job.after.characters[actorId] ? view(job.after, job.bundles, actorId) : openingView;
     const improvised = job.events.find((e) => e.type === "improvised") as { category?: string; intent?: string; suggestions?: { tool: string; args: Record<string, unknown> }[] } | undefined;
     const style = job.bundles.settings[0]?.manifest.narration ?? DEFAULT_STYLE;
+    const talking = job.events.some((e) => e.type === "talked");
+    const extra = (opening ? OPENING_SENTENCES : 0) + (talking ? TALK_SENTENCES : 0);
     const context = narratorContext({
-      style: opening ? { ...style, max_sentences: style.max_sentences + OPENING_SENTENCES } : style,
+      style: extra > 0 ? { ...style, max_sentences: style.max_sentences + extra } : style,
       opening,
       actor: actorId ? { id: actorId, name: labels.entity(actorId) } : null,
       events: job.events,
       facts: job.facts,
       label: labels.entity,
       disposition: (id) => job.bundles.adventure.npcs?.[id]?.disposition,
+      topicLabel: (npc, topic) => job.bundles.adventure.npcs?.[npc]?.topics?.[topic]?.label,
       view: v,
       improvise: improvised
         ? {

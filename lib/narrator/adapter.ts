@@ -31,7 +31,7 @@ const CATEGORY: Record<string, string> = {
 export function narratorPrompt(context: NarratorContext): string {
   const lines = [
     "You narrate a text adventure from the events the game committed.",
-    "Describe only what the events, facts, room, and scene state. The scene is what the actor sees and carries and the party's condition; mention nothing outside them: no other entities, doors, passages, items, people, outcomes, or numbers.",
+    "Describe only what the events, facts, room, and scene state. The scene is what the actor sees and carries and the party's condition; mention nothing outside them: no other entities, doors, passages, items, people, outcomes, or numbers. An NPC's spoken words in a conversation follow the conversation rules below.",
     "Do not contradict any event.",
     "Do not mention mechanics, ids, or dice unless the narration style asks for it.",
     `Write at most ${context.style.max_sentences} sentences, in this style: ${context.style.style}.`,
@@ -40,6 +40,15 @@ export function narratorPrompt(context: NarratorContext): string {
     "Use the labels for names, and positions for where things are. Never output coordinates.",
   ];
   if (context.actor) lines.push(`${context.actor.name} took this action: say "${context.actor.name}", not "you", for what they do.`);
+  if (context.talk) {
+    const t = context.talk;
+    lines.push(
+      `This is a conversation. Write the exchange, mostly as dialogue: the player's words to ${t.npc}, quoted or paraphrased, then ${t.npc}'s answer in one to three lines of direct speech in quotation marks, in a voice that fits a ${t.disposition ?? "neutral"} ${t.npc}. Keep scene description to a phrase.`,
+      t.topic
+        ? `${t.npc} answers about ${t.topic}. The answer conveys every point of that topic's brief, which is in facts, in ${t.npc}'s own words, and adds nothing to it.`
+        : `The player raised none of ${t.npc}'s topics, so the answer reveals nothing new: no places, people, items, or events beyond the scene. ${t.npc} may greet, react to what was said, or deflect${t.topics.length ? `, and may hint at what they would talk about: ${t.topics.join("; ")}` : ""}.`,
+    );
+  }
   if (context.opening) {
     lines.push(
       "This is the game's first narration. Open the scene: the place and its atmosphere as the party arrives, from the opening text and the premise, which count as facts, and the room. Name the party. Do not describe anything happening yet.",

@@ -16,6 +16,8 @@ export interface NarratorContext {
   positions: Record<string, { distance: number; direction: string }>;
   /** What the actor sees and carries after the commit: the only things narration may mention besides the events and facts. */
   scene: Scene | null;
+  /** When the commit is a conversation: who is spoken to, what was said, and what the NPC can speak about. */
+  talk: Talk | null;
   /** On the start commit, what opens the game: the adventure's title, premise, and opening text, and the party. */
   opening: Opening | null;
 }
@@ -44,6 +46,16 @@ export function sceneOf(v: View, name: string): Scene {
   };
 }
 
+export interface Talk {
+  npc: string;
+  disposition: string | null;
+  utterance: string;
+  /** The topic's label when the player raised one; its brief is in `facts`. */
+  topic: string | null;
+  /** The labels of the topics the NPC will discuss with the actor now. */
+  topics: string[];
+}
+
 export interface Opening {
   title: string;
   premise: string | null;
@@ -64,6 +76,19 @@ export function namedIds(events: readonly GameEvent[]): string[] {
   return [...out];
 }
 
+/** The conversation of a commit with a `talked` event, from the actor's view after it. */
+function talkOf(events: readonly GameEvent[], input: { label: (id: string) => string; disposition: (id: string) => string | undefined; topicLabel?: (npc: string, topic: string) => string | undefined }, v: View | null): Talk | null {
+  const t = events.find((e) => e.type === "talked") as { npc?: string; topic?: string; utterance?: string } | undefined;
+  if (!t?.npc) return null;
+  return {
+    npc: input.label(t.npc),
+    disposition: input.disposition(t.npc) ?? null,
+    utterance: t.utterance ?? "",
+    topic: t.topic ? (input.topicLabel?.(t.npc, t.topic) ?? null) : null,
+    topics: v?.actions.npcs.find((n) => n.id === t.npc)?.topics.map((x) => x.label) ?? [],
+  };
+}
+
 export function narratorContext(input: {
   style: NarratorContext["style"];
   actor: { id: string; name: string } | null;
@@ -75,6 +100,8 @@ export function narratorContext(input: {
   view: View | null;
   improvise: NarratorContext["improvise"];
   opening?: Opening | null;
+  /** A topic's label, for the conversation. */
+  topicLabel?: (npc: string, topic: string) => string | undefined;
 }): NarratorContext {
   const named = namedIds(input.events);
   const labels: Record<string, string> = {};
@@ -106,6 +133,7 @@ export function narratorContext(input: {
     room: v?.room ? { label: v.room.label, summary_tags: v.room.tags, light } : null,
     positions,
     scene: v ? sceneOf(v, input.actor?.name ?? input.label(v.character.id)) : null,
+    talk: talkOf(input.events, input, v),
     opening: input.opening ?? null,
   };
 }

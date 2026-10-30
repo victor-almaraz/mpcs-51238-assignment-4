@@ -13,6 +13,7 @@ const context = (over: Partial<NarratorContext> = {}): NarratorContext => ({
   room: null,
   positions: {},
   scene: null,
+  talk: null,
   opening: null,
   ...over,
 });
@@ -29,6 +30,14 @@ describe("narratorPrompt", () => {
     const improvise = (category: string) => narratorPrompt(context({ improvise: { category, intent: "climb the mast", suggestions: [], streak: 1 } }));
     expect(improvise("impossible")).toContain("never narrate its success or its result");
     expect(improvise("flavor")).toContain("nothing is gained, found, moved, opened, or harmed");
+  });
+
+  it("asks for the NPC's answer in direct speech: the topic's brief when one was raised, nothing new otherwise", () => {
+    const talk = (topic: string | null) => narratorPrompt(context({ talk: { npc: "Liesl Brandt", disposition: "friendly", utterance: "Hello there", topic, topics: ["her map of the coast"] } }));
+    expect(talk("her map of the coast")).toContain("Liesl Brandt's answer in one to three lines of direct speech");
+    expect(talk("her map of the coast")).toContain("conveys every point of that topic's brief");
+    expect(talk(null)).toContain("reveals nothing new");
+    expect(talk(null)).toContain("hint at what they would talk about: her map of the coast");
   });
 
   it("writes in the third person when the setting asks for it", () => {

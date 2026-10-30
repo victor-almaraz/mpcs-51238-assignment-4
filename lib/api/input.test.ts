@@ -191,6 +191,25 @@ describe("narration", () => {
     expect(JSON.stringify(scene)).not.toMatch(/"id"|"at"|e_|c_/);
   });
 
+  it("gives the narrator the conversation, and keeps a topic's brief in the template text when the model fails", async () => {
+    const contexts: { talk: unknown; style: { max_sentences: number } }[] = [];
+    deps.narrator = {
+      async narrate(context) {
+        contexts.push(context as never);
+        return { ok: false, reason: "timeout", ms: 1 };
+      },
+    };
+    deps.parser = scripted({ tool: "move", args: { to_id: "hangar" } }, { tool: "talk", args: { npc_id: "archivist", topic_id: "core", utterance: "Where is the core?" } });
+    const { instance } = await solo();
+    await say(instance.id, "go into the hangar", "text-talk-00001");
+    await say(instance.id, "ask her where the core is", "text-talk-00002");
+    const talk = contexts.at(-1)!;
+    expect(talk.talk).toEqual({ npc: "Archivist Oyelaran", disposition: "wary", utterance: "Where is the core?", topic: "the power core", topics: expect.arrayContaining(["the power core"]) });
+    expect(talk.style.max_sentences).toBe(contexts[1]!.style.max_sentences + 2);
+    const last = (await getHistory(store, "user_a", { instance_id: instance.id, after_version: 0 })).items.at(-1)!;
+    expect(last.narration).toMatchObject({ source: "template", text: expect.stringContaining("The core sits in the deepest stacks.") });
+  });
+
   it("uses the model narrator when it answers, and template text when it fails", async () => {
     const calls: unknown[] = [];
     let fail = false;

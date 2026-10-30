@@ -122,7 +122,7 @@ sequenceDiagram
 7. If the commit contains resolved actions, the Narrator Adapter produces prose from the committed events. A commit containing only a declaration is not narrated.
 8. The Broadcaster sends the events and prose to every subscriber.
 
-Narration runs after commit. A narrator failure does not roll back state. On narrator failure, the Coordinator emits template text generated from the event types.
+Narration runs after commit. A narrator failure does not roll back state. On narrator failure, the Coordinator emits template text generated from the event types, followed by the commit's facts ([tools.md](tools.md#narrator-context)).
 
 ## Concurrency
 

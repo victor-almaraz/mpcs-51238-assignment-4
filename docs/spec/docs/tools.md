@@ -225,6 +225,7 @@ The prompt SHOULD include the setting packs' `parser.yaml` synonyms and examples
     "carrying": ["heavy wrench"],
     "party": [ { "name": "Vale", "health": "7/10 HP", "status": "Active" } ]
   },
+  "talk": null,
   "opening": null
 }
 ```
@@ -233,17 +234,22 @@ The prompt SHOULD include the setting packs' `parser.yaml` synonyms and examples
 
 The start commit is always narrated, even when it resolves no events. Its context has `opening`: `{ title, premise, text, party }`, the adventure's title, its `description`, its `start.narrate`, and the party's character names in ascending character id; `actor` is null, and `room` and `positions` are those of the first character. The opening may use two sentences more than `max_sentences`. Its template text is `start.narrate`, else the first sentence of `description`, else the title, followed by the party and the room, with "the" before a room label that begins in lower case ("Vale and Rook are in the hangar.", "Vale is in Orvelle plaza."). `opening` is null on every other commit.
 
+When the commit has a `talked` event, `talk` is `{ npc, disposition, utterance, topic, topics }`: the NPC's name and disposition, the player's words, the label of the topic raised or null, and the labels of the topics the NPC discusses with the actor now. A raised topic's `brief` is in `facts`. A conversation may use two sentences more than `max_sentences`. `talk` is null on every other commit.
+
+Template text, used when no model narrator is configured or it fails, is a sentence per event followed by the commit's `facts`, so trigger text, topic briefs, and revealed secrets reach the players either way.
+
 ### Narrator rules
 
 The narrator system prompt MUST state:
 
-- Describe only what the events, facts, room, and scene state. Mention nothing outside them: no other entities, doors, passages, items, people, outcomes, or numbers.
+- Describe only what the events, facts, room, and scene state. Mention nothing outside them: no other entities, doors, passages, items, people, outcomes, or numbers. An NPC's words in a conversation follow the rule for `talk`.
 - For `improvise`, nothing in the world changed. Under `flavor` the character may make the harmless gesture, but nothing is gained, found, moved, opened, or harmed; under every other category the attempt does not happen or does not work, and the narration never states its success or result.
 - Do not contradict any event.
 - Do not mention mechanics, ids, or dice unless the setting's narration style requests it.
 - Stay within `max_sentences`.
 - Every player in the party reads the narration, so name each character who acts or is acted on, and the actor by name. In the second person, "you" means the whole party, never one character: "You hear the tide turn. Vale opens the hatch."
 - For `improvise`, follow the category response in [Categories](#categories) and end with a pointer to a suggestion or a visible feature of the room.
+- For `talk`, write the exchange mostly as dialogue: the player's words, quoted or paraphrased, then the NPC's answer in one to three lines of direct speech, in a voice that fits its disposition, with scene description kept to a phrase. With a topic, the answer conveys every point of its brief in the NPC's words and adds nothing. Without one, it reveals nothing new: the NPC greets, reacts, or deflects, and may hint at its topics.
 - For `opening`, open the scene: the place and its atmosphere as the party arrives, from the opening text and the premise, which count as facts, and the room. Name the party, and describe nothing happening yet.
 
 Narration is display text. No component parses it.
